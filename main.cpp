@@ -61,6 +61,8 @@ double collisionStiffness = 1.;
 Real bendingStiffness = 0.1;
 double coll_EPS= 0.0005;
 int num_const_iterations = 5;
+double blowFact= 0.001;
+MatrixXd Vm_incr ;
 
 
 void setNewGarmentMesh(igl::opengl::glfw::Viewer& viewer);
@@ -114,17 +116,18 @@ int main(int argc, char *argv[])
     // Load a mesh in OBJ format
     //string garment_file_name = igl::file_dialog_open();
     //for ease of use, for now let it be fixed
-    string garment_file_name ="/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/garment/tshirt_normalized.obj";
+    string garment_file_name ="/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/garment/tshirt_1710.obj";
     igl::readOBJ(garment_file_name, Vg, Fg);
     igl::readOBJ(garment_file_name, Vg_orig, Fg_orig);
 
     preComputeConstraintsForRestshape();
     setNewGarmentMesh(viewer);
 
-    string avatar_file_name ="/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/avatar/avatar_apose.obj";
+    string avatar_file_name ="/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/avatar/avatar_1710.obj";
     //string avatar_file_name = igl::file_dialog_open();
     igl::readOBJ(avatar_file_name, Vm, Fm);
     Vm_orig = Vm; Fm_orig = Fm;
+    Vm_incr = (1+blowFact)*Vm;
     setNewMannequinMesh(viewer);
     cout<<" setting collision mesh "<<endl;
     setCollisionMesh();
@@ -167,9 +170,14 @@ int main(int argc, char *argv[])
             ImGui::InputDouble("Stretch Stiffness", &(stretchStiffness),  0, 0, "%0.4f");
             ImGui::InputDouble("Collision Stiffness", &(collisionStiffness),  0, 0, "%0.4f");
             ImGui::InputDouble("Bending Stiffness", &(bendingStiffness),  0, 0, "%0.4f");
-            // figure out how that really works!!
+            // figure out how that really works!!does not really do much
             ImGui::InputDouble("Collision thereshold", &(coll_EPS),  0, 0, "%0.4f");
             ImGui::InputInt("Number of constraint Iterations thereshold", &(num_const_iterations),  0, 0);
+            ImGui::InputDouble("Mannequin blowup ", &(blowFact),  0, 0, "%0.4f");
+
+            if(ImGui::Button("set new blowup", ImVec2(-1, 0))){
+                translateMesh(viewer, 2 );
+            }
 
 
         }
@@ -255,6 +263,11 @@ void translateMesh(igl::opengl::glfw::Viewer& viewer, int whichMesh ){
         }
         Vm *= mannequin_scale;
         showMannequin(viewer);
+        Vm_incr = (1+blowFact)*Vm;
+        setNewMannequinMesh(viewer);
+        cout<<" setting collision mesh "<<endl;
+        setCollisionMesh();
+        cout<<" collision mesh finished "<<endl;
     }
 }
 
@@ -320,10 +333,13 @@ void preComputeConstraintsForRestshape(){
 
 void setCollisionMesh(){
     // the mesh the garment collides with -> Vm Fm the mannequin mesh
-    col_tree.init(Vm, Fm);
-    igl::per_face_normals(Vm, Fm, FN_m);
-    igl::per_vertex_normals(Vm, Fm, igl::PER_VERTEX_NORMALS_WEIGHTING_TYPE_ANGLE, FN_m, VN_m);
-    igl::per_edge_normals(Vm, Fm, igl::PER_EDGE_NORMALS_WEIGHTING_TYPE_UNIFORM, FN_m, EN_m, E_m, EMAP_m);
+    //to have earlier detection, blow up the mannequin a bit and perform collision detection on this !
+
+
+    col_tree.init(Vm_incr, Fm);
+    igl::per_face_normals(Vm_incr, Fm, FN_m);
+    igl::per_vertex_normals(Vm_incr, Fm, igl::PER_VERTEX_NORMALS_WEIGHTING_TYPE_ANGLE, FN_m, VN_m);
+    igl::per_edge_normals(Vm_incr, Fm, igl::PER_EDGE_NORMALS_WEIGHTING_TYPE_UNIFORM, FN_m, EN_m, E_m, EMAP_m);
 
 }
 void setupCollisionConstraints(){
@@ -332,8 +348,8 @@ void setupCollisionConstraints(){
     //MatrixXd C, N;
     collisionVert = Eigen::MatrixXi::Zero(numVert, 1);
 
-    igl::signed_distance_pseudonormal(p, Vm, Fm, col_tree, FN_m, VN_m, EN_m, EMAP_m, S, I, C, N);
-    double eps = 0.005;
+    igl::signed_distance_pseudonormal(p, Vm_incr, Fm, col_tree, FN_m, VN_m, EN_m, EMAP_m, S, I, C, N);
+    double eps = coll_EPS; //0.005;
     for(int i=0; i<numVert; i++){
         if(S(i)<eps){
             collisionVert(i)=1;
@@ -360,10 +376,10 @@ void dotimeStep(igl::opengl::glfw::Viewer& viewer){
         p.row(i) = x_new.row(i).array()+ timestep*vel.row(i).array();
     }
     // here we need to detect collisions and solve for them in the loop
-    t.printTime("do setup ");
+    //t.printTime("do setup ");
 
     setupCollisionConstraints();
-    t.printTime(" setup collision constraints finished in ");
+   // t.printTime(" setup collision constraints finished in ");
 
     //(9)-(11), the loop should be repeated several times per timestep (according to Jan Bender)
     for(int i=0; i < num_const_iterations; i++){
@@ -388,7 +404,7 @@ void dotimeStep(igl::opengl::glfw::Viewer& viewer){
                     p.row(id3) += deltap3;
 
             }
-        t.printTime("computed bending");
+       // t.printTime("computed bending");
 
         //each edges distance should remain, now I have each edge covered twice (from both faces, but that should not be a problem)
         for (int j =0; j<numFace; j++){
@@ -413,7 +429,7 @@ void dotimeStep(igl::opengl::glfw::Viewer& viewer){
                 p.row(id1)+= deltap1;
                 p.row(id0)+= deltap0;
         }
-        t.printTime("computed stretch");
+       // t.printTime("computed stretch");
 
         // we precomputed the normal and collision point of each vertex, now add the constraint
         // this is imprecise but much faster and acc to paper works fine in practice
@@ -427,7 +443,7 @@ void dotimeStep(igl::opengl::glfw::Viewer& viewer){
 
             }
         }
-        t.printTime("computed collision");
+       // t.printTime("computed collision");
     }
     // (13)
     for(int i=0; i<numVert; i++){
@@ -452,8 +468,6 @@ void dotimeStep(igl::opengl::glfw::Viewer& viewer){
             Vector3d n_vel = normal.dot(vel_i)* normal;
             Vector3d t_vel = vel_i-n_vel;
             vel.row(i)= (t_vel-collision_damping *n_vel);
-
-
         }
     }
 
