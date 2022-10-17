@@ -59,7 +59,7 @@ Real timestep= 0.0005;
 double stretchStiffness= 0.8;
 double collisionStiffness = 1.;
 Real bendingStiffness = 0.1;
-double coll_EPS= 0.009;
+double coll_EPS= 0.0005;
 
 
 void setNewGarmentMesh(igl::opengl::glfw::Viewer& viewer);
@@ -412,12 +412,12 @@ void dotimeStep(igl::opengl::glfw::Viewer& viewer){
                  PBD.solve_CollisionConstraint(p.row(j), w(j), C.row(j), N.row(j), deltap0, coll_EPS);
 
                  p.row(j) += collisionStiffness * deltap0;
+
             }
         }
         t.printTime("computed collision");
     }
     // (13)
-
     for(int i=0; i<numVert; i++){
         for(int j=0; j<3; j++){
             vel(i,j)= (p(i,j)-x_new(i,j))/timestep;
@@ -426,6 +426,25 @@ void dotimeStep(igl::opengl::glfw::Viewer& viewer){
     }
     //(14)
     Vg= x_new;
+    // 16 Velocity update
+    /*Friction and restitution can be handled by manipulating the velocities of colliding vertices in
+     * step (16) of the algorithm. The velocity of each vertex for which a collision
+     * constraint has been generated is dampened perpendicular to the collision normal
+     * and reflected in the direction of the collision normal.*/
+    double collision_damping = 0.5;
+    for(int i=0; i<numVert; i++){
+        if(collisionVert(i)){
+            // friction update
+            Vector3d vel_i = vel.row(i);
+            Vector3d normal = N.row(i).normalized();
+            Vector3d n_vel = normal.dot(vel_i)* normal;
+            Vector3d t_vel = vel_i-n_vel;
+            vel.row(i)= (t_vel-collision_damping *n_vel);
+
+
+        }
+    }
+
 
     showGarment(viewer);
 }
