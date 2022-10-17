@@ -60,6 +60,7 @@ double stretchStiffness= 0.8;
 double collisionStiffness = 1.;
 Real bendingStiffness = 0.1;
 double coll_EPS= 0.0005;
+int num_const_iterations = 5;
 
 
 void setNewGarmentMesh(igl::opengl::glfw::Viewer& viewer);
@@ -104,8 +105,6 @@ int main(int argc, char *argv[])
 
     // set background
     viewer.core().background_color = Eigen::Vector4f(1, 1, 1, 1);
-//    viewer.core().rotation_type = igl::opengl::ViewerCore::RotationType::ROTATION_TYPE_TRACKBALL;
-//    viewer.data().show_lines = false;
     ambient_grey = Vector3d(0.4, 0.4, 0.4);
     ambient = Vector3d(0.26, 0.26, 0.26);
     diffuse_grey = Vector3d(0.5, 0.5, 0.5);
@@ -115,14 +114,14 @@ int main(int argc, char *argv[])
     // Load a mesh in OBJ format
     //string garment_file_name = igl::file_dialog_open();
     //for ease of use, for now let it be fixed
-    string garment_file_name ="/Users/annaeggler/Desktop/newTest/custom_fit_garments/data/garment/tshirt_normalized.obj";
+    string garment_file_name ="/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/garment/tshirt_normalized.obj";
     igl::readOBJ(garment_file_name, Vg, Fg);
     igl::readOBJ(garment_file_name, Vg_orig, Fg_orig);
 
     preComputeConstraintsForRestshape();
     setNewGarmentMesh(viewer);
 
-    string avatar_file_name ="/Users/annaeggler/Desktop/newTest/custom_fit_garments/data/avatar/avatar_apose.obj";
+    string avatar_file_name ="/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/avatar/avatar_apose.obj";
     //string avatar_file_name = igl::file_dialog_open();
     igl::readOBJ(avatar_file_name, Vm, Fm);
     Vm_orig = Vm; Fm_orig = Fm;
@@ -148,7 +147,7 @@ int main(int argc, char *argv[])
                 translateMesh(viewer, 1 );
             }
         }
-        if (ImGui::CollapsingHeader("Mannequin", ImGuiTreeNodeFlags_DefaultOpen)) {
+        if (ImGui::CollapsingHeader("Mannequin", ImGuiTreeNodeFlags_OpenOnArrow)) {
 
             ImGui::InputFloat("Translation X", &(mannequin_translation[0]),  0, 0, "%0.4f");
             ImGui::InputFloat("Translation Y", &(mannequin_translation[1]),  0, 0, "%0.4f");
@@ -170,7 +169,7 @@ int main(int argc, char *argv[])
             ImGui::InputDouble("Bending Stiffness", &(bendingStiffness),  0, 0, "%0.4f");
             // figure out how that really works!!
             ImGui::InputDouble("Collision thereshold", &(coll_EPS),  0, 0, "%0.4f");
-
+            ImGui::InputInt("Number of constraint Iterations thereshold", &(num_const_iterations),  0, 0);
 
 
         }
@@ -233,6 +232,20 @@ void translateMesh(igl::opengl::glfw::Viewer& viewer, int whichMesh ){
             Vg.col(i) = temp;
         }
         Vg *= garment_scale;
+        // recompute the garment edge lengths
+        for (int j=0; j<e4size; j++) {
+            int id0 = e4list(j, 0);
+            int id1 = e4list(j, 1);
+            int id2 = e4list(j, 2);
+            int id3 = e4list(j, 3);
+            Vector3r pos0 = Vg.row(id0);
+            Vector3r pos1 = Vg.row(id1);
+            Vector3r pos2 = Vg.row(id2);
+            Vector3r pos3 = Vg.row(id3);
+
+            PBD.init_IsometricBendingConstraint(pos0, pos1, pos2, pos3, Q(j));
+        }
+        igl::edge_lengths(Vg, Fg, edgeLengths);
         showGarment(viewer);
     }else if (whichMesh == 2){
         // we translate the mannequin, hence the vertices Vm
@@ -285,7 +298,7 @@ void preComputeConstraintsForRestshape(){
     w = Eigen::VectorXd::Ones(numVert);
     vel = Eigen::MatrixXd::Zero(numVert, 3);
     vel.col(1) =    w * (-1) * grav;
-    igl::edge_lengths(Vg_orig, Fg_orig, edgeLengths);
+    igl::edge_lengths(Vg, Fg, edgeLengths);
     createFacePairEdgeListWith4VerticeIDs(Fg, e4list);
     e4size= e4list.rows();
     Q.resize(e4size, 1);
@@ -351,9 +364,9 @@ void dotimeStep(igl::opengl::glfw::Viewer& viewer){
 
     setupCollisionConstraints();
     t.printTime(" setup collision constraints finished in ");
-    cout<<e4size<<" e4 size"<<endl;
+
     //(9)-(11), the loop should be repeated several times per timestep (according to Jan Bender)
-    for(int i=0; i<5; i++){
+    for(int i=0; i < num_const_iterations; i++){
         // the bending, for each pair of adjacent triangles
         for (int j = 0; j < e4size; j++) {
                 Vector3r deltap0, deltap1, deltap2, deltap3;
@@ -380,7 +393,6 @@ void dotimeStep(igl::opengl::glfw::Viewer& viewer){
         //each edges distance should remain, now I have each edge covered twice (from both faces, but that should not be a problem)
         for (int j =0; j<numFace; j++){
             Vector3r deltap0, deltap1, deltap2;
-
 
             int id0 = Fg_orig(j, 0);
             int id1 = Fg_orig(j, 1);
