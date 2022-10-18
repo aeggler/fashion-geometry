@@ -54,6 +54,7 @@ Eigen::MatrixXi E_m;				// triangles = faces of the garment mesh / faces of the 
 Eigen::VectorXi EMAP_m;
 Eigen::VectorXd w; // the particle weights
 Eigen::MatrixXd p; // the proposed new positions
+MatrixXd u1, u2; // precomputation for stretch
 PositionBasedDynamics PBD;
 Real timestep= 0.0005;
 double stretchStiffness= 0.8;
@@ -63,6 +64,7 @@ double coll_EPS= 0.0005;
 int num_const_iterations = 5;
 double blowFact= 0.001;
 MatrixXd Vm_incr ;
+MatrixXd Colour;
 bool pattern_loaded=false;
 
 
@@ -83,6 +85,8 @@ void setupCollisionConstraints();
 void solveBendingConstraint();
 void solveStretchConstraint();
 void solveCollisionConstraint();
+void preComputeStretch();
+void computeStress(igl::opengl::glfw::Viewer& viewer);
 
 bool pre_draw(igl::opengl::glfw::Viewer& viewer){
     viewer.data().dirty |= igl::opengl::MeshGL::DIRTY_DIFFUSE | igl::opengl::MeshGL::DIRTY_SPECULAR;
@@ -90,6 +94,10 @@ bool pre_draw(igl::opengl::glfw::Viewer& viewer){
     if(simulate){
         dotimeStep(viewer);
         showGarment(viewer);
+       // viewer.selected_data_index = 0;
+       // viewer.data().set_vertices(Vg);
+        computeStress(viewer);
+        //viewer.data().set_colors(Colour);
     }
 
     return false;
@@ -130,6 +138,7 @@ int main(int argc, char *argv[])
     }
 
     preComputeConstraintsForRestshape();
+    preComputeStretch();
     setNewGarmentMesh(viewer);
 
     string avatar_file_name ="/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/avatar/avatar.obj";
@@ -188,7 +197,9 @@ int main(int argc, char *argv[])
                 translateMesh(viewer, 2 );
             }
 
-
+            if(ImGui::Button("Compute Stress", ImVec2(-1, 0))){
+                computeStress(viewer);
+            }
         }
 
     };
@@ -196,6 +207,8 @@ int main(int argc, char *argv[])
     // Add content to the default menu window
     viewer.callback_pre_draw = &pre_draw;
     viewer.callback_key_down = &callback_key_down;
+
+    //added
 
     viewer.launch();
 }
@@ -420,6 +433,76 @@ void solveCollisionConstraint(){
         }
     }
 }
+void preComputeStretch(){
+    u1.resize(numFace, 2);
+    u2.resize(numFace, 2);
+    for(int j=0; j<numFace; j++){
+        int id0 = Fg_pattern(j, 0);
+        int id1 = Fg_pattern(j, 1);
+        int id2 = Fg_pattern(j, 2);
+        
+        Vector2d u0; u0(0) = Vg_pattern(id0, 0); u0[1] = Vg_pattern(id0, 1);
+         u1(j, 0) = Vg_pattern(id1, 0); u1(j,1) = Vg_pattern(id1, 1);
+         u2(j, 0) = Vg_pattern(id2, 0); u2(j,1) = Vg_pattern(id2, 1);
+        u1.row(j) -= u0.transpose();
+        u2.row(j) -= u0.transpose();
+        double det = u1(j, 0)*u2(j,1)- (u2(j,0)-u1(j,1));
+        u1.row(j)/= det;
+        u2.row(j)/= det;
+    }
+}
+void computeStress(igl::opengl::glfw::Viewer& viewer){
+    MatrixXd faceAvg (numFace, 3);
+    MatrixXd faceAvgWithU (numFace, 3);
+    MatrixXd faceAvgWithV (numFace, 3);
+    MatrixXd colU = Eigen::MatrixXd ::Zero(numFace, 3);
+    MatrixXd colV = Eigen::MatrixXd ::Zero (numFace, 3);
+    VectorXd normU (numFace);
+    VectorXd normV (numFace);
+    MatrixXd perFaceU (numFace, 3);
+    MatrixXd perFaceV (numFace, 3);
+
+    for(int j=0; j<numFace; j++){
+
+        int id0 = Fg(j, 0);
+        int id1 = Fg(j, 1);
+        int id2 = Fg(j, 2);
+        faceAvg.row(j) = (Vg.row(id0)+Vg.row(id1)+Vg.row(id2))/3;
+        Vector3d p0 = Vg.row(id0);
+        Vector3d p1 = Vg.row(id1);
+        Vector3d p2 = Vg.row(id2);
+        p1 -= p0;
+        p2 -= p0;
+
+        perFaceU.row(j)  = p1 * u2(j, 1) - p2 * u1(j, 1);
+        perFaceV.row(j) = p2 * u1(j, 0) - p1 * u2(j, 0);
+
+        // deviation from 1 as the measure,
+        normU(j) = perFaceU.row(j).norm();
+        // to increase differences
+        double y = (normU(j)-1)*3;
+        if(j==0){cout<<y<<endl; }
+        // large u stretch: norm > 1, thus y>0 , thus very red,little green => red
+        // small u stretch: norm < 1, thus y<0 , thus little red, much green =>
+        // no stretch : y=0, thus very red , very green => yellow
+        colU.row(j) = Vector3d(1.0 + y, 1. - y, 0.0);
+
+        // large v stretch: yy>0, thus very red, little blue
+        // small v stretch: yy<0, little green, much blue
+        //  no stretch: very green, very blue
+        normV(j) = perFaceV.row(j).norm();
+        // to increase differences
+        double yy= (normV(j)-1)*3;
+        colV.row(j) = Vector3d (0.0, 1. + yy, 1.- yy);
+
+        faceAvgWithU.row(j) = faceAvg.row(j) + perFaceU.row(j);
+        faceAvgWithV.row(j) = faceAvg.row(j) + perFaceV.row(j);
+
+    }
+
+    viewer.data().add_edges(faceAvg, faceAvgWithU, colU );
+    viewer.data().add_edges(faceAvg, faceAvgWithV, colV );
+}
 void dotimeStep(igl::opengl::glfw::Viewer& viewer){
     Timer t("Time step ");
     std::cout<<endl;
@@ -442,6 +525,9 @@ void dotimeStep(igl::opengl::glfw::Viewer& viewer){
     setupCollisionConstraints();
    // t.printTime(" setup collision constraints finished in ");
 
+     Colour = Eigen::MatrixXd::Zero(numFace, 3);
+
+
     //(9)-(11), the loop should be repeated several times per timestep (according to Jan Bender)
     for(int i=0; i < num_const_iterations; i++){
         solveBendingConstraint();
@@ -453,7 +539,10 @@ void dotimeStep(igl::opengl::glfw::Viewer& viewer){
          this is imprecise but much faster and acc to paper works fine in practice*/
         solveCollisionConstraint();
         // t.printTime("computed collision");
+
     }
+
+
     // (13) velocity and position update
     for(int i=0; i<numVert; i++){
         for(int j=0; j<3; j++){
