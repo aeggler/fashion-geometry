@@ -1,0 +1,201 @@
+# MTL Exporter v1.0 by Seungwoo Oh at CLO - Virtual Fashion Inc.
+newmtl face
+Ka 0.257132 0.257132 0.257132
+Kd 1.000000 1.000000 1.000000
+Ks 0.165000 0.165000 0.165000
+Ns 37.550732
+illum 2
+d 1.000000
+map_Ka face.jpg
+map_Kd face.jpg
+newmtl defaultMat1
+Ka 0.257132 0.257132 0.257132
+Kd 1.000000 1.000000 1.000000
+Ks 0.075000 0.075000 0.075000
+Ns 28.763239
+illum 2
+d 1.000000
+map_Ka hair.jpg
+map_Kd hair.jpg
+newmtl M_Thomas_Sneaker_A_03_Male_Sneaker_02_opencollada_Female_Sneaker_02_opencollada_man_sports_shoes_shoesFBXASC045fx2SG1SG1SG1SG1S1
+Ka 0.257132 0.257132 0.257132
+Kd 1.000000 1.000000 1.000000
+Ks 0.064778 0.064778 0.064778
+Ns 19.999998
+illum 2
+d 1.000000
+map_Ka Male_Sneaker_01.jpg
+map_Kd Male_Sneaker_01.jpg
+newmtl M_Thomas_Sneaker_A_03_Male_Sneaker_02_opencollada_Female_Sneaker_02_opencollada_dummy1FBXASC045fx2SG1SG1SG1SG1SG1SG1SG1
+Ka 0.257132 0.257132 0.257132
+Kd 1.000000 1.000000 1.000000
+Ks 0.000000 0.000000 0.000000
+Ns 2.000000
+illum 2
+d 1.000000
+map_Ka transparency.png
+map_Kd transparency.png
+map_d transparency.png
+newmtl body2
+Ka 0.257132 0.257132 0.257132
+Kd 1.000000 1.000000 1.000000
+Ks 0.165000 0.165000 0.165000
+Ns 37.550732
+illum 2
+d 1.000000
+map_Ka body_Covered.jpg
+map_Kd body_Covered.jpg
+newmtl Default_Fabric_FRONT_191111
+Ka 0.257132 0.257132 0.257132
+Kd 1.000000 1.000000 1.000000
+Ks 0.075000 0.075000 0.075000
+Ns 28.763239
+illum 2
+d 1.000000
+newmtl eye
+Ka 0.257132 0.257132 0.257132
+Kd 1.000000 1.000000 1.000000
+Ks 0.560000 0.560000 0.560000
+Ns 128.000000
+illum 2
+d 1.000000
+map_Ka eye.jpg
+map_Kd eye.jpg
+newmtl arm
+Ka 0.257132 0.257132 0.257132
+Kd 1.000000 1.000000 1.000000
+Ks 0.165000 0.165000 0.165000
+Ns 37.550732
+illum 2
+d 1.000000
+map_Ka arm.jpg
+map_Kd arm.jpg
+newmtl pants_FRONT_1934
+Ka 0.111928 0.105478 0.090419
+Kd 0.435294 0.410208 0.351644
+Ks 0.105000 0.105000 0.105000
+Ns 83.552750
+illum 2
+d 1.000000
+map_Ka ripstop rev6_DESATURATION.png
+map_Kd ripstop rev6_DESATURATION.png
+map_bump ripstop rev6.jpg
+map_bump ripstop rev6_NRM_100.jpg
+newmtl Material377806
+Ka 0.257132 0.257132 0.257132
+Kd 1.000000 1.000000 1.000000
+Ks 0.075000 0.075000 0.075000
+Ns 28.763239
+illum 2
+d 1.000000
+map_Ka Basic_Offset_2176.png
+map_Kd Basic_Offset_2176.png
+newmtl Material676879
+Ka 0.257132 0.257132 0.257132
+Kd 1.000000 1.000000 1.000000
+Ks 0.075000 0.075000 0.075000
+Ns 28.763239
+illum 2
+d 1.000000
+map_Ka Basic_Offset_2176.png
+map_Kd Basic_Offset_2176.png
+newmtl Material613167
+Ka 0.257132 0.257132 0.257132
+Kd 1.000000 1.000000 1.000000
+Ks 0.075000 0.075000 0.075000
+Ns 28.763239
+illum 2
+d 1.000000
+map_Ka Basic_Offset_2176.png
+map_Kd Basic_Offset_2176.png
+newmtl toothSG1
+Ka 0.257132 0.257132 0.257132
+Kd 1.000000 1.000000 1.000000
+Ks 0.075000 0.075000 0.075000
+Ns 28.763239
+illum 2
+d 1.000000
+map_Ka tooth.jpg
+map_Kd tooth.jpg
+newmtl leg
+Ka 0.257132 0.257132 0.257132
+Kd 1.000000 1.000000 1.000000
+Ks 0.165000 0.165000 0.165000
+Ns 37.550732
+illum 2
+d 1.000000
+map_Ka leg.jpg
+map_Kd leg.jpg
+newmtl Material635276
+Ka 0.257132 0.257132 0.257132
+Kd 1.000000 1.000000 1.000000
+Ks 0.075000 0.075000 0.075000
+Ns 28.763239
+illum 2
+d 1.000000
+map_Ka Basic_Offset_2176.png
+map_Kd Basic_Offset_2176.png
+newmtl Material1822145
+Ka 0.257132 0.257132 0.257132
+Kd 1.000000 1.000000 1.000000
+Ks 0.075000 0.075000 0.075000
+Ns 28.763239
+illum 2
+d 1.000000
+map_Ka Basic_Offset_2176.png
+map_Kd Basic_Offset_2176.png
+newmtl M_Thomas_Sneaker_A_03_Male_Sneaker_02_opencollada_Female_Sneaker_02_opencollada_man_sports_shoes_shoesFBXASC045fx2SG1SG1SG1SG1S1
+Ka 0.257132 0.257132 0.257132
+Kd 1.000000 1.000000 1.000000
+Ks 0.064778 0.064778 0.064778
+Ns 19.999998
+illum 2
+d 1.000000
+map_Ka Male_Sneaker_01.jpg
+map_Kd Male_Sneaker_01.jpg
+newmtl M_Thomas_Sneaker_A_03_Male_Sneaker_02_opencollada_Female_Sneaker_02_opencollada_dummy1FBXASC045fx2SG1SG1SG1SG1SG1SG1SG1
+Ka 0.257132 0.257132 0.257132
+Kd 1.000000 1.000000 1.000000
+Ks 0.000000 0.000000 0.000000
+Ns 2.000000
+illum 2
+d 1.000000
+map_Ka transparency.png
+map_Kd transparency.png
+map_d transparency.png
+newmtl PT_FABRIC_FRONT_70370
+Ka 0.257132 0.257132 0.257132
+Kd 1.000000 1.000000 1.000000
+Ks 0.075000 0.075000 0.075000
+Ns 28.763239
+illum 2
+d 1.000000
+map_Ka bartack.png
+map_Kd bartack.png
+newmtl eyelash
+Ka 0.257132 0.257132 0.257132
+Kd 1.000000 1.000000 1.000000
+Ks 0.075000 0.075000 0.075000
+Ns 28.763239
+illum 2
+d 1.000000
+map_Ka eyelash.jpg
+map_Kd eyelash.jpg
+newmtl eye
+Ka 0.257132 0.257132 0.257132
+Kd 1.000000 1.000000 1.000000
+Ks 0.560000 0.560000 0.560000
+Ns 128.000000
+illum 2
+d 1.000000
+map_Ka eye.jpg
+map_Kd eye.jpg
+newmtl eyelash
+Ka 0.257132 0.257132 0.257132
+Kd 1.000000 1.000000 1.000000
+Ks 0.075000 0.075000 0.075000
+Ns 28.763239
+illum 2
+d 1.000000
+map_Ka eyelash.jpg
+map_Kd eyelash.jpg

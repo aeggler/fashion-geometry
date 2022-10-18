@@ -23,14 +23,14 @@ using Matrix4r = Eigen::Matrix<Real, 4, 4, Eigen::DontAlign>;
 
 // The matrices of mesh and garment, original and modified
 Eigen::MatrixXd Vg, Vm; // mesh for the garment and mannequin
-Eigen::MatrixXi Fg, Fm;
+Eigen::MatrixXi Fg, Fm, Fg_pattern;
 Eigen::MatrixXd Vg_orig, Vm_orig; // original mesh for the garment and mannequin, restore for translation
+Eigen::MatrixXd Vg_pattern; // the pattern for the restshape, we might change this
 Eigen::MatrixXi Fg_orig, Fm_orig;
 Eigen::MatrixXi Eg; // garment edges
 Eigen::Vector3d ambient, ambient_grey, diffuse, diffuse_grey, specular;
-double EPS = 0.002f;							// in m (= 2 mm)
-Eigen::Vector3f garment_translation (0., 2.2, 0.);// optimal for the given garment mesh
-float garment_scale = 0.85;
+Eigen::Vector3f garment_translation (0., 0., 0.);// optimal for the given garment mesh
+float garment_scale = 1.;
 Eigen::Vector3f mannequin_translation (0., 0., 0.);
 float mannequin_scale = 1.;
 bool simulate= false;
@@ -50,7 +50,7 @@ Eigen::MatrixXd edgeLengths;
 MatrixXd C, N;
 MatrixXi collisionVert;
 Eigen::MatrixXd FN_m, VN_m, EN_m;	// vertices of the collision mesh
-Eigen::MatrixXi E_m;					// triangles = faces of the garment mesh / faces of the collision mesh
+Eigen::MatrixXi E_m;				// triangles = faces of the garment mesh / faces of the collision mesh
 Eigen::VectorXi EMAP_m;
 Eigen::VectorXd w; // the particle weights
 Eigen::MatrixXd p; // the proposed new positions
@@ -63,6 +63,7 @@ double coll_EPS= 0.0005;
 int num_const_iterations = 5;
 double blowFact= 0.001;
 MatrixXd Vm_incr ;
+bool pattern_loaded=false;
 
 
 void setNewGarmentMesh(igl::opengl::glfw::Viewer& viewer);
@@ -79,15 +80,17 @@ void dotimeStep(igl::opengl::glfw::Viewer& viewer);
 void setCollisionMesh();
 void setupCollisionConstraints();
 
+void solveBendingConstraint();
+void solveStretchConstraint();
+void solveCollisionConstraint();
+
 bool pre_draw(igl::opengl::glfw::Viewer& viewer){
     viewer.data().dirty |= igl::opengl::MeshGL::DIRTY_DIFFUSE | igl::opengl::MeshGL::DIRTY_SPECULAR;
 
     if(simulate){
         dotimeStep(viewer);
         showGarment(viewer);
-
     }
-//    viewer.data().set_vertices(Vg);
 
     return false;
 }
@@ -116,14 +119,20 @@ int main(int argc, char *argv[])
     // Load a mesh in OBJ format
     //string garment_file_name = igl::file_dialog_open();
     //for ease of use, for now let it be fixed
-    string garment_file_name ="/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/garment/tshirt_1710.obj";
+    string garment_file_name ="/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/garment/tshirt.obj";
     igl::readOBJ(garment_file_name, Vg, Fg);
     igl::readOBJ(garment_file_name, Vg_orig, Fg_orig);
+
+    string garment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/garment/tshirt_2D.obj";
+    if(garment_pattern_file_name!=" "){
+        pattern_loaded= true;
+        igl::readOBJ(garment_pattern_file_name, Vg_pattern, Fg_pattern);
+    }
 
     preComputeConstraintsForRestshape();
     setNewGarmentMesh(viewer);
 
-    string avatar_file_name ="/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/avatar/avatar_1710.obj";
+    string avatar_file_name ="/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/avatar/avatar.obj";
     //string avatar_file_name = igl::file_dialog_open();
     igl::readOBJ(avatar_file_name, Vm, Fm);
     Vm_orig = Vm; Fm_orig = Fm;
@@ -192,7 +201,6 @@ int main(int argc, char *argv[])
 }
 
 void setNewGarmentMesh(igl::opengl::glfw::Viewer& viewer) {
-    //Vg_initial = Vg;
     if (Vg.rows() == 0 || Fg.rows() == 0) {
         fprintf(stderr, "IOError: Could not load garment...\n");
         return;
@@ -201,7 +209,6 @@ void setNewGarmentMesh(igl::opengl::glfw::Viewer& viewer) {
     showGarment(viewer);
     gar_loaded = true;
 }
-
 void showGarment(igl::opengl::glfw::Viewer& viewer) {
     viewer.selected_data_index = 0;
     viewer.data().clear();
@@ -225,7 +232,6 @@ void showMannequin(igl::opengl::glfw::Viewer& viewer) {
     viewer.data().set_mesh(Vm, Fm);
     viewer.data().show_lines = false;
     viewer.data().uniform_colors(ambient_grey, diffuse_grey, specular);
-    //viewer.core().align_camera_center(viewer.data().V, viewer.data().F);
     viewer.data().show_texture = false;
     viewer.data().set_face_based(false);
 }
@@ -305,26 +311,40 @@ void reset(igl::opengl::glfw::Viewer& viewer){
 }
 
 void preComputeConstraintsForRestshape(){
+   // if(!pattern_loaded){
+        Vg_pattern = Vg;
+        Fg_pattern = Fg; // they should be the same
+    //}
     numVert= Vg.rows();
     numFace = Fg.rows();
 
     w = Eigen::VectorXd::Ones(numVert);
     vel = Eigen::MatrixXd::Zero(numVert, 3);
     vel.col(1) =    w * (-1) * grav;
-    igl::edge_lengths(Vg, Fg, edgeLengths);
-    createFacePairEdgeListWith4VerticeIDs(Fg, e4list);
+
+    // edge lengths from rest shape
+
+
+    createFacePairEdgeListWith4VerticeIDs(Fg, e4list);// Fg and Fg_pattern should be the same!
     e4size= e4list.rows();
+    cout<<Fg.rows()<<" FG list size "<<e4size<<endl;
+
+    igl::edge_lengths(Vg_pattern, Fg_pattern, edgeLengths);
+    createFacePairEdgeListWith4VerticeIDs(Fg_pattern, e4list);// Fg and Fg_pattern should be the same!
+    e4size= e4list.rows();
+    cout<<Fg_pattern.rows()<<" FG_pattern list size "<<e4size<<endl;
+
     Q.resize(e4size, 1);
-    cout<<" init triangle pairs " <<e4size<<endl;
+
     for (int j=0; j<e4size; j++) {
         int id0 = e4list(j, 0);
         int id1 = e4list(j, 1);
         int id2 = e4list(j, 2);
         int id3 = e4list(j, 3);
-        Vector3r pos0 = Vg.row(id0);
-        Vector3r pos1 = Vg.row(id1);
-        Vector3r pos2 = Vg.row(id2);
-        Vector3r pos3 = Vg.row(id3);
+        Vector3r pos0 = Vg_pattern.row(id0);
+        Vector3r pos1 = Vg_pattern.row(id1);
+        Vector3r pos2 = Vg_pattern.row(id2);
+        Vector3r pos3 = Vg_pattern.row(id3);
 
         PBD.init_IsometricBendingConstraint(pos0, pos1, pos2, pos3, Q(j));
     }
@@ -334,7 +354,6 @@ void preComputeConstraintsForRestshape(){
 void setCollisionMesh(){
     // the mesh the garment collides with -> Vm Fm the mannequin mesh
     //to have earlier detection, blow up the mannequin a bit and perform collision detection on this !
-
 
     col_tree.init(Vm_incr, Fm);
     igl::per_face_normals(Vm_incr, Fm, FN_m);
@@ -356,6 +375,60 @@ void setupCollisionConstraints(){
         }
     }
 }
+void solveBendingConstraint(){
+    // for each pair of adjacent triangles, precomputed from restshape (2D pattern TODO)
+    for (int j = 0; j < e4size; j++) {
+        Vector3r deltap0, deltap1, deltap2, deltap3;
+        int id0 = e4list(j, 0);
+        int id1 = e4list(j, 1);
+        int id2 = e4list(j, 2);
+        int id3 = e4list(j, 3);
+        // now we got the correction delta p, add it to p
+        PBD.solve_IsometricBendingConstraint(p.row(id0), w[id0], p.row(id1), w[id1], p.row(id2), w[id2],
+                                             p.row(id3), w[id3], Q(j),
+                                             bendingStiffness, deltap0, deltap1, deltap2, deltap3);
+        p.row(id0) += deltap0;
+        p.row(id1) += deltap1;
+        p.row(id2) += deltap2;
+        p.row(id3) += deltap3;
+    }
+}
+void solveStretchConstraint(){
+    /*each edges distance should remain, since we iterate over every face we iterate over every edge twice- but that should not be a problem */
+    for (int j =0; j<numFace; j++){
+        Vector3r deltap0, deltap1, deltap2;
+
+        int id0 = Fg_orig(j, 0);
+        int id1 = Fg_orig(j, 1);
+        int id2 = Fg_orig(j, 2);
+
+        // first edge
+        PBD.solve_DistanceConstraint(p.row(id1), w(id1), p.row(id2), w(id2), edgeLengths(j, 0), stretchStiffness, deltap1, deltap2);
+        p.row(id2) += deltap2;
+        p.row(id1) += deltap1;
+
+        //second edge
+        PBD.solve_DistanceConstraint(p.row(id2), w(id2), p.row(id0), w(id0), edgeLengths(j, 1), stretchStiffness, deltap2, deltap0);
+        p.row(id2)+= deltap2;
+        p.row(id0)+= deltap0;
+
+        // third edge
+        PBD.solve_DistanceConstraint(p.row(id0), w(id0), p.row(id1), w(id1), edgeLengths(j, 2), stretchStiffness, deltap0, deltap1);
+        p.row(id1)+= deltap1;
+        p.row(id0)+= deltap0;
+    }
+}
+void solveCollisionConstraint(){
+    for (int j=0; j<numVert; j++){
+        if(collisionVert(j)){
+            Vector3r deltap0;
+            PBD.solve_CollisionConstraint(p.row(j), w(j), C.row(j), N.row(j), deltap0, coll_EPS);
+
+            p.row(j) += collisionStiffness * deltap0;
+
+        }
+    }
+}
 void dotimeStep(igl::opengl::glfw::Viewer& viewer){
     Timer t("Time step ");
     std::cout<<endl;
@@ -363,9 +436,6 @@ void dotimeStep(igl::opengl::glfw::Viewer& viewer){
 
     Eigen::MatrixXd x_new = Vg;
     p = Vg;
-
-    // for fixing the vertices on top, set 32-40 to one
-    Eigen::MatrixXd fixedVert= Eigen::MatrixXd::Zero(numVert, 1);
 
     // line (5) of the algorithm https://matthias-research.github.io/pages/publications/posBasedDyn.pdf
     // we only use it to add gravity to the system
@@ -375,77 +445,25 @@ void dotimeStep(igl::opengl::glfw::Viewer& viewer){
     for (int i = 0; i<numVert; i++){
         p.row(i) = x_new.row(i).array()+ timestep*vel.row(i).array();
     }
-    // here we need to detect collisions and solve for them in the loop
     //t.printTime("do setup ");
 
+    // detect collisions and solve for them in the loop
     setupCollisionConstraints();
    // t.printTime(" setup collision constraints finished in ");
 
     //(9)-(11), the loop should be repeated several times per timestep (according to Jan Bender)
     for(int i=0; i < num_const_iterations; i++){
-        // the bending, for each pair of adjacent triangles
-        for (int j = 0; j < e4size; j++) {
-                Vector3r deltap0, deltap1, deltap2, deltap3;
-                int id0 = e4list(j, 0);
-                int id1 = e4list(j, 1);
-                int id2 = e4list(j, 2);
-                int id3 = e4list(j, 3);
-                // now we got the correction delta p, add it to p
-                PBD.solve_IsometricBendingConstraint(p.row(id0), w[id0], p.row(id1), w[id1], p.row(id2), w[id2],
-                                                     p.row(id3), w[id3], Q(j),
-                                                     bendingStiffness, deltap0, deltap1, deltap2, deltap3);
-               // if (!fixedVert(id0))
-                    p.row(id0) += deltap0;
-              //  if (!fixedVert(id1))
-                    p.row(id1) += deltap1;
-               // if (!fixedVert(id2))
-                    p.row(id2) += deltap2;
-               // if (!fixedVert(3))
-                    p.row(id3) += deltap3;
+        solveBendingConstraint();
+        // t.printTime("computed bending");
+        solveStretchConstraint();
+        // t.printTime("computed stretch");
 
-            }
-       // t.printTime("computed bending");
-
-        //each edges distance should remain, now I have each edge covered twice (from both faces, but that should not be a problem)
-        for (int j =0; j<numFace; j++){
-            Vector3r deltap0, deltap1, deltap2;
-
-            int id0 = Fg_orig(j, 0);
-            int id1 = Fg_orig(j, 1);
-            int id2 = Fg_orig(j, 2);
-
-            // first edge
-            PBD.solve_DistanceConstraint(p.row(id1), w(id1), p.row(id2), w(id2), edgeLengths(j, 0), stretchStiffness, deltap1, deltap2);
-                p.row(id2) += deltap2;
-                p.row(id1) += deltap1;
-
-                //second edge
-            PBD.solve_DistanceConstraint(p.row(id2), w(id2), p.row(id0), w(id0), edgeLengths(j, 1), stretchStiffness, deltap2, deltap0);
-                p.row(id2)+= deltap2;
-                p.row(id0)+= deltap0;
-
-            // third edge
-            PBD.solve_DistanceConstraint(p.row(id0), w(id0), p.row(id1), w(id1), edgeLengths(j, 2), stretchStiffness, deltap0, deltap1);
-                p.row(id1)+= deltap1;
-                p.row(id0)+= deltap0;
-        }
-       // t.printTime("computed stretch");
-
-        // we precomputed the normal and collision point of each vertex, now add the constraint
-        // this is imprecise but much faster and acc to paper works fine in practice
-
-        for (int j=0; j<numVert; j++){
-            if(collisionVert(j)){
-                Vector3r deltap0;
-                 PBD.solve_CollisionConstraint(p.row(j), w(j), C.row(j), N.row(j), deltap0, coll_EPS);
-
-                 p.row(j) += collisionStiffness * deltap0;
-
-            }
-        }
-       // t.printTime("computed collision");
+        /* we precomputed the normal and collision point of each vertex, now add the constraint (instead of checking collision in each iteration
+         this is imprecise but much faster and acc to paper works fine in practice*/
+        solveCollisionConstraint();
+        // t.printTime("computed collision");
     }
-    // (13)
+    // (13) velocity and position update
     for(int i=0; i<numVert; i++){
         for(int j=0; j<3; j++){
             vel(i,j)= (p(i,j)-x_new(i,j))/timestep;
@@ -454,15 +472,12 @@ void dotimeStep(igl::opengl::glfw::Viewer& viewer){
     }
     //(14)
     Vg= x_new;
-    // 16 Velocity update
-    /*Friction and restitution can be handled by manipulating the velocities of colliding vertices in
-     * step (16) of the algorithm. The velocity of each vertex for which a collision
-     * constraint has been generated is dampened perpendicular to the collision normal
+    // (16) Velocity update
+    /*The velocity of each vertex for which a collision constraint has been generated is dampened perpendicular to the collision normal
      * and reflected in the direction of the collision normal.*/
     double collision_damping = 0.5;
     for(int i=0; i<numVert; i++){
         if(collisionVert(i)){
-            // friction update
             Vector3d vel_i = vel.row(i);
             Vector3d normal = N.row(i).normalized();
             Vector3d n_vel = normal.dot(vel_i)* normal;
@@ -470,7 +485,6 @@ void dotimeStep(igl::opengl::glfw::Viewer& viewer){
             vel.row(i)= (t_vel-collision_damping *n_vel);
         }
     }
-
 
     showGarment(viewer);
 }
