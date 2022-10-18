@@ -119,11 +119,11 @@ int main(int argc, char *argv[])
     // Load a mesh in OBJ format
     //string garment_file_name = igl::file_dialog_open();
     //for ease of use, for now let it be fixed
-    string garment_file_name ="/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/garment/tshirt.obj";
+    string garment_file_name ="/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/garment/tshirt_merged_vertices_fixed.obj";
     igl::readOBJ(garment_file_name, Vg, Fg);
     igl::readOBJ(garment_file_name, Vg_orig, Fg_orig);
 
-    string garment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/garment/tshirt_2D.obj";
+    string garment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/garment/tshirt_2D_2_fixed.obj";
     if(garment_pattern_file_name!=" "){
         pattern_loaded= true;
         igl::readOBJ(garment_pattern_file_name, Vg_pattern, Fg_pattern);
@@ -311,28 +311,20 @@ void reset(igl::opengl::glfw::Viewer& viewer){
 }
 
 void preComputeConstraintsForRestshape(){
-   // if(!pattern_loaded){
-        Vg_pattern = Vg;
-        Fg_pattern = Fg; // they should be the same
-    //}
     numVert= Vg.rows();
     numFace = Fg.rows();
 
     w = Eigen::VectorXd::Ones(numVert);
     vel = Eigen::MatrixXd::Zero(numVert, 3);
-    vel.col(1) =    w * (-1) * grav;
+    vel.col(1) = w * (-1) * grav;
 
     // edge lengths from rest shape
-
-
-    createFacePairEdgeListWith4VerticeIDs(Fg, e4list);// Fg and Fg_pattern should be the same!
-    e4size= e4list.rows();
-    cout<<Fg.rows()<<" FG list size "<<e4size<<endl;
-
     igl::edge_lengths(Vg_pattern, Fg_pattern, edgeLengths);
-    createFacePairEdgeListWith4VerticeIDs(Fg_pattern, e4list);// Fg and Fg_pattern should be the same!
+
+    createFacePairEdgeListWith4VerticeIDs(Fg, e4list);// from original since it has merged vertices adn thus more e4
     e4size= e4list.rows();
-    cout<<Fg_pattern.rows()<<" FG_pattern list size "<<e4size<<endl;
+    cout<<Fg.rows()<<" FG pattern list size "<<e4size<<endl;
+    // the pattern has fewer adjacent faces since the stitching does not count here but it does in the 3D case
 
     Q.resize(e4size, 1);
 
@@ -341,14 +333,13 @@ void preComputeConstraintsForRestshape(){
         int id1 = e4list(j, 1);
         int id2 = e4list(j, 2);
         int id3 = e4list(j, 3);
-        Vector3r pos0 = Vg_pattern.row(id0);
-        Vector3r pos1 = Vg_pattern.row(id1);
-        Vector3r pos2 = Vg_pattern.row(id2);
-        Vector3r pos3 = Vg_pattern.row(id3);
+        Vector3r pos0 = Vg.row(id0);
+        Vector3r pos1 = Vg.row(id1);
+        Vector3r pos2 = Vg.row(id2);
+        Vector3r pos3 = Vg.row(id3);
 
         PBD.init_IsometricBendingConstraint(pos0, pos1, pos2, pos3, Q(j));
     }
-    cout<<" setup finished"<<endl;
 }
 
 void setCollisionMesh(){
