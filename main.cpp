@@ -70,6 +70,7 @@ MatrixXd faceAvg;
 MatrixXd faceAvgWithU ;
 MatrixXd faceAvgWithV ;
 MatrixXd colU ;
+MatrixXd colMixed;
 MatrixXd colV ;
 int whichStressVisualize= 0;
 
@@ -106,6 +107,10 @@ bool pre_draw(igl::opengl::glfw::Viewer& viewer){
 
     return false;
 }
+static bool noStress = true;
+static bool StressU = false;
+static bool StressV = false;
+static bool StressMixed = false;
 int main(int argc, char *argv[])
 {
     // Init the viewer
@@ -202,22 +207,37 @@ int main(int argc, char *argv[])
                 translateMesh(viewer, 2 );
             }
 
-            if(ImGui::Button("Visualize Stress U ", ImVec2(-1, 0))){
-                whichStressVisualize=1;
+
+            if(ImGui::Checkbox("Visualize no Stress", &noStress)){
+                StressU = false;
+                StressV=false;
+                StressMixed = false;
+                whichStressVisualize = 0;
                 showGarment(viewer);
             }
-            if(ImGui::Button("Visualize Stress V ", ImVec2(-1, 0))){
-//
-                whichStressVisualize=2;
+            if(ImGui::Checkbox("Visualize U Stress", &StressU)){
+                noStress = false;
+                StressV = false;
+                StressMixed = false;
+
+                whichStressVisualize = 1;
                 showGarment(viewer);
-
-
-                // set colour colV
             }
-            if(ImGui::Button("Visualize Stress mixed ", ImVec2(-1, 0))){
-//                whichStressVisualize=1;
-
+            if(ImGui::Checkbox("Visualize V Stress ", &StressV)){
+                noStress = false;
+                StressU = false;
+                StressMixed = false;
+                whichStressVisualize = 2;
+                showGarment(viewer);
            }
+            if(ImGui::Checkbox("Visualize mixed Stress ", &StressMixed)){
+                StressV= false;
+                noStress = false;
+                StressU = false;
+                whichStressVisualize = 3;
+                showGarment(viewer);
+            }
+
         }
 
     };
@@ -255,6 +275,8 @@ void showGarment(igl::opengl::glfw::Viewer& viewer) {
         viewer.data().set_colors(colU);
     }else if (whichStressVisualize == 2){
         viewer.data().set_colors(colV);
+    }else if (whichStressVisualize == 3 ){
+        viewer.data().set_colors(colMixed);
     }
 
 }
@@ -320,17 +342,51 @@ bool callback_key_down(igl::opengl::glfw::Viewer& viewer, unsigned char key, int
 
     if(key == 'S'){
         simulate= !simulate;
-
         viewer.core().is_animating= !viewer.core().is_animating;
-
-        keyRecognition= true;
+        keyRecognition = true;
     }
 
     if (key == 'R')
     {
         reset(viewer);
         //reset simulation
-        keyRecognition= true;
+        keyRecognition = true;
+    }
+    if (key == 'U')
+    {
+        whichStressVisualize = 1;
+        StressV = false;
+        StressU = true;
+        noStress = false;
+        showGarment(viewer);
+        keyRecognition = true;
+    }
+    if (key == 'V')
+    {
+        whichStressVisualize = 2;
+        StressV = true;
+        StressU = false;
+        noStress = false;
+        showGarment(viewer);
+        keyRecognition = true;
+    }
+    if (key == 'N')
+    { // NONE stretch visualization
+        whichStressVisualize = 0;
+        StressV = false;
+        StressU = false;
+        noStress = true;
+        showGarment(viewer);
+        keyRecognition = true;
+    }
+    if(key == 'M'){
+        whichStressVisualize = 3;
+        StressV = false;
+        StressU = false;
+        noStress = false;
+        StressMixed = true;
+        showGarment(viewer);
+        keyRecognition = true;
     }
     return keyRecognition;
 }
@@ -343,6 +399,12 @@ void reset(igl::opengl::glfw::Viewer& viewer){
     Vm= Vm_orig;
     viewer.core().is_animating = false;
     simulate=false;
+    StressV = false;
+    StressU = false;
+    StressMixed = false;
+    noStress = true;
+
+    whichStressVisualize = 0;
     translateMesh(viewer, 1);
     preComputeConstraintsForRestshape();
     preComputeStretch();
@@ -466,6 +528,7 @@ void preComputeStretch(){
     faceAvgWithV.resize(numFace, 3);
     colU = Eigen::MatrixXd ::Zero(numFace, 3);
     colV = Eigen::MatrixXd ::Zero (numFace, 3);
+    colMixed = Eigen::MatrixXd ::Zero (numFace, 3);
 
     u1.resize(numFace, 2);
     u2.resize(numFace, 2);
@@ -512,21 +575,23 @@ void computeStress(igl::opengl::glfw::Viewer& viewer){
 
         perFaceU.row(j) = p1*u2(j,1) - p2*u1(j,1);
         perFaceV.row(j) = p2 * u1(j, 0) - p1* u2(j, 0);
+        double differenceIncrementFactor = 3.0;
 
         // deviation from 1 as the measure,
         /* large u stretch: norm > 1, thus y>0 , thus very red,little green => red
-            small u stretch: norm < 1, thus y<0 , thus little red, much green => green
+            compression = small u stretch: norm < 1, thus y<0 , thus little red, much green => green
             no stretch : y=0, thus very red , very green => yellow */
         normU(j) = perFaceU.row(j).norm();
-        double y = (normU(j)-1)*10; // to increase differences
+        double y = (normU(j)-1) * differenceIncrementFactor; // to increase differences
         colU.row(j) = Vector3d(1.0 + y, 1. - y, 0.0);
 
-        /* large v stretch: yy>0, thus very green, little blue => green
-            small v stretch: yy<0, little green, much blue => blue
-            no stretch: very green, very blue => blue ish */
         normV(j) = perFaceV.row(j).norm();
-        double yy= (normV(j)-1)*10;
-        colV.row(j) = Vector3d (0.0, 1. + yy, 1.- yy);
+        y = (normV(j)-1) * differenceIncrementFactor;
+        colV.row(j) = Vector3d ( 1. + y, 1.- y, 0.0);
+
+        // this is an experiment
+        y = (abs(normV(j)-1)+ abs(normU(j)-1))*3;
+        colMixed.row(j) = Vector3d ( 1. + y, 1.- y, 0.0);
 
         faceAvgWithU.row(j) = faceAvg.row(j);
         faceAvgWithV.row(j) = faceAvg.row(j) ;
