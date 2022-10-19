@@ -35,8 +35,6 @@ Eigen::Vector3f mannequin_translation (0., 0., 0.);
 float mannequin_scale = .99;
 bool simulate= false;
 
-bool gar_loaded = false;// is a garment loaded
-bool man_loaded = false; // is a mannequin loaded
 
 //for the simulation
 
@@ -66,6 +64,13 @@ double blowFact= 0.001;
 MatrixXd Vm_incr ;
 MatrixXd Colour;
 bool pattern_loaded=false;
+bool gar_loaded = false;
+bool man_loaded = false;
+MatrixXd faceAvg;
+MatrixXd faceAvgWithU ;
+MatrixXd faceAvgWithV ;
+MatrixXd colU ;
+MatrixXd colV ;
 
 
 void setNewGarmentMesh(igl::opengl::glfw::Viewer& viewer);
@@ -92,12 +97,10 @@ bool pre_draw(igl::opengl::glfw::Viewer& viewer){
     viewer.data().dirty |= igl::opengl::MeshGL::DIRTY_DIFFUSE | igl::opengl::MeshGL::DIRTY_SPECULAR;
 
     if(simulate){
+
         dotimeStep(viewer);
-        showGarment(viewer);
-       // viewer.selected_data_index = 0;
-       // viewer.data().set_vertices(Vg);
         computeStress(viewer);
-        //viewer.data().set_colors(Colour);
+        showGarment(viewer);
     }
 
     return false;
@@ -139,6 +142,7 @@ int main(int argc, char *argv[])
 
     preComputeConstraintsForRestshape();
     preComputeStretch();
+    //computeStress(viewer);
     setNewGarmentMesh(viewer);
 
     string avatar_file_name ="/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/avatar/avatar.obj";
@@ -227,6 +231,8 @@ void showGarment(igl::opengl::glfw::Viewer& viewer) {
     viewer.data().uniform_colors(ambient, diffuse, specular);
     viewer.data().show_texture = false;
     viewer.data().set_face_based(false);
+    viewer.data().add_edges(faceAvg, faceAvgWithU, colU );
+    viewer.data().add_edges(faceAvg, faceAvgWithV, colV );
 
 }
 void setNewMannequinMesh(igl::opengl::glfw::Viewer& viewer) {
@@ -246,7 +252,6 @@ void showMannequin(igl::opengl::glfw::Viewer& viewer) {
     viewer.data().show_texture = false;
     viewer.data().set_face_based(false);
 }
-
 void translateMesh(igl::opengl::glfw::Viewer& viewer, int whichMesh ){
 
     if (whichMesh == 1){
@@ -287,7 +292,6 @@ void translateMesh(igl::opengl::glfw::Viewer& viewer, int whichMesh ){
         cout<<" collision mesh finished "<<endl;
     }
 }
-
 bool callback_key_down(igl::opengl::glfw::Viewer& viewer, unsigned char key, int modifiers) {
     bool keyRecognition= false;
 
@@ -307,7 +311,6 @@ bool callback_key_down(igl::opengl::glfw::Viewer& viewer, unsigned char key, int
     }
     return keyRecognition;
 }
-
 //simulation part
 void reset(igl::opengl::glfw::Viewer& viewer){
     cout<<" reset "<<endl;
@@ -319,7 +322,6 @@ void reset(igl::opengl::glfw::Viewer& viewer){
     translateMesh(viewer, 1);
     showGarment(viewer);
 }
-
 void preComputeConstraintsForRestshape(){
     numVert= Vg.rows();
     numFace = Fg.rows();
@@ -350,7 +352,6 @@ void preComputeConstraintsForRestshape(){
         PBD.init_IsometricBendingConstraint(pos0, pos1, pos2, pos3, Q(j));
     }
 }
-
 void setCollisionMesh(){
     // the mesh the garment collides with -> Vm Fm the mannequin mesh
     //to have earlier detection, blow up the mannequin a bit and perform collision detection on this !
@@ -430,6 +431,12 @@ void solveCollisionConstraint(){
     }
 }
 void preComputeStretch(){
+    faceAvg.resize(numFace, 3);
+    faceAvgWithU.resize(numFace, 3);
+    faceAvgWithV.resize(numFace, 3);
+    colU = Eigen::MatrixXd ::Zero(numFace, 3);
+    colV = Eigen::MatrixXd ::Zero (numFace, 3);
+
     u1.resize(numFace, 2);
     u2.resize(numFace, 2);
     for(int j=0; j<numFace; j++){
@@ -456,11 +463,7 @@ void preComputeStretch(){
     }
 }
 void computeStress(igl::opengl::glfw::Viewer& viewer){
-    MatrixXd faceAvg (numFace, 3);
-    MatrixXd faceAvgWithU (numFace, 3);
-    MatrixXd faceAvgWithV (numFace, 3);
-    MatrixXd colU = Eigen::MatrixXd ::Zero(numFace, 3);
-    MatrixXd colV = Eigen::MatrixXd ::Zero (numFace, 3);
+
     VectorXd normU (numFace);
     VectorXd normV (numFace);
     MatrixXd perFaceU (numFace, 3);
@@ -505,15 +508,15 @@ void computeStress(igl::opengl::glfw::Viewer& viewer){
         faceAvgWithU.row(i)+= (1 / normU.maxCoeff()) * normU(i) * 4 * perFaceU.row(i);
         faceAvgWithV.row(i)+= (1 / normV.maxCoeff()) * normV(i) * 4 * perFaceV.row(i);
     }
-
-    viewer.data().add_edges(faceAvg, faceAvgWithU, colU );
-    viewer.data().add_edges(faceAvg, faceAvgWithV, colV );
+   // viewer.data().line_width= 1.5f;
+//    viewer.data().add_edges(faceAvg, faceAvgWithU, colU );
+//    viewer.data().add_edges(faceAvg, faceAvgWithV, colV );
 }
 void dotimeStep(igl::opengl::glfw::Viewer& viewer){
     Timer t("Time step ");
     std::cout<<endl;
     std::cout<<"-------------- Time Step ------------"<<endl;
-
+// the stress is already computed, we can use it here
     Eigen::MatrixXd x_new = Vg;
     p = Vg;
 
