@@ -32,7 +32,7 @@ Eigen::Vector3d ambient, ambient_grey, diffuse, diffuse_grey, specular;
 Eigen::Vector3f garment_translation (0., 0., 0.);// optimal for the given garment mesh
 float garment_scale = 1.;
 Eigen::Vector3f mannequin_translation (0., 0., 0.);
-float mannequin_scale = 1.;
+float mannequin_scale = .99;
 bool simulate= false;
 
 bool gar_loaded = false;// is a garment loaded
@@ -208,8 +208,6 @@ int main(int argc, char *argv[])
     viewer.callback_pre_draw = &pre_draw;
     viewer.callback_key_down = &callback_key_down;
 
-    //added
-
     viewer.launch();
 }
 
@@ -314,7 +312,6 @@ bool callback_key_down(igl::opengl::glfw::Viewer& viewer, unsigned char key, int
 void reset(igl::opengl::glfw::Viewer& viewer){
     cout<<" reset "<<endl;
     cout<<"---------"<<endl;
-    cout<<Vg_orig.row(0)<<endl;
     Vg= Vg_orig;
     vel = Eigen::MatrixXd::Zero(numVert, 3);
     viewer.core().is_animating = false;
@@ -336,7 +333,6 @@ void preComputeConstraintsForRestshape(){
 
     createFacePairEdgeListWith4VerticeIDs(Fg, e4list);// from original since it has merged vertices adn thus more e4
     e4size= e4list.rows();
-    cout<<Fg.rows()<<" FG pattern list size "<<e4size<<endl;
     // the pattern has fewer adjacent faces since the stitching does not count here but it does in the 3D case
 
     Q.resize(e4size, 1);
@@ -457,9 +453,6 @@ void preComputeStretch(){
         double det = u1h( 0)*u2h(1)- (u2h(0)*u1h(1));
         u1.row(j)= u1h/det;
         u2.row(j)= u2h/det;
-        if(j==0){
-            cout<<u1.row(j)<<" u1 row "<< u2.row(j)<<" u2 row"<<endl;
-        }
     }
 }
 void computeStress(igl::opengl::glfw::Viewer& viewer){
@@ -484,28 +477,21 @@ void computeStress(igl::opengl::glfw::Viewer& viewer){
         p1 -= p0;
         p2 -= p0;
 
-        Vector3d newu = p1*u2(j,1) - p2*u1(j,1);
-        Vector3d newv = p2 * u1(j, 0) - p1* u2(j, 0);
-
-        perFaceU.row(j) = newu;
-        perFaceV.row(j) = newv;
+        perFaceU.row(j) = p1*u2(j,1) - p2*u1(j,1);
+        perFaceV.row(j) = p2 * u1(j, 0) - p1* u2(j, 0);
 
         // deviation from 1 as the measure,
+        /* large u stretch: norm > 1, thus y>0 , thus very red,little green => red
+            small u stretch: norm < 1, thus y<0 , thus little red, much green => green
+            no stretch : y=0, thus very red , very green => yellow */
         normU(j) = perFaceU.row(j).norm();
-
-        if(j==986){cout<<normU(j)<<endl; }
         double y = (normU(j)-1)*10; // to increase differences
-
-        // large u stretch: norm > 1, thus y>0 , thus very red,little green => red
-        // small u stretch: norm < 1, thus y<0 , thus little red, much green => green
-        // no stretch : y=0, thus very red , very green => yellow
         colU.row(j) = Vector3d(1.0 + y, 1. - y, 0.0);
 
-        // large v stretch: yy>0, thus very green, little blue => green
-        // small v stretch: yy<0, little green, much blue => blue
-        //  no stretch: very green, very blue => blue ish
+        /* large v stretch: yy>0, thus very green, little blue => green
+            small v stretch: yy<0, little green, much blue => blue
+            no stretch: very green, very blue => blue ish */
         normV(j) = perFaceV.row(j).norm();
-        // to increase differences
         double yy= (normV(j)-1)*10;
         colV.row(j) = Vector3d (0.0, 1. + yy, 1.- yy);
 
@@ -562,13 +548,12 @@ void dotimeStep(igl::opengl::glfw::Viewer& viewer){
 
     }
 
-
     // (13) velocity and position update
     for(int i=0; i<numVert; i++){
         for(int j=0; j<3; j++){
-            vel(i,j)= (p(i,j)-x_new(i,j))/timestep;
+            vel(i,j) = (p(i,j) - x_new(i,j)) / timestep;
         }
-        x_new.row(i)=p.row(i);
+        x_new.row(i) = p.row(i);
     }
     //(14)
     Vg= x_new;
@@ -580,9 +565,9 @@ void dotimeStep(igl::opengl::glfw::Viewer& viewer){
         if(collisionVert(i)){
             Vector3d vel_i = vel.row(i);
             Vector3d normal = N.row(i).normalized();
-            Vector3d n_vel = normal.dot(vel_i)* normal;
+            Vector3d n_vel = normal.dot(vel_i) * normal;
             Vector3d t_vel = vel_i-n_vel;
-            vel.row(i)= (t_vel-collision_damping *n_vel);
+            vel.row(i)= (t_vel-collision_damping * n_vel);
         }
     }
 
