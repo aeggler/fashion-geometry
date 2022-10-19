@@ -25,7 +25,7 @@ using Matrix4r = Eigen::Matrix<Real, 4, 4, Eigen::DontAlign>;
 Eigen::MatrixXd Vg, Vm; // mesh for the garment and mannequin
 Eigen::MatrixXi Fg, Fm, Fg_pattern;
 Eigen::MatrixXd Vg_orig, Vm_orig; // original mesh for the garment and mannequin, restore for translation
-Eigen::MatrixXd Vg_pattern; // the pattern for the restshape, we might change this
+Eigen::MatrixXd Vg_pattern, Vg_pattern_orig; // the pattern for the restshape, we might change this
 Eigen::MatrixXi Fg_orig, Fm_orig;
 Eigen::MatrixXi Eg; // garment edges
 Eigen::Vector3d ambient, ambient_grey, diffuse, diffuse_grey, specular;
@@ -62,7 +62,7 @@ double coll_EPS= 0.0005;
 int num_const_iterations = 5;
 double blowFact= 0.001;
 MatrixXd Vm_incr ;
-MatrixXd Colour;
+
 bool pattern_loaded=false;
 bool gar_loaded = false;
 bool man_loaded = false;
@@ -144,6 +144,7 @@ int main(int argc, char *argv[])
     if(garment_pattern_file_name!=" "){
         pattern_loaded= true;
         igl::readOBJ(garment_pattern_file_name, Vg_pattern, Fg_pattern);
+        Vg_pattern_orig= Vg_pattern;
     }
 
     preComputeConstraintsForRestshape();
@@ -161,14 +162,12 @@ int main(int argc, char *argv[])
     setCollisionMesh();
     cout<<" collision mesh finished "<<endl;
 
-
-    viewer.core().animation_max_fps = 200.;
+    viewer.core().animation_max_fps = 100.;
     viewer.core().is_animating = false;
 
     //additional menu items
     menu.callback_draw_viewer_menu = [&]() {
-        menu.draw_viewer_menu();
-        if (ImGui::CollapsingHeader("Garment", ImGuiTreeNodeFlags_DefaultOpen)) {
+        if (ImGui::CollapsingHeader("Garment", ImGuiTreeNodeFlags_OpenOnArrow)) {
 
             ImGui::InputFloat("Translation X", &garment_translation[0], 0, 0, "%0.4f");
             ImGui::InputFloat("Translation Y", &garment_translation[1], 0, 0, "%0.4f");
@@ -207,7 +206,6 @@ int main(int argc, char *argv[])
                 translateMesh(viewer, 2 );
             }
 
-
             if(ImGui::Checkbox("Visualize no Stress", &noStress)){
                 StressU = false;
                 StressV=false;
@@ -237,9 +235,8 @@ int main(int argc, char *argv[])
                 whichStressVisualize = 3;
                 showGarment(viewer);
             }
-
         }
-
+        menu.draw_viewer_menu();
     };
 
     // Add content to the default menu window
@@ -267,10 +264,7 @@ void showGarment(igl::opengl::glfw::Viewer& viewer) {
     viewer.data().set_face_based(false);
     //remove wireframe
     viewer.data().show_lines = false;
-    // this is broken on macOS according to https://github.com/libigl/libigl/issues/1270
-    //viewer.data().line_width= 30.5f;
-//    viewer.data().add_edges(faceAvg, faceAvgWithU, colU );
-//    viewer.data().add_edges(faceAvg, faceAvgWithV, colV );
+   // if 0 -> no face colour
     if(whichStressVisualize == 1){
         viewer.data().set_colors(colU);
     }else if (whichStressVisualize == 2){
@@ -298,15 +292,30 @@ void showMannequin(igl::opengl::glfw::Viewer& viewer) {
     viewer.data().set_face_based(false);
 }
 void translateMesh(igl::opengl::glfw::Viewer& viewer, int whichMesh ){
+/*
+ *
 
+    vel = Eigen::MatrixXd::Zero(numVert, 3);
+
+    preComputeConstraintsForRestshape();
+    preComputeStretch();
+    computeStress(viewer);
+    setNewGarmentMesh(viewer);
+    //showGarment(viewer);
+    showMannequin(viewer);
+    setCollisionMesh();
+ *
+ *
+ *
+ * */
     if (whichMesh == 1){
         // we translate the garment, but based on the original mesh vg_orig in order to simplify gui
-
         for(int i=0; i<3; i++){
             auto temp = Vg_orig.col(i).array()+garment_translation[i];
             Vg.col(i) = temp;
         }
         Vg *= garment_scale;
+        Vg_pattern *= garment_scale;
         // recompute the garment edge lengths
         for (int j=0; j<e4size; j++) {
             int id0 = e4list(j, 0);
@@ -321,6 +330,9 @@ void translateMesh(igl::opengl::glfw::Viewer& viewer, int whichMesh ){
             PBD.init_IsometricBendingConstraint(pos0, pos1, pos2, pos3, Q(j));
         }
         igl::edge_lengths(Vg, Fg, edgeLengths);
+        preComputeConstraintsForRestshape();
+        preComputeStretch();
+        computeStress(viewer);
         showGarment(viewer);
     }else if (whichMesh == 2){
         // we translate the mannequin, hence the vertices Vm
@@ -345,7 +357,6 @@ bool callback_key_down(igl::opengl::glfw::Viewer& viewer, unsigned char key, int
         viewer.core().is_animating= !viewer.core().is_animating;
         keyRecognition = true;
     }
-
     if (key == 'R')
     {
         reset(viewer);
@@ -395,6 +406,7 @@ void reset(igl::opengl::glfw::Viewer& viewer){
     cout<<" reset "<<endl;
     cout<<"---------"<<endl;
     Vg= Vg_orig;
+    Vg_pattern = Vg_pattern_orig;
     vel = Eigen::MatrixXd::Zero(numVert, 3);
     Vm= Vm_orig;
     viewer.core().is_animating = false;
@@ -597,21 +609,16 @@ void computeStress(igl::opengl::glfw::Viewer& viewer){
         faceAvgWithV.row(j) = faceAvg.row(j) ;
 
     }
-    cout<<" U max coeff: "<<normU.maxCoeff()<<", min: "<< normU.minCoeff()<<endl;
-    cout<<" V max coeff: "<<normV.maxCoeff()<<", min: "<< normV.minCoeff()<<endl;
     for(int i=0; i<numFace; i++){
         faceAvgWithU.row(i)+= (1 / normU.maxCoeff()) * normU(i) * 10 * perFaceU.row(i);
         faceAvgWithV.row(i)+= (1 / normV.maxCoeff()) * normV(i) * 10 * perFaceV.row(i);
     }
-   // viewer.data().line_width= 1.5f;
-//    viewer.data().add_edges(faceAvg, faceAvgWithU, colU );
-//    viewer.data().add_edges(faceAvg, faceAvgWithV, colV );
 }
 void dotimeStep(igl::opengl::glfw::Viewer& viewer){
     Timer t("Time step ");
     std::cout<<endl;
     std::cout<<"-------------- Time Step ------------"<<endl;
-// the stress is already computed, we can use it here
+    // the stress is already computed, we can use it here
     Eigen::MatrixXd x_new = Vg;
     p = Vg;
 
@@ -628,9 +635,6 @@ void dotimeStep(igl::opengl::glfw::Viewer& viewer){
     // detect collisions and solve for them in the loop
     setupCollisionConstraints();
    // t.printTime(" setup collision constraints finished in ");
-
-     Colour = Eigen::MatrixXd::Zero(numFace, 3);
-
 
     //(9)-(11), the loop should be repeated several times per timestep (according to Jan Bender)
     for(int i=0; i < num_const_iterations; i++){
