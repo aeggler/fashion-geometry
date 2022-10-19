@@ -440,15 +440,26 @@ void preComputeStretch(){
         int id0 = Fg_pattern(j, 0);
         int id1 = Fg_pattern(j, 1);
         int id2 = Fg_pattern(j, 2);
-        
-        Vector2d u0; u0(0) = Vg_pattern(id0, 0); u0[1] = Vg_pattern(id0, 1);
-         u1(j, 0) = Vg_pattern(id1, 0); u1(j,1) = Vg_pattern(id1, 1);
-         u2(j, 0) = Vg_pattern(id2, 0); u2(j,1) = Vg_pattern(id2, 1);
-        u1.row(j) -= u0.transpose();
-        u2.row(j) -= u0.transpose();
-        double det = u1(j, 0)*u2(j,1)- (u2(j,0)-u1(j,1));
-        u1.row(j)/= det;
-        u2.row(j)/= det;
+
+        Vector2d u0, u1h, u2h;
+        u0(0) = Vg_pattern(id0, 0);
+        u0(1) = Vg_pattern(id0, 1);
+
+        u1h( 0) = Vg_pattern(id1, 0);
+        u1h(1) = Vg_pattern(id1, 1);
+
+        u2h( 0) = Vg_pattern(id2, 0);
+        u2h(1) = Vg_pattern(id2, 1);
+
+        u1h -= u0;
+        u2h -= u0;
+
+        double det = u1h( 0)*u2h(1)- (u2h(0)*u1h(1));
+        u1.row(j)= u1h/det;
+        u2.row(j)= u2h/det;
+        if(j==0){
+            cout<<u1.row(j)<<" u1 row "<< u2.row(j)<<" u2 row"<<endl;
+        }
     }
 }
 void computeStress(igl::opengl::glfw::Viewer& viewer){
@@ -461,9 +472,7 @@ void computeStress(igl::opengl::glfw::Viewer& viewer){
     VectorXd normV (numFace);
     MatrixXd perFaceU (numFace, 3);
     MatrixXd perFaceV (numFace, 3);
-
     for(int j=0; j<numFace; j++){
-
         int id0 = Fg(j, 0);
         int id1 = Fg(j, 1);
         int id2 = Fg(j, 2);
@@ -471,33 +480,44 @@ void computeStress(igl::opengl::glfw::Viewer& viewer){
         Vector3d p0 = Vg.row(id0);
         Vector3d p1 = Vg.row(id1);
         Vector3d p2 = Vg.row(id2);
+
         p1 -= p0;
         p2 -= p0;
 
-        perFaceU.row(j)  = p1 * u2(j, 1) - p2 * u1(j, 1);
-        perFaceV.row(j) = p2 * u1(j, 0) - p1 * u2(j, 0);
+        Vector3d newu = p1*u2(j,1) - p2*u1(j,1);
+        Vector3d newv = p2 * u1(j, 0) - p1* u2(j, 0);
+
+        perFaceU.row(j) = newu;
+        perFaceV.row(j) = newv;
 
         // deviation from 1 as the measure,
         normU(j) = perFaceU.row(j).norm();
-        // to increase differences
-        double y = (normU(j)-1)*3;
-        if(j==0){cout<<y<<endl; }
+
+        if(j==986){cout<<normU(j)<<endl; }
+        double y = (normU(j)-1)*10; // to increase differences
+
         // large u stretch: norm > 1, thus y>0 , thus very red,little green => red
-        // small u stretch: norm < 1, thus y<0 , thus little red, much green =>
+        // small u stretch: norm < 1, thus y<0 , thus little red, much green => green
         // no stretch : y=0, thus very red , very green => yellow
         colU.row(j) = Vector3d(1.0 + y, 1. - y, 0.0);
 
-        // large v stretch: yy>0, thus very red, little blue
-        // small v stretch: yy<0, little green, much blue
-        //  no stretch: very green, very blue
+        // large v stretch: yy>0, thus very green, little blue => green
+        // small v stretch: yy<0, little green, much blue => blue
+        //  no stretch: very green, very blue => blue ish
         normV(j) = perFaceV.row(j).norm();
         // to increase differences
-        double yy= (normV(j)-1)*3;
+        double yy= (normV(j)-1)*10;
         colV.row(j) = Vector3d (0.0, 1. + yy, 1.- yy);
 
-        faceAvgWithU.row(j) = faceAvg.row(j) + perFaceU.row(j);
-        faceAvgWithV.row(j) = faceAvg.row(j) + perFaceV.row(j);
+        faceAvgWithU.row(j) = faceAvg.row(j);
+        faceAvgWithV.row(j) = faceAvg.row(j) ;
 
+    }
+    cout<<" U max coeff: "<<normU.maxCoeff()<<", min: "<< normU.minCoeff()<<endl;
+    cout<<" V max coeff: "<<normV.maxCoeff()<<", min: "<< normV.minCoeff()<<endl;
+    for(int i=0; i<numFace; i++){
+        faceAvgWithU.row(i)+= (1 / normU.maxCoeff()) * normU(i) * 4 * perFaceU.row(i);
+        faceAvgWithV.row(i)+= (1 / normV.maxCoeff()) * normV(i) * 4 * perFaceV.row(i);
     }
 
     viewer.data().add_edges(faceAvg, faceAvgWithU, colU );
