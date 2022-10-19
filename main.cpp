@@ -100,7 +100,7 @@ bool pre_draw(igl::opengl::glfw::Viewer& viewer){
 
         dotimeStep(viewer);
         computeStress(viewer);
-        showGarment(viewer);
+        showGarment(viewer);// not sure if I actually need this, at least it breaks nothing
     }
 
     return false;
@@ -142,7 +142,7 @@ int main(int argc, char *argv[])
 
     preComputeConstraintsForRestshape();
     preComputeStretch();
-    //computeStress(viewer);
+    computeStress(viewer);
     setNewGarmentMesh(viewer);
 
     string avatar_file_name ="/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/avatar/avatar.obj";
@@ -231,6 +231,8 @@ void showGarment(igl::opengl::glfw::Viewer& viewer) {
     viewer.data().uniform_colors(ambient, diffuse, specular);
     viewer.data().show_texture = false;
     viewer.data().set_face_based(false);
+    // this is broken on macOS according to https://github.com/libigl/libigl/issues/1270
+    //viewer.data().line_width= 30.5f;
     viewer.data().add_edges(faceAvg, faceAvgWithU, colU );
     viewer.data().add_edges(faceAvg, faceAvgWithV, colV );
 
