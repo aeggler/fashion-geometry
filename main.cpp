@@ -71,6 +71,7 @@ MatrixXd faceAvgWithU ;
 MatrixXd faceAvgWithV ;
 MatrixXd colU ;
 MatrixXd colV ;
+int whichStressVisualize= 0;
 
 
 void setNewGarmentMesh(igl::opengl::glfw::Viewer& viewer);
@@ -201,9 +202,22 @@ int main(int argc, char *argv[])
                 translateMesh(viewer, 2 );
             }
 
-            if(ImGui::Button("Compute Stress", ImVec2(-1, 0))){
-                computeStress(viewer);
+            if(ImGui::Button("Visualize Stress U ", ImVec2(-1, 0))){
+                whichStressVisualize=1;
+                showGarment(viewer);
             }
+            if(ImGui::Button("Visualize Stress V ", ImVec2(-1, 0))){
+//
+                whichStressVisualize=2;
+                showGarment(viewer);
+
+
+                // set colour colV
+            }
+            if(ImGui::Button("Visualize Stress mixed ", ImVec2(-1, 0))){
+//                whichStressVisualize=1;
+
+           }
         }
 
     };
@@ -231,10 +245,17 @@ void showGarment(igl::opengl::glfw::Viewer& viewer) {
     viewer.data().uniform_colors(ambient, diffuse, specular);
     viewer.data().show_texture = false;
     viewer.data().set_face_based(false);
+    //remove wireframe
+    viewer.data().show_lines = false;
     // this is broken on macOS according to https://github.com/libigl/libigl/issues/1270
     //viewer.data().line_width= 30.5f;
-    viewer.data().add_edges(faceAvg, faceAvgWithU, colU );
-    viewer.data().add_edges(faceAvg, faceAvgWithV, colV );
+//    viewer.data().add_edges(faceAvg, faceAvgWithU, colU );
+//    viewer.data().add_edges(faceAvg, faceAvgWithV, colV );
+    if(whichStressVisualize == 1){
+        viewer.data().set_colors(colU);
+    }else if (whichStressVisualize == 2){
+        viewer.data().set_colors(colV);
+    }
 
 }
 void setNewMannequinMesh(igl::opengl::glfw::Viewer& viewer) {
@@ -319,10 +340,17 @@ void reset(igl::opengl::glfw::Viewer& viewer){
     cout<<"---------"<<endl;
     Vg= Vg_orig;
     vel = Eigen::MatrixXd::Zero(numVert, 3);
+    Vm= Vm_orig;
     viewer.core().is_animating = false;
     simulate=false;
     translateMesh(viewer, 1);
-    showGarment(viewer);
+    preComputeConstraintsForRestshape();
+    preComputeStretch();
+    computeStress(viewer);
+    setNewGarmentMesh(viewer);
+    //showGarment(viewer);
+    showMannequin(viewer);
+    setCollisionMesh();
 }
 void preComputeConstraintsForRestshape(){
     numVert= Vg.rows();
@@ -507,8 +535,8 @@ void computeStress(igl::opengl::glfw::Viewer& viewer){
     cout<<" U max coeff: "<<normU.maxCoeff()<<", min: "<< normU.minCoeff()<<endl;
     cout<<" V max coeff: "<<normV.maxCoeff()<<", min: "<< normV.minCoeff()<<endl;
     for(int i=0; i<numFace; i++){
-        faceAvgWithU.row(i)+= (1 / normU.maxCoeff()) * normU(i) * 4 * perFaceU.row(i);
-        faceAvgWithV.row(i)+= (1 / normV.maxCoeff()) * normV(i) * 4 * perFaceV.row(i);
+        faceAvgWithU.row(i)+= (1 / normU.maxCoeff()) * normU(i) * 10 * perFaceU.row(i);
+        faceAvgWithV.row(i)+= (1 / normV.maxCoeff()) * normV(i) * 10 * perFaceV.row(i);
     }
    // viewer.data().line_width= 1.5f;
 //    viewer.data().add_edges(faceAvg, faceAvgWithU, colU );
