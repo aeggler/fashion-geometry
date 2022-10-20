@@ -142,7 +142,7 @@ bool PositionBasedDynamics::solve_CollisionConstraint(
     Vector3r qn_n= qn.normalized();
     Real c_p = (p0-q1).dot(qn_n);
 
-    if(c_p<coll_EPS){
+    if(c_p < coll_EPS){
         corr0 = -c_p * qn_n ;
     }else{
         // no correction

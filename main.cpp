@@ -32,7 +32,7 @@ Eigen::Vector3d ambient, ambient_grey, diffuse, diffuse_grey, specular;
 Eigen::Vector3f garment_translation (0., 0., 0.);// optimal for the given garment mesh
 float garment_scale = 1.;
 Eigen::Vector3f mannequin_translation (0., 0., 0.);
-float mannequin_scale = .99;
+float mannequin_scale = 1.;
 bool simulate= false;
 
 
@@ -55,12 +55,12 @@ Eigen::MatrixXd p; // the proposed new positions
 MatrixXd u1, u2; // precomputation for stretch
 PositionBasedDynamics PBD;
 Real timestep= 0.0005;
-double stretchStiffness= 0.8;
+double stretchStiffness= 0.08;
 double collisionStiffness = 1.;
-Real bendingStiffness = 0.1;
-double coll_EPS= 0.0005;
+Real bendingStiffness = 0.001;
+double coll_EPS= 0.003; // like in Clo, 3 mm ?
 int num_const_iterations = 5;
-double blowFact= 0.001;
+double blowFact= 0.0;
 MatrixXd Vm_incr ;
 
 bool pattern_loaded=false;
@@ -136,11 +136,12 @@ int main(int argc, char *argv[])
     // Load a mesh in OBJ format
     //string garment_file_name = igl::file_dialog_open();
     //for ease of use, for now let it be fixed
-    string garment_file_name ="/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/garment/tshirt_merged_vertices_fixed.obj";
+
+    string garment_file_name ="/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/dress_2/dress2_3d_lowres/dress2_3d_lowres.obj"; // "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/garment/tshirt_merged_vertices_fixed.obj";
     igl::readOBJ(garment_file_name, Vg, Fg);
     igl::readOBJ(garment_file_name, Vg_orig, Fg_orig);
 
-    string garment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/garment/tshirt_2D_2_fixed.obj";
+    string garment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/dress_2/dress2_2d_lowres/dress2_2d_lowres.obj"; //"/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/garment/tshirt_2D_2_fixed.obj";
     if(garment_pattern_file_name!=" "){
         pattern_loaded= true;
         igl::readOBJ(garment_pattern_file_name, Vg_pattern, Fg_pattern);
@@ -152,7 +153,7 @@ int main(int argc, char *argv[])
     computeStress(viewer);
     setNewGarmentMesh(viewer);
 
-    string avatar_file_name ="/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/avatar/avatar.obj";
+    string avatar_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/dress_2/avatar/avatar.obj";//avatar/avatar.obj";
     //string avatar_file_name = igl::file_dialog_open();
     igl::readOBJ(avatar_file_name, Vm, Fm);
     Vm_orig = Vm; Fm_orig = Fm;
@@ -198,7 +199,7 @@ int main(int argc, char *argv[])
             ImGui::InputDouble("Collision Stiffness", &(collisionStiffness),  0, 0, "%0.4f");
             ImGui::InputDouble("Bending Stiffness", &(bendingStiffness),  0, 0, "%0.4f");
             // figure out how that really works!!does not really do much
-            ImGui::InputDouble("Collision thereshold", &(coll_EPS),  0, 0, "%0.4f");
+            ImGui::InputDouble("Collision thereshold", &(coll_EPS),  0, 0, "%0.6f");
             ImGui::InputInt("Number of constraint Iterations thereshold", &(num_const_iterations),  0, 0);
             ImGui::InputDouble("Mannequin blowup ", &(blowFact),  0, 0, "%0.4f");
 
@@ -235,6 +236,12 @@ int main(int argc, char *argv[])
                 whichStressVisualize = 3;
                 showGarment(viewer);
             }
+            static bool remMan;
+            if(ImGui::Checkbox("Remove Mannequin mesh ", &remMan)){
+                viewer.selected_data_index = 1;
+                viewer.data().show_faces = !viewer.data().show_faces;
+            }
+
         }
         menu.draw_viewer_menu();
     };
@@ -292,22 +299,6 @@ void showMannequin(igl::opengl::glfw::Viewer& viewer) {
     viewer.data().set_face_based(false);
 }
 void translateMesh(igl::opengl::glfw::Viewer& viewer, int whichMesh ){
-/*
- *
-
-    vel = Eigen::MatrixXd::Zero(numVert, 3);
-
-    preComputeConstraintsForRestshape();
-    preComputeStretch();
-    computeStress(viewer);
-    setNewGarmentMesh(viewer);
-    //showGarment(viewer);
-    showMannequin(viewer);
-    setCollisionMesh();
- *
- *
- *
- * */
     if (whichMesh == 1){
         // we translate the garment, but based on the original mesh vg_orig in order to simplify gui
         for(int i=0; i<3; i++){
@@ -466,6 +457,7 @@ void setCollisionMesh(){
     igl::per_edge_normals(Vm_incr, Fm, igl::PER_EDGE_NORMALS_WEIGHTING_TYPE_UNIFORM, FN_m, EN_m, E_m, EMAP_m);
 
 }
+bool afterflag= false;
 void setupCollisionConstraints(){
     VectorXd S;
     VectorXi I;
@@ -476,6 +468,7 @@ void setupCollisionConstraints(){
     double eps = coll_EPS; //0.005;
     for(int i=0; i<numVert; i++){
         if(S(i)<eps){
+            if(afterflag &&(S(i)<0)){cout<<i<<" still negative "<<S(i)<<endl; }
             collisionVert(i)=1;
         }
     }
@@ -614,6 +607,7 @@ void computeStress(igl::opengl::glfw::Viewer& viewer){
         faceAvgWithV.row(i)+= (1 / normV.maxCoeff()) * normV(i) * 10 * perFaceV.row(i);
     }
 }
+
 void dotimeStep(igl::opengl::glfw::Viewer& viewer){
     Timer t("Time step ");
     std::cout<<endl;
@@ -624,7 +618,7 @@ void dotimeStep(igl::opengl::glfw::Viewer& viewer){
 
     // line (5) of the algorithm https://matthias-research.github.io/pages/publications/posBasedDyn.pdf
     // we only use it to add gravity to the system
-    vel.col(1) += timestep * w*(-1)*grav;
+    vel.col(1) += timestep * w*(-1)*grav*2;
 
     // (7)
     for (int i = 0; i<numVert; i++){
@@ -633,7 +627,6 @@ void dotimeStep(igl::opengl::glfw::Viewer& viewer){
     //t.printTime("do setup ");
 
     // detect collisions and solve for them in the loop
-    setupCollisionConstraints();
    // t.printTime(" setup collision constraints finished in ");
 
     //(9)-(11), the loop should be repeated several times per timestep (according to Jan Bender)
@@ -645,7 +638,14 @@ void dotimeStep(igl::opengl::glfw::Viewer& viewer){
 
         /* we precomputed the normal and collision point of each vertex, now add the constraint (instead of checking collision in each iteration
          this is imprecise but much faster and acc to paper works fine in practice*/
+        cout<<"before"<<endl;
+        setupCollisionConstraints();
+        cout<<"after"<<endl;
         solveCollisionConstraint();
+        afterflag= true;
+        setupCollisionConstraints();
+        afterflag= false;
+
         // t.printTime("computed collision");
 
     }
