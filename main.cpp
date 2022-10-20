@@ -55,12 +55,12 @@ Eigen::MatrixXd p; // the proposed new positions
 MatrixXd u1, u2; // precomputation for stretch
 PositionBasedDynamics PBD;
 Real timestep= 0.0005;
-double stretchStiffness= 0.08;
+double stretchStiffness= 0.001;
 double collisionStiffness = 1.;
 Real bendingStiffness = 0.001;
-double coll_EPS= 0.003; // like in Clo, 3 mm ?
+double coll_EPS= 0.00; // like in Clo, 3 mm ? but for some reason this does not work well with the constraint function
 int num_const_iterations = 5;
-double blowFact= 0.0;
+double blowFact= 0.003;// like in Clo, 3 mm ?
 MatrixXd Vm_incr ;
 
 bool pattern_loaded=false;
@@ -457,7 +457,7 @@ void setCollisionMesh(){
     igl::per_edge_normals(Vm_incr, Fm, igl::PER_EDGE_NORMALS_WEIGHTING_TYPE_UNIFORM, FN_m, EN_m, E_m, EMAP_m);
 
 }
-//bool afterflag= false;
+
 void setupCollisionConstraints(){
     VectorXd S;
     VectorXi I;
@@ -467,7 +467,7 @@ void setupCollisionConstraints(){
     igl::signed_distance_pseudonormal(p, Vm_incr, Fm, col_tree, FN_m, VN_m, EN_m, EMAP_m, S, I, C, N);
     for(int i=0; i<numVert; i++){
         if(S(i)<coll_EPS){
-          //  if(afterflag &&(S(i)<0)){cout<<i<<" still negative "<<S(i)<<endl; }
+            //if(S(i)<0){cout<<i<<" negative "<<S(i)<<endl; }
             collisionVert(i)=1;
         }
     }
@@ -519,9 +519,8 @@ void solveCollisionConstraint(){
     for (int j=0; j<numVert; j++){
         if(collisionVert(j)){
             Vector3r deltap0;
-//            double coll_coll_EPSEPS= 0.003;
             // maybe I should compute the intersection instead of using the closest point C?
-            PBD.solve_CollisionConstraint(p.row(j), w(j), C.row(j), N.row(j), deltap0, coll_EPS);
+            PBD.solve_CollisionConstraint(p.row(j), w(j), C.row(j), N.row(j), deltap0, coll_EPS, vel.row(j));
 
             p.row(j) += collisionStiffness * deltap0;
 
@@ -640,11 +639,10 @@ void dotimeStep(igl::opengl::glfw::Viewer& viewer){
 
         /* we precomputed the normal and collision point of each vertex, now add the constraint (instead of checking collision in each iteration
          this is imprecise but much faster and acc to paper works fine in practice*/
-//        setupCollisionConstraints();
+//       setupCollisionConstraints();
         solveCollisionConstraint();
 
         // t.printTime("computed collision");
-
     }
 
     // (13) velocity and position update
