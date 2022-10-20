@@ -457,7 +457,7 @@ void setCollisionMesh(){
     igl::per_edge_normals(Vm_incr, Fm, igl::PER_EDGE_NORMALS_WEIGHTING_TYPE_UNIFORM, FN_m, EN_m, E_m, EMAP_m);
 
 }
-bool afterflag= false;
+//bool afterflag= false;
 void setupCollisionConstraints(){
     VectorXd S;
     VectorXi I;
@@ -465,10 +465,9 @@ void setupCollisionConstraints(){
     collisionVert = Eigen::MatrixXi::Zero(numVert, 1);
 
     igl::signed_distance_pseudonormal(p, Vm_incr, Fm, col_tree, FN_m, VN_m, EN_m, EMAP_m, S, I, C, N);
-    double eps = coll_EPS; //0.005;
     for(int i=0; i<numVert; i++){
-        if(S(i)<eps){
-            if(afterflag &&(S(i)<0)){cout<<i<<" still negative "<<S(i)<<endl; }
+        if(S(i)<coll_EPS){
+          //  if(afterflag &&(S(i)<0)){cout<<i<<" still negative "<<S(i)<<endl; }
             collisionVert(i)=1;
         }
     }
@@ -520,6 +519,8 @@ void solveCollisionConstraint(){
     for (int j=0; j<numVert; j++){
         if(collisionVert(j)){
             Vector3r deltap0;
+//            double coll_coll_EPSEPS= 0.003;
+            // maybe I should compute the intersection instead of using the closest point C?
             PBD.solve_CollisionConstraint(p.row(j), w(j), C.row(j), N.row(j), deltap0, coll_EPS);
 
             p.row(j) += collisionStiffness * deltap0;
@@ -628,6 +629,7 @@ void dotimeStep(igl::opengl::glfw::Viewer& viewer){
 
     // detect collisions and solve for them in the loop
    // t.printTime(" setup collision constraints finished in ");
+    setupCollisionConstraints();
 
     //(9)-(11), the loop should be repeated several times per timestep (according to Jan Bender)
     for(int i=0; i < num_const_iterations; i++){
@@ -638,13 +640,8 @@ void dotimeStep(igl::opengl::glfw::Viewer& viewer){
 
         /* we precomputed the normal and collision point of each vertex, now add the constraint (instead of checking collision in each iteration
          this is imprecise but much faster and acc to paper works fine in practice*/
-        cout<<"before"<<endl;
-        setupCollisionConstraints();
-        cout<<"after"<<endl;
+//        setupCollisionConstraints();
         solveCollisionConstraint();
-        afterflag= true;
-        setupCollisionConstraints();
-        afterflag= false;
 
         // t.printTime("computed collision");
 
