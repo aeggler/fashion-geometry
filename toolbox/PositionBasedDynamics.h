@@ -53,7 +53,9 @@ public:
             const Vector3r &p0, Real invMass0,
             const Vector3r &q1,
             const Vector3r &qn,
-            Vector3r &corr0, double coll_EPS);
+            Vector3r &corr0, double coll_EPS
+            ,const Vector3r & vel1
+            );
 
 
 };

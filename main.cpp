@@ -11,6 +11,7 @@
 //#include "toolbox/TimeIntegration.h"
 #include "toolbox/PositionBasedDynamics.h"
 #include "toolbox/adjacency.h"
+#include "toolbox/constraint_utils.h"
 #include <igl/AABB.h>
 #include "toolbox/Timer.h"
 #include <igl/signed_distance.h>
@@ -245,6 +246,60 @@ int main(int argc, char *argv[])
         }
         menu.draw_viewer_menu();
     };
+
+
+
+    /*start new test of procrustes method */
+    /*-----------------------------------*/
+
+    cout<<"proc step started"<<endl;
+    double rigidsum =0 ;
+    for (int j =0; j<5; j++){
+        int id0 = Fg_orig(j, 0);
+        int id1 = Fg_orig(j, 1);
+        int id2 = Fg_orig(j, 2);
+
+        Matrix3d fromMat;// should be p after
+        fromMat.row(0)= Vg.row(id0);
+        fromMat.row(1)= Vg.row(id1);
+        fromMat.row(2)= Vg.row(id2);
+
+        Matrix3d toMat;
+        toMat.row(0) = Vg_pattern.row(Fg_pattern(j, 0));
+        toMat.row(1) = Vg_pattern.row(Fg_pattern(j, 1));
+        toMat.row(2) = Vg_pattern.row(Fg_pattern(j, 2));
+
+
+        Eigen::MatrixXd R_est;
+        Eigen::VectorXd T_est;
+
+        procrustes(fromMat, toMat, R_est, T_est);
+
+        Eigen::MatrixXd appxToT = R_est * fromMat.transpose();
+        appxToT = appxToT.colwise()+ T_est;
+        MatrixXd appxTo = appxToT.transpose();
+        cout<<" to mat "<<toMat<<endl;
+        cout<<endl;
+        cout<< " appx to mat "<<appxTo<<endl;
+
+        Vector3d e1 = Vg_pattern.row(Fg_pattern(j, 1)) - Vg_pattern.row(Fg_pattern(j, 0));
+        Vector3d e2 = Vg_pattern.row(Fg_pattern(j, 2)) - Vg_pattern.row(Fg_pattern(j, 0));
+
+        Vector3d e1p = appxTo.row(1)- appxTo.row(0);
+        Vector3d e2p = appxTo.row(2)- appxTo.row(0);
+
+        double diff1 = e1(0) - e1p(0);
+        double diff2 = e2(1) - e2p(1);
+        rigidsum += (diff1 * diff1) + (diff2 * diff2)  ;
+        cout<<rigidsum<<" rigidsum"<<endl ;
+        cout<<endl;
+
+    }
+    cout<<"proc step finished"<<endl;
+
+
+
+
 
     // Add content to the default menu window
     viewer.callback_pre_draw = &pre_draw;
@@ -636,6 +691,7 @@ void dotimeStep(igl::opengl::glfw::Viewer& viewer){
         // t.printTime("computed bending");
         solveStretchConstraint();
         // t.printTime("computed stretch");
+
 
         /* we precomputed the normal and collision point of each vertex, now add the constraint (instead of checking collision in each iteration
          this is imprecise but much faster and acc to paper works fine in practice*/
