@@ -95,6 +95,9 @@ void solveStretchConstraint();
 void solveCollisionConstraint();
 void preComputeStretch();
 void computeStress(igl::opengl::glfw::Viewer& viewer);
+void computeRigidMeasure();
+void initProcrustesPatternTo3D();
+void solveRigidEnergy();
 
 bool pre_draw(igl::opengl::glfw::Viewer& viewer){
     viewer.data().dirty |= igl::opengl::MeshGL::DIRTY_DIFFUSE | igl::opengl::MeshGL::DIRTY_SPECULAR;
@@ -246,60 +249,6 @@ int main(int argc, char *argv[])
         }
         menu.draw_viewer_menu();
     };
-
-
-
-    /*start new test of procrustes method */
-    /*-----------------------------------*/
-
-    cout<<"proc step started"<<endl;
-    double rigidsum =0 ;
-    for (int j =0; j<5; j++){
-        int id0 = Fg_orig(j, 0);
-        int id1 = Fg_orig(j, 1);
-        int id2 = Fg_orig(j, 2);
-
-        Matrix3d fromMat;// should be p after
-        fromMat.row(0)= Vg.row(id0);
-        fromMat.row(1)= Vg.row(id1);
-        fromMat.row(2)= Vg.row(id2);
-
-        Matrix3d toMat;
-        toMat.row(0) = Vg_pattern.row(Fg_pattern(j, 0));
-        toMat.row(1) = Vg_pattern.row(Fg_pattern(j, 1));
-        toMat.row(2) = Vg_pattern.row(Fg_pattern(j, 2));
-
-
-        Eigen::MatrixXd R_est;
-        Eigen::VectorXd T_est;
-
-        procrustes(fromMat, toMat, R_est, T_est);
-
-        Eigen::MatrixXd appxToT = R_est * fromMat.transpose();
-        appxToT = appxToT.colwise()+ T_est;
-        MatrixXd appxTo = appxToT.transpose();
-        cout<<" to mat "<<toMat<<endl;
-        cout<<endl;
-        cout<< " appx to mat "<<appxTo<<endl;
-
-        Vector3d e1 = Vg_pattern.row(Fg_pattern(j, 1)) - Vg_pattern.row(Fg_pattern(j, 0));
-        Vector3d e2 = Vg_pattern.row(Fg_pattern(j, 2)) - Vg_pattern.row(Fg_pattern(j, 0));
-
-        Vector3d e1p = appxTo.row(1)- appxTo.row(0);
-        Vector3d e2p = appxTo.row(2)- appxTo.row(0);
-
-        double diff1 = e1(0) - e1p(0);
-        double diff2 = e2(1) - e2p(1);
-        rigidsum += (diff1 * diff1) + (diff2 * diff2)  ;
-        cout<<rigidsum<<" rigidsum"<<endl ;
-        cout<<endl;
-
-    }
-    cout<<"proc step finished"<<endl;
-
-
-
-
 
     // Add content to the default menu window
     viewer.callback_pre_draw = &pre_draw;
@@ -662,6 +611,103 @@ void computeStress(igl::opengl::glfw::Viewer& viewer){
         faceAvgWithV.row(i)+= (1 / normV.maxCoeff()) * normV(i) * 10 * perFaceV.row(i);
     }
 }
+Eigen::VectorXd rigidEnergy;
+void computeRigidMeasure(){
+    rigidEnergy.resize(numFace);
+
+    for (int j =0; j<numFace; j++){
+        int id0 = Fg_orig(j, 0);
+        int id1 = Fg_orig(j, 1);
+        int id2 = Fg_orig(j, 2);
+
+        Matrix3d fromMat;// should be p after
+        fromMat.row(0)= p.row(id0);
+        fromMat.row(1)= p.row(id1);
+        fromMat.row(2)= p.row(id2);
+
+        Matrix3d toMat;
+        toMat.row(0) = Vg_pattern.row(Fg_pattern(j, 0));
+        toMat.row(1) = Vg_pattern.row(Fg_pattern(j, 1));
+        toMat.row(2) = Vg_pattern.row(Fg_pattern(j, 2));
+
+
+        Eigen::MatrixXd R_est;
+        Eigen::VectorXd T_est;
+
+        procrustes(fromMat, toMat, R_est, T_est);
+
+        Eigen::MatrixXd appxToT = R_est * fromMat.transpose();
+        appxToT = appxToT.colwise()+ T_est;
+        MatrixXd appxTo = appxToT.transpose();
+//        cout<<" to mat "<<toMat<<endl;
+//        cout<<endl;
+//        cout<< " appx to mat "<<appxTo<<endl;
+
+        Vector3d e1 = Vg_pattern.row(Fg_pattern(j, 1)) - Vg_pattern.row(Fg_pattern(j, 0));
+        Vector3d e2 = Vg_pattern.row(Fg_pattern(j, 2)) - Vg_pattern.row(Fg_pattern(j, 0));
+
+        Vector3d e1p = appxTo.row(1)- appxTo.row(0);
+        Vector3d e2p = appxTo.row(2)- appxTo.row(0);
+
+        double diff1 = e1(0) - e1p(0);
+        double diff2 = e2(1) - e2p(1);
+        rigidEnergy(j) = (diff1 * diff1) + (diff2 * diff2)  ;
+//        cout<<rigidEnergy(j)<<" rigidsum"<<endl ;
+//        cout<<endl;
+
+    }
+    cout<<"proc step finished"<<endl;
+}
+Eigen::MatrixXd procrustesPatternIn3D;
+void initProcrustesPatternTo3D(){
+    procrustesPatternIn3D.resize(numFace*3, 3);
+    for(int j=0; j < numFace; j++ ){
+        // we map each triangle individually
+        Matrix3d fromMat;
+        fromMat.row(0) = Vg_pattern.row(Fg_pattern(j, 0));
+        fromMat.row(1) = Vg_pattern.row(Fg_pattern(j, 1));
+        fromMat.row(2) = Vg_pattern.row(Fg_pattern(j, 2));
+
+        int id0 = Fg_orig(j, 0);
+        int id1 = Fg_orig(j, 1);
+        int id2 = Fg_orig(j, 2);
+
+        Matrix3d toMat;
+        toMat.row(0)= p.row(id0);
+        toMat.row(1)= p.row(id1);
+        toMat.row(2)= p.row(id2);
+
+        Eigen::MatrixXd R_est;
+        Eigen::VectorXd T_est;
+        procrustes(fromMat, toMat, R_est, T_est);
+
+        Eigen::MatrixXd appxToT = R_est * fromMat.transpose();
+        appxToT = appxToT.colwise()+ T_est;
+
+        procrustesPatternIn3D.row(3*j+0 ) = appxToT.row(0);
+        procrustesPatternIn3D.row(3*j+1 ) = appxToT.row(1);
+        procrustesPatternIn3D.row(3*j+2 ) = appxToT.row(2);
+
+    }
+
+}
+void solveRigidEnergy(){
+    double rigideps= 0.003;
+    double rigidStiffness = 0.000001;
+    for(int j=0; j<numFace; j++){
+        if(rigidEnergy(j) > rigideps){
+            // we are not rigid enough, thus take a step in direction of the best fit mapping
+            Vector3d dir0 = procrustesPatternIn3D.row(3*j+ 0 )- p.row(Fg(j, 0));
+            Vector3d dir1 = procrustesPatternIn3D.row(3*j+ 1 )- p.row(Fg(j, 1));
+            Vector3d dir2 = procrustesPatternIn3D.row(3*j+ 2 )- p.row(Fg(j, 2));
+
+//            p.row(Fg(j, 0)) += rigidEnergy(j)* rigidStiffness * dir0;
+//            p.row(Fg(j, 1)) += rigidEnergy(j)* rigidStiffness * dir1;
+//            p.row(Fg(j, 2)) += rigidEnergy(j)* rigidStiffness * dir2;
+
+        }
+    }
+}
 
 void dotimeStep(igl::opengl::glfw::Viewer& viewer){
     Timer t("Time step ");
@@ -684,6 +730,7 @@ void dotimeStep(igl::opengl::glfw::Viewer& viewer){
     // detect collisions and solve for them in the loop
    // t.printTime(" setup collision constraints finished in ");
     setupCollisionConstraints();
+    computeRigidMeasure();
 
     //(9)-(11), the loop should be repeated several times per timestep (according to Jan Bender)
     for(int i=0; i < num_const_iterations; i++){
@@ -692,6 +739,10 @@ void dotimeStep(igl::opengl::glfw::Viewer& viewer){
         solveStretchConstraint();
         // t.printTime("computed stretch");
 
+        /* start test of new procrustes method */
+        initProcrustesPatternTo3D(); // might be an imprecise but fast option to remove this from the loop
+
+        solveRigidEnergy();
 
         /* we precomputed the normal and collision point of each vertex, now add the constraint (instead of checking collision in each iteration
          this is imprecise but much faster and acc to paper works fine in practice*/
