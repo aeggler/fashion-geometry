@@ -56,9 +56,12 @@ Eigen::MatrixXd p; // the proposed new positions
 MatrixXd u1, u2; // precomputation for stretch
 PositionBasedDynamics PBD;
 Real timestep= 0.0005;
-double stretchStiffness= 0.001;
+double stretchStiffnessU= 0.001;
+double stretchStiffnessV= 0.001;
+
 double collisionStiffness = 1.;
 Real bendingStiffness = 0.001;
+double rigidStiffness = 0.001;
 double coll_EPS= 0.00; // like in Clo, 3 mm ? but for some reason this does not work well with the constraint function
 int num_const_iterations = 5;
 double blowFact= 0.003;// like in Clo, 3 mm ?
@@ -202,9 +205,12 @@ counter = 0;
                 simulate= !simulate;
             }
             ImGui::InputDouble("Step size", &(timestep),  0, 0, "%0.4f");
-            ImGui::InputDouble("Stretch Stiffness", &(stretchStiffness),  0, 0, "%0.4f");
+            ImGui::InputDouble("U Stretch Stiffness ", &(stretchStiffnessU),  0, 0, "%0.4f");
+            ImGui::InputDouble("V Stretch Stiffness", &(stretchStiffnessV),  0, 0, "%0.4f");
             ImGui::InputDouble("Collision Stiffness", &(collisionStiffness),  0, 0, "%0.4f");
             ImGui::InputDouble("Bending Stiffness", &(bendingStiffness),  0, 0, "%0.4f");
+            ImGui::InputDouble("Rigidity Stiffness", &(rigidStiffness),  0, 0, "%0.6f");
+
             // figure out how that really works!!does not really do much
             ImGui::InputDouble("Collision thereshold", &(coll_EPS),  0, 0, "%0.6f");
             ImGui::InputInt("Number of constraint Iterations thereshold", &(num_const_iterations),  0, 0);
@@ -256,52 +262,6 @@ counter = 0;
     // Add content to the default menu window
     viewer.callback_pre_draw = &pre_draw;
     viewer.callback_key_down = &callback_key_down;
-
-
-    // test procrustes
-    Eigen::MatrixXd line1(17, 2), line2(17, 2);
-
-
-    line2 << -1.0, 0.30847856402397156,
-            1.0, -0.23112109303474426,
-            0.5, -0.1384168267250061,
-            0.0, 0.06691473722457886,
-            -0.5, 0.10893931984901428,
-            -0.75, 0.03588566184043884,
-            0.75, -0.13766492903232574,
-            -0.25, 0.2551816403865814,
-            0.25, 0.0031900405883789062,
-            -0.625, 0.03588566184043884,
-            0.875, -0.15031829476356506,
-            -0.125, 0.5282152622938156,
-            0.375, -0.11253317445516586,
-            -0.875, 0.2282152622938156,
-            0.625, -0.049657873809337616,
-            -0.375, 0.16587384045124054,
-            0.125, 0.02570086158812046;
-
-    line1= line2;
-    double theta = 0.75;
-    Eigen::MatrixXd R(2,2);
-    R << std::cos(theta), - std::sin(theta),
-            std::sin(theta), std::cos(theta);
-
-//    Eigen::RowVector2d T(2.1, 1.3);
-//
-//    line2 = (R * line2.transpose()).transpose();
-//    line2 = line2.rowwise() + T;
-//    cout<<line2<<" to compare"<<endl;
-//
-//    Eigen::MatrixXd R_est;
-//    Eigen::VectorXd T_est;
-//    procrustes(line1, line2, R_est, T_est);
-//
-//    cout<<endl;
-//    Eigen::MatrixXd recon = (R_est * line1.transpose());
-//    cout<<recon.colwise() + T_est<<endl;
-// ok it works
-
-
 
 
     viewer.launch();
@@ -450,6 +410,7 @@ bool callback_key_down(igl::opengl::glfw::Viewer& viewer, unsigned char key, int
 void reset(igl::opengl::glfw::Viewer& viewer){
     cout<<" reset "<<endl;
     cout<<"---------"<<endl;
+    counter = 0;
     Vg= Vg_orig;
     Vg_pattern = Vg_pattern_orig;
     vel = Eigen::MatrixXd::Zero(numVert, 3);
@@ -554,17 +515,17 @@ void solveStretchConstraint(){
         int id2 = Fg_orig(j, 2);
 
         // first edge
-        PBD.solve_DistanceConstraint(p.row(id1), w(id1), p.row(id2), w(id2), edgeLengths(j, 0), stretchStiffness, deltap1, deltap2);
+        PBD.solve_DistanceConstraint(p.row(id1), w(id1), p.row(id2), w(id2), edgeLengths(j, 0), stretchStiffnessU, deltap1, deltap2);
         p.row(id2) += deltap2;
         p.row(id1) += deltap1;
 
         //second edge
-        PBD.solve_DistanceConstraint(p.row(id2), w(id2), p.row(id0), w(id0), edgeLengths(j, 1), stretchStiffness, deltap2, deltap0);
+        PBD.solve_DistanceConstraint(p.row(id2), w(id2), p.row(id0), w(id0), edgeLengths(j, 1), stretchStiffnessU, deltap2, deltap0);
         p.row(id2)+= deltap2;
         p.row(id0)+= deltap0;
 
         // third edge
-        PBD.solve_DistanceConstraint(p.row(id0), w(id0), p.row(id1), w(id1), edgeLengths(j, 2), stretchStiffness, deltap0, deltap1);
+        PBD.solve_DistanceConstraint(p.row(id0), w(id0), p.row(id1), w(id1), edgeLengths(j, 2), stretchStiffnessU, deltap0, deltap1);
         p.row(id1)+= deltap1;
         p.row(id0)+= deltap0;
     }
@@ -572,65 +533,45 @@ void solveStretchConstraint(){
 
 void solveStretchUV(){
     double stretchEPS= 0.001;
-    for (int j =100; j<105; j++){
-//        cout<<endl;
-//        cout<<endl;
-       // cout<<" Face "<<j<<" u stretch "<<normU(j)<<endl;
+    cout<<normU.sum()<<" sum of the norm u, and v norm  "<<normV.sum()<<endl;
+
+    for (int j =0; j<numFace; j++){
+
+        Vector3r deltap0, deltap1, deltap2;
+
+        Eigen::MatrixXd patternCoords(2, 3);
+        patternCoords(0,0) = Vg_pattern( Fg_pattern(j, 0), 0);
+        patternCoords(1,0) = Vg_pattern( Fg_pattern(j, 0), 1);
+        patternCoords( 0,1) = Vg_pattern( Fg_pattern(j, 1), 0);
+        patternCoords(1,1) = Vg_pattern( Fg_pattern(j, 1), 1);
+        patternCoords( 0,2) = Vg_pattern( Fg_pattern(j, 2), 0);
+        patternCoords(1,2) = Vg_pattern( Fg_pattern(j, 2), 1);
+
+        Eigen::MatrixXd targetPositions(3, 3);
+        targetPositions.col(0)= p.row(Fg_orig(j, 0));
+        targetPositions.col(1)= p.row(Fg_orig(j, 1));
+        targetPositions.col(2)= p.row(Fg_orig(j, 2));
+
         if(abs(normU(j)-1) > stretchEPS ){
-            // they all have to get closer
-            Vector3r deltap0, deltap1, deltap2;
-
-            int id0 = Fg_orig(j, 0);
-            int id1 = Fg_orig(j, 1);
-            int id2 = Fg_orig(j, 2);
-            Eigen::MatrixXd patternCoords(2, 3);
-
-            patternCoords(0,0) = Vg_pattern( Fg_pattern(j, 0), 0);
-            patternCoords(1,0) = Vg_pattern( Fg_pattern(j, 0), 1);
-
-            patternCoords( 0,1) = Vg_pattern( Fg_pattern(j, 1), 0);
-            patternCoords(1,1) = Vg_pattern( Fg_pattern(j, 1), 1);
-
-            patternCoords( 0,2) = Vg_pattern( Fg_pattern(j, 2), 0);
-            patternCoords(1,2) = Vg_pattern( Fg_pattern(j, 2), 1);
-            Eigen::MatrixXd targetPositions(3, 3);
-            targetPositions.col(0)= p.row(id0);
-            targetPositions.col(1)= p.row(id1);
-            targetPositions.col(2)= p.row(id2);
-
-
-            // first edge
-            PBD.solve_UStretch(w(id1), w(id2),
-                               normU(j),perFaceU.row(j), perFaceV.row(j),
+            PBD.solve_UVStretch(w(Fg_orig(j, 1)), w(Fg_orig(j, 2)),
+                               normU(j),perFaceU.row(j),perFaceV.row(j),
                                patternCoords, targetPositions,
-                               stretchStiffness,deltap0,  deltap1, deltap2);
-            if(j<5)std::cout<<deltap0<<" "<<deltap1<<" "<<deltap2<<" the delta updates "<<endl;
-            p.row(id2) += deltap2;
-            p.row(id1) += deltap1;
-            p.row(id0) += deltap0;
+                               stretchStiffnessU,deltap0,  deltap1, deltap2, 1);
+
+            p.row(Fg_orig(j, 2)) += deltap2;
+            p.row(Fg_orig(j, 1)) += deltap1;
+            p.row(Fg_orig(j, 0)) += deltap0;
         }
-//        if((normV(j)-1) > stretchEPS ){
-//            Vector3r deltap0, deltap1, deltap2;
-//
-//            int id0 = Fg_orig(j, 0);
-//            int id1 = Fg_orig(j, 1);
-//            int id2 = Fg_orig(j, 2);
-//
-//            // first edge
-//            PBD.solve_VStretch(p.row(id1), w(id1), p.row(id2), w(id2), normV(j), stretchStiffness, deltap1, deltap2);
-//            p.row(id2) += deltap2;
-//            p.row(id1) += deltap1;
-//
-//            //second edge
-//            PBD.solve_VStretch(p.row(id2), w(id2), p.row(id0), w(id0), normV(j), stretchStiffness, deltap2, deltap0);
-//            p.row(id2)+= deltap2;
-//            p.row(id0)+= deltap0;
-//
-//            // third edge
-//            PBD.solve_VStretch(p.row(id0), w(id0), p.row(id1), w(id1), normV(j), stretchStiffness, deltap0, deltap1);
-//            p.row(id1)+= deltap1;
-//            p.row(id0)+= deltap0;
-//        }
+        if(abs(normV(j)-1) > stretchEPS ){
+            PBD.solve_UVStretch(w(Fg_orig(j, 1)), w(Fg_orig(j, 2)),
+                               normV(j),perFaceU.row(j), perFaceV.row(j),
+                               patternCoords, targetPositions,
+                               stretchStiffnessV, deltap0, deltap1, deltap2, 2);
+
+            p.row(Fg_orig(j, 2)) += deltap2;
+            p.row(Fg_orig(j, 1)) += deltap1;
+            p.row(Fg_orig(j, 0)) += deltap0;
+        }
     }
 }
 void solveCollisionConstraint(){
@@ -770,7 +711,6 @@ void computeRigidMeasure(){
 //        cout<<endl;
 
     }
-    cout<<"proc step finished"<<endl;
 }
 Eigen::MatrixXd procrustesPatternIn3D;
 void initProcrustesPatternTo3D(){
@@ -809,7 +749,7 @@ void initProcrustesPatternTo3D(){
 }
 void solveRigidEnergy(){
     double rigideps= 0.003;
-    double rigidStiffness = 0.000001;
+    rigidStiffness = 0.000001;
     for(int j=0; j<numFace; j++){
         if(rigidEnergy(j) > rigideps){
             // we are not rigid enough, thus take a step in direction of the best fit mapping
@@ -851,8 +791,8 @@ void dotimeStep(igl::opengl::glfw::Viewer& viewer){
     for(int i=0; i < num_const_iterations; i++){
         solveBendingConstraint();
         // t.printTime("computed bending");
-        solveStretchConstraint();
-        //solveStretchUV();
+        //solveStretchConstraint();
+        solveStretchUV();
         // t.printTime("computed stretch");
         /* start test of new procrustes method */
         initProcrustesPatternTo3D(); // might be an imprecise but fast option to remove this from the loop

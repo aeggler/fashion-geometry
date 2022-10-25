@@ -135,18 +135,26 @@ bool PositionBasedDynamics::solve_DistanceConstraint(
     return true;
 }
 // ----------------------------------------------------------------------------------------------
-bool PositionBasedDynamics::solve_UStretch(
+bool PositionBasedDynamics::solve_UVStretch(
          Real invMass0, Real invMass1,
         const Real su, const Vector3r& perFaceU,const Vector3r& perFaceV,
         const Eigen::MatrixXd& patternCoords, const Eigen::Matrix3d& targetPositions,
         const Real stiffness,
-        Vector3r &corr0, Vector3r &corr1, Vector3r &corr2)
+        Vector3r &corr0, Vector3r &corr1, Vector3r &corr2, int uORv)
 {
     Real wSum = invMass0 + invMass1;
     if (wSum == 0.0)
         return false;
-    Vector3r un = perFaceU.normalized();
-    Vector3r vn = perFaceV.normalized();
+
+    Vector3r un, vn;
+    if(uORv==1){// we want ro relax u stretch, hence go in direction where u is not stretched i.e it is normalized
+        un = perFaceU.normalized();
+        vn = perFaceV;//.normalized();
+    }else {
+        un = perFaceU;//.normalized();
+        vn = perFaceV.normalized();
+    }
+
 
     Eigen::MatrixXd Jnorm(3, 2);
     Jnorm.col(0)= un; Jnorm.col(1)= vn;
@@ -158,51 +166,24 @@ bool PositionBasedDynamics::solve_UStretch(
     Eigen::VectorXd T_est;
     procrustes(jacobiStretchedPattern.transpose(), targetPositions.transpose(), R_est, T_est);
 
-    Eigen::Matrix3d refTargetPos =   R_est* jacobiStretchedPattern ;
+    Eigen::Matrix3d rotTargetPos =   R_est* jacobiStretchedPattern ;
+    Eigen::Matrix3d refTargetPos = rotTargetPos.colwise() + T_est;
 
-    refTargetPos = refTargetPos.colwise() + T_est;
     // printing it shows it is somewhat reasonable. So what goes terribly wrong in the update step?
 
-    cout<<targetPositions<<" the target positions "<<endl; cout<<endl;
-    cout<<refTargetPos<<" where we got them to, used as direction "<<endl;cout<<endl;
+//    cout<<targetPositions<<" the target positions "<<endl; cout<<endl;
+//    cout<<refTargetPos<<" where we got them to, used as direction "<<endl;cout<<endl;
 
-    Vector3r dir0 = refTargetPos.col(0) - targetPositions.col(0) ;cout<<dir0<<" the first update direction"<<endl;
+    Vector3r dir0 = refTargetPos.col(0) - targetPositions.col(0) ; //cout<<dir0<<" the first update direction"<<endl;
     Vector3r dir1 = refTargetPos.col(1) - targetPositions.col(1) ;
     Vector3r dir2 = refTargetPos.col(2) - targetPositions.col(2) ;
 
-
-//    dir0.normalize();cout<<endl; cout<<dir0<<" the update direction after normalization"<<endl;
-//    dir1.normalize();
-//    dir2.normalize();
-
-    corr0 = stiffness * dir0 * (su-1) ; cout<<endl; cout<< corr0<<" the computed direction"<<endl;
-    corr1 = stiffness * dir1 * (su-1) ;
-    corr2 = stiffness * dir2 * (su-1) ;
+    corr0 = stiffness * dir0 ; //cout<<endl; cout<< corr0<<" the computed direction"<<endl; * (1-su)
+    corr1 = stiffness * dir1 ;
+    corr2 = stiffness * dir2 ;
     return true;
 }
 // ----------------------------------------------------------------------------------------------
-bool PositionBasedDynamics::solve_VStretch(
-        const Vector3r &p0, Real invMass0,
-        const Vector3r &p1, Real invMass1,
-        const Real sv,
-        const Real stiffness,
-        Vector3r &corr0, Vector3r &corr1)
-{
-    Real wSum = invMass0 + invMass1;
-    if (wSum == 0.0)
-        return false;
-    Vector3r n = p1 - p0;
-    Real d = n.norm();
-    n.normalize();
-
-    Vector3r corr;
-    corr = stiffness * n * (sv-1) / wSum;
-    corr(1)=0; // no Idea if this works, this update is kinda bullshit
-
-    corr0 =  invMass0 * corr;
-    corr1 = -invMass1 * corr;
-    return true;
-}
 
 bool PositionBasedDynamics::solve_CollisionConstraint(
         const Vector3r &p0, Real invMass0,
