@@ -135,17 +135,10 @@ bool PositionBasedDynamics::solve_DistanceConstraint(
     return true;
 }
 // ----------------------------------------------------------------------------------------------
-bool PositionBasedDynamics::solve_UVStretch(
-         Real invMass0, Real invMass1,
-        const Real su, const Vector3r& perFaceU,const Vector3r& perFaceV,
-        const Eigen::MatrixXd& patternCoords, const Eigen::Matrix3d& targetPositions,
-        const Real stiffness,
-        Vector3r &corr0, Vector3r &corr1, Vector3r &corr2, int uORv)
-{
-    Real wSum = invMass0 + invMass1;
-    if (wSum == 0.0)
-        return false;
-
+bool PositionBasedDynamics::init_UVStretch(const Real su, const Vector3r& perFaceU,const Vector3r& perFaceV,
+                                           const Eigen::MatrixXd& patternCoords, const Eigen::Matrix3d& targetPositions,
+                                           const Real stiffness,
+                                           Vector3r &tarUV0, Vector3r &tarUV1, Vector3r &tarUV2, int uORv){
     Vector3r un, vn;
     if(uORv==1){// we want ro relax u stretch, hence go in direction where u is not stretched i.e it is normalized
         un = perFaceU.normalized();
@@ -154,7 +147,6 @@ bool PositionBasedDynamics::solve_UVStretch(
         un = perFaceU;//.normalized();
         vn = perFaceV.normalized();
     }
-
 
     Eigen::MatrixXd Jnorm(3, 2);
     Jnorm.col(0)= un; Jnorm.col(1)= vn;
@@ -169,16 +161,53 @@ bool PositionBasedDynamics::solve_UVStretch(
     Eigen::Matrix3d rotTargetPos =   R_est* jacobiStretchedPattern ;
     Eigen::Matrix3d refTargetPos = rotTargetPos.colwise() + T_est;
 
-    // printing it shows it is somewhat reasonable. So what goes terribly wrong in the update step?
+    tarUV0 = refTargetPos.col(0);// cout<<tarUV0.rows()<< " rows and cols "<<tarUV0.cols()<<endl;
+    tarUV1 = refTargetPos.col(1);
+    tarUV2 = refTargetPos.col(2);
+    return true;
+
+}
+bool PositionBasedDynamics::solve_UVStretch(
+        const Real su, const Eigen::Matrix3d& targetPositions,int uORv, const Vector3r &tarUV0, const Vector3r &tarUV1, const Vector3r &tarUV2,
+        const Real stiffness,
+        Vector3r &corr0, Vector3r &corr1, Vector3r &corr2 )
+{
+//    Real wSum = invMass0 + invMass1;
+//    if (wSum == 0.0)
+//        return false;
+
+//    Vector3r un, vn;
+//    if(uORv==1){// we want ro relax u stretch, hence go in direction where u is not stretched i.e it is normalized
+//        un = perFaceU.normalized();
+//        vn = perFaceV;//.normalized();
+//    }else {
+//        un = perFaceU;//.normalized();
+//        vn = perFaceV.normalized();
+//    }
+//
+//
+//    Eigen::MatrixXd Jnorm(3, 2);
+//    Jnorm.col(0)= un; Jnorm.col(1)= vn;
+//
+//    Eigen::Matrix3d jacobiStretchedPattern = Jnorm * patternCoords;
+//
+//    // compute rotation and translation of that matrix to best fit the original
+//    Eigen::MatrixXd R_est;
+//    Eigen::VectorXd T_est;
+//    procrustes(jacobiStretchedPattern.transpose(), targetPositions.transpose(), R_est, T_est);
+//
+//    Eigen::Matrix3d rotTargetPos =   R_est* jacobiStretchedPattern ;
+//    Eigen::Matrix3d refTargetPos = rotTargetPos.colwise() + T_est;
 
 //    cout<<targetPositions<<" the target positions "<<endl; cout<<endl;
 //    cout<<refTargetPos<<" where we got them to, used as direction "<<endl;cout<<endl;
 
-    Vector3r dir0 = refTargetPos.col(0) - targetPositions.col(0) ; //cout<<dir0<<" the first update direction"<<endl;
-    Vector3r dir1 = refTargetPos.col(1) - targetPositions.col(1) ;
-    Vector3r dir2 = refTargetPos.col(2) - targetPositions.col(2) ;
+    Vector3r dir0 = tarUV0 - targetPositions.col(0) ;
+    Vector3r dir1 = tarUV1 - targetPositions.col(1) ;
+    Vector3r dir2 = tarUV2 - targetPositions.col(2) ;
+//TODO WEIGHTING
 
-    corr0 = stiffness * dir0 ; //cout<<endl; cout<< corr0<<" the computed direction"<<endl; * (1-su)
+    corr0 = stiffness * dir0 ; //* abs(su-1) // or normalize dir and multiply by su
     corr1 = stiffness * dir1 ;
     corr2 = stiffness * dir2 ;
     return true;
@@ -189,7 +218,7 @@ bool PositionBasedDynamics::solve_RigidEnergy(const double& rigidEnergy, const d
                                               const Vector3r& patternPos0,const Vector3r& patternPos1,const Vector3r& patternPos2,
                                               const Vector3r& p0, const Vector3r& p1, const Vector3r& p2,
                                                Vector3r& delta0, Vector3r& delta1, Vector3r& delta2){
-    delta0= Vector3r ::Zero(3);
+    delta0 = Vector3r ::Zero(3);
     delta1 = Vector3r ::Zero(3);
     delta2 = Vector3r ::Zero(3);
 
@@ -199,10 +228,9 @@ bool PositionBasedDynamics::solve_RigidEnergy(const double& rigidEnergy, const d
         Vector3r dir1 = patternPos1 - p1 ;
         Vector3r dir2 = patternPos2 - p2 ;
 
-        delta0 = rigidEnergy * rigidStiffness * dir0;
-        delta1 = rigidEnergy * rigidStiffness * dir1;
-        delta2 = rigidEnergy * rigidStiffness * dir2;
-
+        delta0 = rigidEnergy * rigidStiffness * dir0.normalized(); // is the rigid energy term even needed since we have it implicitly in the direction vector length (when not normalized)
+        delta1 = rigidEnergy * rigidStiffness * dir1.normalized();
+        delta2 = rigidEnergy * rigidStiffness * dir2.normalized();
     }
     return true;
 }

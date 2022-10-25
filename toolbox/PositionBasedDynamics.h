@@ -49,13 +49,15 @@ public:
             const Real stiffness,
             Vector3r &corr0, Vector3r &corr1);
 
+    bool init_UVStretch(const Real su, const Vector3r& perFaceU,const Vector3r& perFaceV,
+                                               const Eigen::MatrixXd& patternCoords, const Eigen::Matrix3d& targetPositions,
+                                               const Real stiffness,
+                        Vector3r &tarUV0, Vector3r &tarUV1, Vector3r &tarUV2, int uORv);
     // test approach for the new functions
     static bool solve_UVStretch(
-            Real invMass0, Real invMass1,
-            const Real su,const Vector3r& perFaceU,const Vector3r& perFaceV,
-            const Eigen::MatrixXd& patternCoords,const Eigen::Matrix3d& targetPositions,
+            const Real su, const Eigen::Matrix3d& targetPositions,int uORv, const Vector3r &tarUV0, const Vector3r &tarUV1, const Vector3r &tarUV2,
             const Real stiffness,
-            Vector3r &corr0, Vector3r &corr1, Vector3r &corr2, int uORv);
+            Vector3r &corr0, Vector3r &corr1, Vector3r &corr2);
 
     static bool solve_RigidEnergy(
             const double& rigidEnergy, const double& rigidEPS, const double& rigidStiffness,

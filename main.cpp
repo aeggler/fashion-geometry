@@ -55,10 +55,10 @@ Eigen::VectorXd w; // the particle weights
 Eigen::MatrixXd p; // the proposed new positions
 MatrixXd u1, u2; // precomputation for stretch
 PositionBasedDynamics PBD;
+Eigen::MatrixXd procrustesPatternIn3D;
 Real timestep= 0.0005;
 double stretchStiffnessU= 0.001;
 double stretchStiffnessV= 0.001;
-
 double collisionStiffness = 1.;
 Real bendingStiffness = 0.001;
 double rigidStiffness = 0.001;
@@ -147,11 +147,11 @@ counter = 0;
     //string garment_file_name = igl::file_dialog_open();
     //for ease of use, for now let it be fixed
 
-    string garment_file_name ="/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/garment/tshirt_merged_vertices_fixed.obj"; // "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/dress_2/dress2_3d_lowres/dress2_3d_lowres.obj";
+    string garment_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/dress_2/dress2_3d_lowres/dress2_3d_lowres.obj"; //"/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/garment/tshirt_merged_vertices_fixed.obj"; //
     igl::readOBJ(garment_file_name, Vg, Fg);
     igl::readOBJ(garment_file_name, Vg_orig, Fg_orig);
 
-    string garment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/garment/tshirt_2D_2_fixed.obj"; //"/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/dress_2/dress2_2d_lowres/dress2_2d_lowres.obj";
+    string garment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/dress_2/dress2_2d_lowres/dress2_2d_lowres.obj"; // "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/garment/tshirt_2D_2_fixed.obj"; //
     if(garment_pattern_file_name!=" "){
         pattern_loaded= true;
         igl::readOBJ(garment_pattern_file_name, Vg_pattern, Fg_pattern);
@@ -163,7 +163,7 @@ counter = 0;
     computeStress(viewer);
     setNewGarmentMesh(viewer);
 
-    string avatar_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/avatar/avatar.obj";// dress_2/avatar/avatar.obj";//
+    string avatar_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/dress_2/avatar/avatar.obj";// /avatar/avatar.obj";//
     //string avatar_file_name = igl::file_dialog_open();
     igl::readOBJ(avatar_file_name, Vm, Fm);
     Vm_orig = Vm; Fm_orig = Fm;
@@ -173,7 +173,7 @@ counter = 0;
     setCollisionMesh();
     cout<<" collision mesh finished "<<endl;
 
-    viewer.core().animation_max_fps = 100.;
+    viewer.core().animation_max_fps = 200.;
     viewer.core().is_animating = false;
 
     //additional menu items
@@ -482,7 +482,6 @@ void setupCollisionConstraints(){
     igl::signed_distance_pseudonormal(p, Vm_incr, Fm, col_tree, FN_m, VN_m, EN_m, EMAP_m, S, I, C, N);
     for(int i=0; i<numVert; i++){
         if(S(i)<coll_EPS){
-            //if(S(i)<0){cout<<i<<" negative "<<S(i)<<endl; }
             collisionVert(i)=1;
         }
     }
@@ -505,6 +504,8 @@ void solveBendingConstraint(){
         p.row(id3) += deltap3;
     }
 }
+
+// OLD VERSION, NOW UV DIFFERENTIATION EXISTS
 void solveStretchConstraint(){
     /*each edges distance should remain, since we iterate over every face we iterate over every edge twice- but that should not be a problem */
     for (int j =0; j<numFace; j++){
@@ -530,15 +531,11 @@ void solveStretchConstraint(){
         p.row(id0)+= deltap0;
     }
 }
-
-void solveStretchUV(){
-    double stretchEPS= 0.001;
-    cout<<normU.sum()<<" sum of the norm u, and v norm  "<<normV.sum()<<endl;
-
-    for (int j =0; j<numFace; j++){
-
-        Vector3r deltap0, deltap1, deltap2;
-
+Eigen::MatrixXd tarU, tarV;
+void init_stretchUV(){
+    tarU.resize(3*numFace, 3);
+    tarV.resize(3*numFace, 3);
+    for(int j = 0; j<numFace; j++){
         Eigen::MatrixXd patternCoords(2, 3);
         patternCoords(0,0) = Vg_pattern( Fg_pattern(j, 0), 0);
         patternCoords(1,0) = Vg_pattern( Fg_pattern(j, 0), 1);
@@ -552,21 +549,57 @@ void solveStretchUV(){
         targetPositions.col(1)= p.row(Fg_orig(j, 1));
         targetPositions.col(2)= p.row(Fg_orig(j, 2));
 
+        Vector3r taru0 , taru1, taru2;
+
+        PBD.init_UVStretch(normU(j), perFaceU.row(j), perFaceV.row(j), patternCoords, targetPositions,
+                           stretchStiffnessU, taru0, taru1, taru2, 1);
+        tarU.row(3*j)= taru0.transpose();
+        tarU.row(3*j+1) = taru1.transpose();
+        tarU.row(3*j+2 )= taru2.transpose();
+
+        Vector3r tarv0, tarv1, tarv2 ;
+        PBD.init_UVStretch( normV(j),perFaceU.row(j),perFaceV.row(j), patternCoords, targetPositions,
+                        stretchStiffnessU,tarv0, tarv1, tarv2, 2);
+        tarV.row(3*j)= tarv0.transpose();
+        tarV.row(3*j+1) = tarv1.transpose();
+        tarV.row(3*j+2 )= tarv2.transpose();
+
+    }
+}
+void solveStretchUV(){
+    double stretchEPS= 0.001;
+    cout<<normU.sum()<<" sum of the norm u, and v norm  "<<normV.sum()<<endl;
+
+    for (int j =0; j<numFace; j++){
+
+        Vector3r deltap0, deltap1, deltap2;
+        Eigen::MatrixXd targetPositions(3, 3);
+        targetPositions.col(0)= p.row(Fg_orig(j, 0));
+        targetPositions.col(1)= p.row(Fg_orig(j, 1));
+        targetPositions.col(2)= p.row(Fg_orig(j, 2));
+
+        Vector3r tarV0= tarV.row(3*j +0);
+        Vector3r tarV1= tarV.row(3*j +1);
+        Vector3r tarV2= tarV.row(3*j +2);
+
+        Vector3r tarU0= tarU.row(3*j +0);
+        Vector3r tarU1= tarU.row(3*j +1);
+        Vector3r tarU2= tarU.row(3*j +2);
+
+
         if(abs(normU(j)-1) > stretchEPS ){
-            PBD.solve_UVStretch(w(Fg_orig(j, 1)), w(Fg_orig(j, 2)),
-                               normU(j),perFaceU.row(j),perFaceV.row(j),
-                               patternCoords, targetPositions,
-                               stretchStiffnessU,deltap0,  deltap1, deltap2, 1);
+            PBD.solve_UVStretch(normU(j), targetPositions, 1,
+            tarU0, tarU1, tarU2, stretchStiffnessU,deltap0,  deltap1, deltap2);
 
             p.row(Fg_orig(j, 2)) += deltap2;
             p.row(Fg_orig(j, 1)) += deltap1;
             p.row(Fg_orig(j, 0)) += deltap0;
         }
         if(abs(normV(j)-1) > stretchEPS ){
-            PBD.solve_UVStretch(w(Fg_orig(j, 1)), w(Fg_orig(j, 2)),
-                               normV(j),perFaceU.row(j), perFaceV.row(j),
-                               patternCoords, targetPositions,
-                               stretchStiffnessV, deltap0, deltap1, deltap2, 2);
+
+            PBD.solve_UVStretch(normV(j), targetPositions,2,
+                                tarV0, tarV1, tarV2,
+                               stretchStiffnessV, deltap0, deltap1, deltap2);
 
             p.row(Fg_orig(j, 2)) += deltap2;
             p.row(Fg_orig(j, 1)) += deltap1;
@@ -685,7 +718,6 @@ void computeRigidMeasure(){
         toMat.row(1) = Vg_pattern.row(Fg_pattern(j, 1));
         toMat.row(2) = Vg_pattern.row(Fg_pattern(j, 2));
 
-
         Eigen::MatrixXd R_est;
         Eigen::VectorXd T_est;
 
@@ -694,9 +726,6 @@ void computeRigidMeasure(){
         Eigen::MatrixXd appxToT = R_est * fromMat.transpose();
         appxToT = appxToT.colwise()+ T_est;
         MatrixXd appxTo = appxToT.transpose();
-//        cout<<" to mat "<<toMat<<endl;
-//        cout<<endl;
-//        cout<< " appx to mat "<<appxTo<<endl;
 
         Vector3d e1 = Vg_pattern.row(Fg_pattern(j, 1)) - Vg_pattern.row(Fg_pattern(j, 0));
         Vector3d e2 = Vg_pattern.row(Fg_pattern(j, 2)) - Vg_pattern.row(Fg_pattern(j, 0));
@@ -706,62 +735,23 @@ void computeRigidMeasure(){
 
         double diff1 = e1(0) - e1p(0);
         double diff2 = e2(1) - e2p(1);
-        rigidEnergy(j) = (diff1 * diff1) + (diff2 * diff2)  ;
-//        cout<<rigidEnergy(j)<<" rigidsum"<<endl ;
-//        cout<<endl;
+        rigidEnergy(j) = (diff1 * diff1) + (diff2 * diff2);
 
     }
-}
-Eigen::MatrixXd procrustesPatternIn3D;
-void initProcrustesPatternTo3D(){
-    procrustesPatternIn3D.resize(numFace*3, 3);
-    for(int j=0; j < numFace; j++ ){
-        // we map each triangle individually
-        Matrix3d fromMat;
-        fromMat.row(0) = Vg_pattern.row(Fg_pattern(j, 0));
-        fromMat.row(1) = Vg_pattern.row(Fg_pattern(j, 1));
-        fromMat.row(2) = Vg_pattern.row(Fg_pattern(j, 2));
-
-        int id0 = Fg_orig(j, 0);
-        int id1 = Fg_orig(j, 1);
-        int id2 = Fg_orig(j, 2);
-
-        Matrix3d toMat;
-        toMat.row(0)= p.row(id0);
-        toMat.row(1)= p.row(id1);
-        toMat.row(2)= p.row(id2);
-
-        Eigen::MatrixXd R_est;
-        Eigen::VectorXd T_est;
-        procrustes( fromMat , toMat,  R_est, T_est);
-
-        Eigen::MatrixXd rotated = (R_est * fromMat.transpose());
-
-        Eigen::MatrixXd rotandTransT  = rotated.colwise()+ T_est;
-        Eigen::MatrixXd rotandTrans = rotandTransT.transpose();
-
-        procrustesPatternIn3D.row(3*j+0 ) = rotandTrans.row(0);
-        procrustesPatternIn3D.row(3*j+1 ) = rotandTrans.row(1);
-        procrustesPatternIn3D.row(3*j+2 ) = rotandTrans.row(2);
-
-    }
-
 }
 void solveRigidEnergy(){
-    double rigideps= 0.003;
-    rigidStiffness = 0.000001;
+    double rigideps= 0.000003;
     for(int j=0; j<numFace; j++){
-        if(rigidEnergy(j) > rigideps){
-            // we are not rigid enough, thus take a step in direction of the best fit mapping
-            Vector3d dir0 = procrustesPatternIn3D.row(3*j+ 0 )- p.row(Fg(j, 0)); //cout<<dir0.norm()<<endl;
-            Vector3d dir1 = procrustesPatternIn3D.row(3*j+ 1 )- p.row(Fg(j, 1));
-            Vector3d dir2 = procrustesPatternIn3D.row(3*j+ 2 )- p.row(Fg(j, 2));
+        Vector3r delta0, delta1, delta2;
 
-            p.row(Fg(j, 0)) += rigidEnergy(j)* rigidStiffness * dir0;
-            p.row(Fg(j, 1)) += rigidEnergy(j)* rigidStiffness * dir1;
-            p.row(Fg(j, 2)) += rigidEnergy(j)* rigidStiffness * dir2;
+        PBD.solve_RigidEnergy(rigidEnergy(j), rigideps, rigidStiffness,
+                             procrustesPatternIn3D.row(3*j+ 0), procrustesPatternIn3D.row(3*j+ 1), procrustesPatternIn3D.row(3*j+ 2),
+                             p.row(Fg(j, 0)), p.row(Fg(j, 1)), p.row(Fg(j, 2)), delta0, delta1, delta2
+                             );
 
-        }
+        p.row(Fg(j, 0)) += delta0;
+        p.row(Fg(j, 1)) += delta1;
+        p.row(Fg(j, 2)) += delta2;
     }
 }
 
@@ -781,28 +771,33 @@ void dotimeStep(igl::opengl::glfw::Viewer& viewer){
     for (int i = 0; i<numVert; i++){
         p.row(i) = x_new.row(i).array()+ timestep*vel.row(i).array();
     }
-    //t.printTime("do setup ");
     // detect collisions and solve for them in the loop
-   // t.printTime(" setup collision constraints finished in ");
     setupCollisionConstraints();
+    t.printTime(" collision constraint ");
     computeRigidMeasure();
+    t.printTime(" rigid measure");
+
+    initProcrustesPatternTo3D(Vg_pattern, Fg_pattern, Fg_orig, p, procrustesPatternIn3D); // might be an imprecise but fast option to remove this from the loop
+    t.printTime(" pattern dimensions ");
+    init_stretchUV();
+    cout<<tarU.rows()<<" should be 3 * "<<numFace<<endl;
+    t.printTime( " stretch targets");
+
     //(9)-(11), the loop should be repeated several times per timestep (according to Jan Bender)
 
     for(int i=0; i < num_const_iterations; i++){
         solveBendingConstraint();
-        // t.printTime("computed bending");
+        t.printTime("computed bending");
         //solveStretchConstraint();
         solveStretchUV();
-        // t.printTime("computed stretch");
-        /* start test of new procrustes method */
-        initProcrustesPatternTo3D(); // might be an imprecise but fast option to remove this from the loop
+        t.printTime("computed stretch");
         solveRigidEnergy();
+        t.printTime(" rigid energy ");
+
         /* we precomputed the normal and collision point of each vertex, now add the constraint (instead of checking collision in each iteration
          this is imprecise but much faster and acc to paper works fine in practice*/
-//       setupCollisionConstraints();
         solveCollisionConstraint();
-
-        // t.printTime("computed collision");
+        t.printTime(" collision ");cout<<endl;
     }
 
     // (13) velocity and position update
