@@ -49,6 +49,20 @@ public:
             const Real stiffness,
             Vector3r &corr0, Vector3r &corr1);
 
+    // test approach for the new functions
+    static bool solve_UStretch( Real invMass0, Real invMass1,
+            const Real su,const Vector3r& perFaceU,const Vector3r& perFaceV,
+            const Eigen::MatrixXd& patternCoords,const Eigen::Matrix3d& targetPositions,
+            const Real stiffness,
+            Vector3r &corr0, Vector3r &corr1, Vector3r &corr2);
+
+    static bool solve_VStretch(
+            const Vector3r &p0, Real invMass0,
+            const Vector3r &p1, Real invMass1,
+            const Real restLength,
+            const Real stiffness,
+            Vector3r &corr0, Vector3r &corr1);
+
     static bool solve_CollisionConstraint(
             const Vector3r &p0, Real invMass0,
             const Vector3r &q1,

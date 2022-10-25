@@ -73,6 +73,8 @@ MatrixXd faceAvgWithV ;
 MatrixXd colU ;
 MatrixXd colMixed;
 MatrixXd colV ;
+VectorXd normU, normV;
+MatrixXd perFaceU, perFaceV;
 int whichStressVisualize= 0;
 
 
@@ -98,14 +100,15 @@ void computeStress(igl::opengl::glfw::Viewer& viewer);
 void computeRigidMeasure();
 void initProcrustesPatternTo3D();
 void solveRigidEnergy();
-
+void solveStretchUV();
+int counter;
 bool pre_draw(igl::opengl::glfw::Viewer& viewer){
     viewer.data().dirty |= igl::opengl::MeshGL::DIRTY_DIFFUSE | igl::opengl::MeshGL::DIRTY_SPECULAR;
 
     if(simulate){
-
-        dotimeStep(viewer);
         computeStress(viewer);
+        dotimeStep(viewer);
+counter++;
         showGarment(viewer);// not sure if I actually need this, at least it breaks nothing
     }
 
@@ -119,7 +122,7 @@ int main(int argc, char *argv[])
 {
     // Init the viewer
     igl::opengl::glfw::Viewer viewer;
-
+counter = 0;
     // Attach a menu plugin
     igl::opengl::glfw::imgui::ImGuiPlugin plugin;
     viewer.plugins.push_back(&plugin);
@@ -141,11 +144,11 @@ int main(int argc, char *argv[])
     //string garment_file_name = igl::file_dialog_open();
     //for ease of use, for now let it be fixed
 
-    string garment_file_name ="/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/dress_2/dress2_3d_lowres/dress2_3d_lowres.obj"; // "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/garment/tshirt_merged_vertices_fixed.obj";
+    string garment_file_name ="/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/garment/tshirt_merged_vertices_fixed.obj"; // "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/dress_2/dress2_3d_lowres/dress2_3d_lowres.obj";
     igl::readOBJ(garment_file_name, Vg, Fg);
     igl::readOBJ(garment_file_name, Vg_orig, Fg_orig);
 
-    string garment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/dress_2/dress2_2d_lowres/dress2_2d_lowres.obj"; //"/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/garment/tshirt_2D_2_fixed.obj";
+    string garment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/garment/tshirt_2D_2_fixed.obj"; //"/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/dress_2/dress2_2d_lowres/dress2_2d_lowres.obj";
     if(garment_pattern_file_name!=" "){
         pattern_loaded= true;
         igl::readOBJ(garment_pattern_file_name, Vg_pattern, Fg_pattern);
@@ -157,7 +160,7 @@ int main(int argc, char *argv[])
     computeStress(viewer);
     setNewGarmentMesh(viewer);
 
-    string avatar_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/dress_2/avatar/avatar.obj";//avatar/avatar.obj";
+    string avatar_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/avatar/avatar.obj";// dress_2/avatar/avatar.obj";//
     //string avatar_file_name = igl::file_dialog_open();
     igl::readOBJ(avatar_file_name, Vm, Fm);
     Vm_orig = Vm; Fm_orig = Fm;
@@ -253,6 +256,53 @@ int main(int argc, char *argv[])
     // Add content to the default menu window
     viewer.callback_pre_draw = &pre_draw;
     viewer.callback_key_down = &callback_key_down;
+
+
+    // test procrustes
+    Eigen::MatrixXd line1(17, 2), line2(17, 2);
+
+
+    line2 << -1.0, 0.30847856402397156,
+            1.0, -0.23112109303474426,
+            0.5, -0.1384168267250061,
+            0.0, 0.06691473722457886,
+            -0.5, 0.10893931984901428,
+            -0.75, 0.03588566184043884,
+            0.75, -0.13766492903232574,
+            -0.25, 0.2551816403865814,
+            0.25, 0.0031900405883789062,
+            -0.625, 0.03588566184043884,
+            0.875, -0.15031829476356506,
+            -0.125, 0.5282152622938156,
+            0.375, -0.11253317445516586,
+            -0.875, 0.2282152622938156,
+            0.625, -0.049657873809337616,
+            -0.375, 0.16587384045124054,
+            0.125, 0.02570086158812046;
+
+    line1= line2;
+    double theta = 0.75;
+    Eigen::MatrixXd R(2,2);
+    R << std::cos(theta), - std::sin(theta),
+            std::sin(theta), std::cos(theta);
+
+//    Eigen::RowVector2d T(2.1, 1.3);
+//
+//    line2 = (R * line2.transpose()).transpose();
+//    line2 = line2.rowwise() + T;
+//    cout<<line2<<" to compare"<<endl;
+//
+//    Eigen::MatrixXd R_est;
+//    Eigen::VectorXd T_est;
+//    procrustes(line1, line2, R_est, T_est);
+//
+//    cout<<endl;
+//    Eigen::MatrixXd recon = (R_est * line1.transpose());
+//    cout<<recon.colwise() + T_est<<endl;
+// ok it works
+
+
+
 
     viewer.launch();
 }
@@ -519,6 +569,70 @@ void solveStretchConstraint(){
         p.row(id0)+= deltap0;
     }
 }
+
+void solveStretchUV(){
+    double stretchEPS= 0.001;
+    for (int j =100; j<105; j++){
+//        cout<<endl;
+//        cout<<endl;
+       // cout<<" Face "<<j<<" u stretch "<<normU(j)<<endl;
+        if(abs(normU(j)-1) > stretchEPS ){
+            // they all have to get closer
+            Vector3r deltap0, deltap1, deltap2;
+
+            int id0 = Fg_orig(j, 0);
+            int id1 = Fg_orig(j, 1);
+            int id2 = Fg_orig(j, 2);
+            Eigen::MatrixXd patternCoords(2, 3);
+
+            patternCoords(0,0) = Vg_pattern( Fg_pattern(j, 0), 0);
+            patternCoords(1,0) = Vg_pattern( Fg_pattern(j, 0), 1);
+
+            patternCoords( 0,1) = Vg_pattern( Fg_pattern(j, 1), 0);
+            patternCoords(1,1) = Vg_pattern( Fg_pattern(j, 1), 1);
+
+            patternCoords( 0,2) = Vg_pattern( Fg_pattern(j, 2), 0);
+            patternCoords(1,2) = Vg_pattern( Fg_pattern(j, 2), 1);
+            Eigen::MatrixXd targetPositions(3, 3);
+            targetPositions.col(0)= p.row(id0);
+            targetPositions.col(1)= p.row(id1);
+            targetPositions.col(2)= p.row(id2);
+
+
+            // first edge
+            PBD.solve_UStretch(w(id1), w(id2),
+                               normU(j),perFaceU.row(j), perFaceV.row(j),
+                               patternCoords, targetPositions,
+                               stretchStiffness,deltap0,  deltap1, deltap2);
+            if(j<5)std::cout<<deltap0<<" "<<deltap1<<" "<<deltap2<<" the delta updates "<<endl;
+            p.row(id2) += deltap2;
+            p.row(id1) += deltap1;
+            p.row(id0) += deltap0;
+        }
+//        if((normV(j)-1) > stretchEPS ){
+//            Vector3r deltap0, deltap1, deltap2;
+//
+//            int id0 = Fg_orig(j, 0);
+//            int id1 = Fg_orig(j, 1);
+//            int id2 = Fg_orig(j, 2);
+//
+//            // first edge
+//            PBD.solve_VStretch(p.row(id1), w(id1), p.row(id2), w(id2), normV(j), stretchStiffness, deltap1, deltap2);
+//            p.row(id2) += deltap2;
+//            p.row(id1) += deltap1;
+//
+//            //second edge
+//            PBD.solve_VStretch(p.row(id2), w(id2), p.row(id0), w(id0), normV(j), stretchStiffness, deltap2, deltap0);
+//            p.row(id2)+= deltap2;
+//            p.row(id0)+= deltap0;
+//
+//            // third edge
+//            PBD.solve_VStretch(p.row(id0), w(id0), p.row(id1), w(id1), normV(j), stretchStiffness, deltap0, deltap1);
+//            p.row(id1)+= deltap1;
+//            p.row(id0)+= deltap0;
+//        }
+    }
+}
 void solveCollisionConstraint(){
     for (int j=0; j<numVert; j++){
         if(collisionVert(j)){
@@ -566,10 +680,10 @@ void preComputeStretch(){
 }
 void computeStress(igl::opengl::glfw::Viewer& viewer){
 
-    VectorXd normU (numFace);
-    VectorXd normV (numFace);
-    MatrixXd perFaceU (numFace, 3);
-    MatrixXd perFaceV (numFace, 3);
+     normU.resize (numFace);
+     normV.resize (numFace);
+     perFaceU.resize (numFace, 3);
+     perFaceV.resize (numFace, 3);
     for(int j=0; j<numFace; j++){
         int id0 = Fg(j, 0);
         int id1 = Fg(j, 1);
@@ -679,14 +793,16 @@ void initProcrustesPatternTo3D(){
 
         Eigen::MatrixXd R_est;
         Eigen::VectorXd T_est;
-        procrustes(fromMat, toMat, R_est, T_est);
+        procrustes( fromMat , toMat,  R_est, T_est);
 
-        Eigen::MatrixXd appxToT = R_est * fromMat.transpose();
-        appxToT = appxToT.colwise()+ T_est;
+        Eigen::MatrixXd rotated = (R_est * fromMat.transpose());
 
-        procrustesPatternIn3D.row(3*j+0 ) = appxToT.row(0);
-        procrustesPatternIn3D.row(3*j+1 ) = appxToT.row(1);
-        procrustesPatternIn3D.row(3*j+2 ) = appxToT.row(2);
+        Eigen::MatrixXd rotandTransT  = rotated.colwise()+ T_est;
+        Eigen::MatrixXd rotandTrans = rotandTransT.transpose();
+
+        procrustesPatternIn3D.row(3*j+0 ) = rotandTrans.row(0);
+        procrustesPatternIn3D.row(3*j+1 ) = rotandTrans.row(1);
+        procrustesPatternIn3D.row(3*j+2 ) = rotandTrans.row(2);
 
     }
 
@@ -697,13 +813,13 @@ void solveRigidEnergy(){
     for(int j=0; j<numFace; j++){
         if(rigidEnergy(j) > rigideps){
             // we are not rigid enough, thus take a step in direction of the best fit mapping
-            Vector3d dir0 = procrustesPatternIn3D.row(3*j+ 0 )- p.row(Fg(j, 0));
+            Vector3d dir0 = procrustesPatternIn3D.row(3*j+ 0 )- p.row(Fg(j, 0)); //cout<<dir0.norm()<<endl;
             Vector3d dir1 = procrustesPatternIn3D.row(3*j+ 1 )- p.row(Fg(j, 1));
             Vector3d dir2 = procrustesPatternIn3D.row(3*j+ 2 )- p.row(Fg(j, 2));
 
-//            p.row(Fg(j, 0)) += rigidEnergy(j)* rigidStiffness * dir0;
-//            p.row(Fg(j, 1)) += rigidEnergy(j)* rigidStiffness * dir1;
-//            p.row(Fg(j, 2)) += rigidEnergy(j)* rigidStiffness * dir2;
+            p.row(Fg(j, 0)) += rigidEnergy(j)* rigidStiffness * dir0;
+            p.row(Fg(j, 1)) += rigidEnergy(j)* rigidStiffness * dir1;
+            p.row(Fg(j, 2)) += rigidEnergy(j)* rigidStiffness * dir2;
 
         }
     }
@@ -712,7 +828,7 @@ void solveRigidEnergy(){
 void dotimeStep(igl::opengl::glfw::Viewer& viewer){
     Timer t("Time step ");
     std::cout<<endl;
-    std::cout<<"-------------- Time Step ------------"<<endl;
+    std::cout<<"-------------- Time Step ------------"<<counter<<endl;
     // the stress is already computed, we can use it here
     Eigen::MatrixXd x_new = Vg;
     p = Vg;
@@ -726,24 +842,21 @@ void dotimeStep(igl::opengl::glfw::Viewer& viewer){
         p.row(i) = x_new.row(i).array()+ timestep*vel.row(i).array();
     }
     //t.printTime("do setup ");
-
     // detect collisions and solve for them in the loop
    // t.printTime(" setup collision constraints finished in ");
     setupCollisionConstraints();
     computeRigidMeasure();
-
     //(9)-(11), the loop should be repeated several times per timestep (according to Jan Bender)
+
     for(int i=0; i < num_const_iterations; i++){
         solveBendingConstraint();
         // t.printTime("computed bending");
         solveStretchConstraint();
+        //solveStretchUV();
         // t.printTime("computed stretch");
-
         /* start test of new procrustes method */
         initProcrustesPatternTo3D(); // might be an imprecise but fast option to remove this from the loop
-
         solveRigidEnergy();
-
         /* we precomputed the normal and collision point of each vertex, now add the constraint (instead of checking collision in each iteration
          this is imprecise but much faster and acc to paper works fine in practice*/
 //       setupCollisionConstraints();

@@ -6,7 +6,9 @@
 
 #include <Eigen/Dense>
 #include <iostream>
+#include <Eigen/Geometry>
 #include <Eigen/SVD>
+#include <Eigen/LU>
 
 using namespace Eigen;
 using namespace std;
@@ -14,25 +16,25 @@ using namespace std;
 
 void procrustes(const Eigen::MatrixXd& points1,    // from
                 const Eigen::MatrixXd& points2,    //to
-                Eigen::MatrixXd& Rot_est,
-                Eigen::VectorXd& Trans_est
+                Eigen::MatrixXd& R_est,
+                Eigen::VectorXd& T_est
                 ){
-    MatrixXd points1t= points1.transpose();
-    MatrixXd points2t= points2.transpose();
+    Eigen::MatrixXd points1t = points1.transpose();
+    Eigen::MatrixXd points2t = points2.transpose();
 
-    VectorXd pcentroid = points1t.rowwise().mean();
-    VectorXd qcentroid = points2t.rowwise().mean();
+    Eigen::VectorXd pb = points1t.rowwise().mean();
+    Eigen::VectorXd qb = points2t.rowwise().mean();
 
-    MatrixXd X = (points1t.colwise() - pcentroid);
-    MatrixXd Y = (points2t.colwise() - qcentroid);
-    MatrixXd S = X * Y.transpose();
+    Eigen::MatrixXd X = (points1t.colwise() - pb);
+    Eigen::MatrixXd Y = (points2t.colwise() - qb);
+    Eigen::MatrixXd S = X * Y.transpose();
 
-    JacobiSVD<MatrixXd> svd (S, ComputeThinU | Eigen::ComputeThinV);
-    MatrixXd sigma = MatrixXd::Identity(svd.matrixU().cols(), svd.matrixV().cols());
-    int srows = sigma.rows();
-    int scols = sigma.cols();
+    Eigen::JacobiSVD<Eigen::MatrixXd> svd(S, Eigen::ComputeThinU | Eigen::ComputeThinV);
 
-    sigma(srows-1, scols-1) = - -(svd.matrixV() * svd.matrixU().transpose()).determinant();
-    Rot_est = svd.matrixV() * sigma * svd.matrixU().transpose();
-    Trans_est = qcentroid - Rot_est * pcentroid;
+    Eigen::MatrixXd sigma = Eigen::MatrixXd::Identity(svd.matrixV().cols(), svd.matrixU().cols());
+    sigma(sigma.rows() - 1, sigma.cols() - 1) = (svd.matrixV() * svd.matrixU().transpose()).determinant();
+
+    R_est = svd.matrixV() * sigma * svd.matrixU().transpose();
+    //R_est = MatrixXd::Identity(3, 3);
+    T_est = qb - R_est * pb;
 }
