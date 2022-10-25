@@ -183,8 +183,32 @@ bool PositionBasedDynamics::solve_UVStretch(
     corr2 = stiffness * dir2 ;
     return true;
 }
-// ----------------------------------------------------------------------------------------------
 
+// ----------------------------------------------------------------------------------------------
+bool PositionBasedDynamics::solve_RigidEnergy(const double& rigidEnergy, const double& rigidEPS, const double& rigidStiffness,
+                                              const Vector3r& patternPos0,const Vector3r& patternPos1,const Vector3r& patternPos2,
+                                              const Vector3r& p0, const Vector3r& p1, const Vector3r& p2,
+                                               Vector3r& delta0, Vector3r& delta1, Vector3r& delta2){
+    delta0= Vector3r ::Zero(3);
+    delta1 = Vector3r ::Zero(3);
+    delta2 = Vector3r ::Zero(3);
+
+    if(rigidEnergy > rigidEPS){
+        // we are not rigid enough, thus take a step in direction of the best fit mapping
+        Vector3r dir0 = patternPos0 - p0 ; //cout<<dir0.norm()<<endl;
+        Vector3r dir1 = patternPos1 - p1 ;
+        Vector3r dir2 = patternPos2 - p2 ;
+
+        delta0 = rigidEnergy * rigidStiffness * dir0;
+        delta1 = rigidEnergy * rigidStiffness * dir1;
+        delta2 = rigidEnergy * rigidStiffness * dir2;
+
+    }
+    return true;
+}
+
+
+// ----------------------------------------------------------------------------------------------
 bool PositionBasedDynamics::solve_CollisionConstraint(
         const Vector3r &p0, Real invMass0,
         const Vector3r &q1,

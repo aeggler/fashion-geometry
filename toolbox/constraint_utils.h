@@ -27,5 +27,6 @@
                     Eigen::VectorXd &Trans_est
     );
 
-
+void initProcrustesPatternTo3D(const Eigen::MatrixXd& Vg_pattern,const Eigen::MatrixXi& Fg_pattern,
+                           const Eigen::MatrixXi& Fg_orig, const Eigen::MatrixXd& p, Eigen::MatrixXd& procrustesPatternIn3D);
 
