@@ -21,6 +21,7 @@ file(GLOB SRC_FILES main.cpp
         toolbox/Timer.cpp                   toolbox/Timer.h
         toolbox/PositionBasedDynamics.cpp   toolbox/PositionBasedDynamics.h
         toolbox/MathFunctions.cpp           toolbox/MathFunctions.h
+        toolbox/constraint_utils.cpp        toolbox/constraint_utils.h
 
         )
 add_executable(${PROJECT_NAME} ${SRC_FILES})
