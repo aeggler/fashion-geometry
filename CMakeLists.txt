@@ -22,6 +22,8 @@ file(GLOB SRC_FILES main.cpp
         toolbox/PositionBasedDynamics.cpp   toolbox/PositionBasedDynamics.h
         toolbox/MathFunctions.cpp           toolbox/MathFunctions.h
         toolbox/constraint_utils.cpp        toolbox/constraint_utils.h
+        toolbox/body_interpolation.cpp      toolbox/body_interpolation.h
+#
 
         )
 add_executable(${PROJECT_NAME} ${SRC_FILES})

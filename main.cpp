@@ -8,12 +8,12 @@
 #include <igl/per_edge_normals.h>
 #include <iostream>
 #include <Eigen/Dense>
-//#include "toolbox/TimeIntegration.h"
 #include "toolbox/PositionBasedDynamics.h"
 #include "toolbox/adjacency.h"
 #include "toolbox/constraint_utils.h"
 #include <igl/AABB.h>
 #include "toolbox/Timer.h"
+#include "toolbox/body_interpolation.h"
 #include <igl/signed_distance.h>
 
 using namespace std;
@@ -23,8 +23,8 @@ using Vector3r = Eigen::Matrix<Real, 3, 1, Eigen::DontAlign>;
 using Matrix4r = Eigen::Matrix<Real, 4, 4, Eigen::DontAlign>;
 
 // The matrices of mesh and garment, original and modified
-Eigen::MatrixXd Vg, Vm; // mesh for the garment and mannequin
-Eigen::MatrixXi Fg, Fm, Fg_pattern;
+Eigen::MatrixXd Vg, Vm, testMorph_V1, testMorph_V0; // mesh for the garment and mannequin
+Eigen::MatrixXi Fg, Fm, Fg_pattern, testMorph_F1, testMorph_F0;
 Eigen::MatrixXd Vg_orig, Vm_orig; // original mesh for the garment and mannequin, restore for translation
 Eigen::MatrixXd Vg_pattern, Vg_pattern_orig; // the pattern for the restshape, we might change this
 Eigen::MatrixXi Fg_orig, Fm_orig;
@@ -105,15 +105,26 @@ void initProcrustesPatternTo3D();
 void solveRigidEnergy();
 void solveStretchUV();
 int counter;
+bool bodyInterpolation= false;
+BodyInterpolator* body_interpolator;
+double itCount =0;
 bool pre_draw(igl::opengl::glfw::Viewer& viewer){
     viewer.data().dirty |= igl::opengl::MeshGL::DIRTY_DIFFUSE | igl::opengl::MeshGL::DIRTY_SPECULAR;
-
-    if(simulate){
-        computeStress(viewer);
-        dotimeStep(viewer);
-counter++;
-        showGarment(viewer);// not sure if I actually need this, at least it breaks nothing
+    if(bodyInterpolation){// skip the garment part
+        if(itCount>100) itCount =0;
+        double p = itCount/100.;
+        body_interpolator->interpolateMesh(p, Vm);
+        Fm= testMorph_F1;
+        showMannequin(viewer);
+        itCount += 2.;
+       // return false;
     }
+//    if(simulate){
+//        computeStress(viewer);
+//        dotimeStep(viewer);
+//        counter++;
+//        showGarment(viewer);// not sure if I actually need this, at least it breaks nothing
+//    }
 
     return false;
 }
@@ -157,21 +168,35 @@ counter = 0;
         igl::readOBJ(garment_pattern_file_name, Vg_pattern, Fg_pattern);
         Vg_pattern_orig= Vg_pattern;
     }
-
-    preComputeConstraintsForRestshape();
-    preComputeStretch();
-    computeStress(viewer);
-    setNewGarmentMesh(viewer);
+//
+//    preComputeConstraintsForRestshape();
+//    preComputeStretch();
+//    computeStress(viewer);
+//    setNewGarmentMesh(viewer);
 
     string avatar_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/dress_2/avatar/avatar.obj";// /avatar/avatar.obj";//
     //string avatar_file_name = igl::file_dialog_open();
     igl::readOBJ(avatar_file_name, Vm, Fm);
     Vm_orig = Vm; Fm_orig = Fm;
     Vm_incr = (1+blowFact)*Vm;
+
+    string morphBody0 ="/Users/annaeggler/Desktop/custom_fit_garments/data/example_avatar/avatar_001.ply";
+    string morphBody1 = "/Users/annaeggler/Desktop/custom_fit_garments/data/example_avatar/avatar_007.ply";
+
+    igl::readPLY(morphBody1, testMorph_V1, testMorph_F1);
+    igl::readPLY(morphBody0, testMorph_V0, testMorph_F0);
+    cout<<testMorph_F0.row(5)<<endl;
+    cout<<testMorph_F1.row(5)<<endl;
+cout<<endl;
+
+
+    Fm = testMorph_F0;
+    Vm = testMorph_V0;
+
     setNewMannequinMesh(viewer);
     cout<<" setting collision mesh "<<endl;
-    setCollisionMesh();
-    cout<<" collision mesh finished "<<endl;
+//    setCollisionMesh();
+//    cout<<" collision mesh finished "<<endl;
 
     viewer.core().animation_max_fps = 200.;
     viewer.core().is_animating = false;
@@ -403,6 +428,20 @@ bool callback_key_down(igl::opengl::glfw::Viewer& viewer, unsigned char key, int
         StressMixed = true;
         showGarment(viewer);
         keyRecognition = true;
+    }
+    if( key == 'B'){
+       // reset(viewer);
+        simulate= false;
+        Fm = testMorph_F0;
+        Vm = testMorph_V0;
+        cout<<Vm.rows()<<" and faces "<<Fm.rows()<<endl;
+        viewer.selected_data_index = 0;
+        viewer.data().clear();
+        setNewMannequinMesh(viewer);
+        body_interpolator = new BodyInterpolator(testMorph_V0, testMorph_V1, testMorph_F0);
+        bodyInterpolation = !bodyInterpolation;
+        keyRecognition = true;
+
     }
     return keyRecognition;
 }

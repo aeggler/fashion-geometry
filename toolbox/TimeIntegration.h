@@ -1,8 +1,0 @@
-//
-// Created by Anna Maria Eggler on 17.10.22.
-//
-
-#ifndef EXAMPLE_TIMEINTEGRATION_H
-#define EXAMPLE_TIMEINTEGRATION_H
-
-#endif //EXAMPLE_TIMEINTEGRATION_H
