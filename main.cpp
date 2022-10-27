@@ -62,9 +62,9 @@ double stretchStiffnessV= 0.001;
 double collisionStiffness = 1.;
 Real bendingStiffness = 0.001;
 double rigidStiffness = 0.001;
-double coll_EPS= 0.00; // like in Clo, 3 mm ? but for some reason this does not work well with the constraint function
+double coll_EPS= 0.000; // like in Clo, 3 mm ? but for some reason this does not work well with the constraint function
 int num_const_iterations = 5;
-double blowFact= 0.003;// like in Clo, 3 mm ?
+double blowFact= 0.005;// like in Clo, 3 mm ?
 MatrixXd Vm_incr ;
 
 bool pattern_loaded=false;
@@ -110,21 +110,25 @@ BodyInterpolator* body_interpolator;
 double itCount =0;
 bool pre_draw(igl::opengl::glfw::Viewer& viewer){
     viewer.data().dirty |= igl::opengl::MeshGL::DIRTY_DIFFUSE | igl::opengl::MeshGL::DIRTY_SPECULAR;
-    if(bodyInterpolation){// skip the garment part
-        if(itCount>100) itCount =0;
-        double p = itCount/100.;
-        body_interpolator->interpolateMesh(p, Vm);
-        Fm= testMorph_F1;
-        showMannequin(viewer);
-        itCount += 2.;
-       // return false;
+        if(simulate){
+            for(int i=0; i< 1; i++){
+                //computeStress(viewer);
+                dotimeStep(viewer);
+                counter++;
+                showGarment(viewer);// not sure if I actually need this, at least it breaks nothing
+            }
+            cout<<itCount<<endl;
+            if(itCount>1000) itCount = 0;
+            double p = itCount/1000.;
+            body_interpolator->interpolateMesh(p, Vm);
+            Vm_incr = (1+blowFact)*Vm;
+            setCollisionMesh();
+            showMannequin(viewer);
+            showGarment(viewer);// not sure if I actually need this, at least it breaks nothing
+
+            itCount += 3.;
+
     }
-//    if(simulate){
-//        computeStress(viewer);
-//        dotimeStep(viewer);
-//        counter++;
-//        showGarment(viewer);// not sure if I actually need this, at least it breaks nothing
-//    }
 
     return false;
 }
@@ -136,7 +140,7 @@ int main(int argc, char *argv[])
 {
     // Init the viewer
     igl::opengl::glfw::Viewer viewer;
-counter = 0;
+    counter = 0;
     // Attach a menu plugin
     igl::opengl::glfw::imgui::ImGuiPlugin plugin;
     viewer.plugins.push_back(&plugin);
@@ -158,45 +162,46 @@ counter = 0;
     //string garment_file_name = igl::file_dialog_open();
     //for ease of use, for now let it be fixed
 
-    string garment_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/dress_2/dress2_3d_lowres/dress2_3d_lowres.obj"; //"/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/garment/tshirt_merged_vertices_fixed.obj"; //
+   // string garment_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/dress_2/dress2_3d_lowres/dress2_3d_lowres.obj"; //"/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/garment/tshirt_merged_vertices_fixed.obj"; //
+    string garment_file_name = "/Users/annaeggler/Desktop/aShapeDressBetter";
     igl::readOBJ(garment_file_name, Vg, Fg);
     igl::readOBJ(garment_file_name, Vg_orig, Fg_orig);
 
-    string garment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/dress_2/dress2_2d_lowres/dress2_2d_lowres.obj"; // "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/garment/tshirt_2D_2_fixed.obj"; //
-    if(garment_pattern_file_name!=" "){
-        pattern_loaded= true;
-        igl::readOBJ(garment_pattern_file_name, Vg_pattern, Fg_pattern);
-        Vg_pattern_orig= Vg_pattern;
-    }
-//
-//    preComputeConstraintsForRestshape();
+//    string garment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/dress_2/dress2_2d_lowres/dress2_2d_lowres.obj"; // "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/garment/tshirt_2D_2_fixed.obj"; //
+//    if(garment_pattern_file_name!=" "){
+//        pattern_loaded= true;
+//        igl::readOBJ(garment_pattern_file_name, Vg_pattern, Fg_pattern);
+//        Vg_pattern_orig= Vg_pattern;
+//    }
+
+    preComputeConstraintsForRestshape();
 //    preComputeStretch();
 //    computeStress(viewer);
-//    setNewGarmentMesh(viewer);
-
-    string avatar_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/dress_2/avatar/avatar.obj";// /avatar/avatar.obj";//
+    setNewGarmentMesh(viewer);
+// remember to adapt the collision constraint solving dep on avatar, sometimes normalization is needed, sometimes not for whatever magic
+    string avatar_file_name ="/Users/annaeggler/Desktop/custom_fit_garments/data/example_avatar/avatar_005.ply"; //"/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/dress_2/avatar/avatar.obj";// /avatar/avatar.obj";//
     //string avatar_file_name = igl::file_dialog_open();
-    igl::readOBJ(avatar_file_name, Vm, Fm);
+    igl::readPLY(avatar_file_name, Vm, Fm);
     Vm_orig = Vm; Fm_orig = Fm;
     Vm_incr = (1+blowFact)*Vm;
 
-    string morphBody0 ="/Users/annaeggler/Desktop/custom_fit_garments/data/example_avatar/avatar_001.ply";
-    string morphBody1 = "/Users/annaeggler/Desktop/custom_fit_garments/data/example_avatar/avatar_007.ply";
+   // string morphBody0 ="/Users/annaeggler/Desktop/custom_fit_garments/data/example_avatar/avatar_007.ply";
+    string morphBody1 = "/Users/annaeggler/Desktop/custom_fit_garments/data/example_avatar/avatar_001.ply";
 
     igl::readPLY(morphBody1, testMorph_V1, testMorph_F1);
-    igl::readPLY(morphBody0, testMorph_V0, testMorph_F0);
-    cout<<testMorph_F0.row(5)<<endl;
+//    igl::readPLY(morphBody0, testMorph_V0, testMorph_F0);
+    cout<<Fm.row(5)<<endl;
     cout<<testMorph_F1.row(5)<<endl;
-cout<<endl;
+    cout<<endl;
+    body_interpolator = new BodyInterpolator(Vm, testMorph_V1, Fm);
 
-
-    Fm = testMorph_F0;
-    Vm = testMorph_V0;
+//    Fm = testMorph_F0;
+//    Vm = testMorph_V0;
 
     setNewMannequinMesh(viewer);
     cout<<" setting collision mesh "<<endl;
-//    setCollisionMesh();
-//    cout<<" collision mesh finished "<<endl;
+    setCollisionMesh();
+    cout<<" collision mesh finished "<<endl;
 
     viewer.core().animation_max_fps = 200.;
     viewer.core().is_animating = false;
@@ -288,7 +293,6 @@ cout<<endl;
     viewer.callback_pre_draw = &pre_draw;
     viewer.callback_key_down = &callback_key_down;
 
-
     viewer.launch();
 }
 
@@ -331,7 +335,12 @@ void setNewMannequinMesh(igl::opengl::glfw::Viewer& viewer) {
 void showMannequin(igl::opengl::glfw::Viewer& viewer) {
     viewer.selected_data_index = 1;
     viewer.data().clear();
-    viewer.data().set_mesh(Vm, Fm);
+    if(bodyInterpolation){
+        viewer.data().set_mesh(testMorph_V0, testMorph_F0);
+    }else{
+        viewer.data().set_mesh(Vm, Fm);
+    }
+
     viewer.data().show_lines = false;
     viewer.data().uniform_colors(ambient_grey, diffuse_grey, specular);
     viewer.data().show_texture = false;
@@ -429,7 +438,7 @@ bool callback_key_down(igl::opengl::glfw::Viewer& viewer, unsigned char key, int
         showGarment(viewer);
         keyRecognition = true;
     }
-    if( key == 'B'){
+    if(key == 'B'){
        // reset(viewer);
         simulate= false;
         Fm = testMorph_F0;
@@ -437,9 +446,18 @@ bool callback_key_down(igl::opengl::glfw::Viewer& viewer, unsigned char key, int
         cout<<Vm.rows()<<" and faces "<<Fm.rows()<<endl;
         viewer.selected_data_index = 0;
         viewer.data().clear();
-        setNewMannequinMesh(viewer);
-        body_interpolator = new BodyInterpolator(testMorph_V0, testMorph_V1, testMorph_F0);
         bodyInterpolation = !bodyInterpolation;
+        setNewMannequinMesh(viewer);
+//        viewer.selected_data_index = 1;
+//        viewer.data().clear();
+//        viewer.data().set_mesh(Vm, Fm);
+//        viewer.data().show_lines = false;
+//        viewer.data().uniform_colors(ambient_grey, diffuse_grey, specular);
+//        viewer.data().show_texture = false;
+//        viewer.data().set_face_based(false);
+        cout<<"should be set"<<endl;
+        body_interpolator = new BodyInterpolator(testMorph_V0, testMorph_V1, testMorph_F0);
+       //
         keyRecognition = true;
 
     }
@@ -451,9 +469,10 @@ void reset(igl::opengl::glfw::Viewer& viewer){
     cout<<"---------"<<endl;
     counter = 0;
     Vg= Vg_orig;
-    Vg_pattern = Vg_pattern_orig;
+   // Vg_pattern = Vg_pattern_orig;
     vel = Eigen::MatrixXd::Zero(numVert, 3);
-    Vm= Vm_orig;
+    Vm= Vm_orig; Vm_incr = (1+blowFact)*Vm;
+    Fm= Fm_orig;
     viewer.core().is_animating = false;
     simulate=false;
     StressV = false;
@@ -462,14 +481,15 @@ void reset(igl::opengl::glfw::Viewer& viewer){
     noStress = true;
 
     whichStressVisualize = 0;
-    translateMesh(viewer, 1);
+    //translateMesh(viewer, 1);
     preComputeConstraintsForRestshape();
-    preComputeStretch();
-    computeStress(viewer);
+    //preComputeStretch();
+   // computeStress(viewer);
     setNewGarmentMesh(viewer);
     //showGarment(viewer);
     showMannequin(viewer);
     setCollisionMesh();
+    itCount=0;
 }
 void preComputeConstraintsForRestshape(){
     numVert= Vg.rows();
@@ -477,10 +497,10 @@ void preComputeConstraintsForRestshape(){
 
     w = Eigen::VectorXd::Ones(numVert);
     vel = Eigen::MatrixXd::Zero(numVert, 3);
-    vel.col(1) = w * (-1) * grav;
+    //vel.col(1) = w * (-1) * grav;
 
     // edge lengths from rest shape
-    igl::edge_lengths(Vg_pattern, Fg_pattern, edgeLengths);
+   // igl::edge_lengths(Vg_pattern, Fg_pattern, edgeLengths);
 
     createFacePairEdgeListWith4VerticeIDs(Fg, e4list);// from original since it has merged vertices adn thus more e4
     e4size= e4list.rows();
@@ -511,7 +531,6 @@ void setCollisionMesh(){
     igl::per_edge_normals(Vm_incr, Fm, igl::PER_EDGE_NORMALS_WEIGHTING_TYPE_UNIFORM, FN_m, EN_m, E_m, EMAP_m);
 
 }
-
 void setupCollisionConstraints(){
     VectorXd S;
     VectorXi I;
@@ -652,7 +671,6 @@ void solveCollisionConstraint(){
             Vector3r deltap0;
             // maybe I should compute the intersection instead of using the closest point C?
             PBD.solve_CollisionConstraint(p.row(j), w(j), C.row(j), N.row(j), deltap0, coll_EPS, vel.row(j));
-
             p.row(j) += collisionStiffness * deltap0;
 
         }
@@ -804,7 +822,7 @@ void dotimeStep(igl::opengl::glfw::Viewer& viewer){
 
     // line (5) of the algorithm https://matthias-research.github.io/pages/publications/posBasedDyn.pdf
     // we only use it to add gravity to the system
-    vel.col(1) += timestep * w*(-1)*grav*2;
+    vel.col(1) += timestep * w*(-1)*grav*0.01;
 
     // (7)
     for (int i = 0; i<numVert; i++){
@@ -812,26 +830,25 @@ void dotimeStep(igl::opengl::glfw::Viewer& viewer){
     }
     // detect collisions and solve for them in the loop
     setupCollisionConstraints();
-    t.printTime(" collision constraint ");
-    computeRigidMeasure();
-    t.printTime(" rigid measure");
-
-    initProcrustesPatternTo3D(Vg_pattern, Fg_pattern, Fg_orig, p, procrustesPatternIn3D); // might be an imprecise but fast option to remove this from the loop
-    t.printTime(" pattern dimensions ");
-    init_stretchUV();
-    cout<<tarU.rows()<<" should be 3 * "<<numFace<<endl;
-    t.printTime( " stretch targets");
+//    t.printTime(" collision constraint ");
+    //computeRigidMeasure();
+//    t.printTime(" rigid measure");
+//
+//   // initProcrustesPatternTo3D(Vg_pattern, Fg_pattern, Fg_orig, p, procrustesPatternIn3D); // might be an imprecise but fast option to remove this from the loop
+//    t.printTime(" pattern dimensions ");
+//    init_stretchUV();
+//    cout<<tarU.rows()<<" should be 3 * "<<numFace<<endl;
 
     //(9)-(11), the loop should be repeated several times per timestep (according to Jan Bender)
-
+    num_const_iterations= 1;
     for(int i=0; i < num_const_iterations; i++){
         solveBendingConstraint();
         t.printTime("computed bending");
         //solveStretchConstraint();
-        solveStretchUV();
-        t.printTime("computed stretch");
-        solveRigidEnergy();
-        t.printTime(" rigid energy ");
+//        solveStretchUV();
+//        t.printTime("computed stretch");
+//        solveRigidEnergy();
+//        t.printTime(" rigid energy ");
 
         /* we precomputed the normal and collision point of each vertex, now add the constraint (instead of checking collision in each iteration
          this is imprecise but much faster and acc to paper works fine in practice*/
@@ -854,11 +871,12 @@ void dotimeStep(igl::opengl::glfw::Viewer& viewer){
     double collision_damping = 0.5;
     for(int i=0; i<numVert; i++){
         if(collisionVert(i)){
+
             Vector3d vel_i = vel.row(i);
             Vector3d normal = N.row(i).normalized();
             Vector3d n_vel = normal.dot(vel_i) * normal;
             Vector3d t_vel = vel_i-n_vel;
-            vel.row(i)= (t_vel-collision_damping * n_vel);
+            vel.row(i) = (t_vel - collision_damping * n_vel);
         }
     }
 

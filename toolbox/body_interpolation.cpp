@@ -7,7 +7,6 @@
 #include <igl/polar_dec.h>
 #include <igl/svd3x3.h>
 #include <igl/AABB.h>
-#include <igl/signed_distance.h>
 #include <igl/centroid.h>
 #include <igl/sparse_cached.h>
 
@@ -42,7 +41,6 @@ BodyInterpolator::BodyInterpolator(MatrixXd& curr_V_from, MatrixXd& curr_V_to, M
             fixed_id = i;
         }
     }
-    cout<<"before iteration"<<endl;
     // set S and Q
     for(int f =0; f < numFaces; f++){
         Vector3d v1 = V_from.row(F(f, 0));
@@ -139,13 +137,10 @@ BodyInterpolator::BodyInterpolator(MatrixXd& curr_V_from, MatrixXd& curr_V_to, M
     if (A_data.rows() == 0) {
         A = SparseMatrix<double>(3 * numFaces, numVert - 1);
         igl::sparse_cached_precompute(tri, A_data, A);
-        cout << "initialize matrix structure" << endl;
     }
     else
         igl::sparse_cached(tri, A_data, A);
-    cout<<" fin setting A"<<endl;
     ATA = A.transpose() * A;
-    cout<<" fin setting ATA"<<endl;
     cholSolver.analyzePattern(ATA);
     cholSolver.factorize(ATA);
     cout<<"finished A setup"<<endl;
