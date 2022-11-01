@@ -23,6 +23,7 @@ file(GLOB SRC_FILES main.cpp
         toolbox/MathFunctions.cpp           toolbox/MathFunctions.h
         toolbox/constraint_utils.cpp        toolbox/constraint_utils.h
         toolbox/body_interpolation.cpp      toolbox/body_interpolation.h
+        toolbox/garment_adaption.cpp        toolbox/garment_adaption.h
 #
 
         )
