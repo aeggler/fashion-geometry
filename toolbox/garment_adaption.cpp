@@ -142,9 +142,9 @@ void garment_adaption::performJacobianUpdateAndMerge(Eigen::MatrixXd & V_curr){
     // but j-1 gives a different vertex position per face, thus we average it
     // so for each face we apply the inverse and get two new edges. these edges start from v_curr_0
 
-    for (int numIt=0; numIt <10; numIt++) {
+    for (int numIt=0; numIt <numFace; numIt++) {
         std::vector<std::vector<Eigen::Vector3d>> perVertexPositions(V_pattern.rows());
-        for (int j = 0; j < 4; j++) {
+        for (int j = 0; j < numFace; j++) {
             int id0 = Fg(j, 0); int idp0 = Fg_pattern(j, 0);
             int id1 = Fg(j, 1); int idp1 = Fg_pattern(j, 1);
             int id2 = Fg(j, 2); int idp2 = Fg_pattern(j, 2);
@@ -188,7 +188,7 @@ void garment_adaption::performJacobianUpdateAndMerge(Eigen::MatrixXd & V_curr){
 //            V.row(i) /= 2;
         }
         // set the curr position as the positions we just computed
-        cout<<V<<endl<<" the new positions"<<endl;
+//        cout<<V<<endl<<" the new positions"<<endl;
     }
     V_curr = V;
 }
