@@ -219,50 +219,15 @@ int main(int argc, char *argv[])
     Eigen::MatrixXd Vg_shrinked_pattern;
     igl::readOBJ(skrinked_file_name_pattern, Vg_shrinked_pattern, Fg_pattern);
 
-
-    Eigen::MatrixXd Vg_test_pattern(5, 3);
-    Vg_test_pattern <<
-    0,0,0,
-    1,0,0,
-    0,1,0,
-    -1,0,0,
-    0,-1,0;
-    Eigen::MatrixXi Fg_test(4, 3);
-    Fg_test <<
-    0,1,2,
-    0,2,3,
-    0,3,4,
-    0,4,1;
-
-    Eigen::MatrixXd Vg_test= Vg_test_pattern;
-    Vg_test(2, 2)= 1;
-    Vg_test(1, 2)= -1;
-    cout<<" testmesh 3D "<<endl<<Vg_test<<endl<<endl;
-
-    Eigen::MatrixXd Vg_test_shrinked = 0.5*Vg_test;
-    cout<<" testmesh 3D shrinked  "<<endl<<Vg_test_shrinked<<endl<<endl;
-
-//    garment_adaption gar_adapt = *new garment_adaption(Vg_test, Fg_test,  Vg_test_pattern, Fg_test);
-//    gar_adapt.computeJacobian();
-
-
     garment_adaption gar_adapt = *new garment_adaption(Vg, Fg,  Vg_pattern, Fg_pattern);
-//    cout<<Fg_pattern.maxCoeff()<<" and v rows "<<Vg_pattern.rows()<<" and 3d "<<Vg.rows()<<endl;
     gar_adapt.computeJacobian();
-//    cout<<"current 3D vert "<<Vg_shrinked.row(50)<<endl;
-    cout<<"what it should be in 2D after jacobian "<< Vg_shrinked_pattern.row(50)<<endl;
-
 
     gar_adapt.performJacobianUpdateAndMerge(Vg_shrinked);
     cout<<endl<<"shrinked: "<<endl;
     cout<<Vg_shrinked.row(50)<<endl;
     igl::writeOBJ("suggested_shrinkedGarment_2D.obj", Vg_shrinked, Fg_pattern);
     cout<<" wrote new shrinked file"<<endl;
-
-
-
-
-
+    
     /* end garment adaption update */
     /*-----------------------------*/
 
