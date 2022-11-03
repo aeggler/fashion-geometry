@@ -15,7 +15,6 @@ garment_adaption::garment_adaption(Eigen::MatrixXd &Vg, Eigen::MatrixXi& Fg, Eig
     this->Fg = Fg;
     jacobians.resize(numFace); //    std::vector<Eigen::MatrixXd > jacobians; 3x3  from 2 to 3 for 2 x 1 positions, thus col wise
     inv_jacobians.resize(numFace);// 3 x 3 each
-//    perVertexPositions.resize(numVert); // per vert num size can differ, use push back since it should not be much
     V_init = Vg;
     V_pattern = V_pattern_orig;
     Fg_pattern = Fg_pattern_orig;
@@ -36,8 +35,6 @@ void Barycentric(VectorXd& p, VectorXd a, VectorXd b, VectorXd c, VectorXd& bary
     baryP(2) = 1.0f - baryP(0) - baryP(1);
 }
 void garment_adaption::computeJacobian(){
-
-
     for(int j = 0; j<numFace; j++){
         //cout<<"curr at j="<<j<<endl;
         Eigen::MatrixXd jac2to3 (3, 2);
@@ -84,56 +81,21 @@ void garment_adaption::computeJacobian(){
         jac2to3.col(1) = p2 * u1h( 0) - p1 * u2h( 0);
 
         Vector3d normalVec = p1.cross(p2);
-        normalVec= normalVec.normalized();
+        normalVec = normalVec.normalized();//normalVec /= 200;//
 
         jacobian.col(0) = jac2to3.col(0);
         jacobian.col(1) = jac2to3.col(1);
         jacobian.col(2) = normalVec;
 
+
+       // cout<<"ortho test "<< jacobian.col(0).dot(jacobian.col(2))<<" and other "<< jacobian.col(1).dot(jacobian.col(2))<<endl;
+
         jacobians[j] = jacobian;
 
         inv_jacobians[j] = jacobian.inverse();
-        if(j==50){
-//            int currid0 = Fg_pattern(j, 0);
-//            int currid1 = Fg_pattern(j, 1);
-//            int currid2 = Fg_pattern(j, 2);
-//            VectorXd edge1= (V_pattern.row(currid1).transpose()+V_pattern.row(currid0).transpose()+V_pattern.row(currid2).transpose())/3 ;
-//            cout<<edge1<<" first edge"<<endl;
-//            VectorXd edge2= V_pattern.row(currid2).transpose(); //-V_pattern.row(currid0).transpose();
-//            VectorXd edge0= V_pattern.row(currid0).transpose(); //-V_pattern.row(currid0).transpose();
-//            VectorXd edgeBary = Eigen::VectorXd::Zero(3);
-//            VectorXd bary0 = V_pattern.row(currid0);
-//            VectorXd bary1 = V_pattern.row(currid1);
-//
-//            Barycentric(edge1, V_pattern.row(currid0), V_pattern.row(currid1), V_pattern.row(currid2), edgeBary);
-//            Barycentric(bary0, V_pattern.row(currid0), V_pattern.row(currid1), V_pattern.row(currid2), bary0);
-//            Barycentric(bary1, V_pattern.row(currid0), V_pattern.row(currid1), V_pattern.row(currid2), bary1);
-//            VectorXd bary2 = bary1 - bary0;
-//            cout<<bary2<<" barycentric edge 1"<<endl<<endl;
-////            Barycentric(bary2, V_pattern.row(currid0), V_pattern.row(currid1), V_pattern.row(currid2), edgeBary);
-////            cout<<edgeBary<<" barycentric edge 1"<<endl<<endl;
-//
-//
-//            cout<<jacobians[j]*bary2<<" the jacobian bary edge "<<endl<<endl;
-//
-//            VectorXd p0b = V_init.row(id0); Barycentric(p0b, V_pattern.row(currid0), V_pattern.row(currid1), V_pattern.row(currid2), p0b);
-//            VectorXd p1b = V_init.row(id1); Barycentric(p1b, V_pattern.row(currid0), V_pattern.row(currid1), V_pattern.row(currid2), p1b);
-//            VectorXd ps = p1b-p0b;
-//           // Barycentric(ps, V_pattern.row(currid0), V_pattern.row(currid1), V_pattern.row(currid2), edgeBary);
-//            cout<<ps<<" the edge of the original , is it the same ? "<<endl;
-//            cout<<edge1 << " ... orig in uv and p1"<<endl<<p1<<endl <<endl<<endl;
-//            cout<<" now after jacobian"<<endl;
-//            cout<<jacobians[j]*edge1<<"...is the result"<<endl;
-//            cout<<endl<<endl;
-//
-//            cout<<"now the inverse test"<<endl;
-//            cout<<inv_jacobians[j]*p1<<"...is the result"<<endl;
-//            cout<<u0+inv_jacobians[j]*p1 <<" should be "<<  V_pattern.row(currid1)<<endl;
-        }
 
     }
-cout<<"fin"<<endl;
-};
+}
 
 void garment_adaption::performJacobianUpdateAndMerge(Eigen::MatrixXd & V_curr){
     V= V_pattern;
@@ -142,33 +104,72 @@ void garment_adaption::performJacobianUpdateAndMerge(Eigen::MatrixXd & V_curr){
     // but j-1 gives a different vertex position per face, thus we average it
     // so for each face we apply the inverse and get two new edges. these edges start from v_curr_0
 
-    for (int numIt=0; numIt <numFace; numIt++) {
-        std::vector<std::vector<Eigen::Vector3d>> perVertexPositions(V_pattern.rows());
+    for (int numIt=0; numIt <1000; numIt++) {
+        std::vector<std::vector<std::pair<Eigen::Vector3d, int>>> perVertexPositions(V_pattern.rows());
         for (int j = 0; j < numFace; j++) {
             int id0 = Fg(j, 0); int idp0 = Fg_pattern(j, 0);
             int id1 = Fg(j, 1); int idp1 = Fg_pattern(j, 1);
             int id2 = Fg(j, 2); int idp2 = Fg_pattern(j, 2);
             RowVector3d barycenter = V_curr.row(id1) + V_curr.row(id0) + V_curr.row(id2);
             barycenter/=3;
-//            cout<<" for face "<<j<<" we have barycenter "<<barycenter<<endl<<endl;
+
             // from center to all adjacent vertices
             Eigen::MatrixXd positions(3, 3);
             positions.col(0) = V_curr.row(id0) - barycenter;
             positions.col(1) = V_curr.row(id1) - barycenter;
             positions.col(2) = V_curr.row(id2) - barycenter;
-//            cout<<" then the 3 outgoing vectors are " <<endl<<positions<<endl<<endl;
 
+            /*test: we take the normal of the current and of the original triangle and align the original to the current
+                * , the same rotation is then also applied to the jacobian*/
+            Vector3d p2 = V_curr.row(id2) - V_curr.row(id0);
+            Vector3d p1 =V_curr.row(id1) - V_curr.row(id0);
+            Vector3d normalVec = p1.cross(p2);
+            normalVec= normalVec.normalized(); // the new normal vector, how do we get from jacobians[j].col(2) to this?
+
+            Vector3d oldNormalVec =  jacobians[j].col(2);
+            // rotate old to normalVec
+            if(oldNormalVec!= normalVec){
+                //R = I + [v]_x + [v]_x^2 * (1-c)/s^2
+                //https://math.stackexchange.com/questions/180418/calculate-rotation-matrix-to-align-vector-a-to-vector-b-in-3d/180436#180436
+                Eigen::VectorXd v = oldNormalVec.cross(normalVec);
+                double c = oldNormalVec.dot(normalVec);
+
+// I am sure this can be made faster/simpler but this is a logical derivation
+                Eigen::MatrixXd G= Eigen::MatrixXd::Zero(3, 3);
+                G(0,0) = c; G(1, 1)= c; G(2, 2)= 1;
+                G(0, 1) = -v.norm();
+                G(1, 0) = v.norm();
+
+                Eigen::MatrixXd F= Eigen::MatrixXd::Zero(3, 3);
+                F.col(0)= oldNormalVec;
+                F.col(1) = (normalVec- c*oldNormalVec).normalized();
+                F.col(2) = normalVec.cross(oldNormalVec);
+                MatrixXd R = F* G*F.inverse();
+
+
+                //if(j==0 )cout<<oldNormalVec<<" old, "<<endl<< R*oldNormalVec<<" R*old "<<endl<<endl<<normalVec<<" should be=new normal"<<endl<<R<<" the rotation"<<endl;
+
+                Eigen::MatrixXd jacobianAdapted = R*jacobians[j];
+                inv_jacobians[j] = jacobianAdapted.inverse();
+            }
+            
             MatrixXd jacobi_adapted_Edge = inv_jacobians[j] * positions;
-//            cout<<" after jacobi the 3 outgoing vectors are " <<endl<<jacobi_adapted_Edge<<endl<<endl;
+//            jacobi_adapted_Edge.row(2)= VectorXd::Zero(3);
+            if(jacobi_adapted_Edge.row(2)(0)!=0 || jacobi_adapted_Edge.row(2)(1)!=0 || jacobi_adapted_Edge.row(2)(2)!=0 ){
+//                cout<<jacobi_adapted_Edge<<" the jacobi "<<endl<<endl;
+//                cout<<inv_jacobians[j]<<" inv jacobi "<<endl<<endl;
 
-            // now the referrence is the barycenter of the 2D patter of the unshrinked model
-            Eigen::Vector3d ref = (V.row(idp0)+ V.row(idp1)+ V.row(idp2))/3 ;// no reason why it should start here, initial guess
-//            cout<<"the ref "<<endl<<ref<<endl;
+            }
 
-            perVertexPositions[idp0].push_back(ref +jacobi_adapted_Edge.col(0) );
-            perVertexPositions[idp1].push_back(ref + jacobi_adapted_Edge.col(1));
-            perVertexPositions[idp2].push_back(ref + jacobi_adapted_Edge.col(2));
+            // now the reference is the barycenter of the 2D patter of the unshrinked model
+            Eigen::Vector3d ref = (V.row(idp0)+ V.row(idp1)+ V.row(idp2))/3 ;
 
+            perVertexPositions[idp0].push_back(std::make_pair(ref + jacobi_adapted_Edge.col(0), j));
+            perVertexPositions[idp1].push_back(std::make_pair(ref + jacobi_adapted_Edge.col(1), j));
+            perVertexPositions[idp2].push_back(std::make_pair(ref + jacobi_adapted_Edge.col(2), j));
+//            if((ref + jacobi_adapted_Edge.col(2))(2)!= 200){
+//                cout<<(ref + jacobi_adapted_Edge.col(2))(2)<<" ref "<<ref.transpose()<<endl<<jacobi_adapted_Edge.col(2).transpose()<<endl<<endl;
+//            }
 
         }
         // this iteration makes no sense, we average back to the original.
@@ -178,17 +179,16 @@ void garment_adaption::performJacobianUpdateAndMerge(Eigen::MatrixXd & V_curr){
             Eigen::Vector3d avg = Eigen::VectorXd::Zero(3);
 
             for (int j = 0; j < perVertexPositions[i].size(); j++) {
-                avg += perVertexPositions[i][j];
-//                cout<<endl<<perVertexPositions[i][j]<<" new position of "<<i<<" suggestion no "<<j<<endl<<endl;
+                Eigen::Vector3d curr = get<0>(perVertexPositions[i][j]);
+                avg += curr;
+
             }
 
-            avg /= perVertexPositions[i].size();// not surre if size is the right one
+            avg /= perVertexPositions[i].size();
 
-            V.row(i) = avg.transpose(); //(V_curr.row(i)+ avg.transpose())/2; // average curr position and new computed
-//            V.row(i) /= 2;
+            V.row(i) = avg.transpose();
         }
-        // set the curr position as the positions we just computed
-//        cout<<V<<endl<<" the new positions"<<endl;
+
     }
     V_curr = V;
 }

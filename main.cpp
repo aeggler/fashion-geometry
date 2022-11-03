@@ -80,6 +80,10 @@ MatrixXd colV ;
 VectorXd normU, normV;
 MatrixXd perFaceU, perFaceV;
 int whichStressVisualize= 0;
+garment_adaption* gar_adapt;
+int counter;
+BodyInterpolator* body_interpolator;
+bool bodyInterpolation= false;
 
 
 void setNewGarmentMesh(igl::opengl::glfw::Viewer& viewer);
@@ -105,9 +109,7 @@ void computeRigidMeasure();
 void initProcrustesPatternTo3D();
 void solveRigidEnergy();
 void solveStretchUV();
-int counter;
-bool bodyInterpolation= false;
-BodyInterpolator* body_interpolator;
+
 double itCount =0;
 bool pre_draw(igl::opengl::glfw::Viewer& viewer){
     viewer.data().dirty |= igl::opengl::MeshGL::DIRTY_DIFFUSE | igl::opengl::MeshGL::DIRTY_SPECULAR;
@@ -118,13 +120,13 @@ bool pre_draw(igl::opengl::glfw::Viewer& viewer){
                 counter++;
                 showGarment(viewer);// not sure if I actually need this, at least it breaks nothing
             }
-            cout<<itCount<<endl;
+           // cout<<itCount<<endl;
             if(itCount>1000) itCount = 0;
             double p = itCount/1000.;
 //            body_interpolator->interpolateMesh(p, Vm);
 //            Vm_incr = (1+blowFact)*Vm;
 //            setCollisionMesh();
-//            showMannequin(viewer);
+            showMannequin(viewer);
             showGarment(viewer);// not sure if I actually need this, at least it breaks nothing
 
             itCount += 3.;
@@ -168,7 +170,8 @@ int main(int argc, char *argv[])
     igl::readOBJ(garment_file_name, Vg, Fg);
     igl::readOBJ(garment_file_name, Vg_orig, Fg_orig);
 
-    string garment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/dress_2/dress2_2d_lowres/dress2_2d_lowres.obj"; // "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/garment/tshirt_2D_2_fixed.obj"; //
+    string garment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/dress_2/shrinkedGarment_2D.obj"; // "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/garment/tshirt_2D_2_fixed.obj"; //
+//    string garment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/dress_2/dress2_2d_lowres/dress2_2d_lowres.obj"; // "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/garment/tshirt_2D_2_fixed.obj"; //
     if(garment_pattern_file_name!=" "){
         pattern_loaded= true;
         igl::readOBJ(garment_pattern_file_name, Vg_pattern, Fg_pattern);
@@ -211,23 +214,70 @@ int main(int argc, char *argv[])
 
     /*-----------------------*/
     /* Garment adaption update */
-    string skrinked_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/dress_2/shrinkedGarment.obj"; // "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/garment/tshirt_2D_2_fixed.obj"; //
-    Eigen::MatrixXd Vg_shrinked;
-    igl::readOBJ(skrinked_file_name, Vg_shrinked, Fg);
+    string orig_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/dress_2/dress2_2d_lowres/dress2_2d_lowres.obj"; // "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/garment/tshirt_2D_2_fixed.obj"; //
 
-    string skrinked_file_name_pattern = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/dress_2/shrinkedGarment_2D.obj"; // "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/garment/tshirt_2D_2_fixed.obj"; //
-    Eigen::MatrixXd Vg_shrinked_pattern;
-    igl::readOBJ(skrinked_file_name_pattern, Vg_shrinked_pattern, Fg_pattern);
+//    string orig_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/dress_2/shrinkedGarment.obj"; // "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/garment/tshirt_2D_2_fixed.obj"; //
+    Eigen::MatrixXd Vg_orig_pattern;
+    igl::readOBJ(orig_file_name, Vg_orig_pattern, Fg_pattern);
 
-    garment_adaption gar_adapt = *new garment_adaption(Vg, Fg,  Vg_pattern, Fg_pattern);
-    gar_adapt.computeJacobian();
+    string orig_file_name_sugg = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/patternComputed.obj"; // "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/garment/tshirt_2D_2_fixed.obj"; //
 
-    gar_adapt.performJacobianUpdateAndMerge(Vg_shrinked);
+//    string orig_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/dress_2/shrinkedGarment.obj"; // "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/garment/tshirt_2D_2_fixed.obj"; //
+    Eigen::MatrixXd computedPatten;
+    igl::readOBJ(orig_file_name_sugg, computedPatten, Fg_pattern);
+    cout<<computedPatten.col(2).maxCoeff()<<" max and min "<<computedPatten.col(2).minCoeff()<<" and diff "<<computedPatten.col(2).maxCoeff()-computedPatten.col(2).minCoeff()<<endl;
+
+    double col0 = 0; double col1 = 0; double col2 = 0;
+    for(int i=0; i< computedPatten.rows(); i++){
+
+        col0 += computedPatten(i,0) - Vg_orig_pattern(i,0);
+        col1 += computedPatten(i,1) - Vg_orig_pattern(i,1);
+        col2 += computedPatten(i,2) - Vg_orig_pattern(i,2);
+
+    }
+    cout<< col0<<" zero, one : "<<col1<<" and two: "<<col2<<endl;
+
+//    string skrinked_file_name_pattern = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/dress_2/shrinkedGarment_2D.obj"; // "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/garment/tshirt_2D_2_fixed.obj"; //
+//    Eigen::MatrixXd Vg_shrinked_pattern;
+//    igl::readOBJ(skrinked_file_name_pattern, Vg_shrinked_pattern, Fg_pattern);
+
+    gar_adapt = new garment_adaption(Vg, Fg,  Vg_orig_pattern, Fg_pattern);
+    gar_adapt->computeJacobian();
+
+
+
+    /*test */
+    Eigen::MatrixXd Vg_test_pattern(5, 3);
+    Vg_test_pattern <<
+            0,0,00,
+            1,0,00,
+            0,1,00,
+            -1,0,00,
+            0,-1,00;
+    Eigen::MatrixXi Fg_test(4, 3);
+    Fg_test <<
+            0,1,2,
+            0,2,3,
+            0,3,4,
+            0,4,1;
+
+    Eigen::MatrixXd Vg_test= Vg_test_pattern;
+    Vg_test(2, 2)= 1;
+    Vg_test(1, 2)= -1;
+    cout<<" testmesh 3D "<<endl<<Vg_test<<endl<<endl;
+
+    Eigen::MatrixXd Vg_test_shrinked = 0.5*Vg_test;
+    cout<<" testmesh 3D shrinked  "<<endl<<Vg_test_shrinked<<endl<<endl;
+
+    garment_adaption gar_adapt_test = *new garment_adaption(Vg_test, Fg_test,  Vg_test_pattern, Fg_test);
+    gar_adapt_test.computeJacobian();
+
+    gar_adapt_test.performJacobianUpdateAndMerge(Vg_test_shrinked);
     cout<<endl<<"shrinked: "<<endl;
-    cout<<Vg_shrinked.row(50)<<endl;
-    igl::writeOBJ("suggested_shrinkedGarment_2D.obj", Vg_shrinked, Fg_pattern);
-    cout<<" wrote new shrinked file"<<endl;
-    
+    cout<<Vg_test_shrinked<<endl;
+//    cout<<Vg_shrinked.row(50)<<endl;
+//    igl::writeOBJ("suggested_shrinkedGarment_2D.obj", Vg_shrinked, Fg_pattern);
+
     /* end garment adaption update */
     /*-----------------------------*/
 
@@ -312,6 +362,7 @@ int main(int argc, char *argv[])
                 viewer.selected_data_index = 1;
                 viewer.data().show_faces = !viewer.data().show_faces;
             }
+
 
         }
         menu.draw_viewer_menu();
@@ -474,7 +525,18 @@ bool callback_key_down(igl::opengl::glfw::Viewer& viewer, unsigned char key, int
 //        igl::writeOBJ("shrinkedGarment.obj", Vg, Fg);
 //          std::cout<<" Garment file written"<<endl;
 //    }
-    if(key == 'B'){
+    if(key == 'P'){       // Pattern
+        keyRecognition = true;
+        simulate = false;
+        // we start computing the pattern for the current shape
+        Eigen::MatrixXd computed_Vg_pattern= Vg;
+        cout<<"start computing the pattern"<<endl;
+        gar_adapt->performJacobianUpdateAndMerge(computed_Vg_pattern);
+        igl::writeOBJ("patternComputed.obj", computed_Vg_pattern, Fg_pattern);
+        cout<<"pattern written to *patternComputed*"<<endl;
+
+    }
+    if(key == 'B'){     // Bending
        // reset(viewer);
 //        simulate= false;
 //        Fm = testMorph_F0;
@@ -765,7 +827,6 @@ void computeStress(igl::opengl::glfw::Viewer& viewer){
             compression = small u stretch: norm < 1, thus y<0 , thus little red, much green => green
             no stretch : y=0, thus very red , very green => yellow */
         normU(j) = perFaceU.row(j).norm();
-        if(j==500)cout<<normU(j)<<endl;
         double y = (normU(j)-1) * differenceIncrementFactor; // to increase differences
         colU.row(j) = Vector3d(1.0 + y, 1. - y, 0.0);
 
@@ -867,7 +928,6 @@ void dotimeStep(igl::opengl::glfw::Viewer& viewer){
     initProcrustesPatternTo3D(Vg_pattern, Fg_pattern, Fg_orig, p, procrustesPatternIn3D); // might be an imprecise but fast option to remove this from the loop
 //    t.printTime(" pattern dimensions ");
     init_stretchUV();
-//    cout<<tarU.rows()<<" should be 3 * "<<numFace<<endl;
 
     //(9)-(11), the loop should be repeated several times per timestep (according to Jan Bender)
     num_const_iterations= 1;
