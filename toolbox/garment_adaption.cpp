@@ -97,81 +97,81 @@ void garment_adaption::computeJacobian(){
     }
 }
 
-void garment_adaption::performJacobianUpdateAndMerge(Eigen::MatrixXd & V_curr){
+void garment_adaption::performJacobianUpdateAndMerge(Eigen::MatrixXd & V_curr, int iterations){
     V= V_pattern;
    // this is ithe skrinked model, it has too much stress, we want to enlarge it
     // j-1 gives us the pattern such that the stress is just the same as for the original
     // but j-1 gives a different vertex position per face, thus we average it
     // so for each face we apply the inverse and get two new edges. these edges start from v_curr_0
 
-    for (int numIt=0; numIt <1000; numIt++) {
+    std::vector<Eigen::Matrix3d> jacobi_adapted_Edges (numFace);
+
+    for (int j = 0; j < numFace; j++) {
+        int id0 = Fg(j, 0); int idp0 = Fg_pattern(j, 0);
+        int id1 = Fg(j, 1); int idp1 = Fg_pattern(j, 1);
+        int id2 = Fg(j, 2); int idp2 = Fg_pattern(j, 2);
+        RowVector3d barycenter = V_curr.row(id1) + V_curr.row(id0) + V_curr.row(id2);
+        barycenter/=3;
+
+        // from center to all adjacent vertices
+        Eigen::MatrixXd positions(3, 3);
+        positions.col(0) = V_curr.row(id0) - barycenter;
+        positions.col(1) = V_curr.row(id1) - barycenter;
+        positions.col(2) = V_curr.row(id2) - barycenter;
+
+        /*test: we take the normal of the current and of the original triangle and align the original to the current
+            * , the same rotation is then also applied to the jacobian*/
+        Vector3d p2 = V_curr.row(id2) - V_curr.row(id0);
+        Vector3d p1 =V_curr.row(id1) - V_curr.row(id0);
+        Vector3d normalVec = p1.cross(p2);
+        normalVec= normalVec.normalized(); // the new normal vector, how do we get from jacobians[j].col(2) to this?
+
+        Vector3d oldNormalVec =  jacobians[j].col(2);
+        // rotate old to normalVec
+        if(oldNormalVec!= normalVec){
+            //R = I + [v]_x + [v]_x^2 * (1-c)/s^2
+            //https://math.stackexchange.com/questions/180418/calculate-rotation-matrix-to-align-vector-a-to-vector-b-in-3d/180436#180436
+            Eigen::VectorXd v = oldNormalVec.cross(normalVec);
+            double c = oldNormalVec.dot(normalVec);
+
+            // I am sure this can be made faster/simpler but this is a logical derivation
+            Eigen::MatrixXd G= Eigen::MatrixXd::Zero(3, 3);
+            G(0,0) = c; G(1, 1)= c; G(2, 2)= 1;
+            G(0, 1) = -v.norm();
+            G(1, 0) = v.norm();
+
+            Eigen::MatrixXd F= Eigen::MatrixXd::Zero(3, 3);
+            F.col(0)= oldNormalVec;
+            F.col(1) = (normalVec- c*oldNormalVec).normalized();
+            F.col(2) = normalVec.cross(oldNormalVec);
+            MatrixXd R = F* G*F.inverse();
+
+            Eigen::MatrixXd jacobianAdapted = R*jacobians[j];
+            inv_jacobians[j] = jacobianAdapted.inverse();
+        }
+
+        MatrixXd jacobi_adapted_Edge = inv_jacobians[j] * positions;
+        jacobi_adapted_Edges[j]= jacobi_adapted_Edge;
+
+
+    }
+
+    for (int numIt=0; numIt <iterations; numIt++) {
         std::vector<std::vector<std::pair<Eigen::Vector3d, int>>> perVertexPositions(V_pattern.rows());
-        for (int j = 0; j < numFace; j++) {
-            int id0 = Fg(j, 0); int idp0 = Fg_pattern(j, 0);
-            int id1 = Fg(j, 1); int idp1 = Fg_pattern(j, 1);
-            int id2 = Fg(j, 2); int idp2 = Fg_pattern(j, 2);
-            RowVector3d barycenter = V_curr.row(id1) + V_curr.row(id0) + V_curr.row(id2);
-            barycenter/=3;
 
-            // from center to all adjacent vertices
-            Eigen::MatrixXd positions(3, 3);
-            positions.col(0) = V_curr.row(id0) - barycenter;
-            positions.col(1) = V_curr.row(id1) - barycenter;
-            positions.col(2) = V_curr.row(id2) - barycenter;
-
-            /*test: we take the normal of the current and of the original triangle and align the original to the current
-                * , the same rotation is then also applied to the jacobian*/
-            Vector3d p2 = V_curr.row(id2) - V_curr.row(id0);
-            Vector3d p1 =V_curr.row(id1) - V_curr.row(id0);
-            Vector3d normalVec = p1.cross(p2);
-            normalVec= normalVec.normalized(); // the new normal vector, how do we get from jacobians[j].col(2) to this?
-
-            Vector3d oldNormalVec =  jacobians[j].col(2);
-            // rotate old to normalVec
-            if(oldNormalVec!= normalVec){
-                //R = I + [v]_x + [v]_x^2 * (1-c)/s^2
-                //https://math.stackexchange.com/questions/180418/calculate-rotation-matrix-to-align-vector-a-to-vector-b-in-3d/180436#180436
-                Eigen::VectorXd v = oldNormalVec.cross(normalVec);
-                double c = oldNormalVec.dot(normalVec);
-
-// I am sure this can be made faster/simpler but this is a logical derivation
-                Eigen::MatrixXd G= Eigen::MatrixXd::Zero(3, 3);
-                G(0,0) = c; G(1, 1)= c; G(2, 2)= 1;
-                G(0, 1) = -v.norm();
-                G(1, 0) = v.norm();
-
-                Eigen::MatrixXd F= Eigen::MatrixXd::Zero(3, 3);
-                F.col(0)= oldNormalVec;
-                F.col(1) = (normalVec- c*oldNormalVec).normalized();
-                F.col(2) = normalVec.cross(oldNormalVec);
-                MatrixXd R = F* G*F.inverse();
-
-
-                //if(j==0 )cout<<oldNormalVec<<" old, "<<endl<< R*oldNormalVec<<" R*old "<<endl<<endl<<normalVec<<" should be=new normal"<<endl<<R<<" the rotation"<<endl;
-
-                Eigen::MatrixXd jacobianAdapted = R*jacobians[j];
-                inv_jacobians[j] = jacobianAdapted.inverse();
-            }
-            
-            MatrixXd jacobi_adapted_Edge = inv_jacobians[j] * positions;
-//            jacobi_adapted_Edge.row(2)= VectorXd::Zero(3);
-            if(jacobi_adapted_Edge.row(2)(0)!=0 || jacobi_adapted_Edge.row(2)(1)!=0 || jacobi_adapted_Edge.row(2)(2)!=0 ){
-//                cout<<jacobi_adapted_Edge<<" the jacobi "<<endl<<endl;
-//                cout<<inv_jacobians[j]<<" inv jacobi "<<endl<<endl;
-
-            }
-
+        for(int j=0; j<numFace; j++){
             // now the reference is the barycenter of the 2D patter of the unshrinked model
+            int idp0 = Fg_pattern(j, 0);
+            int idp1 = Fg_pattern(j, 1);
+            int idp2 = Fg_pattern(j, 2);
+
             Eigen::Vector3d ref = (V.row(idp0)+ V.row(idp1)+ V.row(idp2))/3 ;
 
-            perVertexPositions[idp0].push_back(std::make_pair(ref + jacobi_adapted_Edge.col(0), j));
-            perVertexPositions[idp1].push_back(std::make_pair(ref + jacobi_adapted_Edge.col(1), j));
-            perVertexPositions[idp2].push_back(std::make_pair(ref + jacobi_adapted_Edge.col(2), j));
-//            if((ref + jacobi_adapted_Edge.col(2))(2)!= 200){
-//                cout<<(ref + jacobi_adapted_Edge.col(2))(2)<<" ref "<<ref.transpose()<<endl<<jacobi_adapted_Edge.col(2).transpose()<<endl<<endl;
-//            }
-
+            perVertexPositions[idp0].push_back(std::make_pair(ref + jacobi_adapted_Edges[j].col(0), j));
+            perVertexPositions[idp1].push_back(std::make_pair(ref + jacobi_adapted_Edges[j].col(1), j));
+            perVertexPositions[idp2].push_back(std::make_pair(ref + jacobi_adapted_Edges[j].col(2), j));
         }
+
         // this iteration makes no sense, we average back to the original.
         // instead we should fix one vertex and from there on fix all the others.
         for (int i = 0; i < numVert; i++) {
@@ -181,7 +181,6 @@ void garment_adaption::performJacobianUpdateAndMerge(Eigen::MatrixXd & V_curr){
             for (int j = 0; j < perVertexPositions[i].size(); j++) {
                 Eigen::Vector3d curr = get<0>(perVertexPositions[i][j]);
                 avg += curr;
-
             }
 
             avg /= perVertexPositions[i].size();

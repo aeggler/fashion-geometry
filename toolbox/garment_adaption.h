@@ -28,7 +28,7 @@ private:
 public:
     garment_adaption(Eigen::MatrixXd& V, Eigen::MatrixXi& Fg, Eigen::MatrixXd & V_pattern, Eigen::MatrixXi& Fg_pattern_orig);
     void computeJacobian();
-    void performJacobianUpdateAndMerge(Eigen::MatrixXd & V_curr);
+    void performJacobianUpdateAndMerge(Eigen::MatrixXd & V_curr, int iteratitons);
 
 };
 

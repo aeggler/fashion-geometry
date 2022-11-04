@@ -61,11 +61,12 @@ Real timestep= 0.0005;
 double stretchStiffnessU= 0.001;
 double stretchStiffnessV= 0.001;
 double collisionStiffness = 1.;
-Real bendingStiffness = 0.001;
-double rigidStiffness = 0.001;
+Real bendingStiffness = 0.003;// smaller for better folds , bigger for smoother results 
+double rigidStiffness = 0.01;
 double coll_EPS= 0.000; // like in Clo, 3 mm ? but for some reason this does not work well with the constraint function
 int num_const_iterations = 5;
-double blowFact= 0.005;// like in Clo, 3 mm ?
+double blowFact= 0.000;// like in Clo, 3 mm ? behaves better
+double gravityfact =1.;
 MatrixXd Vm_incr ;
 
 bool pattern_loaded=false;
@@ -84,6 +85,7 @@ garment_adaption* gar_adapt;
 int counter;
 BodyInterpolator* body_interpolator;
 bool bodyInterpolation= false;
+int localGlobalIterations= 500;
 
 
 void setNewGarmentMesh(igl::opengl::glfw::Viewer& viewer);
@@ -170,8 +172,8 @@ int main(int argc, char *argv[])
     igl::readOBJ(garment_file_name, Vg, Fg);
     igl::readOBJ(garment_file_name, Vg_orig, Fg_orig);
 
-    string garment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/dress_2/shrinkedGarment_2D.obj"; // "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/garment/tshirt_2D_2_fixed.obj"; //
-//    string garment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/dress_2/dress2_2d_lowres/dress2_2d_lowres.obj"; // "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/garment/tshirt_2D_2_fixed.obj"; //
+//    string garment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/dress_2/shrinkedGarment_2D.obj"; // "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/garment/tshirt_2D_2_fixed.obj"; //
+    string garment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/dress_2/dress2_2d_lowres/dress2_2d_lowres.obj"; // "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/garment/tshirt_2D_2_fixed.obj"; //
     if(garment_pattern_file_name!=" "){
         pattern_loaded= true;
         igl::readOBJ(garment_pattern_file_name, Vg_pattern, Fg_pattern);
@@ -187,29 +189,32 @@ int main(int argc, char *argv[])
     // string avatar_file_name = "/Users/annaeggler/Desktop/custom_fit_garments/data/example_avatar/avatar_005.ply"; //// /avatar/avatar.obj";//
     //string avatar_file_name = igl::file_dialog_open();
     igl::readOBJ(avatar_file_name, Vm, Fm);
-//    igl::readPLY(avatar_file_name, Vm, Fm);
     Vm_orig = Vm; Fm_orig = Fm;
     Vm_incr = (1+blowFact)*Vm;
 
-   // string morphBody0 ="/Users/annaeggler/Desktop/custom_fit_garments/data/example_avatar/avatar_007.ply";
-//    string morphBody1 = "/Users/annaeggler/Desktop/custom_fit_garments/data/example_avatar/avatar_001.ply";
+    //nope, they are not the same..  ;( look into this further because even if the vertices are not the same, the triangles should correspond ? in some way at least
+//    string morphBody1 = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/dress_2/avatar/avatar_modified.obj";
+//    Eigen::MatrixXi Fm_modified;
+//    igl::readOBJ(morphBody1, testMorph_V1, Fm_modified);
+//    if(Fm_modified != Fm){
+//        cout<<"the faces are not the same!"<<endl;
+//        for(int i=150; i<160; i++){
+//            cout<<Fm_modified.row(i)<<endl;
+//        }
+//        cout<<endl;
+//        for(int i=150; i<160; i++){
+//            cout<<Fm.row(i)<<endl;
+//        }
 //
-//    igl::readPLY(morphBody1, testMorph_V1, testMorph_F1);
-////    igl::readPLY(morphBody0, testMorph_V0, testMorph_F0);
-//    cout<<Fm.row(5)<<endl;
-//    cout<<testMorph_F1.row(5)<<endl;
-//    cout<<endl;
+//    }
+
 //    body_interpolator = new BodyInterpolator(Vm, testMorph_V1, Fm);
 
-//    Fm = testMorph_F0;
-//    Vm = testMorph_V0;
 
     setNewMannequinMesh(viewer);
     cout<<" setting collision mesh "<<endl;
     setCollisionMesh();
     cout<<" collision mesh finished "<<endl;
-
-
 
 
     /*-----------------------*/
@@ -225,17 +230,7 @@ int main(int argc, char *argv[])
 //    string orig_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/dress_2/shrinkedGarment.obj"; // "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/garment/tshirt_2D_2_fixed.obj"; //
     Eigen::MatrixXd computedPatten;
     igl::readOBJ(orig_file_name_sugg, computedPatten, Fg_pattern);
-    cout<<computedPatten.col(2).maxCoeff()<<" max and min "<<computedPatten.col(2).minCoeff()<<" and diff "<<computedPatten.col(2).maxCoeff()-computedPatten.col(2).minCoeff()<<endl;
-
-    double col0 = 0; double col1 = 0; double col2 = 0;
-    for(int i=0; i< computedPatten.rows(); i++){
-
-        col0 += computedPatten(i,0) - Vg_orig_pattern(i,0);
-        col1 += computedPatten(i,1) - Vg_orig_pattern(i,1);
-        col2 += computedPatten(i,2) - Vg_orig_pattern(i,2);
-
-    }
-    cout<< col0<<" zero, one : "<<col1<<" and two: "<<col2<<endl;
+    cout<<" Z error in previously computed pattern, <=  "<<max((computedPatten.col(2).maxCoeff()-200), (200-computedPatten.col(2).minCoeff()))<<endl;
 
 //    string skrinked_file_name_pattern = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/dress_2/shrinkedGarment_2D.obj"; // "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/garment/tshirt_2D_2_fixed.obj"; //
 //    Eigen::MatrixXd Vg_shrinked_pattern;
@@ -244,39 +239,6 @@ int main(int argc, char *argv[])
     gar_adapt = new garment_adaption(Vg, Fg,  Vg_orig_pattern, Fg_pattern);
     gar_adapt->computeJacobian();
 
-
-
-    /*test */
-    Eigen::MatrixXd Vg_test_pattern(5, 3);
-    Vg_test_pattern <<
-            0,0,00,
-            1,0,00,
-            0,1,00,
-            -1,0,00,
-            0,-1,00;
-    Eigen::MatrixXi Fg_test(4, 3);
-    Fg_test <<
-            0,1,2,
-            0,2,3,
-            0,3,4,
-            0,4,1;
-
-    Eigen::MatrixXd Vg_test= Vg_test_pattern;
-    Vg_test(2, 2)= 1;
-    Vg_test(1, 2)= -1;
-    cout<<" testmesh 3D "<<endl<<Vg_test<<endl<<endl;
-
-    Eigen::MatrixXd Vg_test_shrinked = 0.5*Vg_test;
-    cout<<" testmesh 3D shrinked  "<<endl<<Vg_test_shrinked<<endl<<endl;
-
-    garment_adaption gar_adapt_test = *new garment_adaption(Vg_test, Fg_test,  Vg_test_pattern, Fg_test);
-    gar_adapt_test.computeJacobian();
-
-    gar_adapt_test.performJacobianUpdateAndMerge(Vg_test_shrinked);
-    cout<<endl<<"shrinked: "<<endl;
-    cout<<Vg_test_shrinked<<endl;
-//    cout<<Vg_shrinked.row(50)<<endl;
-//    igl::writeOBJ("suggested_shrinkedGarment_2D.obj", Vg_shrinked, Fg_pattern);
 
     /* end garment adaption update */
     /*-----------------------------*/
@@ -306,6 +268,19 @@ int main(int argc, char *argv[])
                 translateMesh(viewer, 2 );
             }
         }
+        if (ImGui::CollapsingHeader("Pattern Computation", ImGuiTreeNodeFlags_DefaultOpen)) {
+            ImGui::InputInt("Number of local global iterations", &(localGlobalIterations),  0, 0);
+            // same as key down with key =='P'
+            if(ImGui::Button("Compute pattern", ImVec2(-1, 0))){
+                simulate = false;
+                // we start computing the pattern for the current shape
+                Eigen::MatrixXd computed_Vg_pattern= Vg;
+                cout<<"start computing the pattern with "<<localGlobalIterations<<" local global iterations"<<endl;
+                gar_adapt->performJacobianUpdateAndMerge(computed_Vg_pattern, localGlobalIterations);
+                igl::writeOBJ("patternComputed.obj", computed_Vg_pattern, Fg_pattern);
+                cout<<"pattern written to *patternComputed*"<<endl;
+            }
+        }
         if (ImGui::CollapsingHeader("Simulation", ImGuiTreeNodeFlags_DefaultOpen)) {
 
             if(ImGui::Button("Start Timestep", ImVec2(-1, 0))){
@@ -318,6 +293,7 @@ int main(int argc, char *argv[])
             ImGui::InputDouble("Collision Stiffness", &(collisionStiffness),  0, 0, "%0.4f");
             ImGui::InputDouble("Bending Stiffness", &(bendingStiffness),  0, 0, "%0.4f");
             ImGui::InputDouble("Rigidity Stiffness", &(rigidStiffness),  0, 0, "%0.6f");
+            ImGui::InputDouble("Gravity factor", &(gravityfact),  0, 0, "%0.6f");
 
             // figure out how that really works!!does not really do much
             ImGui::InputDouble("Collision thereshold", &(coll_EPS),  0, 0, "%0.6f");
@@ -530,8 +506,8 @@ bool callback_key_down(igl::opengl::glfw::Viewer& viewer, unsigned char key, int
         simulate = false;
         // we start computing the pattern for the current shape
         Eigen::MatrixXd computed_Vg_pattern= Vg;
-        cout<<"start computing the pattern"<<endl;
-        gar_adapt->performJacobianUpdateAndMerge(computed_Vg_pattern);
+        cout<<"start computing the pattern with "<<localGlobalIterations<<" local global iterations"<<endl;
+        gar_adapt->performJacobianUpdateAndMerge(computed_Vg_pattern, localGlobalIterations);
         igl::writeOBJ("patternComputed.obj", computed_Vg_pattern, Fg_pattern);
         cout<<"pattern written to *patternComputed*"<<endl;
 
@@ -913,7 +889,7 @@ void dotimeStep(igl::opengl::glfw::Viewer& viewer){
 
     // line (5) of the algorithm https://matthias-research.github.io/pages/publications/posBasedDyn.pdf
     // we only use it to add gravity to the system
-    vel.col(1) += timestep * w*(-1)*grav*0.01;
+    vel.col(1) += timestep * w*(-1)*grav*gravityfact;
 
     // (7)
     for (int i = 0; i<numVert; i++){
@@ -930,7 +906,7 @@ void dotimeStep(igl::opengl::glfw::Viewer& viewer){
     init_stretchUV();
 
     //(9)-(11), the loop should be repeated several times per timestep (according to Jan Bender)
-    num_const_iterations= 1;
+   // num_const_iterations= 1;
     for(int i=0; i < num_const_iterations; i++){
         solveBendingConstraint();
         t.printTime("computed bending");
