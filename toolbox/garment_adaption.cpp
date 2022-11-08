@@ -175,76 +175,29 @@ void garment_adaption::performJacobianUpdateAndMerge(Eigen::MatrixXd & V_curr, i
             MatrixXd R = F* G*F.inverse();
 
             // trial - normalization or what is missing? rotate both and then search edge ?
-            Vector3d newp2 = ((V_curr.row(id2) - V_curr.row(id0)));
 
             // we have aligned the normal already (the 3rd col) so it should be a 2D rotation
             // https://math.stackexchange.com/questions/3563901/how-to-find-2d-rotation-matrix-that-rotates-vector-mathbfa-to-mathbfb
             VectorXd zeroRotated = R*(V_init.row(id0).transpose());
             VectorXd twoRotated = R*(V_init.row(id2).transpose());
             VectorXd oldp2Rotated = (twoRotated- zeroRotated);
-        // what is the angle between p2 and oldp2Rotated? theyy are normal aligned so it should be a simple rotation around normal axis
-            auto angle = acos((p2.normalized()).dot(oldp2Rotated.normalized()));
-           if(j==50) cout<<angle<<" angle"<<endl;
-            //
-            auto degree = angle*180/M_PI;
+
+            // they are normal aligned so it should be a simple rotation around normal axis
+            //  TODO ATTENTION THIS CAN BE THE WRONG DIRECTION, NO SIGN
+            //https://www.euclideanspace.com/maths/algebra/vectors/angleBetween/
+            double angle = acos((p2.normalized()).dot(oldp2Rotated.normalized()));
+
+            double degree = angle*180/M_PI;
             Eigen::Matrix4d rotMat= Eigen::MatrixXd::Identity(4, 4);
             setUpRotationMatrix(degree,normalVec, rotMat);
             if(j==50) cout<<rotMat<<" rot mat "<<degree<<endl;
-
-
-
-//            // how much we want to rotate about the axis, but we need ot rotate there first and back after
-//            Eigen::MatrixXd D= MatrixXd::Identity(4,4);
-//            Eigen::MatrixXd D_inv= MatrixXd::Identity(4,4);
-//
-//            D(0, 3)= -V_curr(id0, 0);
-//            D(1, 3)= -V_curr(id0, 1);//-zeroRotated(1);
-//            D(2, 3)= -V_curr(id0, 2);//-zeroRotated(2);
-//            D_inv = D;
-//            D_inv(0, 3)= V_curr(id0, 0);//zeroRotated(0);
-//            D_inv(1, 3)= V_curr(id0, 1);//zeroRotated(1);
-//            D_inv(2, 3)= V_curr(id0, 2);//zeroRotated(2);
-//
-//            Eigen::MatrixXd Rx= MatrixXd::Identity(4,4);
-//            Eigen::MatrixXd Rx_inv= MatrixXd::Identity(4,4);
-//
-//            double vval = sqrt(normalVec(1)*normalVec(1)+normalVec(2)*normalVec(2));
-//            Rx(1, 1)= normalVec(2)/vval;
-//            Rx(2, 2)= Rx(1, 1);
-//            Rx(1, 2) = -normalVec(1)/vval;
-//            Rx(2, 1) = -Rx(1, 2);
-//            Rx_inv = Rx;
-//            Rx_inv(2, 1) = -Rx(2, 1);
-//            Rx_inv(1, 2) = -Rx(1, 2);
-//
-//            Eigen::MatrixXd Ry= MatrixXd::Identity(4,4);
-//            Eigen::MatrixXd Ry_inv= MatrixXd::Identity(4,4);
-//
-//            double lnorm = normalVec.norm();
-//            Ry(0, 0) = vval/lnorm;
-//            Ry(2, 2) = Ry(0,0);
-//            Ry(0, 2) = -normalVec(0)/lnorm;
-//            Ry(2, 0) = -R(0, 2);
-//            Ry_inv = Ry;
-//            Ry_inv(0, 2)= -Ry(0, 2);
-//            Ry_inv(2, 0)= -Ry(2, 0);
-
-
-//            MatrixXd rot2d   = MatrixXd::Identity(4, 4);
-//            rot2d(0, 0) = p2(0)*oldp2(0) + p2(1)*oldp2(1);
-//            rot2d(1, 1) = rot2d(0,0);
-//            rot2d(0,1) = p2(0)* oldp2(1) - oldp2(0) * p2(1);
-//            rot2d (1, 0) = oldp2(0)*p2(1) - p2(0)* oldp2(1);
-//
-//            Eigen::MatrixXd T = D_inv * Rx_inv * Ry_inv * rot2d * Ry * Rx *D;
 
             Eigen::MatrixXd jacobianAdapted =  R*jacobians[j];
             Vector4d j1; j1<<jacobianAdapted.col(0), 1;
             Vector4d j2; j2<<jacobianAdapted.col(1), 1;
             VectorXd outputj1=VectorXd::Zero(4);
             VectorXd outputj2=VectorXd::Zero(4);
-            Vector4d j3; j3<<jacobianAdapted.col(2), 1;
-            VectorXd outputj3=VectorXd::Zero(4);
+
             for(int ii=0; ii<4; ii++){
                 for(int k =0; k<4; k++){
                     outputj1(ii) += rotMat(ii, k)* j1(k);
@@ -255,16 +208,9 @@ void garment_adaption::performJacobianUpdateAndMerge(Eigen::MatrixXd & V_curr, i
                     outputj2(ii) += rotMat(ii, k)* j2(k);
                 }
             }
-            for(int ii=0; ii<4; ii++){
-                for(int k =0; k<4; k++){
-                    outputj3(ii) += rotMat(ii, k)* j3(k);
-                }
-            }
-
 
             Eigen::MatrixXd adapted(3,3); adapted.col(2)= jacobianAdapted.col(2);
 
-            if(j==50) cout<<outputj3<<" out j3 "<<endl<<endl<<j3<<" and not rot norm " <<endl;
             adapted(0, 0)= outputj1(0);
             adapted(1, 0)= outputj1(1);
             adapted(2, 0)= outputj1(2);
@@ -274,16 +220,8 @@ void garment_adaption::performJacobianUpdateAndMerge(Eigen::MatrixXd & V_curr, i
             adapted(2, 1)= outputj2(2);
 
             inv_jacobians[j] = adapted.inverse();
-//            if(j==50 ) {
-//                cout << jacobianAdapted << " the normal aligned" << endl;
-//                cout << endl << rot2d << " rotation around normal" << endl << rot2d * jacobianAdapted << endl << endl
-//                     << adapted << endl;
-//            }
-//            Eigen::MatrixXd jacobianAdapted = R*jacobians[j];
-//            inv_jacobians[j] = jacobianAdapted.inverse();
 
         }
-
         MatrixXd jacobi_adapted_Edge = inv_jacobians[j] * positions;
         jacobi_adapted_Edges[j]= jacobi_adapted_Edge;
 
