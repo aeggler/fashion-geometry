@@ -61,8 +61,8 @@ Real timestep= 0.0005;
 double stretchStiffnessU= 0.001;
 double stretchStiffnessV= 0.001;
 double collisionStiffness = 1.;
-Real bendingStiffness = 0.003;// smaller for better folds , bigger for smoother results 
-double rigidStiffness = 0.01;
+Real bendingStiffness = 0.003;// smaller for better folds , bigger for smoother results
+double rigidStiffness = 0.001;
 double coll_EPS= 0.000; // like in Clo, 3 mm ? but for some reason this does not work well with the constraint function
 int num_const_iterations = 5;
 double blowFact= 0.000;// like in Clo, 3 mm ? behaves better
@@ -172,8 +172,10 @@ int main(int argc, char *argv[])
     igl::readOBJ(garment_file_name, Vg, Fg);
     igl::readOBJ(garment_file_name, Vg_orig, Fg_orig);
 
-//    string garment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/dress_2/shrinkedGarment_2D.obj"; // "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/garment/tshirt_2D_2_fixed.obj"; //
-    string garment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/dress_2/dress2_2d_lowres/dress2_2d_lowres.obj"; // "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/garment/tshirt_2D_2_fixed.obj"; //
+ //   string garment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/dress_2/shrinkedGarment_2D_05.obj"; // "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/garment/tshirt_2D_2_fixed.obj"; //
+    string garment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/dress_2/shrinkedGarment_pattern095.obj"; // "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/garment/tshirt_2D_2_fixed.obj"; //
+
+//  string garment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/dress_2/dress2_2d_lowres/dress2_2d_lowres.obj"; // "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/garment/tshirt_2D_2_fixed.obj"; //
     if(garment_pattern_file_name!=" "){
         pattern_loaded= true;
         igl::readOBJ(garment_pattern_file_name, Vg_pattern, Fg_pattern);
@@ -496,11 +498,11 @@ bool callback_key_down(igl::opengl::glfw::Viewer& viewer, unsigned char key, int
         showGarment(viewer);
         keyRecognition = true;
     }
-//    if(key== 'W'){
-//        keyRecognition=true;
-//        igl::writeOBJ("shrinkedGarment.obj", Vg, Fg);
-//          std::cout<<" Garment file written"<<endl;
-//    }
+    if(key== 'W'){
+        keyRecognition=true;
+        igl::writeOBJ("shrinkedGarment_pattern01.obj", Vg_pattern, Fg_pattern);
+          std::cout<<" Garment file written"<<endl;
+    }
     if(key == 'P'){       // Pattern
         keyRecognition = true;
         simulate = false;
@@ -907,44 +909,51 @@ void dotimeStep(igl::opengl::glfw::Viewer& viewer){
 
     //(9)-(11), the loop should be repeated several times per timestep (according to Jan Bender)
    // num_const_iterations= 1;
-    for(int i=0; i < num_const_iterations; i++){
-        solveBendingConstraint();
-        t.printTime("computed bending");
-        //solveStretchConstraint();
-        solveStretchUV();
+    for(int i = 0; i < num_const_iterations; i++){
+            solveBendingConstraint();
+//        t.printTime("computed bending");
+            //solveStretchConstraint();
+            solveStretchUV();
 //        t.printTime("computed stretch");
-        solveRigidEnergy();
+            solveRigidEnergy();
 //        t.printTime(" rigid energy ");
 
-        /* we precomputed the normal and collision point of each vertex, now add the constraint (instead of checking collision in each iteration
-         this is imprecise but much faster and acc to paper works fine in practice*/
-        solveCollisionConstraint();
-        t.printTime(" collision ");cout<<endl;
-    }
-
-    // (13) velocity and position update
-    for(int i=0; i<numVert; i++){
-        for(int j=0; j<3; j++){
-            vel(i,j) = (p(i,j) - x_new(i,j)) / timestep;
+            /* we precomputed the normal and collision point of each vertex, now add the constraint (instead of checking collision in each iteration
+             this is imprecise but much faster and acc to paper works fine in practice*/
+            solveCollisionConstraint();
+            t.printTime(" collision ");cout<<endl;
         }
-        x_new.row(i) = p.row(i);
-    }
+
+        // (13) velocity and position update
+        for(int i=0; i<numVert; i++){
+            for(int j=0; j<3; j++){
+                vel(i,j) = (p(i,j) - x_new(i,j)) / timestep;
+            }
+            x_new.row(i) = p.row(i);
+        }
+
+        double collision_damping = 0.5;
+        for(int i=0; i<numVert; i++){
+            if(collisionVert(i)){
+
+                Vector3d vel_i = vel.row(i);
+                Vector3d normal = N.row(i).normalized();
+                Vector3d n_vel = normal.dot(vel_i) * normal;
+                Vector3d t_vel = vel_i-n_vel;
+                vel.row(i) = (t_vel - collision_damping * n_vel);
+            }
+        }
+
+
+
+
+
     //(14)
     Vg= x_new;
     // (16) Velocity update
     /*The velocity of each vertex for which a collision constraint has been generated is dampened perpendicular to the collision normal
      * and reflected in the direction of the collision normal.*/
-    double collision_damping = 0.5;
-    for(int i=0; i<numVert; i++){
-        if(collisionVert(i)){
 
-            Vector3d vel_i = vel.row(i);
-            Vector3d normal = N.row(i).normalized();
-            Vector3d n_vel = normal.dot(vel_i) * normal;
-            Vector3d t_vel = vel_i-n_vel;
-            vel.row(i) = (t_vel - collision_damping * n_vel);
-        }
-    }
 
     showGarment(viewer);
 }
