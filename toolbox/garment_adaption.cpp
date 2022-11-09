@@ -174,29 +174,49 @@ void garment_adaption::performJacobianUpdateAndMerge(Eigen::MatrixXd & V_curr, i
             F.col(2) = normalVec.cross(oldNormalVec);
             MatrixXd R = F* G*F.inverse();
 
+
+
             // trial - normalization or what is missing? rotate both and then search edge ?
 
             // we have aligned the normal already (the 3rd col) so it should be a 2D rotation
             // https://math.stackexchange.com/questions/3563901/how-to-find-2d-rotation-matrix-that-rotates-vector-mathbfa-to-mathbfb
-            VectorXd zeroRotated = R*(V_init.row(id0).transpose());
+            VectorXd zeroRotated = R*(V_init.row(id1).transpose());
             VectorXd twoRotated = R*(V_init.row(id2).transpose());
             VectorXd oldp2Rotated = (twoRotated- zeroRotated);
+
+            if(j==0){
+                cout<<R<<" R "<<(R*oldNormalVec).transpose()<<" == "<< normalVec.transpose()<<endl;
+                cout<<"initial" <<(V_init.row(id0))<<", "<< (V_init.row(id1))<<", "<< (V_init.row(id2))<<endl;
+                cout<<"the normal aligned positions"<<endl;
+                cout<<zeroRotated.transpose()<<", "<< (R*(V_init.row(id1).transpose())).transpose()<<", "<< (R*(V_init.row(id2).transpose())).transpose()<<endl;
+                cout<<" the garment positions: "<<endl;
+                cout<<endl<< V_curr.row(id0) <<", "<< V_curr.row(id1)<<", "<< V_curr.row(id2) <<endl;
+                cout<<endl<<p2.normalized()<<" p2"<<endl;
+                cout<<endl<<oldp2Rotated.normalized()<<" and rotated old p2"<<endl;
+            }
 
             // they are normal aligned so it should be a simple rotation around normal axis
             //  TODO ATTENTION THIS CAN BE THE WRONG DIRECTION, NO SIGN
             //https://www.euclideanspace.com/maths/algebra/vectors/angleBetween/
-            double angle = acos((p2.normalized()).dot(oldp2Rotated.normalized()));
+
+            Vector3d p3 = V_curr.row(id2) - V_curr.row(id1);
+            double angle = acos((p3.normalized()).dot(oldp2Rotated.normalized()));
+
 
             double degree = angle*180/M_PI;
+            if(j==0) {cout<<degree<<" the angle"<<endl;
+//                cout<<outputj2<<endl;
+//                cout<<p3.normalized()<<endl;
+            }
             Eigen::Matrix4d rotMat= Eigen::MatrixXd::Identity(4, 4);
             setUpRotationMatrix(degree,normalVec, rotMat);
-            if(j==50) cout<<rotMat<<" rot mat "<<degree<<endl;
 
             Eigen::MatrixXd jacobianAdapted =  R*jacobians[j];
             Vector4d j1; j1<<jacobianAdapted.col(0), 1;
             Vector4d j2; j2<<jacobianAdapted.col(1), 1;
             VectorXd outputj1=VectorXd::Zero(4);
             VectorXd outputj2=VectorXd::Zero(4);
+            rotMat= MatrixXd::Identity(4, 4);
 
             for(int ii=0; ii<4; ii++){
                 for(int k =0; k<4; k++){
@@ -220,6 +240,11 @@ void garment_adaption::performJacobianUpdateAndMerge(Eigen::MatrixXd & V_curr, i
             adapted(2, 1)= outputj2(2);
 
             inv_jacobians[j] = adapted.inverse();
+
+            if(j==0) {
+                cout<<outputj2<<endl;
+                cout<<p3.normalized()<<endl;
+            }
 
         }
         MatrixXd jacobi_adapted_Edge = inv_jacobians[j] * positions;

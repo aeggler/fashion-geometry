@@ -207,9 +207,9 @@ bool PositionBasedDynamics::solve_UVStretch(
     Vector3r dir2 = tarUV2 - targetPositions.col(2) ;
 //TODO WEIGHTING
 
-    corr0 = stiffness * dir0 ; //* abs(su-1) // or normalize dir and multiply by su
-    corr1 = stiffness * dir1 ;
-    corr2 = stiffness * dir2 ;
+    corr0 = stiffness * dir0.normalized(); //* abs(su-1) // or normalize dir and multiply by su
+    corr1 = stiffness * dir1.normalized() ;
+    corr2 = stiffness * dir2.normalized();
     return true;
 }
 
