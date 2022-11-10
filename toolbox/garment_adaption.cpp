@@ -180,7 +180,8 @@ void garment_adaption::performJacobianUpdateAndMerge(Eigen::MatrixXd & V_curr, i
             R= MatrixXd::Identity(3, 3);
         }
             // rotate normalVec to old
-            MatrixXd Rinv = R.inverse();// that is we do not rotate the jacobian but actually the positions, then from these rotated positions
+            MatrixXd Rinv = R.inverse();
+            // Update: we do not rotate the jacobian but actually the positions, then from these rotated positions
             // we align the u or v axis using the bary coordinates and difference between reference 3D of the original and our new 3D
             VectorXd zeroInv = Rinv * V_curr.row(id0).transpose();
             VectorXd oneInv = Rinv * V_curr.row(id1).transpose();
@@ -192,43 +193,37 @@ void garment_adaption::performJacobianUpdateAndMerge(Eigen::MatrixXd & V_curr, i
             VectorXd oldU = baryCoords1(j, 0)*V_init.row(id0).transpose() + baryCoords1(j, 1)* V_init.row(id1).transpose() +baryCoords1(j, 2)*V_init.row(id2).transpose() ;
             VectorXd oldV = baryCoords2(j, 0)*V_init.row(id0).transpose() + baryCoords2(j, 1)* V_init.row(id1).transpose() +baryCoords2(j, 2)*V_init.row(id2).transpose() ;
             currU -=((zeroInv+oneInv+twoInv)/3.);
-            cout<<oldU<<endl;
             oldU -= (V_init.row(id0)+V_init.row(id1)+V_init.row(id2))/3;
-            cout<<oldU<<" absolute old U "<<endl;
-            double newAngle = acos((currU.normalized()).dot(oldU.normalized()));
 
-
-            double newdegree = newAngle*180/M_PI;
-            cout<<newdegree<<" the angle"<<endl;
-
-            Eigen::Matrix4d newrotMat= Eigen::MatrixXd::Identity(4, 4);
-            setUpRotationMatrix(360-newdegree,oldNormalVec, newrotMat);
-            if(j==0) cout<<newrotMat<<" rotation by "<<newdegree<<endl<<endl;
-
-            // trial - normalization or what is missing? rotate both and then search edge ?
-
-            // we have aligned the normal already (the 3rd col) so it should be a 2D rotation
-            // https://math.stackexchange.com/questions/3563901/how-to-find-2d-rotation-matrix-that-rotates-vector-mathbfa-to-mathbfb
-
+            // if u aligned , else other, can later be made user input
+            Vector3d alignFrom = currU.normalized();
+            Vector3d alignTo = oldU.normalized();
 
             // they are normal aligned so it should be a simple rotation around normal axis
-            //  TODO ATTENTION THIS CAN BE THE WRONG DIRECTION, NO SIGN
-            //https://www.euclideanspace.com/maths/algebra/vectors/angleBetween/
+            //https://www.euclideanspace.com/maths/algebra/vectors/angleBetween/ and https://stackoverflow.com/questions/5188561/signed-angle-between-two-3d-vectors-with-same-origin-within-the-same-plane
+            // praise stackoverflow
+            double newAngle = acos((alignFrom).dot(alignTo));
+            auto crossVec = alignFrom.cross(alignTo); // or other way round?
+            if(oldNormalVec.dot(crossVec)<0){
+                newAngle = -newAngle;
+            }
 
-//            Eigen::MatrixXd jacobianAdapted =  R * jacobians[j];
+            double newdegree = newAngle*180/M_PI;
+
+        // https://math.stackexchange.com/questions/3563901/how-to-find-2d-rotation-matrix-that-rotates-vector-mathbfa-to-mathbfb
+            Eigen::Matrix4d newrotMat= Eigen::MatrixXd::Identity(4, 4);
+            setUpRotationMatrix(newdegree,oldNormalVec, newrotMat);
+
             Eigen::MatrixXd jacobianAdapted =   jacobians[j];
 
 
             Matrix3d newnewRot = newrotMat.block(0,0,3,3);
-            if(j==0)cout<<newnewRot<<" new rot mat "<<endl;
 
 
         // when applied to the positions we rotate them back to align the normals,then we apply the jacobian inverse
         //then we apply the rotation around the normal
         // and finally the jinverse
-        if(j==0)cout<<inv_jacobians[j]<<endl;
         MatrixXd jacobi_adapted_Edge = inv_jacobians[j] * newnewRot * Rinv * positions;
-        if(j==0) cout<<jacobi_adapted_Edge<<endl;
         jacobi_adapted_Edges[j]= jacobi_adapted_Edge;
 
 
