@@ -114,6 +114,7 @@ void solveRigidEnergy();
 void solveStretchUV();
 int shrinked_counter = 100;
 double itCount =0;
+Eigen::MatrixXd baryCoords1, baryCoords2;
 bool pre_draw(igl::opengl::glfw::Viewer& viewer){
     viewer.data().dirty |= igl::opengl::MeshGL::DIRTY_DIFFUSE | igl::opengl::MeshGL::DIRTY_SPECULAR;
         if(simulate){
@@ -184,18 +185,22 @@ int main(int argc, char *argv[])
 
 //    string garment_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/dress_2/dress2_3d_lowres/dress2_3d_lowres.obj"; //
 //    string garment_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/tests/stretched_square_2D.obj"; //
-    string garment_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/garment/tshirt_merged_vertices_fixed.obj"; //
+    string garment_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/tests/square_2D.obj"; //
+
+//    string garment_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/garment/tshirt_merged_vertices_fixed.obj"; //
+//    string garment_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/leggins_3d/leggins_3d.obj"; //
 
     //string garment_file_name = "/Users/annaeggler/Desktop/aShapeDressBetter";
     igl::readOBJ(garment_file_name, Vg, Fg);
     igl::readOBJ(garment_file_name, Vg_orig, Fg_orig);
-    cout<<"loaded square"<<endl;
+    cout<<"loaded garment"<<endl;
 
  //   string garment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/dress_2/shrinkedGarment_2D_05.obj"; // "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/garment/tshirt_2D_2_fixed.obj"; //
 //    string garment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/dress_2/shrinkedGarment_pattern095.obj"; // "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/garment/tshirt_2D_2_fixed.obj"; //
-//  string garment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/dress_2/dress2_2d_lowres/dress2_2d_lowres.obj"; //
-  string garment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/garment/tshirt_2D_2_fixed.obj"; //
-//    string garment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/tests/square_2D.obj"; //garmetn and pattern are identical, unit jacobian
+//    string garment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/dress_2/dress2_2d_lowres/dress2_2d_lowres.obj"; //
+//    string garment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/garment/tshirt_2D_2_fixed.obj"; //
+    string garment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/tests/square_2D.obj"; //garmetn and pattern are identical, unit jacobian
+//    string garment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/leggins_2d/leggins_2d.obj"; //
 
     if(garment_pattern_file_name!=" "){
         pattern_loaded= true;
@@ -206,25 +211,27 @@ int main(int argc, char *argv[])
     preComputeConstraintsForRestshape();
     preComputeStretch();
     computeStress(viewer);
-   // cout<<normV<<" norm u i.e the stress in U direction, should be 1 always "<<endl;
-   // cout<<normV<<endl;
     setNewGarmentMesh(viewer);
-// remember to adapt the collision constraint solving dep on avatar, sometimes normalization is needed, sometimes not for whatever magic
-//    string avatar_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/dress_2/avatar/avatar.obj";
-    string avatar_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/avatar/avatar.obj";
 
+    // cout<<normV<<" norm u i.e the stress in U direction, should be 1 always "<<endl;
+   // cout<<normV<<endl;
+// TODO remember to adapt the collision constraint solving dep on avatar, sometimes normalization is needed, sometimes not for whatever magic
     // string avatar_file_name = "/Users/annaeggler/Desktop/custom_fit_garments/data/example_avatar/avatar_005.ply"; //// /avatar/avatar.obj";//
+//    string avatar_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/dress_2/avatar/avatar.obj";
+//    string avatar_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/avatar/avatar.obj";
+    string avatar_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/avatar/avatar.obj";
+
     //string avatar_file_name = igl::file_dialog_open();
     igl::readOBJ(avatar_file_name, Vm, Fm);
     Vm_orig = Vm; Fm_orig = Fm;
     Vm_incr = (1+blowFact)*Vm;
 
     //nope, they are not the same..  ;( look into this further because even if the vertices are not the same, the triangles should correspond ? in some way at least
-//    string morphBody1 = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/dress_2/avatar/avatar_modified.obj";
-//    Eigen::MatrixXi Fm_modified;
-//    igl::readOBJ(morphBody1, testMorph_V1, Fm_modified);
-//    if(Fm_modified != Fm){
-//        cout<<"the faces are not the same!"<<endl;
+    string morphBody1 =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins_petite/avatar/avatar.obj";
+    Eigen::MatrixXi Fm_modified;
+    igl::readOBJ(morphBody1, testMorph_V1, Fm_modified);
+    if(Fm_modified != Fm){
+        cout<<"the faces are not the same!"<<endl;
 //        for(int i=150; i<160; i++){
 //            cout<<Fm_modified.row(i)<<endl;
 //        }
@@ -233,7 +240,7 @@ int main(int argc, char *argv[])
 //            cout<<Fm.row(i)<<endl;
 //        }
 //
-//    }
+    }
 
 //    body_interpolator = new BodyInterpolator(Vm, testMorph_V1, Fm);
 
@@ -247,31 +254,27 @@ int main(int argc, char *argv[])
     /*-----------------------*/
     /* Garment adaption update */
     string orig_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/tests/square_2D.obj"; // "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/garment/tshirt_2D_2_fixed.obj"; //
-
+//    string orig_file_name ="/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/leggins_3d/leggins_3d.obj";
 //    string orig_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/dress_2/shrinkedGarment.obj"; // "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/garment/tshirt_2D_2_fixed.obj"; //
     Eigen::MatrixXd Vg_orig_pattern;
     igl::readOBJ(orig_file_name, Vg_orig_pattern, Fg_pattern);
 
-//    string orig_file_name_sugg = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/patternComputed.obj"; // "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/garment/tshirt_2D_2_fixed.obj"; //
-
-//    string orig_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/dress_2/shrinkedGarment.obj"; // "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/garment/tshirt_2D_2_fixed.obj"; //
-//    Eigen::MatrixXd computedPatten;
-//    igl::readOBJ(orig_file_name_sugg, computedPatten, Fg_pattern);
-//    cout<<" Z error in previously computed pattern, <=  "<<max((computedPatten.col(2).maxCoeff()-200), (200-computedPatten.col(2).minCoeff()))<<endl;
-
 //    string skrinked_file_name_pattern = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/dress_2/shrinkedGarment_2D.obj"; // "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/garment/tshirt_2D_2_fixed.obj"; //
+//
+//    string skrinked_file_name_pattern =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/leggins_2d/leggins_2d.obj";
 //    Eigen::MatrixXd Vg_shrinked_pattern;
 //    igl::readOBJ(skrinked_file_name_pattern, Vg_shrinked_pattern, Fg_pattern);
 
-//    gar_adapt = new garment_adaption(Vg, Fg,  Vg_orig_pattern, Fg_pattern);
-//    gar_adapt->computeJacobian();
+// compute target jacobian
+    gar_adapt = new garment_adaption(Vg, Fg,  Vg_orig_pattern, Fg_pattern);
+    gar_adapt->computeJacobian();
 
 
 
     // for test only, no simulation directly change Vg
-//     garment_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/tests/stretched_square_2D_rot_Z-23.obj"; //
+     garment_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/tests/stretched_square_2D_rot_Z-23.obj"; //
 //    string garment_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/garment/tshirt_merged_vertices_fixed.obj"; //
-//    igl::readOBJ(garment_file_name, Vg, Fg);
+    igl::readOBJ(garment_file_name, Vg, Fg);
 
     /* end garment adaption update */
     /*-----------------------------*/
@@ -309,7 +312,7 @@ int main(int argc, char *argv[])
                 // we start computing the pattern for the current shape
                 Eigen::MatrixXd computed_Vg_pattern= Vg;
                 cout<<"start computing the pattern with "<<localGlobalIterations<<" local global iterations"<<endl;
-                gar_adapt->performJacobianUpdateAndMerge(computed_Vg_pattern, localGlobalIterations);
+                gar_adapt->performJacobianUpdateAndMerge(computed_Vg_pattern, localGlobalIterations, baryCoords1, baryCoords2);
                 igl::writeOBJ("patternComputed.obj", computed_Vg_pattern, Fg_pattern);
                 cout<<"pattern written to *patternComputed*"<<endl;
             }
@@ -540,7 +543,7 @@ bool callback_key_down(igl::opengl::glfw::Viewer& viewer, unsigned char key, int
         // we start computing the pattern for the current shape
         Eigen::MatrixXd computed_Vg_pattern= Vg;
         cout<<"start computing the pattern with "<<localGlobalIterations<<" local global iterations"<<endl;
-        gar_adapt->performJacobianUpdateAndMerge(computed_Vg_pattern, localGlobalIterations);
+        gar_adapt->performJacobianUpdateAndMerge(computed_Vg_pattern, localGlobalIterations, baryCoords1, baryCoords2);
 
         igl::writeOBJ("patternComputed.obj", computed_Vg_pattern, Fg_pattern);
 
@@ -781,7 +784,7 @@ void solveCollisionConstraint(){
         }
     }
 }
-Eigen::MatrixXd baryCoords1, baryCoords2;
+
 void preComputeStretch(){
     faceAvg.resize(numFace, 3);
     faceAvgWithU.resize(numFace, 3);
@@ -851,10 +854,6 @@ void computeStress(igl::opengl::glfw::Viewer& viewer){
      perFaceU.resize (numFace, 3);
      perFaceV.resize (numFace, 3);
 
-//     cout<<Vg<<" Vg"<<endl<<endl;
-//     cout<<Fg<<endl<<endl;
-//     cout<<Vg_pattern<<" Vg oattern"<<endl<<endl;
-//    cout<<baryCoords1<<" and second "<<endl<<baryCoords2<<endl<<endl;
 
     for(int j=0; j<numFace; j++){
         int id0 = Fg(j, 0);
@@ -886,6 +885,8 @@ void computeStress(igl::opengl::glfw::Viewer& viewer){
 //            cout<<G-Gv<<endl;
 
         normU(j)= (Gu-G).norm();
+        // TODO THEY ARE NOT THE SAME, THE NORM IS NOT THE SAME
+//        if (normU(j)== perFaceU.row(j).norm()) cout<<" same ";
         //normU(j) = perFaceU.row(j).norm();
         double y = (normU(j)-1) * differenceIncrementFactor; // to increase differences
         colU.row(j) = Vector3d(1.0 + y, 1. - y, 0.0);
@@ -971,25 +972,34 @@ void dotimeStep(igl::opengl::glfw::Viewer& viewer){
     // the stress is already computed, we can use it here
     Eigen::MatrixXd x_new = Vg;
     p = Vg;
-
     // line (5) of the algorithm https://matthias-research.github.io/pages/publications/posBasedDyn.pdf
     // we only use it to add gravity to the system
     vel.col(1) += timestep * w*(-1)*grav*gravityfact;
+//    cout<<"test 2 "<<endl;
 
     // (7)
     for (int i = 0; i<numVert; i++){
         p.row(i) = x_new.row(i).array()+ timestep*vel.row(i).array();
     }
+//    cout<<"test 3 "<<endl;
+
     // detect collisions and solve for them in the loop
     setupCollisionConstraints();
 //    t.printTime(" collision constraint ");
+//    cout<<"test 4 "<<endl;
+
     computeRigidMeasure();
 //    t.printTime(" rigid measure");
 //
+//    cout<<"test 5 "<<endl;
+
     initProcrustesPatternTo3D(Vg_pattern, Fg_pattern, Fg_orig, p, procrustesPatternIn3D); // might be an imprecise but fast option to remove this from the loop
 //    t.printTime(" pattern dimensions ");
+//    cout<<"test 6 "<<endl;
+
     init_stretchUV();
     cout<<p.row(50)<<endl;
+//    cout<<"test 7 "<<endl;
 
     //(9)-(11), the loop should be repeated several times per timestep (according to Jan Bender)
    // num_const_iterations= 1;

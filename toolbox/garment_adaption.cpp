@@ -125,7 +125,7 @@ void garment_adaption::setUpRotationMatrix(double angle,Vector3d& axis, Matrix4d
     rotationMatrix(3,3) = 1.0;
 }
 
-void garment_adaption::performJacobianUpdateAndMerge(Eigen::MatrixXd & V_curr, int iterations){
+void garment_adaption::performJacobianUpdateAndMerge(Eigen::MatrixXd & V_curr, int iterations, const MatrixXd& baryCoords1, const MatrixXd& baryCoords2){
     V= V_pattern;
    // this is ithe skrinked model, it has too much stress, we want to enlarge it
     // j-1 gives us the pattern such that the stress is just the same as for the original
@@ -156,98 +156,79 @@ void garment_adaption::performJacobianUpdateAndMerge(Eigen::MatrixXd & V_curr, i
 
         Vector3d oldNormalVec =  jacobians[j].col(2);
         // rotate old to normalVec
-        if(oldNormalVec!= normalVec){
+        MatrixXd R;
+        if(oldNormalVec!= normalVec) {
             //R = I + [v]_x + [v]_x^2 * (1-c)/s^2
             //https://math.stackexchange.com/questions/180418/calculate-rotation-matrix-to-align-vector-a-to-vector-b-in-3d/180436#180436
             Eigen::VectorXd v = oldNormalVec.cross(normalVec);
             double c = oldNormalVec.dot(normalVec);
 
             // I am sure this can be made faster/simpler but this is a logical derivation
-            Eigen::MatrixXd G= Eigen::MatrixXd::Zero(3, 3);
-            G(0,0) = c; G(1, 1)= c; G(2, 2)= 1;
+            Eigen::MatrixXd G = Eigen::MatrixXd::Zero(3, 3);
+            G(0, 0) = c;
+            G(1, 1) = c;
+            G(2, 2) = 1;
             G(0, 1) = -v.norm();
             G(1, 0) = v.norm();
 
-            Eigen::MatrixXd F= Eigen::MatrixXd::Zero(3, 3);
-            F.col(0)= oldNormalVec;
-            F.col(1) = (normalVec- c*oldNormalVec).normalized();
+            Eigen::MatrixXd F = Eigen::MatrixXd::Zero(3, 3);
+            F.col(0) = oldNormalVec;
+            F.col(1) = (normalVec - c * oldNormalVec).normalized();
             F.col(2) = normalVec.cross(oldNormalVec);
-            MatrixXd R = F* G*F.inverse();
+            R = F * G * F.inverse();
+        }else {
+            R= MatrixXd::Identity(3, 3);
+        }
+            // rotate normalVec to old
+            MatrixXd Rinv = R.inverse();// that is we do not rotate the jacobian but actually the positions, then from these rotated positions
+            // we align the u or v axis using the bary coordinates and difference between reference 3D of the original and our new 3D
+            VectorXd zeroInv = Rinv * V_curr.row(id0).transpose();
+            VectorXd oneInv = Rinv * V_curr.row(id1).transpose();
+            VectorXd twoInv = Rinv * V_curr.row(id2).transpose();
+
+            VectorXd currU = baryCoords1(j, 0)*zeroInv + baryCoords1(j, 1)* oneInv +baryCoords1(j, 2)*twoInv ;
+            VectorXd currV = baryCoords2(j, 0)*zeroInv + baryCoords2(j, 1)* oneInv +baryCoords2(j, 2)*twoInv ;
+
+            VectorXd oldU = baryCoords1(j, 0)*V_init.row(id0).transpose() + baryCoords1(j, 1)* V_init.row(id1).transpose() +baryCoords1(j, 2)*V_init.row(id2).transpose() ;
+            VectorXd oldV = baryCoords2(j, 0)*V_init.row(id0).transpose() + baryCoords2(j, 1)* V_init.row(id1).transpose() +baryCoords2(j, 2)*V_init.row(id2).transpose() ;
+            currU -=((zeroInv+oneInv+twoInv)/3.);
+            cout<<oldU<<endl;
+            oldU -= (V_init.row(id0)+V_init.row(id1)+V_init.row(id2))/3;
+            cout<<oldU<<" absolute old U "<<endl;
+            double newAngle = acos((currU.normalized()).dot(oldU.normalized()));
 
 
+            double newdegree = newAngle*180/M_PI;
+            cout<<newdegree<<" the angle"<<endl;
+
+            Eigen::Matrix4d newrotMat= Eigen::MatrixXd::Identity(4, 4);
+            setUpRotationMatrix(360-newdegree,oldNormalVec, newrotMat);
+            if(j==0) cout<<newrotMat<<" rotation by "<<newdegree<<endl<<endl;
 
             // trial - normalization or what is missing? rotate both and then search edge ?
 
             // we have aligned the normal already (the 3rd col) so it should be a 2D rotation
             // https://math.stackexchange.com/questions/3563901/how-to-find-2d-rotation-matrix-that-rotates-vector-mathbfa-to-mathbfb
-            VectorXd zeroRotated = R*(V_init.row(id1).transpose());
-            VectorXd twoRotated = R*(V_init.row(id2).transpose());
-            VectorXd oldp2Rotated = (twoRotated- zeroRotated);
 
-            if(j==0){
-                cout<<R<<" R "<<(R*oldNormalVec).transpose()<<" == "<< normalVec.transpose()<<endl;
-                cout<<"initial" <<(V_init.row(id0))<<", "<< (V_init.row(id1))<<", "<< (V_init.row(id2))<<endl;
-                cout<<"the normal aligned positions"<<endl;
-                cout<<zeroRotated.transpose()<<", "<< (R*(V_init.row(id1).transpose())).transpose()<<", "<< (R*(V_init.row(id2).transpose())).transpose()<<endl;
-                cout<<" the garment positions: "<<endl;
-                cout<<endl<< V_curr.row(id0) <<", "<< V_curr.row(id1)<<", "<< V_curr.row(id2) <<endl;
-                cout<<endl<<p2.normalized()<<" p2"<<endl;
-                cout<<endl<<oldp2Rotated.normalized()<<" and rotated old p2"<<endl;
-            }
 
             // they are normal aligned so it should be a simple rotation around normal axis
             //  TODO ATTENTION THIS CAN BE THE WRONG DIRECTION, NO SIGN
             //https://www.euclideanspace.com/maths/algebra/vectors/angleBetween/
 
-            Vector3d p3 = V_curr.row(id2) - V_curr.row(id1);
-            double angle = acos((p3.normalized()).dot(oldp2Rotated.normalized()));
+//            Eigen::MatrixXd jacobianAdapted =  R * jacobians[j];
+            Eigen::MatrixXd jacobianAdapted =   jacobians[j];
 
 
-            double degree = angle*180/M_PI;
-            if(j==0) {cout<<degree<<" the angle"<<endl;
-//                cout<<outputj2<<endl;
-//                cout<<p3.normalized()<<endl;
-            }
-            Eigen::Matrix4d rotMat= Eigen::MatrixXd::Identity(4, 4);
-            setUpRotationMatrix(degree,normalVec, rotMat);
+            Matrix3d newnewRot = newrotMat.block(0,0,3,3);
+            if(j==0)cout<<newnewRot<<" new rot mat "<<endl;
 
-            Eigen::MatrixXd jacobianAdapted =  R*jacobians[j];
-            Vector4d j1; j1<<jacobianAdapted.col(0), 1;
-            Vector4d j2; j2<<jacobianAdapted.col(1), 1;
-            VectorXd outputj1=VectorXd::Zero(4);
-            VectorXd outputj2=VectorXd::Zero(4);
-            rotMat= MatrixXd::Identity(4, 4);
 
-            for(int ii=0; ii<4; ii++){
-                for(int k =0; k<4; k++){
-                    outputj1(ii) += rotMat(ii, k)* j1(k);
-                }
-            }
-            for(int ii=0; ii<4; ii++){
-                for(int k =0; k<4; k++){
-                    outputj2(ii) += rotMat(ii, k)* j2(k);
-                }
-            }
-
-            Eigen::MatrixXd adapted(3,3); adapted.col(2)= jacobianAdapted.col(2);
-
-            adapted(0, 0)= outputj1(0);
-            adapted(1, 0)= outputj1(1);
-            adapted(2, 0)= outputj1(2);
-
-            adapted(0, 1)= outputj2(0);
-            adapted(1, 1)= outputj2(1);
-            adapted(2, 1)= outputj2(2);
-
-            inv_jacobians[j] = adapted.inverse();
-
-            if(j==0) {
-                cout<<outputj2<<endl;
-                cout<<p3.normalized()<<endl;
-            }
-
-        }
-        MatrixXd jacobi_adapted_Edge = inv_jacobians[j] * positions;
+        // when applied to the positions we rotate them back to align the normals,then we apply the jacobian inverse
+        //then we apply the rotation around the normal
+        // and finally the jinverse
+        if(j==0)cout<<inv_jacobians[j]<<endl;
+        MatrixXd jacobi_adapted_Edge = inv_jacobians[j] * newnewRot * Rinv * positions;
+        if(j==0) cout<<jacobi_adapted_Edge<<endl;
         jacobi_adapted_Edges[j]= jacobi_adapted_Edge;
 
 
