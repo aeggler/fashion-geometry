@@ -5,6 +5,7 @@
 #include "garment_adaption.h"
 #include <Eigen/Dense>
 #include <iostream>
+#include <igl/doublearea.h>
 
 using namespace std;
 using namespace Eigen;
@@ -226,12 +227,12 @@ void garment_adaption::performJacobianUpdateAndMerge(Eigen::MatrixXd & V_curr, i
         MatrixXd jacobi_adapted_Edge = inv_jacobians[j] * newnewRot * Rinv * positions;
         jacobi_adapted_Edges[j]= jacobi_adapted_Edge;
 
-
     }
 
     for (int numIt=0; numIt <iterations; numIt++) {
         std::vector<std::vector<std::pair<Eigen::Vector3d, int>>> perVertexPositions(V_pattern.rows());
-
+        VectorXd dblA;
+        igl::doublearea(V, Fg_pattern, dblA);
         for(int j=0; j<numFace; j++){
             // now the reference is the barycenter of the 2D patter of the unshrinked model
             int idp0 = Fg_pattern(j, 0);
@@ -250,14 +251,16 @@ void garment_adaption::performJacobianUpdateAndMerge(Eigen::MatrixXd & V_curr, i
         for (int i = 0; i < numVert; i++) {
 
             Eigen::Vector3d avg = Eigen::VectorXd::Zero(3);
-
+            double weightsum =0;
             for (int j = 0; j < perVertexPositions[i].size(); j++) {
                 Eigen::Vector3d curr = get<0>(perVertexPositions[i][j]);
-                avg += curr;
+                int face = get<1>(perVertexPositions[i][j]);
+                double weight = dblA(face)/2;
+                weightsum+= weight;
+                avg += (curr * weight) ;
             }
 
-            avg /= perVertexPositions[i].size();
-
+            avg /= weightsum; //perVertexPositions[i].size();
             V.row(i) = avg.transpose();
         }
 
