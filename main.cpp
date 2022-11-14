@@ -87,7 +87,7 @@ int counter;
 BodyInterpolator* body_interpolator;
 bool bodyInterpolation= false;
 int localGlobalIterations= 500;
-int numSimBeforeShrink = 45;
+int numSimBeforeShrink = 15;
 
 void setNewGarmentMesh(igl::opengl::glfw::Viewer& viewer);
 void setNewMannequinMesh(igl::opengl::glfw::Viewer& viewer);
@@ -113,37 +113,44 @@ void initProcrustesPatternTo3D();
 void solveRigidEnergy();
 void solveStretchUV();
 int shrinked_counter = 100;
-double itCount =0;
+double itCount = 0.;
+
+//test
+Eigen::SparseMatrix<double> L;
+
 Eigen::MatrixXd baryCoords1, baryCoords2;
 bool pre_draw(igl::opengl::glfw::Viewer& viewer){
     viewer.data().dirty |= igl::opengl::MeshGL::DIRTY_DIFFUSE | igl::opengl::MeshGL::DIRTY_SPECULAR;
         if(simulate){
+            counter++;
+            double p = 1;
+            if(itCount<1000) {
+                p = itCount/1000.;
+            }//else we rest at 1 the final of the interpolated shapes
+
 //            if(counter%numSimBeforeShrink == 0 && shrinked_counter>89){// every 10th iteration we update the rest shape
 //                shrinked_counter-=1;
-////                cout<<normU.row(50)<<" before"<<endl;
-////                string garment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/dress_2/iterative_shrinking/shrinkedGarment_pattern0"+
-////                                                   to_string(shrinked_counter)+".obj";
-////                cout<<endl<<"loading: "<<garment_pattern_file_name<<endl;
-////                igl::readOBJ(garment_pattern_file_name, Vg_pattern, Fg_pattern);
-////                Vg_pattern_orig= Vg_pattern;
-////                preComputeConstraintsForRestshape();
-////                preComputeStretch();
+//////                cout<<normU.row(50)<<" before"<<endl;
+//                string garment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/leggins_shrinked_pattern0."+
+//                                                   to_string(shrinked_counter)+"0000.obj";
+//////                cout<<endl<<"loading: "<<garment_pattern_file_name<<endl;
+//                igl::readOBJ(garment_pattern_file_name, Vg_pattern, Fg_pattern);
+//                Vg_pattern_orig= Vg_pattern;
+//                preComputeConstraintsForRestshape();
+//                preComputeStretch();
 ////
-////                computeStress(viewer);// here the colour is set anew in colU
-////                cout<<normU.row(50)<<" after"<<endl;
-//
+//                computeStress(viewer);// here the colour is set anew in colU
+//////                cout<<normU.row(50)<<" after"<<endl;
+////
 //            }
+
+//            showGarment(viewer);// not sure if I actually need this, at least it breaks nothing
+            body_interpolator->interpolateMesh(p, Vm);
+            Vm_incr = (1+blowFact)*Vm;
+
+            setCollisionMesh();
             computeStress(viewer);
             dotimeStep(viewer);
-            counter++;
-            showGarment(viewer);// not sure if I actually need this, at least it breaks nothing
-
-           // cout<<itCount<<endl;
-            if(itCount>1000) itCount = 0;
-            double p = itCount/1000.;
-//            body_interpolator->interpolateMesh(p, Vm);
-//            Vm_incr = (1+blowFact)*Vm;
-//            setCollisionMesh();
             showMannequin(viewer);
             showGarment(viewer);// not sure if I actually need this, at least it breaks nothing
 
@@ -183,81 +190,64 @@ int main(int argc, char *argv[])
     //string garment_file_name = igl::file_dialog_open();
     //for ease of use, for now let it be fixed
 
-//    string garment_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/dress_2/dress2_3d_lowres/dress2_3d_lowres.obj"; //
-//    string garment_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/tests/stretched_square_2D.obj"; //
-    string garment_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/tests/square_2D.obj"; //
-
 //    string garment_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/garment/tshirt_merged_vertices_fixed.obj"; //
-//    string garment_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/leggins_3d/leggins_3d.obj"; //
+    string garment_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/leggins_3d/leggins_3d.obj"; //
 
     //string garment_file_name = "/Users/annaeggler/Desktop/aShapeDressBetter";
     igl::readOBJ(garment_file_name, Vg, Fg);
     igl::readOBJ(garment_file_name, Vg_orig, Fg_orig);
     cout<<"loaded garment"<<endl;
 
- //   string garment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/dress_2/shrinkedGarment_2D_05.obj"; // "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/garment/tshirt_2D_2_fixed.obj"; //
-//    string garment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/dress_2/shrinkedGarment_pattern095.obj"; // "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/garment/tshirt_2D_2_fixed.obj"; //
-//    string garment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/dress_2/dress2_2d_lowres/dress2_2d_lowres.obj"; //
-//    string garment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/garment/tshirt_2D_2_fixed.obj"; //
-    string garment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/tests/square_2D.obj"; //garmetn and pattern are identical, unit jacobian
-//    string garment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/leggins_2d/leggins_2d.obj"; //
-
-    if(garment_pattern_file_name!=" "){
-        pattern_loaded= true;
-        igl::readOBJ(garment_pattern_file_name, Vg_pattern, Fg_pattern);
-        Vg_pattern_orig= Vg_pattern;
-    }
+    string garment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/leggins_2d/leggins_2d.obj"; //
+    pattern_loaded= true;
+    igl::readOBJ(garment_pattern_file_name, Vg_pattern, Fg_pattern);
+    Vg_pattern_orig= Vg_pattern;
 
     preComputeConstraintsForRestshape();
     preComputeStretch();
     computeStress(viewer);
     setNewGarmentMesh(viewer);
 
-    // cout<<normV<<" norm u i.e the stress in U direction, should be 1 always "<<endl;
-   // cout<<normV<<endl;
+
 // TODO remember to adapt the collision constraint solving dep on avatar, sometimes normalization is needed, sometimes not for whatever magic
     // string avatar_file_name = "/Users/annaeggler/Desktop/custom_fit_garments/data/example_avatar/avatar_005.ply"; //// /avatar/avatar.obj";//
 //    string avatar_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/dress_2/avatar/avatar.obj";
 //    string avatar_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/avatar/avatar.obj";
-    string avatar_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/avatar/avatar.obj";
+//    string avatar_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/avatar/avatar.obj";
+    string avatar_file_name =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/avatar/avatar_one_component.ply";
 
     //string avatar_file_name = igl::file_dialog_open();
-    igl::readOBJ(avatar_file_name, Vm, Fm);
+    igl::readPLY(avatar_file_name, Vm, Fm);
     Vm_orig = Vm; Fm_orig = Fm;
     Vm_incr = (1+blowFact)*Vm;
 
-    //nope, they are not the same..  ;( look into this further because even if the vertices are not the same, the triangles should correspond ? in some way at least
-    string morphBody1 =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins_petite/avatar/avatar.obj";
-    Eigen::MatrixXi Fm_modified;
-    igl::readOBJ(morphBody1, testMorph_V1, Fm_modified);
-    if(Fm_modified != Fm){
+    string morphBody1 =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins_petite/avatar/avatar_one_component.ply";
+
+    igl::readPLY(morphBody1, testMorph_V1, testMorph_F1);
+
+
+    if(Fm != testMorph_F1){
         cout<<"the faces are not the same!"<<endl;
-//        for(int i=150; i<160; i++){
-//            cout<<Fm_modified.row(i)<<endl;
-//        }
-//        cout<<endl;
-//        for(int i=150; i<160; i++){
-//            cout<<Fm.row(i)<<endl;
-//        }
-//
+    }else{
+
     }
 
-//    body_interpolator = new BodyInterpolator(Vm, testMorph_V1, Fm);
+    // fm = testMorph_F0= ...F1
+    body_interpolator = new BodyInterpolator(Vm, testMorph_V1, Fm);
 
 
     setNewMannequinMesh(viewer);
-    cout<<" setting collision mesh "<<endl;
     setCollisionMesh();
     cout<<" collision mesh finished "<<endl;
 
 
     /*-----------------------*/
     /* Garment adaption update */
-    string orig_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/tests/square_2D.obj"; // "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/garment/tshirt_2D_2_fixed.obj"; //
+//    string orig_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/tests/stretched_square_2D.obj"; // "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/garment/tshirt_2D_2_fixed.obj"; //
 //    string orig_file_name ="/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/leggins_3d/leggins_3d.obj";
 //    string orig_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/dress_2/shrinkedGarment.obj"; // "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/garment/tshirt_2D_2_fixed.obj"; //
-    Eigen::MatrixXd Vg_orig_pattern;
-    igl::readOBJ(orig_file_name, Vg_orig_pattern, Fg_pattern);
+//    Eigen::MatrixXd Vg_orig_pattern;
+//    igl::readOBJ(orig_file_name, Vg_orig_pattern, Fg_pattern);
 
 //    string skrinked_file_name_pattern = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/dress_2/shrinkedGarment_2D.obj"; // "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/garment/tshirt_2D_2_fixed.obj"; //
 //
@@ -266,15 +256,17 @@ int main(int argc, char *argv[])
 //    igl::readOBJ(skrinked_file_name_pattern, Vg_shrinked_pattern, Fg_pattern);
 
 // compute target jacobian
-    gar_adapt = new garment_adaption(Vg, Fg,  Vg_orig_pattern, Fg_pattern);
+    gar_adapt = new garment_adaption(Vg, Fg,  Vg_pattern, Fg_pattern); //none have been altered at this stage
     gar_adapt->computeJacobian();
 
 
 
     // for test only, no simulation directly change Vg
-     garment_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/tests/stretched_square_2D_rot_Z-23.obj"; //
+//     garment_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/tests/stretched_square_2D_rot_Y32_Z-23.obj"; //
+//        garment_file_name ="/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins_petite/leggins_3d/leggins_3d.obj";
+
 //    string garment_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/garment/tshirt_merged_vertices_fixed.obj"; //
-    igl::readOBJ(garment_file_name, Vg, Fg);
+//    igl::readOBJ(garment_file_name, Vg, Fg);
 
     /* end garment adaption update */
     /*-----------------------------*/
@@ -534,7 +526,7 @@ bool callback_key_down(igl::opengl::glfw::Viewer& viewer, unsigned char key, int
     }
     if(key== 'W'){
         keyRecognition=true;
-        igl::writeOBJ("shrinkedGarment_pattern01.obj", Vg_pattern, Fg_pattern);
+        igl::writeOBJ("leggins_shrinked_pattern"+ to_string(garment_scale)+".obj", Vg_pattern, Fg_pattern);
           std::cout<<" Garment file written"<<endl;
     }
     if(key == 'P'){       // Pattern
@@ -553,6 +545,7 @@ bool callback_key_down(igl::opengl::glfw::Viewer& viewer, unsigned char key, int
 
     }
     if(key == 'B'){     // Bending
+
        // reset(viewer);
 //        simulate= false;
 //        Fm = testMorph_F0;
@@ -561,7 +554,7 @@ bool callback_key_down(igl::opengl::glfw::Viewer& viewer, unsigned char key, int
 //        viewer.selected_data_index = 0;
 //        viewer.data().clear();
 //        bodyInterpolation = !bodyInterpolation;
-//        setNewMannequinMesh(viewer);
+ //       setNewMannequinMesh(viewer);
 //        cout<<"should be set"<<endl;
 //        body_interpolator = new BodyInterpolator(testMorph_V0, testMorph_V1, testMorph_F0);
 //       //
@@ -975,50 +968,37 @@ void dotimeStep(igl::opengl::glfw::Viewer& viewer){
     // line (5) of the algorithm https://matthias-research.github.io/pages/publications/posBasedDyn.pdf
     // we only use it to add gravity to the system
     vel.col(1) += timestep * w*(-1)*grav*gravityfact;
-//    cout<<"test 2 "<<endl;
 
     // (7)
     for (int i = 0; i<numVert; i++){
         p.row(i) = x_new.row(i).array()+ timestep*vel.row(i).array();
     }
-//    cout<<"test 3 "<<endl;
 
     // detect collisions and solve for them in the loop
     setupCollisionConstraints();
 //    t.printTime(" collision constraint ");
-//    cout<<"test 4 "<<endl;
 
     computeRigidMeasure();
 //    t.printTime(" rigid measure");
-//
-//    cout<<"test 5 "<<endl;
-
     initProcrustesPatternTo3D(Vg_pattern, Fg_pattern, Fg_orig, p, procrustesPatternIn3D); // might be an imprecise but fast option to remove this from the loop
 //    t.printTime(" pattern dimensions ");
-//    cout<<"test 6 "<<endl;
 
     init_stretchUV();
-    cout<<p.row(50)<<endl;
-//    cout<<"test 7 "<<endl;
 
     //(9)-(11), the loop should be repeated several times per timestep (according to Jan Bender)
    // num_const_iterations= 1;
     for(int i = 0; i < num_const_iterations; i++){
             solveBendingConstraint();
-        cout<<p.row(50)<<endl;
 //        t.printTime("computed bending");
             //solveStretchConstraint();
             solveStretchUV();
-        cout<<p.row(50)<<endl;
 //        t.printTime("computed stretch");
             solveRigidEnergy();
-        cout<<p.row(50)<<endl;
 //        t.printTime(" rigid energy ");
 
             /* we precomputed the normal and collision point of each vertex, now add the constraint (instead of checking collision in each iteration
              this is imprecise but much faster and acc to paper works fine in practice*/
             solveCollisionConstraint();
-        cout<<p.row(50)<<endl;
         t.printTime(" collision ");cout<<endl;
     }
 
@@ -1041,9 +1021,6 @@ void dotimeStep(igl::opengl::glfw::Viewer& viewer){
                 vel.row(i) = (t_vel - collision_damping * n_vel);
             }
         }
-
-
-
 
 
     //(14)

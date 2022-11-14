@@ -82,6 +82,7 @@ BodyInterpolator::BodyInterpolator(MatrixXd& curr_V_from, MatrixXd& curr_V_to, M
         Quaterniond qf(R);
         q[f] = qf;
     }
+
     cout<<" after svd"<<endl;
     // Precompute LHS
     // since A is a sparse matrix, we set it from triplets
@@ -144,13 +145,9 @@ BodyInterpolator::BodyInterpolator(MatrixXd& curr_V_from, MatrixXd& curr_V_to, M
     cholSolver.analyzePattern(ATA);
     cholSolver.factorize(ATA);
     cout<<"finished A setup"<<endl;
-
 }
 
 void BodyInterpolator::interpolateMesh(double p, Eigen::MatrixXd &V_updated) {
-    if(p<0 || p>1 ){
-        //TODO  WE HAVE A PROBLEM
-    }
 
     double eps= 0.00001;
     if(p>= 1-eps)  { V_updated = V_to; return; }
@@ -159,24 +156,22 @@ void BodyInterpolator::interpolateMesh(double p, Eigen::MatrixXd &V_updated) {
     int numVert = V_from.rows();
     int numFace = F.rows();
     // the real interpolation
-    V_updated.resize(numVert, 3);
+    V_updated= MatrixXd::Zero(numVert, 3);
     MatrixXd RHS_Q = MatrixXd::Zero(3 * numFace, 3);
 
     for (int f =0; f < numFace; f++){
         // interpolate S
         Vector3d K_inter = (1.0 - p) * Vector3d::Ones() + p * K[f];
         Matrix3d S_inter = U[f] * K_inter.asDiagonal() * U2[f].transpose();
-
         // interpolate R
         Quaterniond qI(Matrix3d::Identity());
         Quaterniond q_inter = qI.slerp(p, q[f]);
         MatrixXd R_inter = q_inter.toRotationMatrix();
 
         Matrix3d Q_inter = R_inter * S_inter;
-
         RHS_Q.block<3, 3>(3 * f, 0) = Q_inter.transpose();
     }
-    // substract the missing vertex and row from the right hand side
+    // subtract the missing vertex and row from the right hand side
     // refer to page 68 of Robert Sumners thesis
     MatrixXd RHS = RHS_Q;
     Vector3d v_fixed = (1.0 - p) * V_from.row(fixed_id) + p * V_to.row(fixed_id);
@@ -193,5 +188,6 @@ void BodyInterpolator::interpolateMesh(double p, Eigen::MatrixXd &V_updated) {
     // plug in the one fixed vertex into the solution
     V_updated.block(0, 0, fixed_id, 3) = V_solved.block(0, 0, fixed_id, 3);
     V_updated.row(fixed_id) = v_fixed;
-    V_updated.block(fixed_id + 1, 0, V_from.rows() - fixed_id - 1, 3) = V_solved.block(fixed_id, 0, V_from.rows() - fixed_id - 1, 3);
+    V_updated.block(fixed_id + 1, 0, V_from.rows() - fixed_id - 1, 3) =
+            V_solved.block(fixed_id, 0, V_from.rows() - fixed_id - 1, 3);
 }
