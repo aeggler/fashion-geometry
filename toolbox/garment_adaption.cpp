@@ -6,6 +6,7 @@
 #include <Eigen/Dense>
 #include <iostream>
 #include <igl/doublearea.h>
+#include <cmath>
 
 using namespace std;
 using namespace Eigen;
