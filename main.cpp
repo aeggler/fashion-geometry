@@ -6,6 +6,7 @@
 #include <igl/writeOBJ.h>
 #include <igl/edges.h>
 #include <igl/per_edge_normals.h>
+#include <igl/adjacency_list.h>
 #include <iostream>
 #include <Eigen/Dense>
 #include "toolbox/PositionBasedDynamics.h"
@@ -70,9 +71,6 @@ double blowFact= 0.000;// like in Clo, 3 mm ? behaves better
 double gravityfact =1.;
 MatrixXd Vm_incr ;
 
-bool pattern_loaded=false;
-bool gar_loaded = false;
-bool man_loaded = false;
 MatrixXd faceAvg;
 MatrixXd faceAvgWithU ;
 MatrixXd faceAvgWithV ;
@@ -88,6 +86,11 @@ BodyInterpolator* body_interpolator;
 bool bodyInterpolation= false;
 int localGlobalIterations= 500;
 int numSimBeforeShrink = 15;
+VectorXi constrainedVertexIds;
+VectorXi closestFaceId;
+int iterationCount = 0;
+std::vector<std::pair<Eigen::Vector3d, int>> constrainedVertexBarycentricCoords;
+
 
 void setNewGarmentMesh(igl::opengl::glfw::Viewer& viewer);
 void setNewMannequinMesh(igl::opengl::glfw::Viewer& viewer);
@@ -112,11 +115,11 @@ void computeRigidMeasure();
 void initProcrustesPatternTo3D();
 void solveRigidEnergy();
 void solveStretchUV();
-int shrinked_counter = 100;
-double itCount = 0.;
 
 //test
 Eigen::SparseMatrix<double> L;
+int shrinked_counter = 100;
+
 
 Eigen::MatrixXd baryCoords1, baryCoords2;
 bool pre_draw(igl::opengl::glfw::Viewer& viewer){
@@ -124,29 +127,23 @@ bool pre_draw(igl::opengl::glfw::Viewer& viewer){
         if(simulate){
             counter++;
             double p = 1;
-            if(itCount<1000) {
-                p = itCount/1000.;
+            if(iterationCount<1000) {
+                p = iterationCount/1000.;
             }//else we rest at 1 the final of the interpolated shapes
 
 //            if(counter%numSimBeforeShrink == 0 && shrinked_counter>89){// every 10th iteration we update the rest shape
 //                shrinked_counter-=1;
-//////                cout<<normU.row(50)<<" before"<<endl;
 //                string garment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/leggins_shrinked_pattern0."+
 //                                                   to_string(shrinked_counter)+"0000.obj";
-//////                cout<<endl<<"loading: "<<garment_pattern_file_name<<endl;
 //                igl::readOBJ(garment_pattern_file_name, Vg_pattern, Fg_pattern);
 //                Vg_pattern_orig= Vg_pattern;
 //                preComputeConstraintsForRestshape();
 //                preComputeStretch();
-////
 //                computeStress(viewer);// here the colour is set anew in colU
-//////                cout<<normU.row(50)<<" after"<<endl;
-////
 //            }
 
-//            showGarment(viewer);// not sure if I actually need this, at least it breaks nothing
             body_interpolator->interpolateMesh(p, Vm);
-            Vm_incr = (1+blowFact)*Vm;
+            Vm_incr = (1+blowFact)*Vm;// important! the collision mesh works with the inflated mesh !!
 
             setCollisionMesh();
             computeStress(viewer);
@@ -154,7 +151,7 @@ bool pre_draw(igl::opengl::glfw::Viewer& viewer){
             showMannequin(viewer);
             showGarment(viewer);// not sure if I actually need this, at least it breaks nothing
 
-            itCount += 3.;
+            iterationCount += 3;
 
     }
 
@@ -190,16 +187,16 @@ int main(int argc, char *argv[])
     //string garment_file_name = igl::file_dialog_open();
     //for ease of use, for now let it be fixed
 
-//    string garment_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/garment/tshirt_merged_vertices_fixed.obj"; //
     string garment_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/leggins_3d/leggins_3d.obj"; //
-
+//    string garment_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/patternComputed3D.obj";
     //string garment_file_name = "/Users/annaeggler/Desktop/aShapeDressBetter";
     igl::readOBJ(garment_file_name, Vg, Fg);
     igl::readOBJ(garment_file_name, Vg_orig, Fg_orig);
     cout<<"loaded garment"<<endl;
 
     string garment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/leggins_2d/leggins_2d.obj"; //
-    pattern_loaded= true;
+//    string garment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/patternComputed.obj";
+
     igl::readOBJ(garment_pattern_file_name, Vg_pattern, Fg_pattern);
     Vg_pattern_orig= Vg_pattern;
 
@@ -210,11 +207,11 @@ int main(int argc, char *argv[])
 
 
 // TODO remember to adapt the collision constraint solving dep on avatar, sometimes normalization is needed, sometimes not for whatever magic
-    // string avatar_file_name = "/Users/annaeggler/Desktop/custom_fit_garments/data/example_avatar/avatar_005.ply"; //// /avatar/avatar.obj";//
-//    string avatar_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/dress_2/avatar/avatar.obj";
-//    string avatar_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/avatar/avatar.obj";
+
 //    string avatar_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/avatar/avatar.obj";
     string avatar_file_name =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/avatar/avatar_one_component.ply";
+//    string avatar_file_name =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins_petite/avatar/avatar_one_component.ply";
+
 
     //string avatar_file_name = igl::file_dialog_open();
     igl::readPLY(avatar_file_name, Vm, Fm);
@@ -222,54 +219,74 @@ int main(int argc, char *argv[])
     Vm_incr = (1+blowFact)*Vm;
 
     string morphBody1 =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins_petite/avatar/avatar_one_component.ply";
-
     igl::readPLY(morphBody1, testMorph_V1, testMorph_F1);
-
 
     if(Fm != testMorph_F1){
         cout<<"the faces are not the same!"<<endl;
-    }else{
-
     }
 
     // fm = testMorph_F0= ...F1
     body_interpolator = new BodyInterpolator(Vm, testMorph_V1, Fm);
 
-
     setNewMannequinMesh(viewer);
     setCollisionMesh();
     cout<<" collision mesh finished "<<endl;
 
-
     /*-----------------------*/
     /* Garment adaption update */
-//    string orig_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/tests/stretched_square_2D.obj"; // "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/garment/tshirt_2D_2_fixed.obj"; //
-//    string orig_file_name ="/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/leggins_3d/leggins_3d.obj";
-//    string orig_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/dress_2/shrinkedGarment.obj"; // "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/garment/tshirt_2D_2_fixed.obj"; //
-//    Eigen::MatrixXd Vg_orig_pattern;
-//    igl::readOBJ(orig_file_name, Vg_orig_pattern, Fg_pattern);
-
-//    string skrinked_file_name_pattern = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/dress_2/shrinkedGarment_2D.obj"; // "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/garment/tshirt_2D_2_fixed.obj"; //
-//
-//    string skrinked_file_name_pattern =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/leggins_2d/leggins_2d.obj";
-//    Eigen::MatrixXd Vg_shrinked_pattern;
-//    igl::readOBJ(skrinked_file_name_pattern, Vg_shrinked_pattern, Fg_pattern);
 
 // compute target jacobian
     gar_adapt = new garment_adaption(Vg, Fg,  Vg_pattern, Fg_pattern); //none have been altered at this stage
     gar_adapt->computeJacobian();
 
-
-
-    // for test only, no simulation directly change Vg
-//     garment_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/tests/stretched_square_2D_rot_Y32_Z-23.obj"; //
-//        garment_file_name ="/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins_petite/leggins_3d/leggins_3d.obj";
-
-//    string garment_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/garment/tshirt_merged_vertices_fixed.obj"; //
-//    igl::readOBJ(garment_file_name, Vg, Fg);
-
     /* end garment adaption update */
     /*-----------------------------*/
+    // read constrained vertex ids and compute them as barycentric coordinates of the nearest face
+    //constrainedVertexIds
+    // contains the id of the closest face already, just compute it as baryrcentric coordinate and save it from being overriden closestFaceId;
+
+    constrainedVertexIds = VectorXi::Zero(Vg.rows()); // a one indicates that it is constrained
+    vector<vector<int> > vvAdj, vfAdj;
+    igl::adjacency_list(Fg,vvAdj);
+    createVertexFaceAdjacencyList(Fg, vfAdj);
+    int boundarycount = 0;
+    VectorXd S;
+    igl::signed_distance_pseudonormal(Vg, Vm_incr, Fm, col_tree, FN_m, VN_m, EN_m, EMAP_m, S, closestFaceId, C, N);
+
+// AHA BECAUSE THE VERTEX IS NOT ON THE PLANE. HOW DO WE FIX THAT? -- project to plane
+    for(int i=0; i<Vg.rows(); i++){
+        if(isBoundaryVertex(Vg, i, vvAdj, vfAdj)){
+            constrainedVertexIds (i)= 1;
+            boundarycount++;
+            int closestFace = closestFaceId(i);
+            Vector3d a = Vm.row(Fm(closestFace, 0));
+            Vector3d b = Vm.row(Fm(closestFace, 1));
+            Vector3d c = Vm.row(Fm(closestFace, 2));
+
+            Vector3d bary = (a+b+c)/3;
+            Vector3d vvec = Vg.row(i).transpose() - bary;
+            Vector3d normalVec = (b-a).cross(c-a);
+            normalVec = normalVec.normalized();
+            auto dist = vvec.dot(normalVec);
+
+
+            Vector3d currVert = Vg.row(i).transpose()- dist*normalVec;
+
+            Vector3d currInBary;
+            MathFunctions mathFun;
+            mathFun.Barycentric3D(currVert, a, b, c, currInBary);
+
+            constrainedVertexBarycentricCoords.emplace_back(std::make_pair(currInBary, closestFace));
+        }
+    }
+    cout<<"n num bound edges "<<boundarycount<<endl;
+//
+//    string garment_pattern_file_nameSh = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/leggins_shrinked_pattern0.900000.obj";
+//    igl::readOBJ(garment_pattern_file_nameSh, Vg_pattern, Fg_pattern);
+//    Vg_pattern_orig= Vg_pattern;
+//    preComputeConstraintsForRestshape();
+//    preComputeStretch();
+//    computeStress(viewer);
 
     viewer.core().animation_max_fps = 200.;
     viewer.core().is_animating = false;
@@ -315,6 +332,7 @@ int main(int argc, char *argv[])
                 dotimeStep(viewer);
                 simulate= !simulate;
             }
+            ImGui::InputInt("Number Sim steps before Interpol ", &(numSimBeforeShrink), 0, 0);
             ImGui::InputDouble("Step size", &(timestep),  0, 0, "%0.4f");
             ImGui::InputDouble("U Stretch Stiffness ", &(stretchStiffnessU),  0, 0, "%0.4f");
             ImGui::InputDouble("V Stretch Stiffness", &(stretchStiffnessV),  0, 0, "%0.4f");
@@ -386,7 +404,6 @@ void setNewGarmentMesh(igl::opengl::glfw::Viewer& viewer) {
     }
     igl::edges(Fg, Eg);
     showGarment(viewer);
-    gar_loaded = true;
 }
 void showGarment(igl::opengl::glfw::Viewer& viewer) {
     viewer.selected_data_index = 0;
@@ -412,7 +429,6 @@ void setNewMannequinMesh(igl::opengl::glfw::Viewer& viewer) {
         fprintf(stderr, "IOError: Could not load garment...\n");
         return;
     }
-    man_loaded=true;
     showMannequin(viewer);
 }
 void showMannequin(igl::opengl::glfw::Viewer& viewer) {
@@ -538,6 +554,7 @@ bool callback_key_down(igl::opengl::glfw::Viewer& viewer, unsigned char key, int
         gar_adapt->performJacobianUpdateAndMerge(computed_Vg_pattern, localGlobalIterations, baryCoords1, baryCoords2);
 
         igl::writeOBJ("patternComputed.obj", computed_Vg_pattern, Fg_pattern);
+        igl::writeOBJ("patternComputed3D.obj", Vg, Fg);
 
 //        igl::writeOBJ("patternComputed"+ to_string(timestep)+"_"+ to_string(stretchStiffnessU)+"_"+
 //                      to_string(numSimBeforeShrink)+"_"+to_string(counter)+".obj", computed_Vg_pattern, Fg_pattern);
@@ -589,7 +606,7 @@ void reset(igl::opengl::glfw::Viewer& viewer){
     //showGarment(viewer);
     showMannequin(viewer);
     setCollisionMesh();
-    itCount=0;
+    iterationCount=0;
 }
 void preComputeConstraintsForRestshape(){
     numVert= Vg.rows();
@@ -633,11 +650,10 @@ void setCollisionMesh(){
 }
 void setupCollisionConstraints(){
     VectorXd S;
-    VectorXi I;
     //MatrixXd C, N;
     collisionVert = Eigen::MatrixXi::Zero(numVert, 1);
 
-    igl::signed_distance_pseudonormal(p, Vm_incr, Fm, col_tree, FN_m, VN_m, EN_m, EMAP_m, S, I, C, N);
+    igl::signed_distance_pseudonormal(p, Vm_incr, Fm, col_tree, FN_m, VN_m, EN_m, EMAP_m, S, closestFaceId, C, N);
     for(int i=0; i<numVert; i++){
         if(S(i)<coll_EPS){
             collisionVert(i)=1;
@@ -656,10 +672,10 @@ void solveBendingConstraint(){
         PBD.solve_IsometricBendingConstraint(p.row(id0), w[id0], p.row(id1), w[id1], p.row(id2), w[id2],
                                              p.row(id3), w[id3], Q(j),
                                              bendingStiffness, deltap0, deltap1, deltap2, deltap3);
-        p.row(id0) += deltap0;
-        p.row(id1) += deltap1;
-        p.row(id2) += deltap2;
-        p.row(id3) += deltap3;
+        if(!constrainedVertexIds(id0)) p.row(id0) += deltap0;
+        if(!constrainedVertexIds(id1)) p.row(id1) += deltap1;
+        if(!constrainedVertexIds(id2)) p.row(id2) += deltap2;
+        if(!constrainedVertexIds(id3)) p.row(id3) += deltap3;
     }
 }
 
@@ -750,9 +766,10 @@ void solveStretchUV(){
             PBD.solve_UVStretch(normU(j), targetPositions, 1,
             tarU0, tarU1, tarU2, stretchStiffnessU,deltap0,  deltap1, deltap2);
 
-            p.row(Fg_orig(j, 2)) += deltap2;
-            p.row(Fg_orig(j, 1)) += deltap1;
-            p.row(Fg_orig(j, 0)) += deltap0;
+            // only update if a vertex is not constrained!
+            if(!constrainedVertexIds(Fg_orig(j, 2))) p.row(Fg_orig(j, 2)) += deltap2;
+            if(!constrainedVertexIds(Fg_orig(j, 1))) p.row(Fg_orig(j, 1)) += deltap1;
+            if(!constrainedVertexIds(Fg_orig(j, 0))) p.row(Fg_orig(j, 0)) += deltap0;
         }
         if(abs(normV(j)-1) > stretchEPS ){
 
@@ -760,9 +777,9 @@ void solveStretchUV(){
                                 tarV0, tarV1, tarV2,
                                stretchStiffnessV, deltap0, deltap1, deltap2);
 
-            p.row(Fg_orig(j, 2)) += deltap2;
-            p.row(Fg_orig(j, 1)) += deltap1;
-            p.row(Fg_orig(j, 0)) += deltap0;
+            if(!constrainedVertexIds(Fg_orig(j, 2))) p.row(Fg_orig(j, 2)) += deltap2;
+            if(!constrainedVertexIds(Fg_orig(j, 2))) p.row(Fg_orig(j, 1)) += deltap1;
+            if(!constrainedVertexIds(Fg_orig(j, 2))) p.row(Fg_orig(j, 0)) += deltap0;
         }
     }
 }
@@ -814,7 +831,6 @@ void preComputeStretch(){
 // new part
         u0new(0) = (Vg_pattern(id0, 0)+ Vg_pattern(id1, 0) + Vg_pattern(id2, 0))/3.;
         u0new(1) = (Vg_pattern(id0, 1) + Vg_pattern(id1, 1) + Vg_pattern(id2, 1))/3.;
-//cout<<j<<" j barycenter "<<u0new<<endl;
         u1hnew = u0new;
         u2hnew = u0new;
 
@@ -952,9 +968,9 @@ void solveRigidEnergy(){
                              p.row(Fg(j, 0)), p.row(Fg(j, 1)), p.row(Fg(j, 2)), delta0, delta1, delta2
                              );
 
-        p.row(Fg(j, 0)) += delta0;
-        p.row(Fg(j, 1)) += delta1;
-        p.row(Fg(j, 2)) += delta2;
+        if(!constrainedVertexIds(Fg_orig(j, 0))) p.row(Fg(j, 0)) += delta0;
+        if(!constrainedVertexIds(Fg_orig(j, 1))) p.row(Fg(j, 1)) += delta1;
+        if(!constrainedVertexIds(Fg_orig(j, 2))) p.row(Fg(j, 2)) += delta2;
     }
 }
 
@@ -970,9 +986,23 @@ void dotimeStep(igl::opengl::glfw::Viewer& viewer){
     vel.col(1) += timestep * w*(-1)*grav*gravityfact;
 
     // (7)
+    int constrainedCounter = 0;
     for (int i = 0; i<numVert; i++){
+
         p.row(i) = x_new.row(i).array()+ timestep*vel.row(i).array();
+
+        // if constrained we do not take into account anything but the new position is the barycentric coord of the mannequin mesh
+        if(constrainedVertexIds(i)){
+            int closestFace = get<1> (constrainedVertexBarycentricCoords[constrainedCounter]);
+            Vector3d baryCoeff = get<0>(constrainedVertexBarycentricCoords[constrainedCounter]);
+
+            p.row(i) = baryCoeff(0)* Vm_incr.row(Fm(closestFace, 0));
+            p.row(i) += baryCoeff(1)*Vm_incr.row(Fm(closestFace, 1));
+            p.row(i) += baryCoeff(2)*Vm_incr.row(Fm(closestFace, 2));
+            constrainedCounter++;
+        }
     }
+    cout<<" set all new pos"<<endl;
 
     // detect collisions and solve for them in the loop
     setupCollisionConstraints();
