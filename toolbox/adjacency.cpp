@@ -367,6 +367,7 @@ bool isBoundaryVertex(
 ) {
     for (int i = 0; i < vvAdj[v].size(); i++) {
         pair<int, int> faces;
+        //could remember v and vvAdj to measure the angle with the other -1 face
         adjacentFacesToEdge(v, vvAdj[v][i], vfAdj, faces);
         if (faces.first == -1 || faces.second == -1)
             return true;

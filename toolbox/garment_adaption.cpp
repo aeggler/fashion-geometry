@@ -127,7 +127,7 @@ void garment_adaption::setUpRotationMatrix(double angle,Vector3d& axis, Matrix4d
     rotationMatrix(3,3) = 1.0;
 }
 
-void garment_adaption::performJacobianUpdateAndMerge(Eigen::MatrixXd & V_curr, int iterations, const MatrixXd& baryCoords1, const MatrixXd& baryCoords2){
+void garment_adaption::performJacobianUpdateAndMerge(Eigen::MatrixXd & V_curr, int iterations, const MatrixXd& baryCoords1, const MatrixXd& baryCoords2,Eigen::MatrixXd & V_newPattern ){
     V= V_pattern;
    // this is ithe skrinked model, it has too much stress, we want to enlarge it
     // j-1 gives us the pattern such that the stress is just the same as for the original
@@ -266,7 +266,7 @@ void garment_adaption::performJacobianUpdateAndMerge(Eigen::MatrixXd & V_curr, i
         }
 
     }
-    V_curr = V;
+    V_newPattern = V;
 }
 
 

@@ -60,9 +60,10 @@ MatrixXd u1, u2; // precomputation for stretch
 PositionBasedDynamics PBD;
 Eigen::MatrixXd procrustesPatternIn3D;
 Real timestep= 0.0005;
-double stretchStiffnessU= 0.001;
-double stretchStiffnessV= 0.001;
+double stretchStiffnessU= 0.008;
+double stretchStiffnessV= 0.008;
 double collisionStiffness = 1.;
+double boundaryStiffness = 0.9;
 Real bendingStiffness = 0.003;// smaller for better folds , bigger for smoother results
 double rigidStiffness = 0.001;
 double coll_EPS= 0.000; // like in Clo, 3 mm ? but for some reason this does not work well with the constraint function
@@ -86,10 +87,11 @@ BodyInterpolator* body_interpolator;
 bool bodyInterpolation= false;
 int localGlobalIterations= 500;
 int numSimBeforeShrink = 15;
-VectorXi constrainedVertexIds;
+vector<int> constrainedVertexIds;
 VectorXi closestFaceId;
 int iterationCount = 0;
 std::vector<std::pair<Eigen::Vector3d, int>> constrainedVertexBarycentricCoords;
+Eigen::MatrixXd baryCoords1, baryCoords2;
 
 
 void setNewGarmentMesh(igl::opengl::glfw::Viewer& viewer);
@@ -105,7 +107,7 @@ void preComputeConstraintsForRestshape();
 void dotimeStep(igl::opengl::glfw::Viewer& viewer);
 void setCollisionMesh();
 void setupCollisionConstraints();
-
+void computeBoundaryVertices();
 void solveBendingConstraint();
 void solveStretchConstraint();
 void solveCollisionConstraint();
@@ -115,13 +117,11 @@ void computeRigidMeasure();
 void initProcrustesPatternTo3D();
 void solveRigidEnergy();
 void solveStretchUV();
-
 //test
 Eigen::SparseMatrix<double> L;
 int shrinked_counter = 100;
 
 
-Eigen::MatrixXd baryCoords1, baryCoords2;
 bool pre_draw(igl::opengl::glfw::Viewer& viewer){
     viewer.data().dirty |= igl::opengl::MeshGL::DIRTY_DIFFUSE | igl::opengl::MeshGL::DIRTY_SPECULAR;
         if(simulate){
@@ -131,12 +131,14 @@ bool pre_draw(igl::opengl::glfw::Viewer& viewer){
                 p = iterationCount/1000.;
             }//else we rest at 1 the final of the interpolated shapes
 
-//            if(counter%numSimBeforeShrink == 0 && shrinked_counter>89){// every 10th iteration we update the rest shape
-//                shrinked_counter-=1;
-//                string garment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/leggins_shrinked_pattern0."+
-//                                                   to_string(shrinked_counter)+"0000.obj";
-//                igl::readOBJ(garment_pattern_file_name, Vg_pattern, Fg_pattern);
-//                Vg_pattern_orig= Vg_pattern;
+//            if(counter % numSimBeforeShrink == 5 ){// every 10th iteration we update the rest shape, && shrinked_counter>89
+////                shrinked_counter-=1;
+////                string garment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/leggins_shrinked_pattern0."+
+////                                                   to_string(shrinked_counter)+"0000.obj";
+////                igl::readOBJ(garment_pattern_file_name, Vg_pattern, Fg_pattern);
+////                Vg_pattern_orig= Vg_pattern;
+//                gar_adapt->performJacobianUpdateAndMerge(Vg, localGlobalIterations, baryCoords1, baryCoords2, Vg_pattern);
+//                cout<<"after adaption"<<endl;
 //                preComputeConstraintsForRestshape();
 //                preComputeStretch();
 //                computeStress(viewer);// here the colour is set anew in colU
@@ -232,61 +234,22 @@ int main(int argc, char *argv[])
     setCollisionMesh();
     cout<<" collision mesh finished "<<endl;
 
-    /*-----------------------*/
-    /* Garment adaption update */
 
-// compute target jacobian
+
+    // compute target jacobian
     gar_adapt = new garment_adaption(Vg, Fg,  Vg_pattern, Fg_pattern); //none have been altered at this stage
     gar_adapt->computeJacobian();
 
-    /* end garment adaption update */
-    /*-----------------------------*/
+
     // read constrained vertex ids and compute them as barycentric coordinates of the nearest face
-    //constrainedVertexIds
-    // contains the id of the closest face already, just compute it as baryrcentric coordinate and save it from being overriden closestFaceId;
+    computeBoundaryVertices();
 
-    constrainedVertexIds = VectorXi::Zero(Vg.rows()); // a one indicates that it is constrained
-    vector<vector<int> > vvAdj, vfAdj;
-    igl::adjacency_list(Fg,vvAdj);
-    createVertexFaceAdjacencyList(Fg, vfAdj);
-    int boundarycount = 0;
-    VectorXd S;
-    igl::signed_distance_pseudonormal(Vg, Vm_incr, Fm, col_tree, FN_m, VN_m, EN_m, EMAP_m, S, closestFaceId, C, N);
-
-// AHA BECAUSE THE VERTEX IS NOT ON THE PLANE. HOW DO WE FIX THAT? -- project to plane
-    for(int i=0; i<Vg.rows(); i++){
-        if(isBoundaryVertex(Vg, i, vvAdj, vfAdj)){
-            constrainedVertexIds (i)= 1;
-            boundarycount++;
-            int closestFace = closestFaceId(i);
-            Vector3d a = Vm.row(Fm(closestFace, 0));
-            Vector3d b = Vm.row(Fm(closestFace, 1));
-            Vector3d c = Vm.row(Fm(closestFace, 2));
-
-            Vector3d bary = (a+b+c)/3;
-            Vector3d vvec = Vg.row(i).transpose() - bary;
-            Vector3d normalVec = (b-a).cross(c-a);
-            normalVec = normalVec.normalized();
-            auto dist = vvec.dot(normalVec);
-
-
-            Vector3d currVert = Vg.row(i).transpose()- dist*normalVec;
-
-            Vector3d currInBary;
-            MathFunctions mathFun;
-            mathFun.Barycentric3D(currVert, a, b, c, currInBary);
-
-            constrainedVertexBarycentricCoords.emplace_back(std::make_pair(currInBary, closestFace));
-        }
-    }
-    cout<<"n num bound edges "<<boundarycount<<endl;
-//
-//    string garment_pattern_file_nameSh = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/leggins_shrinked_pattern0.900000.obj";
-//    igl::readOBJ(garment_pattern_file_nameSh, Vg_pattern, Fg_pattern);
-//    Vg_pattern_orig= Vg_pattern;
-//    preComputeConstraintsForRestshape();
-//    preComputeStretch();
-//    computeStress(viewer);
+    string garment_pattern_file_nameSh = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/leggins_shrinked_pattern0.900000.obj";
+    igl::readOBJ(garment_pattern_file_nameSh, Vg_pattern, Fg_pattern);
+    Vg_pattern_orig= Vg_pattern;
+    preComputeConstraintsForRestshape();
+    preComputeStretch();
+    computeStress(viewer);
 
     viewer.core().animation_max_fps = 200.;
     viewer.core().is_animating = false;
@@ -319,9 +282,9 @@ int main(int argc, char *argv[])
             if(ImGui::Button("Compute pattern", ImVec2(-1, 0))){
                 simulate = false;
                 // we start computing the pattern for the current shape
-                Eigen::MatrixXd computed_Vg_pattern= Vg;
+                Eigen::MatrixXd computed_Vg_pattern;//= Vg;
                 cout<<"start computing the pattern with "<<localGlobalIterations<<" local global iterations"<<endl;
-                gar_adapt->performJacobianUpdateAndMerge(computed_Vg_pattern, localGlobalIterations, baryCoords1, baryCoords2);
+                gar_adapt->performJacobianUpdateAndMerge(Vg, localGlobalIterations, baryCoords1, baryCoords2, computed_Vg_pattern);
                 igl::writeOBJ("patternComputed.obj", computed_Vg_pattern, Fg_pattern);
                 cout<<"pattern written to *patternComputed*"<<endl;
             }
@@ -336,6 +299,7 @@ int main(int argc, char *argv[])
             ImGui::InputDouble("Step size", &(timestep),  0, 0, "%0.4f");
             ImGui::InputDouble("U Stretch Stiffness ", &(stretchStiffnessU),  0, 0, "%0.4f");
             ImGui::InputDouble("V Stretch Stiffness", &(stretchStiffnessV),  0, 0, "%0.4f");
+            ImGui::InputDouble(" Boundary Stiffness", &(boundaryStiffness), 0, 0, "%0.4f");
             ImGui::InputDouble("Collision Stiffness", &(collisionStiffness),  0, 0, "%0.4f");
             ImGui::InputDouble("Bending Stiffness", &(bendingStiffness),  0, 0, "%0.4f");
             ImGui::InputDouble("Rigidity Stiffness", &(rigidStiffness),  0, 0, "%0.6f");
@@ -396,7 +360,42 @@ int main(int argc, char *argv[])
 
     viewer.launch();
 }
+void computeBoundaryVertices(){
+    constrainedVertexIds.clear(); // = VectorXi::Zero(Vg.rows()); // a one indicates that it is constrained
+    vector<vector<int> > vvAdj, vfAdj;
+    igl::adjacency_list(Fg,vvAdj);
+    createVertexFaceAdjacencyList(Fg, vfAdj);
+    int boundarycount = 0;
+    VectorXd S;
+    igl::signed_distance_pseudonormal(Vg, Vm_incr, Fm, col_tree, FN_m, VN_m, EN_m, EMAP_m, S, closestFaceId, C, N);
 
+    // TODO Barycentric coordinates of garment vertex on avatar, project to closest face for bary coordinates , for lose garments we need a different approach!!
+    for(int i=0; i<Vg.rows(); i++){
+        if(isBoundaryVertex(Vg, i, vvAdj, vfAdj)){
+            constrainedVertexIds.emplace_back(i); // (i)= 1;
+            boundarycount++;
+            int closestFace = closestFaceId(i);
+            Vector3d a = Vm.row(Fm(closestFace, 0));
+            Vector3d b = Vm.row(Fm(closestFace, 1));
+            Vector3d c = Vm.row(Fm(closestFace, 2));
+
+            Vector3d bary = (a+b+c)/3;
+            Vector3d vvec = Vg.row(i).transpose() - bary;
+            Vector3d normalVec = (b-a).cross(c-a);
+            normalVec = normalVec.normalized();
+            auto dist = vvec.dot(normalVec);
+
+            Vector3d currVert = Vg.row(i).transpose()- dist*normalVec;
+
+            Vector3d currInBary;
+            MathFunctions mathFun;
+            mathFun.Barycentric3D(currVert, a, b, c, currInBary);
+
+            constrainedVertexBarycentricCoords.emplace_back(std::make_pair(currInBary, closestFace));
+        }
+    }
+    cout<<"n num bound edges "<<boundarycount<<endl;
+}
 void setNewGarmentMesh(igl::opengl::glfw::Viewer& viewer) {
     if (Vg.rows() == 0 || Fg.rows() == 0) {
         fprintf(stderr, "IOError: Could not load garment...\n");
@@ -551,7 +550,7 @@ bool callback_key_down(igl::opengl::glfw::Viewer& viewer, unsigned char key, int
         // we start computing the pattern for the current shape
         Eigen::MatrixXd computed_Vg_pattern= Vg;
         cout<<"start computing the pattern with "<<localGlobalIterations<<" local global iterations"<<endl;
-        gar_adapt->performJacobianUpdateAndMerge(computed_Vg_pattern, localGlobalIterations, baryCoords1, baryCoords2);
+        gar_adapt->performJacobianUpdateAndMerge(Vg, localGlobalIterations, baryCoords1, baryCoords2, computed_Vg_pattern);
 
         igl::writeOBJ("patternComputed.obj", computed_Vg_pattern, Fg_pattern);
         igl::writeOBJ("patternComputed3D.obj", Vg, Fg);
@@ -672,10 +671,14 @@ void solveBendingConstraint(){
         PBD.solve_IsometricBendingConstraint(p.row(id0), w[id0], p.row(id1), w[id1], p.row(id2), w[id2],
                                              p.row(id3), w[id3], Q(j),
                                              bendingStiffness, deltap0, deltap1, deltap2, deltap3);
-        if(!constrainedVertexIds(id0)) p.row(id0) += deltap0;
-        if(!constrainedVertexIds(id1)) p.row(id1) += deltap1;
-        if(!constrainedVertexIds(id2)) p.row(id2) += deltap2;
-        if(!constrainedVertexIds(id3)) p.row(id3) += deltap3;
+//        if(!constrainedVertexIds(id0))
+            p.row(id0) += deltap0;
+//        if(!constrainedVertexIds(id1))
+            p.row(id1) += deltap1;
+//        if(!constrainedVertexIds(id2))
+            p.row(id2) += deltap2;
+//        if(!constrainedVertexIds(id3))
+            p.row(id3) += deltap3;
     }
 }
 
@@ -767,9 +770,12 @@ void solveStretchUV(){
             tarU0, tarU1, tarU2, stretchStiffnessU,deltap0,  deltap1, deltap2);
 
             // only update if a vertex is not constrained!
-            if(!constrainedVertexIds(Fg_orig(j, 2))) p.row(Fg_orig(j, 2)) += deltap2;
-            if(!constrainedVertexIds(Fg_orig(j, 1))) p.row(Fg_orig(j, 1)) += deltap1;
-            if(!constrainedVertexIds(Fg_orig(j, 0))) p.row(Fg_orig(j, 0)) += deltap0;
+//            if(!constrainedVertexIds(Fg_orig(j, 2)))
+                p.row(Fg_orig(j, 2)) += deltap2;
+//            if(!constrainedVertexIds(Fg_orig(j, 1)))
+                p.row(Fg_orig(j, 1)) += deltap1;
+//            if(!constrainedVertexIds(Fg_orig(j, 0)))
+                p.row(Fg_orig(j, 0)) += deltap0;
         }
         if(abs(normV(j)-1) > stretchEPS ){
 
@@ -777,9 +783,12 @@ void solveStretchUV(){
                                 tarV0, tarV1, tarV2,
                                stretchStiffnessV, deltap0, deltap1, deltap2);
 
-            if(!constrainedVertexIds(Fg_orig(j, 2))) p.row(Fg_orig(j, 2)) += deltap2;
-            if(!constrainedVertexIds(Fg_orig(j, 2))) p.row(Fg_orig(j, 1)) += deltap1;
-            if(!constrainedVertexIds(Fg_orig(j, 2))) p.row(Fg_orig(j, 0)) += deltap0;
+//            if(!constrainedVertexIds(Fg_orig(j, 2)))
+                p.row(Fg_orig(j, 2)) += deltap2;
+//            if(!constrainedVertexIds(Fg_orig(j, 2)))
+                p.row(Fg_orig(j, 1)) += deltap1;
+//            if(!constrainedVertexIds(Fg_orig(j, 2)))
+                p.row(Fg_orig(j, 0)) += deltap0;
         }
     }
 }
@@ -968,12 +977,28 @@ void solveRigidEnergy(){
                              p.row(Fg(j, 0)), p.row(Fg(j, 1)), p.row(Fg(j, 2)), delta0, delta1, delta2
                              );
 
-        if(!constrainedVertexIds(Fg_orig(j, 0))) p.row(Fg(j, 0)) += delta0;
-        if(!constrainedVertexIds(Fg_orig(j, 1))) p.row(Fg(j, 1)) += delta1;
-        if(!constrainedVertexIds(Fg_orig(j, 2))) p.row(Fg(j, 2)) += delta2;
+//        if(!constrainedVertexIds(Fg_orig(j, 0)))
+            p.row(Fg(j, 0)) += delta0;
+//        if(!constrainedVertexIds(Fg_orig(j, 1)))
+            p.row(Fg(j, 1)) += delta1;
+//        if(!constrainedVertexIds(Fg_orig(j, 2)))
+            p.row(Fg(j, 2)) += delta2;
     }
 }
+void solveConstrainedVertices(){
+    for(int i=0; i<constrainedVertexIds.size(); i++){
 
+            int closestFace = get<1> (constrainedVertexBarycentricCoords[i]);
+            Vector3d baryCoeff = get<0>(constrainedVertexBarycentricCoords[i]);
+            Vector3d newSuggestedPos = baryCoeff(0)* Vm_incr.row(Fm(closestFace, 0));
+            newSuggestedPos += baryCoeff(1)*Vm_incr.row(Fm(closestFace, 1));
+            newSuggestedPos += baryCoeff(2)*Vm_incr.row(Fm(closestFace, 2));
+            Vector3d dir = newSuggestedPos - p.row(constrainedVertexIds[i]).transpose();
+
+            p.row(constrainedVertexIds[i])+= boundaryStiffness * dir;
+
+    }
+}
 void dotimeStep(igl::opengl::glfw::Viewer& viewer){
     Timer t("Time step ");
     std::cout<<endl;
@@ -986,46 +1011,26 @@ void dotimeStep(igl::opengl::glfw::Viewer& viewer){
     vel.col(1) += timestep * w*(-1)*grav*gravityfact;
 
     // (7)
-    int constrainedCounter = 0;
+
     for (int i = 0; i<numVert; i++){
-
         p.row(i) = x_new.row(i).array()+ timestep*vel.row(i).array();
-
-        // if constrained we do not take into account anything but the new position is the barycentric coord of the mannequin mesh
-        if(constrainedVertexIds(i)){
-            int closestFace = get<1> (constrainedVertexBarycentricCoords[constrainedCounter]);
-            Vector3d baryCoeff = get<0>(constrainedVertexBarycentricCoords[constrainedCounter]);
-
-            p.row(i) = baryCoeff(0)* Vm_incr.row(Fm(closestFace, 0));
-            p.row(i) += baryCoeff(1)*Vm_incr.row(Fm(closestFace, 1));
-            p.row(i) += baryCoeff(2)*Vm_incr.row(Fm(closestFace, 2));
-            constrainedCounter++;
-        }
     }
-    cout<<" set all new pos"<<endl;
 
     // detect collisions and solve for them in the loop
     setupCollisionConstraints();
-//    t.printTime(" collision constraint ");
 
     computeRigidMeasure();
-//    t.printTime(" rigid measure");
     initProcrustesPatternTo3D(Vg_pattern, Fg_pattern, Fg_orig, p, procrustesPatternIn3D); // might be an imprecise but fast option to remove this from the loop
-//    t.printTime(" pattern dimensions ");
 
     init_stretchUV();
 
     //(9)-(11), the loop should be repeated several times per timestep (according to Jan Bender)
-   // num_const_iterations= 1;
     for(int i = 0; i < num_const_iterations; i++){
             solveBendingConstraint();
-//        t.printTime("computed bending");
             //solveStretchConstraint();
             solveStretchUV();
-//        t.printTime("computed stretch");
             solveRigidEnergy();
-//        t.printTime(" rigid energy ");
-
+            solveConstrainedVertices();
             /* we precomputed the normal and collision point of each vertex, now add the constraint (instead of checking collision in each iteration
              this is imprecise but much faster and acc to paper works fine in practice*/
             solveCollisionConstraint();
@@ -1033,24 +1038,24 @@ void dotimeStep(igl::opengl::glfw::Viewer& viewer){
     }
 
         // (13) velocity and position update
-        for(int i=0; i<numVert; i++){
-            for(int j=0; j<3; j++){
-                vel(i,j) = (p(i,j) - x_new(i,j)) / timestep;
-            }
-            x_new.row(i) = p.row(i);
-        }
+    for(int i=0; i<numVert; i++){
+         for(int j=0; j<3; j++){
+            vel(i,j) = (p(i,j) - x_new(i,j)) / timestep;
+         }
+         x_new.row(i) = p.row(i);
+    }
 
-        double collision_damping = 0.5;
-        for(int i=0; i<numVert; i++){
-            if(collisionVert(i)){
+    double collision_damping = 0.5;
+    for(int i=0; i<numVert; i++){
+       if(collisionVert(i)){
 
-                Vector3d vel_i = vel.row(i);
-                Vector3d normal = N.row(i).normalized();
-                Vector3d n_vel = normal.dot(vel_i) * normal;
-                Vector3d t_vel = vel_i-n_vel;
-                vel.row(i) = (t_vel - collision_damping * n_vel);
-            }
-        }
+           Vector3d vel_i = vel.row(i);
+           Vector3d normal = N.row(i).normalized();
+           Vector3d n_vel = normal.dot(vel_i) * normal;
+           Vector3d t_vel = vel_i-n_vel;
+           vel.row(i) = (t_vel - collision_damping * n_vel);
+       }
+    }
 
 
     //(14)
