@@ -207,9 +207,9 @@ bool PositionBasedDynamics::solve_UVStretch(
     Vector3r dir2 = tarUV2 - targetPositions.col(2) ;
 //TODO WEIGHTING
 
-    corr0 = stiffness * dir0.normalized(); //* abs(su-1) // or normalize dir and multiply by su
-    corr1 = stiffness * dir1.normalized() ;
-    corr2 = stiffness * dir2.normalized();
+    corr0 = stiffness * dir0;//.normalized(); //* abs(su-1) // or normalize dir and multiply by su
+    corr1 = stiffness * dir1;//.normalized() ;
+    corr2 = stiffness * dir2;//.normalized();
     return true;
 }
 
@@ -238,13 +238,15 @@ bool PositionBasedDynamics::solve_RigidEnergy(const double& rigidEnergy, const d
 
 // ----------------------------------------------------------------------------------------------
 bool PositionBasedDynamics::solve_CollisionConstraint(
-        const Vector3r &p0, Real invMass0,
+        const Vector3r &p0,
         const Vector3r &q1,
         const Vector3r &qn,
         Vector3r &corr0, double coll_EPS,const Vector3r & vel1
 ){
     Vector3r qn_n= qn.normalized();// that normalization does not make a difference
-    Real c_p = (p0-q1).dot(qn_n);
+    Vector3r newq1 = q1 + coll_EPS*qn_n;
+    Real c_p = (p0-newq1).dot(qn_n);
+//    Real c_p = (p0-q1).dot(qn_n);
 //    Real c_p = (p0-q1).normalized().dot(qn_n);
 
 //&&  vel1.dot(qn)<0  makes it worse or at least no better

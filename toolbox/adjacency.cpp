@@ -376,6 +376,48 @@ bool isBoundaryVertex(
     return false;
 }
 
+//bool isCornerVertex( const MatrixXd& V,
+//                     int v,
+//                     const vector< vector<int> >& vvAdj,
+//                     const vector< vector<int> >& vfAdj
+//                     ){
+//    int count=0;
+//    VectorXd firstEdge, secondEdge;
+//    for (int i = 0; i < vvAdj[v].size(); i++) {
+//        pair<int, int> faces;
+//        //could remember v and vvAdj to measure the angle with the other -1 face
+//        adjacentFacesToEdge(v, vvAdj[v][i], vfAdj, faces);
+//        if (faces.first == -1 || faces.second == -1){
+//            count++;
+//            if(count>2){
+//                cout<<"we have a problem, more than two -1 edges "<<endl;return false;
+//            }
+//            if(count==1){
+//                firstEdge = V.row(vvAdj[v][i])- V.row(v);
+//                firstEdge = firstEdge.normalized();
+//            }else{
+//                secondEdge = V.row(vvAdj[v][i])- V.row(v);
+//                secondEdge = secondEdge.normalized();
+//                double newAngle = acos((secondEdge).dot(firstEdge));
+//
+//            }
+//        }
+//            return true;
+//    }
+//
+//
+//    /*
+
+//            auto crossVec = alignFrom.cross(alignTo); // or other way round?
+//            if(oldNormalVec.dot(crossVec)<0){
+//                newAngle = -newAngle;
+//            }
+//
+//            double newdegree = newAngle*180/M_PI;*/
+//
+//    return false;
+//}
+
 int edgeBetweenVertices(
         int v1,
         int v2,

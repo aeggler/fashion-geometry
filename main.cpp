@@ -66,7 +66,7 @@ double collisionStiffness = 1.;
 double boundaryStiffness = 0.9;
 Real bendingStiffness = 0.003;// smaller for better folds , bigger for smoother results
 double rigidStiffness = 0.001;
-double coll_EPS= 0.000; // like in Clo, 3 mm ? but for some reason this does not work well with the constraint function
+double coll_EPS= 4.500; // like in Clo, 3 mm ? but for some reason this does not work well with the constraint function
 int num_const_iterations = 5;
 double blowFact= 0.000;// like in Clo, 3 mm ? behaves better
 double gravityfact =1.;
@@ -189,15 +189,15 @@ int main(int argc, char *argv[])
     //string garment_file_name = igl::file_dialog_open();
     //for ease of use, for now let it be fixed
 
-    string garment_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/leggins_3d/leggins_3d.obj"; //
-//    string garment_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/patternComputed3D.obj";
+    string garment_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/leggins_3d/leggins_3d_merged.obj"; //
+//    string garment_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/converged_pattern_3D.obj";
     //string garment_file_name = "/Users/annaeggler/Desktop/aShapeDressBetter";
     igl::readOBJ(garment_file_name, Vg, Fg);
     igl::readOBJ(garment_file_name, Vg_orig, Fg_orig);
     cout<<"loaded garment"<<endl;
 
     string garment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/leggins_2d/leggins_2d.obj"; //
-//    string garment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/patternComputed.obj";
+//    string garment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/converged_patterrn.obj";
 
     igl::readOBJ(garment_pattern_file_name, Vg_pattern, Fg_pattern);
     Vg_pattern_orig= Vg_pattern;
@@ -288,6 +288,25 @@ int main(int argc, char *argv[])
                 igl::writeOBJ("patternComputed.obj", computed_Vg_pattern, Fg_pattern);
                 cout<<"pattern written to *patternComputed*"<<endl;
             }
+            if(ImGui::Button("Visualize stress of new pattern", ImVec2(-1, 0))){
+                simulate = false;
+                // we start computing the pattern for the current shape
+                Eigen::MatrixXd computed_Vg_pattern;//= Vg;
+                cout<<"start computing the pattern with "<<localGlobalIterations<<" local global iterations"<<endl;
+                gar_adapt->performJacobianUpdateAndMerge(Vg, localGlobalIterations, baryCoords1, baryCoords2, computed_Vg_pattern);
+                igl::writeOBJ("patternComputed.obj", computed_Vg_pattern, Fg_pattern);
+                cout<<"pattern written to *patternComputed*"<<endl;
+
+                Vg_pattern_orig = computed_Vg_pattern;
+                Vg_pattern = computed_Vg_pattern;
+
+                preComputeConstraintsForRestshape();
+                preComputeStretch();
+                computeStress(viewer);
+
+
+
+            }
         }
         if (ImGui::CollapsingHeader("Simulation", ImGuiTreeNodeFlags_DefaultOpen)) {
 
@@ -306,7 +325,7 @@ int main(int argc, char *argv[])
             ImGui::InputDouble("Gravity factor", &(gravityfact),  0, 0, "%0.6f");
 
             // figure out how that really works!!does not really do much
-            ImGui::InputDouble("Collision thereshold", &(coll_EPS),  0, 0, "%0.6f");
+            ImGui::InputDouble("Collision thereshold", &(coll_EPS),  0, 0, "%0.2f");
             ImGui::InputInt("Number of constraint Iterations thereshold", &(num_const_iterations),  0, 0);
             ImGui::InputDouble("Mannequin blowup ", &(blowFact),  0, 0, "%0.4f");
 
@@ -653,11 +672,14 @@ void setupCollisionConstraints(){
     collisionVert = Eigen::MatrixXi::Zero(numVert, 1);
 
     igl::signed_distance_pseudonormal(p, Vm_incr, Fm, col_tree, FN_m, VN_m, EN_m, EMAP_m, S, closestFaceId, C, N);
+    int collCount=0;
     for(int i=0; i<numVert; i++){
         if(S(i)<coll_EPS){
+            collCount++;
             collisionVert(i)=1;
         }
     }
+    cout<<collCount<<" collisions counted with"<<coll_EPS<<endl;
 }
 void solveBendingConstraint(){
     // for each pair of adjacent triangles, precomputed from restshape (2D pattern TODO)
@@ -797,7 +819,7 @@ void solveCollisionConstraint(){
         if(collisionVert(j)){
             Vector3r deltap0;
             // maybe I should compute the intersection instead of using the closest point C?
-            PBD.solve_CollisionConstraint(p.row(j), w(j), C.row(j), N.row(j), deltap0, coll_EPS, vel.row(j));
+            PBD.solve_CollisionConstraint(p.row(j),  C.row(j), N.row(j), deltap0, coll_EPS, vel.row(j));
             p.row(j) += collisionStiffness * deltap0;
 
         }
@@ -887,7 +909,7 @@ void computeStress(igl::opengl::glfw::Viewer& viewer){
 
         perFaceU.row(j) = p1*u2(j,1) - p2*u1(j,1);
         perFaceV.row(j) = p2 * u1(j, 0) - p1* u2(j, 0);
-        double differenceIncrementFactor = 3.0;
+        double differenceIncrementFactor = 1.0;
 
         // deviation from 1 as the measure,
         /* large u stretch: norm > 1, thus y>0 , thus very red,little green => red
@@ -898,9 +920,6 @@ void computeStress(igl::opengl::glfw::Viewer& viewer){
         Gv= baryCoords2(j, 0)*Vg.row(id0) + baryCoords2(j, 1)*Vg.row(id1) + baryCoords2(j, 2)*Vg.row(id2);
         G = (1./3)*Vg.row(id0) +(1./3)*Vg.row(id1) + (1./3)*Vg.row(id2);
 
-
-//            cout<<Gu<<" gu"<<endl<<endl<<G<<" G" <<endl<<endl;
-//            cout<<G-Gv<<endl;
 
         normU(j)= (Gu-G).norm();
         // TODO THEY ARE NOT THE SAME, THE NORM IS NOT THE SAME
@@ -993,7 +1012,15 @@ void solveConstrainedVertices(){
             Vector3d newSuggestedPos = baryCoeff(0)* Vm_incr.row(Fm(closestFace, 0));
             newSuggestedPos += baryCoeff(1)*Vm_incr.row(Fm(closestFace, 1));
             newSuggestedPos += baryCoeff(2)*Vm_incr.row(Fm(closestFace, 2));
-            Vector3d dir = newSuggestedPos - p.row(constrainedVertexIds[i]).transpose();
+
+            // accout for offset from body!otherwise it alternates between this and collision force .  works smoothly so far,
+            Vector3d e1 = Vm_incr.row(Fm(closestFace, 1)) - Vm_incr.row(Fm(closestFace, 0));
+            Vector3d e2 = Vm_incr.row(Fm(closestFace, 2)) - Vm_incr.row(Fm(closestFace, 0));
+            Vector3d normal = e1.cross(e2);
+            normal = normal.normalized();
+            newSuggestedPos += coll_EPS * normal;
+
+        Vector3d dir = newSuggestedPos - p.row(constrainedVertexIds[i]).transpose();
 
             p.row(constrainedVertexIds[i])+= boundaryStiffness * dir;
 
@@ -1027,9 +1054,9 @@ void dotimeStep(igl::opengl::glfw::Viewer& viewer){
     //(9)-(11), the loop should be repeated several times per timestep (according to Jan Bender)
     for(int i = 0; i < num_const_iterations; i++){
             solveBendingConstraint();
-            //solveStretchConstraint();
+            solveStretchConstraint();
             solveStretchUV();
-            solveRigidEnergy();
+//            solveRigidEnergy();
             solveConstrainedVertices();
             /* we precomputed the normal and collision point of each vertex, now add the constraint (instead of checking collision in each iteration
              this is imprecise but much faster and acc to paper works fine in practice*/
