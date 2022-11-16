@@ -92,6 +92,7 @@ VectorXi closestFaceId;
 int iterationCount = 0;
 std::vector<std::pair<Eigen::Vector3d, int>> constrainedVertexBarycentricCoords;
 Eigen::MatrixXd baryCoords1, baryCoords2;
+Eigen::MatrixXd baryCoordsd1, baryCoordsd2;
 
 
 void setNewGarmentMesh(igl::opengl::glfw::Viewer& viewer);
@@ -120,6 +121,8 @@ void solveStretchUV();
 //test
 Eigen::SparseMatrix<double> L;
 int shrinked_counter = 100;
+VectorXd normD1, normD2;
+MatrixXd perFaceD2, perFaceD1;
 
 
 bool pre_draw(igl::opengl::glfw::Viewer& viewer){
@@ -765,6 +768,42 @@ void init_stretchUV(){
 
     }
 }
+Eigen::MatrixXd tarD1, tarD2;
+//void init_stretchDiag(){
+//    tarU.resize(3*numFace, 3);
+//    tarV.resize(3*numFace, 3);
+//    for(int j = 0; j<numFace; j++){
+//        Eigen::MatrixXd patternCoords(2, 3);
+//        patternCoords(0,0) = Vg_pattern( Fg_pattern(j, 0), 0);
+//        patternCoords(1,0) = Vg_pattern( Fg_pattern(j, 0), 1);
+//        patternCoords( 0,1) = Vg_pattern( Fg_pattern(j, 1), 0);
+//        patternCoords(1,1) = Vg_pattern( Fg_pattern(j, 1), 1);
+//        patternCoords( 0,2) = Vg_pattern( Fg_pattern(j, 2), 0);
+//        patternCoords(1,2) = Vg_pattern( Fg_pattern(j, 2), 1);
+//
+//        Eigen::MatrixXd targetPositions(3, 3);
+//        targetPositions.col(0)= p.row(Fg_orig(j, 0));
+//        targetPositions.col(1)= p.row(Fg_orig(j, 1));
+//        targetPositions.col(2)= p.row(Fg_orig(j, 2));
+//
+//        Vector3r taru0 , taru1, taru2;
+//        double stretchStiffnessD = stretchStiffnessU; // for now, later adapt TODO
+//
+//        PBD.init_Diag_Stretch(normD1(j), perFaceD1.row(j), perFaceD2.row(j), patternCoords, targetPositions,
+//                           stretchStiffnessD, taru0, taru1, taru2, 1);
+//        tarD1.row(3*j)= taru0.transpose();
+//        tarD1.row(3*j+1) = taru1.transpose();
+//        tarD1.row(3*j+2 )= taru2.transpose();
+//
+//        Vector3r tarv0, tarv1, tarv2 ;
+//        PBD.init_Diag_Stretch( normD2(j),perFaceD1.row(j),perFaceD2.row(j), patternCoords, targetPositions,
+//                            stretchStiffnessD,tarv0, tarv1, tarv2, 2);
+//        tarD2.row(3*j)= tarv0.transpose();
+//        tarD2.row(3*j+1) = tarv1.transpose();
+//        tarD2.row(3*j+2 )= tarv2.transpose();
+//
+//    }
+//}
 void solveStretchUV(){
     double stretchEPS= 0.00001;
     cout<<normU.sum()<<" sum of the norm u, and v norm  "<<normV.sum()<<endl;
@@ -836,6 +875,9 @@ void preComputeStretch(){
     baryCoords1.resize(numFace, 3); // for Gu and Gv
     baryCoords2.resize(numFace, 3); // for Gu and Gv
 
+    baryCoordsd1.resize(numFace, 3); //diags
+    baryCoordsd2.resize(numFace, 3);
+
     u1.resize(numFace, 2);
     u2.resize(numFace, 2);
     for(int j=0; j<numFace; j++){
@@ -843,7 +885,11 @@ void preComputeStretch(){
         int id1 = Fg_pattern(j, 1);
         int id2 = Fg_pattern(j, 2);
 
-        Vector2d u0, u0new, u1h, u1hnew, u2hnew, u2h;
+        Vector2d  gU, gV,centralG;
+        Vector2d  gD1, gD2; // both diagonals for arap
+
+        /*
+         * Vector2d u0, u1h, u2h;
         u0(0) = Vg_pattern(id0, 0);
         u0(1) = Vg_pattern(id0, 1);
 
@@ -859,31 +905,54 @@ void preComputeStretch(){
         u1.row(j)= u1h/det;
         u2.row(j)= u2h/det;
 
-// new part
-        u0new(0) = (Vg_pattern(id0, 0)+ Vg_pattern(id1, 0) + Vg_pattern(id2, 0))/3.;
-        u0new(1) = (Vg_pattern(id0, 1) + Vg_pattern(id1, 1) + Vg_pattern(id2, 1))/3.;
-        u1hnew = u0new;
-        u2hnew = u0new;
+         * */
 
-        u1hnew(0) += 1;
-        u2hnew (1) += 1;
-//        u1h== Gu
-//        u2h == Gv
+        // new part
+        centralG(0) = (Vg_pattern(id0, 0) + Vg_pattern(id1, 0) + Vg_pattern(id2, 0)) / 3.;
+        centralG(1) = (Vg_pattern(id0, 1) + Vg_pattern(id1, 1) + Vg_pattern(id2, 1)) / 3.;
+        gU = centralG;
+        gV = centralG;
+
+        gD1 = centralG;
+        gD2 = centralG;
+
+        gU(0) += 1;
+        gV (1) += 1;
+
+        gD1 (0) += 1; gD1(1) += 1;
+        gD2(0) -= 1; gD2 (1) += 1;
+
+//        double det = gU( 0) * gV(1) - (gV(0)*gU(1));// 90 deg, should be 0 - no they are not vectors but pints
+        u1(j,0)= 1; u1(j, 1)= 0;//gU/det;
+        u2(j, 0)= 0; u2(j, 1) = 1; //gV/det;
+
+        gD1 -= centralG; gD1 = gD1.normalized(); gD1 += centralG;
+        gD2 -= centralG; gD2 = gD2.normalized(); gD2 += centralG;
+
+
         MathFunctions mathFun;
-        Vector2d p0h, p1h, p2h;
-        p0h(0) = Vg_pattern(id0, 0);
-        p0h(1) = Vg_pattern(id0, 1);
+        Vector2d p0, p1, p2;
+        p0(0) = Vg_pattern(id0, 0);
+        p0(1) = Vg_pattern(id0, 1);
 
-        p1h( 0) = Vg_pattern(id1, 0);
-        p1h(1) = Vg_pattern(id1, 1);
+        p1(0) = Vg_pattern(id1, 0);
+        p1(1) = Vg_pattern(id1, 1);
 
-        p2h( 0) = Vg_pattern(id2, 0);
-        p2h(1) = Vg_pattern(id2, 1);
+        p2(0) = Vg_pattern(id2, 0);
+        p2(1) = Vg_pattern(id2, 1);
         Vector3d u1InBary, u2InBary;
-        mathFun.Barycentric(u1hnew, p0h, p1h, p2h,u1InBary);
-        mathFun.Barycentric(u2hnew, p0h, p1h, p2h,u2InBary);
+        Vector3d d1InBary, d2InBary;
+
+        mathFun.Barycentric(gU, p0, p1, p2, u1InBary);
+        mathFun.Barycentric(gV, p0, p1, p2, u2InBary);
+
+        mathFun.Barycentric(gD1, p0, p1, p2, d1InBary);
+        mathFun.Barycentric(gD1, p0, p1, p2, d2InBary);
         baryCoords1.row(j) = u1InBary;
         baryCoords2.row(j) = u2InBary;
+
+        baryCoordsd1.row(j) = d1InBary;
+        baryCoordsd2.row(j) = d2InBary;
 
     }
 }
@@ -891,8 +960,14 @@ void computeStress(igl::opengl::glfw::Viewer& viewer){
 
      normU.resize (numFace);
      normV.resize (numFace);
+
+     normD1.resize(numFace);
+     normD2.resize(numFace);
      perFaceU.resize (numFace, 3);
      perFaceV.resize (numFace, 3);
+
+     perFaceD1.resize(numFace, 3);
+     perFaceD2.resize(numFace, 3);
 
 
     for(int j=0; j<numFace; j++){
@@ -907,8 +982,8 @@ void computeStress(igl::opengl::glfw::Viewer& viewer){
         p1 -= p0;
         p2 -= p0;
 
-        perFaceU.row(j) = p1*u2(j,1) - p2*u1(j,1);
-        perFaceV.row(j) = p2 * u1(j, 0) - p1* u2(j, 0);
+
+
         double differenceIncrementFactor = 1.0;
 
         // deviation from 1 as the measure,
@@ -920,10 +995,14 @@ void computeStress(igl::opengl::glfw::Viewer& viewer){
         Gv= baryCoords2(j, 0)*Vg.row(id0) + baryCoords2(j, 1)*Vg.row(id1) + baryCoords2(j, 2)*Vg.row(id2);
         G = (1./3)*Vg.row(id0) +(1./3)*Vg.row(id1) + (1./3)*Vg.row(id2);
 
+        perFaceU.row(j) = (Gu-G);//*u2(j,1) - (Gv-G)*u1(j,1);
+        perFaceV.row(j) = (Gv-G);// * u1(j, 0) - (Gu-G)* u2(j, 0);
 
         normU(j)= (Gu-G).norm();
         // TODO THEY ARE NOT THE SAME, THE NORM IS NOT THE SAME
-//        if (normU(j)== perFaceU.row(j).norm()) cout<<" same ";
+        if (normU(j)== perFaceU.row(j).norm()) {cout<<"";}else{
+            cout<<" not same"<<endl;
+        }
         //normU(j) = perFaceU.row(j).norm();
         double y = (normU(j)-1) * differenceIncrementFactor; // to increase differences
         colU.row(j) = Vector3d(1.0 + y, 1. - y, 0.0);
@@ -1050,6 +1129,7 @@ void dotimeStep(igl::opengl::glfw::Viewer& viewer){
     initProcrustesPatternTo3D(Vg_pattern, Fg_pattern, Fg_orig, p, procrustesPatternIn3D); // might be an imprecise but fast option to remove this from the loop
 
     init_stretchUV();
+//    init_stretchDiag();
 
     //(9)-(11), the loop should be repeated several times per timestep (according to Jan Bender)
     for(int i = 0; i < num_const_iterations; i++){
