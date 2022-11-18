@@ -49,13 +49,20 @@ public:
             const Real stiffness,
             Vector3r &corr0, Vector3r &corr1);
 
-    bool init_UVStretch(const Real su, const Vector3r& perFaceU,const Vector3r& perFaceV,
+    bool init_UVStretch(const  Vector3r& perFaceU,const Vector3r& perFaceV,
                                                const Eigen::MatrixXd& patternCoords, const Eigen::Matrix3d& targetPositions,
-                                               const Real stiffness,
-                        Vector3r &tarUV0, Vector3r &tarUV1, Vector3r &tarUV2, int uORv);
+                        Vector3r &tarUV0, Vector3r &tarUV1, Vector3r &tarUV2, int uORv, double DiagStiffness);
+    bool init_Diag_Stretch( const Vector3r& perFaceU,const Vector3r& perFaceV,
+                                                  const Eigen::MatrixXd& patternCoords, const Eigen::Matrix3d& targetPositions,
+                                                  Vector3r &tarUV0, Vector3r &tarUV1, Vector3r &tarUV2);
+
     // test approach for the new functions
-    static bool solve_UVStretch(
-            const Real su, const Eigen::Matrix3d& targetPositions,int uORv, const Vector3r &tarUV0, const Vector3r &tarUV1, const Vector3r &tarUV2,
+    static bool solve_Stretch(
+            const Eigen::Matrix3d& targetPositions, const Vector3r &tarUV0, const Vector3r &tarUV1, const Vector3r &tarUV2,
+            const Real stiffness,
+            Vector3r &corr0, Vector3r &corr1, Vector3r &corr2);
+    static bool solve_Diag_Stretch(
+            const Eigen::Matrix3d& targetPositions, const Vector3r &tarUV0, const Vector3r &tarUV1, const Vector3r &tarUV2,
             const Real stiffness,
             Vector3r &corr0, Vector3r &corr1, Vector3r &corr2);
 

@@ -257,6 +257,7 @@ void garment_adaption::performJacobianUpdateAndMerge(Eigen::MatrixXd & V_curr, i
                 Eigen::Vector3d curr = get<0>(perVertexPositions[i][j]);
                 int face = get<1>(perVertexPositions[i][j]);
                 double weight = dblA(face)/2;
+                weight = 1;
                 weightsum+= weight;
                 avg += (curr * weight) ;
             }

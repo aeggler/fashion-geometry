@@ -135,21 +135,68 @@ bool PositionBasedDynamics::solve_DistanceConstraint(
     return true;
 }
 // ----------------------------------------------------------------------------------------------
-bool PositionBasedDynamics::init_UVStretch(const Real su, const Vector3r& perFaceU,const Vector3r& perFaceV,
+bool PositionBasedDynamics::init_UVStretch( const Vector3r& perFaceU, const Vector3r& perFaceV,
                                            const Eigen::MatrixXd& patternCoords, const Eigen::Matrix3d& targetPositions,
-                                           const Real stiffness,
-                                           Vector3r &tarUV0, Vector3r &tarUV1, Vector3r &tarUV2, int uORv){
-    Vector3r un, vn;
-    if(uORv==1){// we want ro relax u stretch, hence go in direction where u is not stretched i.e it is normalized
-        un = perFaceU.normalized();
-        vn = perFaceV;//.normalized();
-    }else {
-        un = perFaceU;//.normalized();
-        vn = perFaceV.normalized();
-    }
+                                           Vector3r &tarUV0, Vector3r &tarUV1, Vector3r &tarUV2, int uORv, double DiagStiffness ){
+
 
     Eigen::MatrixXd Jnorm(3, 2);
-    Jnorm.col(0)= un; Jnorm.col(1)= vn;
+    Jnorm.col(0)= perFaceU; Jnorm.col(1)= perFaceV;
+    Eigen::MatrixXd Jn_n = Jnorm;
+    Vector3d Jn_0 =  Jnorm.col(0).normalized();
+    Vector3d Jn_1 = Jnorm.col(1).normalized();
+    if(uORv==1){// we want ro relax u stretch, hence go in direction where u is not stretched i.e it is normalized
+        Jnorm.col(0) = Jnorm.col(0).normalized();
+    }else {
+        Jnorm.col(1) = Jnorm.col(1).normalized();
+    }
+
+
+    // test rotation of jacobian vectors
+    double angle = acos((Jn_0).dot(Jn_1));
+    Vector3d crossVec = Jn_0.cross(Jn_1);
+    //TODO THIS IS A HEURISTIC AND DOES NOT WORK WITH NEGATIVE SIGNS
+//    if(oldNormalVec.dot(crossVec)<0){
+//        newAngle = -newAngle;
+//    }
+    double deg = angle*180/M_PI;
+   // cout<<deg<<" deg and after";
+
+    double delta = abs(90-deg)/2;
+
+    Eigen::Matrix4d newrotMat= Eigen::MatrixXd::Identity(4, 4);
+    MathFunctions::setUpRotationMatrix(DiagStiffness * delta, crossVec, newrotMat);
+    Matrix3d newnewRot = newrotMat.block(0,0,3,3);
+
+
+    Jnorm.col(0) = newnewRot.transpose() * Jnorm.col(0);
+    Jnorm.col(1) = newnewRot * Jnorm.col(1);
+//    Vector3d Jrot_0 =  newnewRot.transpose() * Jnorm.col(0);
+//    Vector3d Jrot_1 = newnewRot*Jnorm.col(1);
+
+
+    Eigen::Matrix3d jacobiStretchedPattern = Jnorm * patternCoords;
+
+    // compute rotation and translation of that matrix to best fit the original
+    Eigen::MatrixXd R_est;
+    Eigen::VectorXd T_est;
+    procrustes(jacobiStretchedPattern.transpose(), targetPositions.transpose(), R_est, T_est);
+
+    Eigen::Matrix3d rotTargetPos =   R_est* jacobiStretchedPattern ;
+    Eigen::Matrix3d refTargetPos = rotTargetPos.colwise() + T_est;
+
+    tarUV0 = refTargetPos.col(0);
+    tarUV1 = refTargetPos.col(1);
+    tarUV2 = refTargetPos.col(2);
+    return true;
+
+}
+bool PositionBasedDynamics::init_Diag_Stretch( const Vector3r& perFaceU,const Vector3r& perFaceV,
+                                           const Eigen::MatrixXd& patternCoords, const Eigen::Matrix3d& targetPositions,
+                                           Vector3r &tarUV0, Vector3r &tarUV1, Vector3r &tarUV2){
+
+    Eigen::MatrixXd Jnorm(3, 2);
+    Jnorm.col(0)= perFaceU.normalized(); Jnorm.col(1)= perFaceV.normalized();
 
     Eigen::Matrix3d jacobiStretchedPattern = Jnorm * patternCoords;
 
@@ -167,40 +214,11 @@ bool PositionBasedDynamics::init_UVStretch(const Real su, const Vector3r& perFac
     return true;
 
 }
-bool PositionBasedDynamics::solve_UVStretch(
-        const Real su, const Eigen::Matrix3d& targetPositions,int uORv, const Vector3r &tarUV0, const Vector3r &tarUV1, const Vector3r &tarUV2,
+bool PositionBasedDynamics::solve_Stretch(
+        const Eigen::Matrix3d& targetPositions, const Vector3r &tarUV0, const Vector3r &tarUV1, const Vector3r &tarUV2,
         const Real stiffness,
         Vector3r &corr0, Vector3r &corr1, Vector3r &corr2 )
 {
-//    Real wSum = invMass0 + invMass1;
-//    if (wSum == 0.0)
-//        return false;
-
-//    Vector3r un, vn;
-//    if(uORv==1){// we want ro relax u stretch, hence go in direction where u is not stretched i.e it is normalized
-//        un = perFaceU.normalized();
-//        vn = perFaceV;//.normalized();
-//    }else {
-//        un = perFaceU;//.normalized();
-//        vn = perFaceV.normalized();
-//    }
-//
-//
-//    Eigen::MatrixXd Jnorm(3, 2);
-//    Jnorm.col(0)= un; Jnorm.col(1)= vn;
-//
-//    Eigen::Matrix3d jacobiStretchedPattern = Jnorm * patternCoords;
-//
-//    // compute rotation and translation of that matrix to best fit the original
-//    Eigen::MatrixXd R_est;
-//    Eigen::VectorXd T_est;
-//    procrustes(jacobiStretchedPattern.transpose(), targetPositions.transpose(), R_est, T_est);
-//
-//    Eigen::Matrix3d rotTargetPos =   R_est* jacobiStretchedPattern ;
-//    Eigen::Matrix3d refTargetPos = rotTargetPos.colwise() + T_est;
-
-//    cout<<targetPositions<<" the target positions "<<endl; cout<<endl;
-//    cout<<refTargetPos<<" where we got them to, used as direction "<<endl;cout<<endl;
 
     Vector3r dir0 = tarUV0 - targetPositions.col(0) ;
     Vector3r dir1 = tarUV1 - targetPositions.col(1) ;
@@ -210,6 +228,22 @@ bool PositionBasedDynamics::solve_UVStretch(
     corr0 = stiffness * dir0;//.normalized(); //* abs(su-1) // or normalize dir and multiply by su
     corr1 = stiffness * dir1;//.normalized() ;
     corr2 = stiffness * dir2;//.normalized();
+    return true;
+}
+bool PositionBasedDynamics::solve_Diag_Stretch(
+       const Eigen::Matrix3d& targetPositions, const Vector3r &tarUV0, const Vector3r &tarUV1, const Vector3r &tarUV2,
+        const Real stiffness,
+        Vector3r &corr0, Vector3r &corr1, Vector3r &corr2 )
+{
+
+//    Vector3r dir0 = tarUV0 - targetPositions.col(0) ;
+//    Vector3r dir1 = tarUV1 - targetPositions.col(1) ;
+//    Vector3r dir2 = tarUV2 - targetPositions.col(2) ;
+////TODO WEIGHTING
+//
+//    corr0 = stiffness * dir0;//.normalized();
+//    corr1 = stiffness * dir1;//.normalized() ;
+//    corr2 = stiffness * dir2;//.normalized();
     return true;
 }
 
