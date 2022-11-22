@@ -37,6 +37,7 @@ void Barycentric(VectorXd& p, VectorXd a, VectorXd b, VectorXd c, VectorXd& bary
     baryP(2) = 1.0f - baryP(0) - baryP(1);
 }
 void garment_adaption::computeJacobian(){
+    perFaceTargetNorm.resize(numFace);
     for(int j = 0; j<numFace; j++){
         Eigen::MatrixXd jac2to3 (3, 2);
         Eigen::MatrixXd jacobian(3, 3);
@@ -88,12 +89,17 @@ void garment_adaption::computeJacobian(){
         jacobian.col(1) = jac2to3.col(1);
         jacobian.col(2) = normalVec;
 
-
-       // cout<<"ortho test "<< jacobian.col(0).dot(jacobian.col(2))<<" and other "<< jacobian.col(1).dot(jacobian.col(2))<<endl;
-
         jacobians[j] = jacobian;
 
         inv_jacobians[j] = jacobian.inverse();
+
+        //they should have stretch 1, hence add deviation from 1 to measure
+        perFaceTargetNorm(j) = (jacobian.col(0).norm()-1) * (jacobian.col(0).norm()-1);
+        perFaceTargetNorm(j) += (jacobian.col(1).norm()-1) * (jacobian.col(1).norm()-1);
+        // add some kind of angle measure
+        // they should be orthogonal, hence add dot squared as norm
+        double dot = jacobian.col(0).normalized().dot(jacobian.col(1).normalized());
+        perFaceTargetNorm(j) += (dot * dot);
 
     }
 }
@@ -230,6 +236,8 @@ void garment_adaption::performJacobianUpdateAndMerge(Eigen::MatrixXd & V_curr, i
 
     }
 
+
+    
     for (int numIt=0; numIt <iterations; numIt++) {
         std::vector<std::vector<std::pair<Eigen::Vector3d, int>>> perVertexPositions(V_pattern.rows());
         VectorXd dblA;

@@ -31,6 +31,7 @@ public:
     void setUpRotationMatrix(double angle,Vector3d& axis, Matrix4d& rotationMatrix);
     void performJacobianUpdateAndMerge(Eigen::MatrixXd & V_curr, int iteratitons, const MatrixXd& baryCoords1, const MatrixXd& baryCoords2, Eigen::MatrixXd & V_newPattern);
 
+    VectorXd perFaceTargetNorm;
 };
 
 
