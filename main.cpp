@@ -236,7 +236,6 @@ int main(int argc, char *argv[])
 
 
 // TODO remember to adapt the collision constraint solving dep on avatar, sometimes normalization is needed, sometimes not for whatever magic
-
 //    string avatar_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/avatar/avatar.obj";
     string avatar_file_name =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/avatar/avatar_one_component.ply";
 //    string avatar_file_name =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins_petite/avatar/avatar_one_component.ply";
@@ -254,12 +253,11 @@ int main(int argc, char *argv[])
     }
 
     // fm = testMorph_F0= ...F1
-    body_interpolator = new BodyInterpolator(Vm, testMorph_V1, Fm);
+//    body_interpolator = new BodyInterpolator(Vm, testMorph_V1, Fm);
 
     setNewMannequinMesh(viewer);
     setCollisionMesh();
     cout<<" collision mesh finished "<<endl;
-
 
 
     //Trial: converge first to a rest shape befoe we compute the jacobian
@@ -270,6 +268,25 @@ int main(int argc, char *argv[])
 //        showGarment(viewer);
 //
 //    }
+//    Vg = Vg.block(0, 0, 6,3 );
+//    RowVector3d vert; vert<<0, 0, 0; Vg.row(0)= vert;
+//    vert<<1, 0, 0; Vg.row(1)= vert;
+//    vert<<0.7, 0.7, 0; Vg.row(2)= vert;
+//    vert<<0, 1, 0; Vg.row(3)= vert;
+//    vert<<-1, 0, 0; Vg.row(4)= vert;
+//    vert<<0, -1, 0; Vg.row(5)= vert;
+//
+//    Fg = Fg.block(0, 0, 5,3 );
+//    RowVector3i face; face<<0, 1, 2; Fg.row(0)= face;
+//    face<<0,2, 3; Fg.row(1)= face;
+//    face<<0,3, 4; Fg.row(2)= face;
+//    face<<0,4, 5; Fg.row(3)= face;
+//    face<<0,5, 1; Fg.row(4)= face;
+//    Vg_pattern = Vg;
+//    Fg_pattern = Fg;
+//    cout<<Vg<<" vg"<<endl;
+//    cout<<Fg<<"fg"<<endl;
+
 
     gar_adapt = new garment_adaption(Vg, Fg,  Vg_pattern, Fg_pattern); //none have been altered at this stage
     gar_adapt->computeJacobian();

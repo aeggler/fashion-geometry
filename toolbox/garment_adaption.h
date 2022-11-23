@@ -15,7 +15,8 @@ using namespace Eigen;
 class garment_adaption {
 private:
     int numFace;
-    int numVert;
+    int numVertGarment;
+    int numVertPattern;
     std::vector<Eigen::MatrixXd > jacobians;
     std::vector<Eigen::MatrixXd > inv_jacobians;
     Eigen::MatrixXd V_init;
