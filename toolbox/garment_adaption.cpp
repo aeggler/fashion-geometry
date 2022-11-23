@@ -266,11 +266,9 @@ void garment_adaption::performJacobianUpdateAndMerge(Eigen::MatrixXd & V_curr, i
 
     }
 
-    /*
-     * new approach to use a quadratic minimization term to solve for the new positions
-     * */
-
     Eigen::VectorXd v_asVec (3*numVertPattern);
+    Eigen::VectorXd v_asVecOld = VectorXd::Zero(3*numVertPattern);
+
     for(int i = 0; i<numVertPattern; i++){
         v_asVec(3 * i) = V(i, 0);
         v_asVec(3*i+1) = V(i, 1);
@@ -298,17 +296,10 @@ void garment_adaption::performJacobianUpdateAndMerge(Eigen::MatrixXd & V_curr, i
             perVertexPositions[idp2].push_back(std::make_pair(ref + jacobi_adapted_Edges[j].col(2), j));
         }
 
-        // this iteration makes no sense, we average back to the original.
-        // instead we should fix one vertex and from there on fix all the others.
-        // we can add them to our rhs in sorted order
+       // the global step
         int counter = 0;
         for(int j =0; j<numVertPattern; j++) {
             vector<std::pair<Eigen::Vector3d, int>> vi_pos = perVertexPositions[j];
-            // same order as we had for the initial
-//            std::sort(vi_pos.begin(), vi_pos.end(),
-//                      [](pair<Eigen::Vector3d, int> &left, pair<Eigen::Vector3d, int> &right) {
-//                          return left.second < right.second;
-//                      });
 
             for (int curr = 0; curr < vi_pos.size(); curr++) {
                 Eigen::Vector3d currPos = get<0>(vi_pos[curr]);
@@ -316,49 +307,29 @@ void garment_adaption::performJacobianUpdateAndMerge(Eigen::MatrixXd & V_curr, i
                 b(3 * counter + 1) = currPos(1);
                 b(3 * counter + 2) = currPos(2);
                 counter++;
-
             }
         }
         MatrixXd RHS = A.transpose() * b;
-
+        v_asVecOld= v_asVec;
         v_asVec = cholSolver.solve(RHS);
-    }
 
-//    for (int numIt=0; numIt <iterations; numIt++) {
-//        std::vector<std::vector<std::pair<Eigen::Vector3d, int>>> perVertexPositions(V_pattern.rows());
-//        VectorXd dblA;
-//        igl::doublearea(V, Fg_pattern, dblA);
-//        for(int j=0; j<numFace; j++){
-//            // now the reference is the barycenter of the 2D patter of the unshrinked model
-//            int idp0 = Fg_pattern(j, 0);
-//            int idp1 = Fg_pattern(j, 1);
-//            int idp2 = Fg_pattern(j, 2);
-//
-//            Eigen::Vector3d ref = (V.row(idp0)+ V.row(idp1)+ V.row(idp2))/3 ;
-//
-//            perVertexPositions[idp0].push_back(std::make_pair(ref + jacobi_adapted_Edges[j].col(0), j));
-//            perVertexPositions[idp1].push_back(std::make_pair(ref + jacobi_adapted_Edges[j].col(1), j));
-//            perVertexPositions[idp2].push_back(std::make_pair(ref + jacobi_adapted_Edges[j].col(2), j));
-//        }
-//
-//        // this iteration makes no sense, we average back to the original.
-//        // instead we should fix one vertex and from there on fix all the others.
-//        for (int i = 0; i < numVert; i++) {
-//
-//            Eigen::Vector3d avg = Eigen::VectorXd::Zero(3);
-//            double weightsum =0;
-//            for (int j = 0; j < perVertexPositions[i].size(); j++) {
-//                Eigen::Vector3d curr = get<0>(perVertexPositions[i][j]);
-//                int face = get<1>(perVertexPositions[i][j]);
-//                double weight = dblA(face)/2;
-//                weight = 1;
-//                weightsum+= weight;
-//                avg += (curr * weight) ;
-//            }
-//
-//            avg /= weightsum; //perVertexPositions[i].size();
-//            V.row(i) = avg.transpose();
-//        }
+
+        // not claiming this was very efficient ,just for debug purposes
+        auto diff = (v_asVecOld-v_asVec);
+        MatrixXd norms(numVertPattern, 3);
+        for(int i=0; i<numVertPattern; i++){
+            norms.row(i) = diff.block(3*i, 0, 3, 1).transpose();
+        }
+      //needs a more principled approach
+        double maxPatternNorm = V_pattern.rowwise().norm().maxCoeff();
+        double maxChange = norms.rowwise().norm().maxCoeff();
+        cout<<"change in percent  "<<(maxChange/maxPatternNorm)<<endl;
+        // TODO SET THIS FINISH PARAMETER
+        if(maxChange/maxPatternNorm < 0.0001){
+            cout<<"fin in iteration " <<numIt<<endl;
+            break;
+        }
+    }
 
     V_newPattern.resize(numVertPattern, 3);
 

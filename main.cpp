@@ -84,7 +84,7 @@ garment_adaption* gar_adapt;
 int counter;
 BodyInterpolator* body_interpolator;
 bool bodyInterpolation= false;
-int localGlobalIterations= 2000;
+int localGlobalIterations= 200;
 vector<int> constrainedVertexIds;
 VectorXi closestFaceId;
 int iterationCount = 0;
@@ -125,9 +125,6 @@ VectorXd normD1, normD2;
 MatrixXd perFaceD2, perFaceD1;
 
 int convergeIterations = 450;
-int shrinkIterations= 50;
-int convergeSimDifferenceFactor = 1;
-int howMuchMore = 00;
 double incrU;
 double incrV;
 
@@ -138,20 +135,12 @@ bool pre_draw(igl::opengl::glfw::Viewer& viewer){
             double p = 1;
             if(counter%1000==0)convergeIterations+=50 ;
 //            convergeIterations = convergeIterations * max(counter/1000)
-            if(iterationCount<1000) {
-                p = iterationCount/1000.;
-            }
-            cout<<p<<" p";
 
             computeStress(viewer);
             dotimeStep(viewer);
             showGarment(viewer);// not sure if I actually need this, at least it breaks nothing
 
-            // first iterations with strong stiffness to shrink
-
-            int iterSum = convergeIterations+ shrinkIterations;
-
-            if(counter%iterSum==0){
+            if(counter%convergeIterations==0){
                 gar_adapt->performJacobianUpdateAndMerge(Vg, localGlobalIterations, baryCoords1, baryCoords2, Vg_pattern);
                 cout<<"after adaption"<<endl;
 ////            Vg_pattern_orig= Vg_pattern;
@@ -167,7 +156,6 @@ bool pre_draw(igl::opengl::glfw::Viewer& viewer){
 
             }
             counter++;
-
 
     }
 
@@ -260,41 +248,11 @@ int main(int argc, char *argv[])
     cout<<" collision mesh finished "<<endl;
 
 
-    //Trial: converge first to a rest shape befoe we compute the jacobian
-//    for(int i=0; i<800; i++){
-//
-//        computeStress(viewer);
-//        dotimeStep(viewer);
-//        showGarment(viewer);
-//
-//    }
-//    Vg = Vg.block(0, 0, 6,3 );
-//    RowVector3d vert; vert<<0, 0, 0; Vg.row(0)= vert;
-//    vert<<1, 0, 0; Vg.row(1)= vert;
-//    vert<<0.7, 0.7, 0; Vg.row(2)= vert;
-//    vert<<0, 1, 0; Vg.row(3)= vert;
-//    vert<<-1, 0, 0; Vg.row(4)= vert;
-//    vert<<0, -1, 0; Vg.row(5)= vert;
-//
-//    Fg = Fg.block(0, 0, 5,3 );
-//    RowVector3i face; face<<0, 1, 2; Fg.row(0)= face;
-//    face<<0,2, 3; Fg.row(1)= face;
-//    face<<0,3, 4; Fg.row(2)= face;
-//    face<<0,4, 5; Fg.row(3)= face;
-//    face<<0,5, 1; Fg.row(4)= face;
-//    Vg_pattern = Vg;
-//    Fg_pattern = Fg;
-//    cout<<Vg<<" vg"<<endl;
-//    cout<<Fg<<"fg"<<endl;
-
-
     gar_adapt = new garment_adaption(Vg, Fg,  Vg_pattern, Fg_pattern); //none have been altered at this stage
     gar_adapt->computeJacobian();
     perFaceTargetNorm = gar_adapt->perFaceTargetNorm;
     Vg_orig = Vg;
     jacFlag = true;
-
-
 
     // read constrained vertex ids and compute them as barycentric coordinates of the nearest face
     computeBoundaryVertices();
@@ -366,12 +324,7 @@ int main(int argc, char *argv[])
         }
         if (ImGui::CollapsingHeader("Simulation", ImGuiTreeNodeFlags_DefaultOpen)) {
 
-
-            ImGui::InputInt("Shrink Iterations ", &(shrinkIterations), 0, 0);
             ImGui::InputInt("Converge Iterations ", &(convergeIterations), 0, 0);
-
-                    ImGui::InputInt("Diff Fact  ", &(convergeSimDifferenceFactor), 0, 0);
-            ImGui::InputInt("Interpolation step size  ", &(howMuchMore), 0, 0);
 
             ImGui::InputDouble("Step size", &(timestep),  0, 0, "%0.4f");
             ImGui::InputDouble("U Stretch Stiffness ", &(stretchStiffnessU),  0, 0, "%0.4f");
