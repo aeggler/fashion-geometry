@@ -26,6 +26,32 @@ garment_adaption::garment_adaption(Eigen::MatrixXd &Vg, Eigen::MatrixXi& Fg, Eig
     V_init = Vg;
     V_pattern = V_pattern_orig;
     Fg_pattern = Fg_pattern_orig;
+    createVertexFaceAdjacencyList(Fg_pattern, vfAdj);
+
+    int rowCount = 0;
+    std::vector<T> tripletList;
+
+    for(int i =0; i<numVertPattern; i++){
+        vector<int> neigh = vfAdj[i]; // number of faces of this vertex ,attention remove -1 faces
+        //sort(neigh.begin(), neigh.end());
+        for (int j = 0; j<neigh.size(); j++){
+            if(neigh[j]== -1){
+                continue;
+            }
+            tripletList.push_back(T(3 * rowCount, 3 * i, 1));
+            tripletList.push_back(T(3 * rowCount + 1, 3 * i + 1, 1));
+            tripletList.push_back(T(3 * rowCount + 2, 3 * i + 2, 1));
+            rowCount++;
+
+        }
+    }
+    A.resize(3*rowCount, 3*numVertPattern);
+    A.setFromTriplets(tripletList.begin(), tripletList.end());
+
+    SpMat LHS = (A.transpose()*A);
+
+    cholSolver.analyzePattern(LHS);
+    cholSolver.factorize(LHS);
 
 
 }
@@ -148,7 +174,6 @@ void garment_adaption::performJacobianUpdateAndMerge(Eigen::MatrixXd & V_curr, i
     // so for each face we apply the inverse and get two new edges. these edges start from v_curr_0
 
     std::vector<Eigen::Matrix3d> jacobi_adapted_Edges (numFace);
-// FACE 5438 has this issue
     for (int j = 0; j < numFace; j++) {
 
         int id0 = Fg(j, 0); int idp0 = Fg_pattern(j, 0);
@@ -156,10 +181,7 @@ void garment_adaption::performJacobianUpdateAndMerge(Eigen::MatrixXd & V_curr, i
         int id2 = Fg(j, 2); int idp2 = Fg_pattern(j, 2);
         RowVector3d barycenter = V_curr.row(id1) + V_curr.row(id0) + V_curr.row(id2);
         barycenter/=3;
-//        if(j==5438){
-//            cout<<id0<<" "<<id1<<" "<<id2<<" "<< barycenter <<endl<<endl;
-//            cout<<jacobians[j]<<endl<<" the jacobian of one of such faces"<<endl;
-//        }
+
         // from center to all adjacent vertices
         Eigen::MatrixXd positions(3, 3);
         positions.col(0) = V_curr.row(id0) - barycenter;
@@ -241,57 +263,22 @@ void garment_adaption::performJacobianUpdateAndMerge(Eigen::MatrixXd & V_curr, i
         // and finally the jinverse
         MatrixXd jacobi_adapted_Edge = inv_jacobians[j] * newnewRot * Rinv * positions;
         jacobi_adapted_Edges[j]= jacobi_adapted_Edge;
-//        if(j==5438) cout<<jacobi_adapted_Edges[j]<<" adapted edge of face "<<j<<jacobi_adapted_Edge-positions<<endl<<endl;// seems fine
 
     }
 
     /*
      * new approach to use a quadratic minimization term to solve for the new positions
      * */
-    vector<vector<int> > vfAdj;
-    createVertexFaceAdjacencyList(Fg_pattern, vfAdj);
-//    cout<<vfAdj[2977][0]<<" "<<vfAdj[2977][1] <<" or "<<vfAdj[2976].size()<<endl;
-    int rowCount = 0;
-    std::vector<T> tripletList;
-// it tdoes not appear here anymore. why ?
-//cout<<numVertPattern<<" "<<vfAdj.size()<<" and "<<V.rows()<<endl;
 
-    for(int i =0; i<numVertPattern; i++){
-        vector<int> neigh = vfAdj[i]; // number of faces of this vertex ,attention remove -1 faces
-        sort(neigh.begin(), neigh.end());
-        for (int j = 0; j<neigh.size(); j++){
-            if(neigh[j]== -1){
-                continue;
-            }
-//            if(neigh[j]==5438) cout<<" found an adjacent point "<<i<<endl; // else we found a proper neighbor, hence we set the matrix
-            tripletList.push_back(T(3 * rowCount, 3 * i, 1));
-            tripletList.push_back(T(3 * rowCount + 1, 3 * i + 1, 1));
-            tripletList.push_back(T(3 * rowCount + 2, 3 * i + 2, 1));
-            rowCount++;
-
-        }
-    }
-    SpMat  A(3*rowCount, 3*numVertPattern);
-    A.setFromTriplets(tripletList.begin(), tripletList.end());
-
-    SpMat LHS = (A.transpose()*A);
-    Eigen::SimplicialLDLT<Eigen::SparseMatrix<double>> cholSolver;
-    cholSolver.analyzePattern(LHS);
-    cholSolver.factorize(LHS);
-
-    // TODO
     Eigen::VectorXd v_asVec (3*numVertPattern);
     for(int i = 0; i<numVertPattern; i++){
-//        if(i== 2976)cout<<" appears in v"<<endl;
         v_asVec(3 * i) = V(i, 0);
         v_asVec(3*i+1) = V(i, 1);
         v_asVec(3*i+2) = V(i, 2);
     }
 
+    Eigen::VectorXd b (A.rows());
 
-    Eigen::VectorXd b (3*rowCount);
-
-//iterations = 1; // TODO THIS IS JUST FOR DEBUGGING
     for (int numIt=0; numIt< iterations ; numIt++) {
         std::vector<std::vector<std::pair<Eigen::Vector3d, int>>> perVertexPositions(numVertPattern);
 
@@ -301,13 +288,11 @@ void garment_adaption::performJacobianUpdateAndMerge(Eigen::MatrixXd & V_curr, i
             int idp0 = Fg_pattern(j, 0);
             int idp1 = Fg_pattern(j, 1);
             int idp2 = Fg_pattern(j, 2);
-//            if(j== 5438)cout<<" we do the local for this face "<<endl;
 
             Eigen::Vector3d ref = (v_asVec.block(3*idp0, 0, 3, 1)+
                     v_asVec.block(3*idp1, 0, 3, 1)+
                     v_asVec.block(3*idp2, 0, 3, 1))/3 ;
 
-//            if(j==5438)cout<<" new suggestion for pos of this face is being made "<<endl;
             perVertexPositions[idp0].push_back(std::make_pair(ref + jacobi_adapted_Edges[j].col(0), j));
             perVertexPositions[idp1].push_back(std::make_pair(ref + jacobi_adapted_Edges[j].col(1), j));
             perVertexPositions[idp2].push_back(std::make_pair(ref + jacobi_adapted_Edges[j].col(2), j));
@@ -320,17 +305,12 @@ void garment_adaption::performJacobianUpdateAndMerge(Eigen::MatrixXd & V_curr, i
         for(int j =0; j<numVertPattern; j++) {
             vector<std::pair<Eigen::Vector3d, int>> vi_pos = perVertexPositions[j];
             // same order as we had for the initial
-            std::sort(vi_pos.begin(), vi_pos.end(),
-                      [](pair<Eigen::Vector3d, int> &left, pair<Eigen::Vector3d, int> &right) {
-                          return left.second < right.second;
-                      });
+//            std::sort(vi_pos.begin(), vi_pos.end(),
+//                      [](pair<Eigen::Vector3d, int> &left, pair<Eigen::Vector3d, int> &right) {
+//                          return left.second < right.second;
+//                      });
 
             for (int curr = 0; curr < vi_pos.size(); curr++) {
-//                if(j== 2976){cout<<" appears in b"<<endl;
-//                cout<<get<0>(vi_pos[curr])<<endl;
-//                cout<<A.toDense()(3*counter, 3*j)<<"should be one "<<endl;
-//                }
-
                 Eigen::Vector3d currPos = get<0>(vi_pos[curr]);
                 b(3 * counter) = currPos(0);
                 b(3 * counter + 1) = currPos(1);
@@ -339,13 +319,9 @@ void garment_adaption::performJacobianUpdateAndMerge(Eigen::MatrixXd & V_curr, i
 
             }
         }
-//        cout <<counter<<" the b counter and the rows of a "<<rowCount<<endl;
         MatrixXd RHS = A.transpose() * b;
 
         v_asVec = cholSolver.solve(RHS);
-//        for(int j =0; j<numVert; j++){
-//            v_asVec.block(3*j,0, 3, 1) = V
-//        }
     }
 
 //    for (int numIt=0; numIt <iterations; numIt++) {
@@ -389,7 +365,6 @@ void garment_adaption::performJacobianUpdateAndMerge(Eigen::MatrixXd & V_curr, i
     for(int i=0; i<numVertPattern; i++){
         V_newPattern.row(i) = v_asVec.block(3*i, 0, 3, 1).transpose();
     }
-//    cout<< V_newPattern.row(2976)<<endl;
 
 }
 

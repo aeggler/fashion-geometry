@@ -6,6 +6,7 @@
 #define EXAMPLE_GARMENT_ADAPTION_H
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
+#include<Eigen/SparseCholesky>
 
 #include <Eigen/Geometry>
 using namespace std;
@@ -24,6 +25,9 @@ private:
     Eigen::MatrixXi Fg;
     Eigen::MatrixXd V_pattern;
     Eigen::MatrixXi Fg_pattern;
+    vector<vector<int> > vfAdj;
+    Eigen::SparseMatrix<double, RowMajor> A;
+    Eigen::SimplicialLDLT<Eigen::SparseMatrix<double>> cholSolver;
 
 
 public:
