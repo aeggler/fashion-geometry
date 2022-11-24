@@ -93,8 +93,10 @@ std::vector<std::pair<Eigen::Vector3d, int>> allVertexBarycentricCoords;
 
 Eigen::MatrixXd baryCoords1, baryCoords2;
 Eigen::MatrixXd baryCoordsd1, baryCoordsd2;
+vector<std::pair<pair<int, int>, pair<int, int>>> edgeCorrespondences;
 
 void computeBaryCoordsGarOnNewMannequin(igl::opengl::glfw::Viewer& viewer);
+void computePatternDuplicateVertices();
 
 void setNewGarmentMesh(igl::opengl::glfw::Viewer& viewer);
 void setNewMannequinMesh(igl::opengl::glfw::Viewer& viewer);
@@ -247,8 +249,9 @@ int main(int argc, char *argv[])
     setCollisionMesh();
     cout<<" collision mesh finished "<<endl;
 
-
-    gar_adapt = new garment_adaption(Vg, Fg,  Vg_pattern, Fg_pattern); //none have been altered at this stage
+// test
+    computePatternDuplicateVertices();
+    gar_adapt = new garment_adaption(Vg, Fg,  Vg_pattern, Fg_pattern, edgeCorrespondences); //none have been altered at this stage
     gar_adapt->computeJacobian();
     perFaceTargetNorm = gar_adapt->perFaceTargetNorm;
     Vg_orig = Vg;
@@ -260,7 +263,9 @@ int main(int argc, char *argv[])
     Vg_orig = Vg;
     Vm_orig = testMorph_V1;
 
-    preComputeConstraintsForRestshape();
+
+
+     preComputeConstraintsForRestshape();
     preComputeStretch();
     computeStress(viewer);
     setCollisionMesh();
@@ -401,6 +406,96 @@ int main(int argc, char *argv[])
 
     viewer.launch();
 }
+// seems to give good results, let's use this.
+void computePatternDuplicateVertices(){
+    // what do we need? the edges. For this we need the vertices, do we need the ID as well? not really?
+    //   a list of pairs of edges. edge<<v0, v1>,<v0_inPatternId, ,v1_inPatternId>>
+
+    vector<vector<int> > vfAdj_garment, vfAdj_pattern;
+    MatrixXi Fg_test = Fg;
+    MatrixXi Fg_patternTest = Fg_pattern;
+//    Fg_test.resize(4, 3);
+//    Fg_patternTest.resize(4, 3);
+//    Fg_test<<0, 1, 2 ,0, 2 ,3, 1, 5, 2, 1, 4, 5;
+//    Fg_patternTest<<0, 1, 2, 0 ,2, 3,4, 6, 7, 4,5, 6;
+//
+//    cout<<Fg_test<<endl<<endl;
+//    cout<<Fg_patternTest<<endl;
+
+    createFaceFaceAdjacencyList(Fg_test, vfAdj_garment);
+    createFaceFaceAdjacencyList(Fg_patternTest, vfAdj_pattern);
+    // the faces are the same, we can iterate over them
+    for(int i=0; i<Fg_test.rows(); i++){
+        if(vfAdj_garment[i].size() != vfAdj_pattern[i].size()){
+//            cout<<i<<" has not the same size of neighbors"<<endl;
+            // we have found two faces that are being seperated. Now which is the boundary edge?
+            int patternMissingFaceId=-1;
+            int idx;// this face in the garment does not have a partner in the pattern
+
+            for(int garidx = 0; garidx< vfAdj_garment[i].size(); garidx++){
+                int pattidx = 0;
+                bool sameFlag= false;
+                while(pattidx< vfAdj_pattern[i].size()){
+                    // if they are the same we gained nothing, go on with garidx
+
+                    if(vfAdj_garment[i][garidx] == vfAdj_pattern[i][pattidx]){
+                        sameFlag= true;
+                        pattidx = vfAdj_pattern[i].size();
+                    }
+                    // if they are not the same check the next one
+                    pattidx++;
+                }
+                // we iterated over all and found no same, hence this is the missing one
+                if(sameFlag) continue;
+                idx = garidx;
+                patternMissingFaceId = vfAdj_garment[i][garidx];
+                break;
+            }
+
+            // now we know i and patternMissingId are connected in 3D but not in the pattern. how do we get the vertex id of the edge?
+            // hopefully not all 3 vertices are incident to -1, then it is the two that are
+            Vector3i f1 =   Fg_test.row(i);
+            Vector3i f2 =   Fg_test.row(patternMissingFaceId);
+            int firstVertId_inGarment, firstVertId_inPattern, secondVertId_inGarment, secondVertId_inPattern;
+            bool firstfound=false;
+            for(int f1idx =0; f1idx<3; f1idx++){
+                for (int f2idx = 0 ; f2idx<3; f2idx++){
+                    if(f1(f1idx)==f2(f2idx)){
+                        // we found a match
+                        if(!firstfound){
+                            firstfound= true;
+                            firstVertId_inGarment = f1(f1idx);
+                            firstVertId_inPattern = Fg_patternTest(patternMissingFaceId, f2idx);
+                        }else{
+                            secondVertId_inGarment= f1(f1idx);
+                            secondVertId_inPattern = Fg_patternTest(patternMissingFaceId, f2idx);
+                        }
+                    }
+                }
+            }
+            if(firstVertId_inPattern==3016 || secondVertId_inPattern==3016 || firstVertId_inGarment== 3016 || secondVertId_inGarment== 3016){
+                cout << firstVertId_inPattern << " vert Id in Pattern " << secondVertId_inPattern << " " << endl;
+                cout<<firstVertId_inGarment<<" vert id in garment "<< secondVertId_inGarment<<" "<<endl;
+            }
+            // we find the edge twice for each pair. once with different edges, once the same. we only want to keep the different one
+            if(firstVertId_inGarment!= firstVertId_inPattern){
+                edgeCorrespondences.push_back(make_pair(make_pair(firstVertId_inGarment ,secondVertId_inGarment), make_pair(firstVertId_inPattern, secondVertId_inPattern)));
+            }
+
+        }
+
+    }
+    cout<<edgeCorrespondences.size()<<" the final size "<<endl;
+    // face face adjacency! if not same number of adj faces then it is a boundary edge in patter but not in real
+    // if it is a boundary in pattern but not in real we need to know which edge is the adjacent edge  of the adj in 3d, for this we can check which is the face that exists in 3D but not in 3D
+    // now from the id of this neighbor that exists only in the 3d pattern we are able to find two overlapping vertex ids in 3d. But how do we find the matching ids in 2d?
+    // if only two vertices are boundary vertices (and we know our edge must be a boundary vertex), we know which two vertices.
+    // but if all vertices are boundary vertices
+    //
+
+
+
+}
 void computeBaryCoordsGarOnNewMannequin(igl::opengl::glfw::Viewer& viewer){
     VectorXd S;
     VectorXd distVec(Vg.rows());
@@ -514,6 +609,8 @@ void showGarment(igl::opengl::glfw::Viewer& viewer) {
     //remove wireframe
     viewer.data().show_lines = false;
    // if 0 -> no face colour
+    viewer.data().set_colors(currCol);
+
     if(whichStressVisualize == 1){
         viewer.data().set_colors(colU);
     }else if (whichStressVisualize == 2){

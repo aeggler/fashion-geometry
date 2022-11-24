@@ -16,7 +16,8 @@ using namespace Eigen;
 typedef Eigen::SparseMatrix<double, RowMajor> SpMat; // declares a column-major sparse matrix type of double
 typedef Eigen::Triplet<double> T;
 
-garment_adaption::garment_adaption(Eigen::MatrixXd &Vg, Eigen::MatrixXi& Fg, Eigen::MatrixXd & V_pattern_orig, Eigen::MatrixXi& Fg_pattern_orig ) {
+garment_adaption::garment_adaption(Eigen::MatrixXd &Vg, Eigen::MatrixXi& Fg, Eigen::MatrixXd & V_pattern_orig, Eigen::MatrixXi& Fg_pattern_orig, vector<std::pair<pair<int, int>, pair<int, int>>>& edgeCorrespondences;
+) {
     numFace= Fg.rows();
     numVertGarment = Vg.rows();
     numVertPattern = V_pattern_orig.rows();
