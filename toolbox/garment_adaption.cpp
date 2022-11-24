@@ -16,7 +16,8 @@ using namespace Eigen;
 typedef Eigen::SparseMatrix<double, RowMajor> SpMat; // declares a column-major sparse matrix type of double
 typedef Eigen::Triplet<double> T;
 
-garment_adaption::garment_adaption(Eigen::MatrixXd &Vg, Eigen::MatrixXi& Fg, Eigen::MatrixXd & V_pattern_orig, Eigen::MatrixXi& Fg_pattern_orig, vector<std::pair<pair<int, int>, pair<int, int>>>& edgeCorrespondences;
+garment_adaption::garment_adaption(Eigen::MatrixXd &Vg, Eigen::MatrixXi& Fg, Eigen::MatrixXd & V_pattern_orig,
+                                   Eigen::MatrixXi& Fg_pattern_orig, vector<std::pair<pair<int, int>, pair<int, int>>>& edgeCorrespondences
 ) {
     numFace= Fg.rows();
     numVertGarment = Vg.rows();
@@ -28,7 +29,14 @@ garment_adaption::garment_adaption(Eigen::MatrixXd &Vg, Eigen::MatrixXi& Fg, Eig
     V_pattern = V_pattern_orig;
     Fg_pattern = Fg_pattern_orig;
     createVertexFaceAdjacencyList(Fg_pattern, vfAdj);
-
+// In Order to apply the inverse jacobian and get new positions for the new pattern we apply a local global approach.
+/*In the local iteration we compute the barycenter and the vectors center to vertices.
+ * In the global iteration we assume they are fixed and aim at setting v such that || v - Bvec||^2 is minimized,
+ * where bvec is the barycenter+ vecor bary to vertex (after inverse jacobian application ) .
+ * For each vertex there are #incident faces such constraints.
+ * We solve them minimizing Ax-b where A is a sparse matrix with ones for the corresponding vertex, and b is a vector with the barycenter+ vecor bary to vertex for each constraint.
+ * AT A x = AT b and we solve using a cholesky solver. Since A is constant in each iteration we set it up here at the beginning.
+ * */
     int rowCount = 0;
     std::vector<T> tripletList;
 
@@ -70,7 +78,7 @@ void Barycentric(VectorXd& p, VectorXd a, VectorXd b, VectorXd c, VectorXd& bary
     baryP(2) = 1.0f - baryP(0) - baryP(1);
 }
 void garment_adaption::computeJacobian(){
-    perFaceTargetNorm.resize(numFace);
+   // perFaceTargetNorm.resize(numFace);
     for(int j = 0; j<numFace; j++){
         Eigen::MatrixXd jac2to3 (3, 2);
         Eigen::MatrixXd jacobian(3, 3);
@@ -128,12 +136,12 @@ void garment_adaption::computeJacobian(){
         inv_jacobians[j] = jacobian.inverse();
 
         //they should have stretch 1, hence add deviation from 1 to measure
-        perFaceTargetNorm(j) = (jacobian.col(0).norm()-1) * (jacobian.col(0).norm()-1);
-        perFaceTargetNorm(j) += (jacobian.col(1).norm()-1) * (jacobian.col(1).norm()-1);
+        perFaceTargetNorm.push_back(std::make_pair(jacobian.col(0).norm(), jacobian.col(1).norm()) );//* (jacobian.col(0).norm()-1);
+//        perFaceTargetNorm(j).second = ();// * (jacobian.col(1).norm()-1);
         // add some kind of angle measure
         // they should be orthogonal, hence add dot squared as norm
-        double dot = jacobian.col(0).normalized().dot(jacobian.col(1).normalized());
-        perFaceTargetNorm(j) += (dot * dot);
+//        double dot = jacobian.col(0).normalized().dot(jacobian.col(1).normalized());
+//        perFaceTargetNorm(j) += (dot * dot);
 
     }
 }
@@ -326,7 +334,7 @@ void garment_adaption::performJacobianUpdateAndMerge(Eigen::MatrixXd & V_curr, i
         double maxChange = norms.rowwise().norm().maxCoeff();
         cout<<"change in percent  "<<(maxChange/maxPatternNorm)<<endl;
         // TODO SET THIS FINISH PARAMETER
-        if(maxChange/maxPatternNorm < 0.0001){
+        if(maxChange/maxPatternNorm < 0.000000001){
             cout<<"fin in iteration " <<numIt<<endl;
             break;
         }

@@ -98,6 +98,8 @@ int edgeBetweenVertices(
         int v2,
         const std::vector< std::vector<int> > &veAdj
 );
+void computePatternDuplicateVertices(const Eigen::MatrixXi& Fg_test,const Eigen::MatrixXi& Fg_patternTest,
+                                     std::vector<std::pair<std::pair<int, int>, std::pair<int, int>>>& edgeCorrespondences);
 
 
 #endif //EXAMPLE_ADJACENCY_H

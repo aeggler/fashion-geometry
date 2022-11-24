@@ -77,7 +77,7 @@ MatrixXd faceAvgWithV ;
 MatrixXd colU, colJacDiff ;
 MatrixXd colMixed;
 MatrixXd colV ;
-VectorXd normU, normV, normJacDiff;
+VectorXd normU, normV;
 MatrixXd perFaceU, perFaceV;
 int whichStressVisualize= 0;
 garment_adaption* gar_adapt;
@@ -122,7 +122,7 @@ void solveRigidEnergy();
 void solveStretchUV();
 //test
 Eigen::SparseMatrix<double> L;
-int shrinked_counter = 100;
+//int shrinked_counter = 100;
 VectorXd normD1, normD2;
 MatrixXd perFaceD2, perFaceD1;
 
@@ -167,7 +167,7 @@ static bool noStress = true;
 static bool StressU = false;
 static bool StressV = false;
 static bool StressMixed = false;
-VectorXd perFaceTargetNorm;
+std::vector<std::pair<double,double>> perFaceTargetNorm;
 bool jacFlag=false;
 MatrixXd patternPreInterpol,patternPreInterpol_temp ;
 MatrixXd garmentPreInterpol,garmentPreInterpol_temp ;
@@ -250,7 +250,7 @@ int main(int argc, char *argv[])
     cout<<" collision mesh finished "<<endl;
 
 // test
-    computePatternDuplicateVertices();
+    computePatternDuplicateVertices(Fg, Fg_pattern, edgeCorrespondences);
     gar_adapt = new garment_adaption(Vg, Fg,  Vg_pattern, Fg_pattern, edgeCorrespondences); //none have been altered at this stage
     gar_adapt->computeJacobian();
     perFaceTargetNorm = gar_adapt->perFaceTargetNorm;
@@ -407,95 +407,6 @@ int main(int argc, char *argv[])
     viewer.launch();
 }
 // seems to give good results, let's use this.
-void computePatternDuplicateVertices(){
-    // what do we need? the edges. For this we need the vertices, do we need the ID as well? not really?
-    //   a list of pairs of edges. edge<<v0, v1>,<v0_inPatternId, ,v1_inPatternId>>
-
-    vector<vector<int> > vfAdj_garment, vfAdj_pattern;
-    MatrixXi Fg_test = Fg;
-    MatrixXi Fg_patternTest = Fg_pattern;
-//    Fg_test.resize(4, 3);
-//    Fg_patternTest.resize(4, 3);
-//    Fg_test<<0, 1, 2 ,0, 2 ,3, 1, 5, 2, 1, 4, 5;
-//    Fg_patternTest<<0, 1, 2, 0 ,2, 3,4, 6, 7, 4,5, 6;
-//
-//    cout<<Fg_test<<endl<<endl;
-//    cout<<Fg_patternTest<<endl;
-
-    createFaceFaceAdjacencyList(Fg_test, vfAdj_garment);
-    createFaceFaceAdjacencyList(Fg_patternTest, vfAdj_pattern);
-    // the faces are the same, we can iterate over them
-    for(int i=0; i<Fg_test.rows(); i++){
-        if(vfAdj_garment[i].size() != vfAdj_pattern[i].size()){
-//            cout<<i<<" has not the same size of neighbors"<<endl;
-            // we have found two faces that are being seperated. Now which is the boundary edge?
-            int patternMissingFaceId=-1;
-            int idx;// this face in the garment does not have a partner in the pattern
-
-            for(int garidx = 0; garidx< vfAdj_garment[i].size(); garidx++){
-                int pattidx = 0;
-                bool sameFlag= false;
-                while(pattidx< vfAdj_pattern[i].size()){
-                    // if they are the same we gained nothing, go on with garidx
-
-                    if(vfAdj_garment[i][garidx] == vfAdj_pattern[i][pattidx]){
-                        sameFlag= true;
-                        pattidx = vfAdj_pattern[i].size();
-                    }
-                    // if they are not the same check the next one
-                    pattidx++;
-                }
-                // we iterated over all and found no same, hence this is the missing one
-                if(sameFlag) continue;
-                idx = garidx;
-                patternMissingFaceId = vfAdj_garment[i][garidx];
-                break;
-            }
-
-            // now we know i and patternMissingId are connected in 3D but not in the pattern. how do we get the vertex id of the edge?
-            // hopefully not all 3 vertices are incident to -1, then it is the two that are
-            Vector3i f1 =   Fg_test.row(i);
-            Vector3i f2 =   Fg_test.row(patternMissingFaceId);
-            int firstVertId_inGarment, firstVertId_inPattern, secondVertId_inGarment, secondVertId_inPattern;
-            bool firstfound=false;
-            for(int f1idx =0; f1idx<3; f1idx++){
-                for (int f2idx = 0 ; f2idx<3; f2idx++){
-                    if(f1(f1idx)==f2(f2idx)){
-                        // we found a match
-                        if(!firstfound){
-                            firstfound= true;
-                            firstVertId_inGarment = f1(f1idx);
-                            firstVertId_inPattern = Fg_patternTest(patternMissingFaceId, f2idx);
-                        }else{
-                            secondVertId_inGarment= f1(f1idx);
-                            secondVertId_inPattern = Fg_patternTest(patternMissingFaceId, f2idx);
-                        }
-                    }
-                }
-            }
-            if(firstVertId_inPattern==3016 || secondVertId_inPattern==3016 || firstVertId_inGarment== 3016 || secondVertId_inGarment== 3016){
-                cout << firstVertId_inPattern << " vert Id in Pattern " << secondVertId_inPattern << " " << endl;
-                cout<<firstVertId_inGarment<<" vert id in garment "<< secondVertId_inGarment<<" "<<endl;
-            }
-            // we find the edge twice for each pair. once with different edges, once the same. we only want to keep the different one
-            if(firstVertId_inGarment!= firstVertId_inPattern){
-                edgeCorrespondences.push_back(make_pair(make_pair(firstVertId_inGarment ,secondVertId_inGarment), make_pair(firstVertId_inPattern, secondVertId_inPattern)));
-            }
-
-        }
-
-    }
-    cout<<edgeCorrespondences.size()<<" the final size "<<endl;
-    // face face adjacency! if not same number of adj faces then it is a boundary edge in patter but not in real
-    // if it is a boundary in pattern but not in real we need to know which edge is the adjacent edge  of the adj in 3d, for this we can check which is the face that exists in 3D but not in 3D
-    // now from the id of this neighbor that exists only in the 3d pattern we are able to find two overlapping vertex ids in 3d. But how do we find the matching ids in 2d?
-    // if only two vertices are boundary vertices (and we know our edge must be a boundary vertex), we know which two vertices.
-    // but if all vertices are boundary vertices
-    //
-
-
-
-}
 void computeBaryCoordsGarOnNewMannequin(igl::opengl::glfw::Viewer& viewer){
     VectorXd S;
     VectorXd distVec(Vg.rows());
@@ -534,7 +445,7 @@ void computeBaryCoordsGarOnNewMannequin(igl::opengl::glfw::Viewer& viewer){
 
 }
 void computeBoundaryVertices(){
-    constrainedVertexIds.clear(); // = VectorXi::Zero(Vg.rows()); // a one indicates that it is constrained
+    constrainedVertexIds.clear();
     vector<vector<int> > vvAdj, vfAdj;
     igl::adjacency_list(Fg,vvAdj);
     createVertexFaceAdjacencyList(Fg, vfAdj);
@@ -567,28 +478,6 @@ void computeBoundaryVertices(){
             constrainedVertexBarycentricCoords.emplace_back(std::make_pair(currInBary, closestFace));
         }
     }
-    cout<<"n num bound edges "<<boundarycount<<endl;
-//    Eigen::SparseMatrix<int> sparseBound(numVert, 1);
-//    typedef Eigen::Triplet<int>T;
-//    std::vector<T> coeff; coeff.reserve(constrainedVertexIds.size());
-//
-//    for(int i=0; i<constrainedVertexIds.size(); i++){
-//        coeff.push_back( T(constrainedVertexIds[i], 1, 1));
-//    }
-//    sparseBound.setFromTriplets(coeff.begin(), coeff.end());
-//    Eigen::SparseMatrix<int> A;
-//    igl::adjacency_matrix(Fg,A);
-//
-//    SparseMatrix<int> threeRingNeighbors = A*sparseBound;
-//
-//    for (int k = 0; k < threeRingNeighbors.outerSize(); ++k){
-//        for (SparseMatrix<int>::InnerIterator it(threeRingNeighbors, k); it; ++it){
-//            cout << it.row() <<"\t";
-//            cout << it.col() << "\t";
-//            cout << it.value() << endl;
-//        }
-//    }
-
 
 }
 void setNewGarmentMesh(igl::opengl::glfw::Viewer& viewer) {
@@ -609,7 +498,6 @@ void showGarment(igl::opengl::glfw::Viewer& viewer) {
     //remove wireframe
     viewer.data().show_lines = false;
    // if 0 -> no face colour
-    viewer.data().set_colors(currCol);
 
     if(whichStressVisualize == 1){
         viewer.data().set_colors(colU);
@@ -1083,7 +971,6 @@ void computeStress(igl::opengl::glfw::Viewer& viewer){
 
      normU.resize (numFace);
      normV.resize (numFace);
-     normJacDiff.resize(numFace);
 
      normD1.resize(numFace);
      normD2.resize(numFace);
@@ -1126,29 +1013,27 @@ void computeStress(igl::opengl::glfw::Viewer& viewer){
         normU(j)= (Gu-G).norm();
         double y = (normU(j)-1) * differenceIncrementFactor; // to increase differences
         colU.row(j) = Vector3d(1.0 + y, 1. - y, 0.0);
-//todo add the color difference here
+
         normV(j) = (Gv-G).norm();
         y = (normV(j)-1) * differenceIncrementFactor;
         colV.row(j) = Vector3d ( 1. + y, 1.- y, 0.0);
 
 
-        normJacDiff(j) = (normU(j)-1)*(normU(j)-1);
-        normJacDiff(j) += (normV(j)-1)*(normV(j)-1);
+
+        auto diffU = (normU(j)-perFaceTargetNorm[j].first)/ perFaceTargetNorm[j].first;
+        auto diffV = (normV(j)-perFaceTargetNorm[j].second)/ perFaceTargetNorm[j].second;
+
         if(jacFlag){
-            double dot = perFaceU.row(j).normalized().dot(perFaceV.row(j).normalized());
-            normJacDiff(j)+= dot*dot;
-            y = abs(perFaceTargetNorm(j)-normJacDiff(j));
+           y = diffU + diffV ;
+           y*= 3; // to better see the difference
             colJacDiff.row(j)=  Vector3d ( 1. + y, 1.- y, 0.0);
         }else{
             colJacDiff.row(j)=  Vector3d ( 1. , 1., 0.0);
 
         }
 
-
-
         normD1(j) = perFaceD1.row(j).norm();
         normD2(j) = perFaceD2.row(j).norm();
-
 
         // this is an experiment
         y = (abs(normV(j)-1)+ abs(normU(j)-1))*3;
@@ -1263,19 +1148,13 @@ void dotimeStep(igl::opengl::glfw::Viewer& viewer){
     // detect collisions and solve for them in the loop
     setupCollisionConstraints();
 
-//    computeRigidMeasure();
-//    initProcrustesPatternTo3D(Vg_pattern, Fg_pattern, Fg_orig, p, procrustesPatternIn3D); // might be an imprecise but fast option to remove this from the loop
-
     init_stretchUV();
-//    init_stretchDiag();
 
     //(9)-(11), the loop should be repeated several times per timestep (according to Jan Bender)
     for(int i = 0; i < num_const_iterations; i++){
             solveBendingConstraint();
             solveStretchConstraint();
             solveStretchUV();
-//            solveStretchDiag();
-//            solveRigidEnergy();
             solveConstrainedVertices();
             /* we precomputed the normal and collision point of each vertex, now add the constraint (instead of checking collision in each iteration
              this is imprecise but much faster and acc to paper works fine in practice*/
@@ -1310,7 +1189,6 @@ void dotimeStep(igl::opengl::glfw::Viewer& viewer){
     /*The velocity of each vertex for which a collision constraint has been generated is dampened perpendicular to the collision normal
      * and reflected in the direction of the collision normal.*/
     cout<<normU.sum()<<" sum of the norm u, and v norm  "<<normV.sum()<<endl;
-
-
+    
     showGarment(viewer);
 }
