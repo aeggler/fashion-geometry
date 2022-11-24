@@ -7,6 +7,7 @@
 
 #include <vector>
 #include <Eigen/Core>
+#include <map>
 
 // special methods for this project:
 // for each non-boundary edge, we collect all 4 corresponding vertex ids in a specific order
@@ -98,8 +99,7 @@ int edgeBetweenVertices(
         int v2,
         const std::vector< std::vector<int> > &veAdj
 );
-void computePatternDuplicateVertices(const Eigen::MatrixXi& Fg_test,const Eigen::MatrixXi& Fg_patternTest,
-                                     std::vector<std::pair<std::pair<int, int>, std::pair<int, int>>>& edgeCorrespondences);
+void vertexMapPatternToGarment(const Eigen::MatrixXi& Fg_test, const Eigen::MatrixXi& Fg_patternTest, std::map<int,int>& vertexMapPattToGar);
 
 
 #endif //EXAMPLE_ADJACENCY_H

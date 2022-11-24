@@ -7,6 +7,8 @@
 #include <igl/edges.h>
 #include <igl/per_edge_normals.h>
 #include <igl/adjacency_list.h>
+#include <igl/facet_components.h>
+#include <igl/boundary_loop.h>
 #include <iostream>
 #include <Eigen/Dense>
 #include "toolbox/PositionBasedDynamics.h"
@@ -18,6 +20,7 @@
 #include "toolbox/garment_adaption.h"
 #include "toolbox/MathFunctions.h"
 #include <igl/signed_distance.h>
+#include <map>
 
 using namespace std;
 using namespace Eigen;
@@ -129,6 +132,7 @@ MatrixXd perFaceD2, perFaceD1;
 int convergeIterations = 450;
 double incrU;
 double incrV;
+VectorXd edgeVertices;
 
 bool pre_draw(igl::opengl::glfw::Viewer& viewer){
     viewer.data().dirty |= igl::opengl::MeshGL::DIRTY_DIFFUSE | igl::opengl::MeshGL::DIRTY_SPECULAR;
@@ -216,6 +220,8 @@ int main(int argc, char *argv[])
     igl::readOBJ(garment_pattern_file_name, Vg_pattern, Fg_pattern);
     Vg_pattern_orig= Vg_pattern;
     patternPreInterpol= Vg_pattern;
+    edgeVertices = VectorXd::Zero(Vg_pattern.rows());
+
     preComputeConstraintsForRestshape();
 
     preComputeStretch();
@@ -249,8 +255,62 @@ int main(int argc, char *argv[])
     setCollisionMesh();
     cout<<" collision mesh finished "<<endl;
 
-// test
-    computePatternDuplicateVertices(Fg, Fg_pattern, edgeCorrespondences);
+
+    std::map<int,int> vertexMapPattToGar;
+    vertexMapPatternToGarment(Fg, Fg_pattern,vertexMapPattToGar);
+
+    std::vector<std::vector<int> > boundaryL;
+    igl::boundary_loop(Fg_pattern, boundaryL);
+    Eigen::VectorXi componentIdPerFace;
+    igl::facet_components(Fg_pattern, componentIdPerFace);
+    // use adjacentFacesToEdge of the 3D
+    vector<vector<int> > vfAdj;
+    createVertexFaceAdjacencyList(Fg, vfAdj);
+    edgeVertices = VectorXd::Zero(Vg_pattern.rows());
+    cout<<boundaryL.size()<<" # boundaries"<<endl;
+    vector<vector<int>> edgesPerBoundary;
+    // from edges per boundary we know for each patch the edges. When going from one edge e to e+1 this is what we define as a seam
+    // for e-e+1 we define the corresponding patch number and seam ID of the symmetric seam
+    vector<vector<int>> perPatchPerSeamIdOfCorrespondant;
+
+    // we would like a seam to seam mapping where a seam is defined by its two endpoints
+    for(int i=0; i<boundaryL.size();  i++){//
+        cout<<i<<" in boundary"<<endl;
+        // we walk along the seam and check
+        vector<int> edgesForThisBoundary; //pattern id
+        vector<int> boundary = boundaryL[i];
+        cout<<boundary.size()<<" size "<<endl;
+        for(int j=0; j<boundary.size(); j++){
+
+            int v0 = boundary[j]; int v0g= vertexMapPattToGar[v0];
+            int v1 = boundary[(j+1) % boundary.size()]; int v1g = vertexMapPattToGar[v1];
+            int v2 = boundary[(j+2) % boundary.size()]; int v2g = vertexMapPattToGar[v2];
+
+            std::pair<int, int>  facese1, facese0;
+            //vi is a pattern id , what is the corresponding 3d ID? it is not the same!
+            adjacentFacesToEdge(v0g,v1g, vfAdj, facese0);// in 3D
+            adjacentFacesToEdge(v1g, v2g,vfAdj,facese1);// in 3D
+            // faces can be -1
+            int face1id1 = -1;  int face1id2 = -1;  int face0id1 = -1;  int face0id2 = -1;
+            if(facese0.first != -1) face0id1= componentIdPerFace(facese0.first); // component in 2D
+            if(facese0.second != -1) face0id2= componentIdPerFace(facese0.second);
+            if(facese1.first != -1) face1id1= componentIdPerFace(facese1.first);
+            if(facese1.second != -1) face1id2= componentIdPerFace(facese1.second);
+
+            bool samePatch = (face1id1==face0id1 && face1id2 == face0id2);
+            bool samePatchCrossover = (face1id1==face0id2 && face1id2 == face0id2);
+            if(!(samePatch || samePatchCrossover)){
+                // two consecutive edges are not the same patch. We have found a corner
+                edgeVertices(v1)= 1;
+                cout<<"found edge "<<v1<<" for patch "<< i<<endl;
+                edgesForThisBoundary.push_back(v1); //pattern id
+            }
+
+        }
+        edgesPerBoundary.push_back(edgesForThisBoundary);
+    }
+    cout<<"after"<<endl;
+
     gar_adapt = new garment_adaption(Vg, Fg,  Vg_pattern, Fg_pattern, edgeCorrespondences); //none have been altered at this stage
     gar_adapt->computeJacobian();
     perFaceTargetNorm = gar_adapt->perFaceTargetNorm;
@@ -264,8 +324,7 @@ int main(int argc, char *argv[])
     Vm_orig = testMorph_V1;
 
 
-
-     preComputeConstraintsForRestshape();
+    preComputeConstraintsForRestshape();
     preComputeStretch();
     computeStress(viewer);
     setCollisionMesh();
@@ -403,7 +462,7 @@ int main(int argc, char *argv[])
     // Add content to the default menu window
     viewer.callback_pre_draw = &pre_draw;
     viewer.callback_key_down = &callback_key_down;
-
+    cout<<"launch"<<endl;
     viewer.launch();
 }
 // seems to give good results, let's use this.
@@ -489,15 +548,30 @@ void setNewGarmentMesh(igl::opengl::glfw::Viewer& viewer) {
     showGarment(viewer);
 }
 void showGarment(igl::opengl::glfw::Viewer& viewer) {
+//    viewer.selected_data_index = 0;
+//    viewer.data().clear();
+//    viewer.data().set_mesh(Vg, Fg);
+//    viewer.data().uniform_colors(ambient, diffuse, specular);
+//    viewer.data().show_texture = false;
+//    viewer.data().set_face_based(false);
+//    //remove wireframe
+//    viewer.data().show_lines = false;
+//   // if 0 -> no face colour
+
+// for test of edge vertices
+cout<<" in viewer setting"<<endl;
+    MatrixXd testCol= MatrixXd::Zero(Vg_pattern.rows(), 3);
+    testCol.col(0)= edgeVertices;
     viewer.selected_data_index = 0;
     viewer.data().clear();
-    viewer.data().set_mesh(Vg, Fg);
+    viewer.data().set_mesh(Vg_pattern, Fg_pattern);
     viewer.data().uniform_colors(ambient, diffuse, specular);
     viewer.data().show_texture = false;
     viewer.data().set_face_based(false);
     //remove wireframe
     viewer.data().show_lines = false;
-   // if 0 -> no face colour
+    // if 0 -> no face colour
+    viewer.data().set_colors(testCol);
 
     if(whichStressVisualize == 1){
         viewer.data().set_colors(colU);
@@ -832,9 +906,6 @@ void init_stretchUV(){
     }
 }
 void solveStretchUV(){
-//   cout<<normU.sum()<<" sum of the norm u, and v norm  "<<normV.sum()<<endl;
- //   cout<<normD2.sum()<<" solving diag stretch  "<<normD1.sum()<<endl;
-
     for (int j =0; j<numFace; j++){
 
         Vector3r deltap0, deltap1, deltap2;
@@ -1189,6 +1260,6 @@ void dotimeStep(igl::opengl::glfw::Viewer& viewer){
     /*The velocity of each vertex for which a collision constraint has been generated is dampened perpendicular to the collision normal
      * and reflected in the direction of the collision normal.*/
     cout<<normU.sum()<<" sum of the norm u, and v norm  "<<normV.sum()<<endl;
-    
+
     showGarment(viewer);
 }
