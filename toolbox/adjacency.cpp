@@ -402,3 +402,19 @@ void vertexMapPatternToGarment(const MatrixXi& Fg_test, const  MatrixXi& Fg_patt
 
     }
 }
+void vertexMapGarmentAndPatchIdToPattern(const MatrixXi& Fg, const  MatrixXi& Fg_pattern,  Eigen::VectorXi& componentIdPerVert, std::map<std::pair<int, int>,int>& vertexMapGarAndIdToPatch){
+    for(int i=0; i<Fg.rows(); i++){
+        int v0p= Fg_pattern(i, 0);
+        int v1p= Fg_pattern(i, 1);
+        int v2p= Fg_pattern(i, 2);
+
+        int comp0 = componentIdPerVert(v0p);
+        int comp1 = componentIdPerVert(v1p);
+        int comp2 = componentIdPerVert(v2p);
+
+        vertexMapGarAndIdToPatch[std::make_pair(Fg(i,0), comp0)]= v0p;
+        vertexMapGarAndIdToPatch[std::make_pair(Fg(i,1), comp1)]= v1p;
+        vertexMapGarAndIdToPatch[std::make_pair(Fg(i,2), comp2)]= v2p;
+
+    }
+}

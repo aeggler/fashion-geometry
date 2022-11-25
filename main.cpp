@@ -8,6 +8,8 @@
 #include <igl/per_edge_normals.h>
 #include <igl/adjacency_list.h>
 #include <igl/facet_components.h>
+#include <igl/vertex_components.h>
+
 #include <igl/boundary_loop.h>
 #include <iostream>
 #include <Eigen/Dense>
@@ -21,6 +23,7 @@
 #include "toolbox/MathFunctions.h"
 #include <igl/signed_distance.h>
 #include <map>
+#include "toolbox/seam.h"
 
 using namespace std;
 using namespace Eigen;
@@ -84,6 +87,7 @@ VectorXd normU, normV;
 MatrixXd perFaceU, perFaceV;
 int whichStressVisualize= 0;
 garment_adaption* gar_adapt;
+vector<seam*> seamsList;
 int counter;
 BodyInterpolator* body_interpolator;
 bool bodyInterpolation= false;
@@ -99,7 +103,6 @@ Eigen::MatrixXd baryCoordsd1, baryCoordsd2;
 vector<std::pair<pair<int, int>, pair<int, int>>> edgeCorrespondences;
 
 void computeBaryCoordsGarOnNewMannequin(igl::opengl::glfw::Viewer& viewer);
-void computePatternDuplicateVertices();
 
 void setNewGarmentMesh(igl::opengl::glfw::Viewer& viewer);
 void setNewMannequinMesh(igl::opengl::glfw::Viewer& viewer);
@@ -138,10 +141,6 @@ bool pre_draw(igl::opengl::glfw::Viewer& viewer){
     viewer.data().dirty |= igl::opengl::MeshGL::DIRTY_DIFFUSE | igl::opengl::MeshGL::DIRTY_SPECULAR;
         if(simulate){
 
-            double p = 1;
-            if(counter%1000==0)convergeIterations+=50 ;
-//            convergeIterations = convergeIterations * max(counter/1000)
-
             computeStress(viewer);
             dotimeStep(viewer);
             showGarment(viewer);// not sure if I actually need this, at least it breaks nothing
@@ -149,17 +148,9 @@ bool pre_draw(igl::opengl::glfw::Viewer& viewer){
             if(counter%convergeIterations==0){
                 gar_adapt->performJacobianUpdateAndMerge(Vg, localGlobalIterations, baryCoords1, baryCoords2, Vg_pattern);
                 cout<<"after adaption"<<endl;
-////            Vg_pattern_orig= Vg_pattern;
                 preComputeConstraintsForRestshape();
                 preComputeStretch();
                 computeStress(viewer);
-//
-////                body_interpolator->interpolateMesh(p, Vm);
-//                setCollisionMesh();
-//                showMannequin(viewer);
-//                iterationCount += howMuchMore;
-//                cout<<" interpolation "<<p <<endl;
-
             }
             counter++;
 
@@ -257,31 +248,32 @@ int main(int argc, char *argv[])
 
 
     std::map<int,int> vertexMapPattToGar;
+    std::map<std::pair<int, int>,int> vertexMapGarAndIdToPatch;
     vertexMapPatternToGarment(Fg, Fg_pattern,vertexMapPattToGar);
 
     std::vector<std::vector<int> > boundaryL;
     igl::boundary_loop(Fg_pattern, boundaryL);
-    Eigen::VectorXi componentIdPerFace;
+    Eigen::VectorXi componentIdPerFace, componentIdPerVert;
     igl::facet_components(Fg_pattern, componentIdPerFace);
-    // use adjacentFacesToEdge of the 3D
+    igl::vertex_components(Fg_pattern, componentIdPerVert);
+    vertexMapGarmentAndPatchIdToPattern(Fg, Fg_pattern, componentIdPerVert, vertexMapGarAndIdToPatch);
+
+
+        // use adjacentFacesToEdge of the 3D
     vector<vector<int> > vfAdj;
     createVertexFaceAdjacencyList(Fg, vfAdj);
     edgeVertices = VectorXd::Zero(Vg_pattern.rows());
     cout<<boundaryL.size()<<" # boundaries"<<endl;
-    vector<vector<int>> edgesPerBoundary;
-    // from edges per boundary we know for each patch the edges. When going from one edge e to e+1 this is what we define as a seam
-    // for e-e+1 we define the corresponding patch number and seam ID of the symmetric seam
-    vector<vector<int>> perPatchPerSeamIdOfCorrespondant;
+    vector<vector<pair<int, int>>> edgesPerBoundary;
+  //  vector<seam> seamList;
+
 
     // we would like a seam to seam mapping where a seam is defined by its two endpoints
     for(int i=0; i<boundaryL.size();  i++){//
-        cout<<i<<" in boundary"<<endl;
         // we walk along the seam and check
-        vector<int> edgesForThisBoundary; //pattern id
+        vector<pair<int, int>> edgesForThisBoundary; //pattern id
         vector<int> boundary = boundaryL[i];
-        cout<<boundary.size()<<" size "<<endl;
         for(int j=0; j<boundary.size(); j++){
-
             int v0 = boundary[j]; int v0g= vertexMapPattToGar[v0];
             int v1 = boundary[(j+1) % boundary.size()]; int v1g = vertexMapPattToGar[v1];
             int v2 = boundary[(j+2) % boundary.size()]; int v2g = vertexMapPattToGar[v2];
@@ -299,16 +291,141 @@ int main(int argc, char *argv[])
 
             bool samePatch = (face1id1==face0id1 && face1id2 == face0id2);
             bool samePatchCrossover = (face1id1==face0id2 && face1id2 == face0id2);
+
             if(!(samePatch || samePatchCrossover)){
                 // two consecutive edges are not the same patch. We have found a corner
                 edgeVertices(v1)= 1;
-                cout<<"found edge "<<v1<<" for patch "<< i<<endl;
-                edgesForThisBoundary.push_back(v1); //pattern id
-            }
+                edgesForThisBoundary.push_back(make_pair(v1, (j+1) % boundary.size())); //pattern id
+                // so far this worked...
 
+
+                if(v1==848){
+                    cout<<"found left"<<endl;
+                }
+                if(v1==2927){
+                    cout<<"found right bigger"<<endl;
+                }
+
+                // but one must be the same since they are from the same patch
+                if(edgesForThisBoundary.size()>1){
+                    // we finish the previous here and add the seam
+
+                    int myPatchId = i;
+                    int otherPatchId;
+                    if(face0id1== i){
+                        otherPatchId = face0id2;
+
+                    }else otherPatchId = face0id1;
+                    if(v1==2918){
+                        cout<<edgesForThisBoundary.size()<<" found left, "<<myPatchId<<" " <<otherPatchId<<endl;
+                    }
+                    if(v1==2927){
+                        cout<<edgesForThisBoundary.size()<<" found right, "<<myPatchId<<" " <<otherPatchId<<endl;
+                    }
+                    if(myPatchId == 5 && otherPatchId ==1){
+                        cout<<" now we should find it "<<endl;
+                    }
+
+                    if(myPatchId>otherPatchId && otherPatchId != -1){
+                        //we know the other boundary is processed and we avoid duplicate seams
+                        int startId = edgesForThisBoundary[edgesForThisBoundary.size()-2].first; // the previous
+                        int startIdInBoundaryIdx = edgesForThisBoundary[edgesForThisBoundary.size()-2].second;
+                        int startIdOther = vertexMapGarAndIdToPatch[make_pair(vertexMapPattToGar[startId], otherPatchId)];
+                        int counter=0;
+                        while(edgesPerBoundary[otherPatchId][counter].first != startIdOther){
+                            counter++;
+                        }
+                        int startIdOtherInBoundaryIdx = edgesPerBoundary[otherPatchId][counter].second;
+                        counter=0;
+                        int endIdOther = vertexMapGarAndIdToPatch[std::make_pair(v1g, otherPatchId)];
+                        while (edgesPerBoundary[otherPatchId][counter].first != endIdOther){
+                            counter++;
+                        }
+                        int endIdOtherInBoundaryIdx = edgesPerBoundary[otherPatchId][counter].second;
+                        int endIdx = (j+1) % boundary.size();
+                        int theirDist =  startIdOtherInBoundaryIdx-endIdOtherInBoundaryIdx;
+                        if(endIdOtherInBoundaryIdx>startIdOtherInBoundaryIdx){
+                            theirDist = startIdOtherInBoundaryIdx  +  (boundaryL[otherPatchId].size()-endIdOtherInBoundaryIdx);
+                        }
+                        if(myPatchId == 5 && otherPatchId ==1){
+                            cout<<" now we should find it "<<startId<<" "<<v1<<" end, in other "<< startIdInBoundaryIdx<<" "<<endIdOther <<endl;
+                        }
+                        if(abs( (j+1) - startIdInBoundaryIdx) != abs(theirDist)){
+                            cout<<boundary.size()<<" size "<<endIdx<<" "<< startIdInBoundaryIdx<<" something wrong about the seams "<<endIdOtherInBoundaryIdx <<" "<< startIdOtherInBoundaryIdx<<endl;
+                            cout<<(j+1) - startIdInBoundaryIdx<<" and "<<theirDist<<endl;
+                        }
+                        seam* newSeam = new seam (myPatchId, otherPatchId,startId, startIdOther, v1, endIdOther,
+                                                 startIdInBoundaryIdx, startIdOtherInBoundaryIdx, endIdx,
+                                                 endIdOtherInBoundaryIdx, theirDist
+                                                 );
+                        seamsList.push_back(newSeam);
+                    }
+                }
+            }
         }
         edgesPerBoundary.push_back(edgesForThisBoundary);
+        // check the first and the last if they are a seam
+        if(edgesForThisBoundary.size()>0){
+            auto firstcorner = edgesForThisBoundary[0];
+            //if(firstcorner.second ==0) continue;
+            int v0 = boundary[firstcorner.second]; int v0g= vertexMapPattToGar[v0];
+            int v1 = boundary[(firstcorner.second - 1) % boundary.size()]; int v1g = vertexMapPattToGar[v1];
+
+            std::pair<int, int>   faces;
+            //vi is a pattern id , what is the corresponding 3d ID? it is not the same!
+            adjacentFacesToEdge(v0g,v1g, vfAdj, faces);// in 3D
+            int facesid0=-1; int facesid1=-1;
+            if(faces.first != -1) facesid0 = componentIdPerFace(faces.first);
+            if(faces.second != -1) facesid1 = componentIdPerFace(faces.second);
+
+            int otherpatch;
+            if(facesid0 == i){
+                otherpatch = facesid1;
+            }else{
+                otherpatch = facesid0;
+            }
+
+            if(otherpatch != -1 && otherpatch<i ){
+
+                cout<<" we found another seam "<<endl;
+                cout<<firstcorner.first<<" the corner "<< edgesForThisBoundary[edgesForThisBoundary.size()-1].first<<endl;
+                cout<<i<<" current and other patch "<<otherpatch<<endl;
+
+                // so the additional seams we find are right , but somehow I seem to place them wrongly
+                int startId = edgesForThisBoundary[edgesForThisBoundary.size()-1].first;
+                cout<<startId<<" start and end "<<v0<< boundary[firstcorner.second]<<endl;
+                int startIdInBoundaryIdx = edgesForThisBoundary[edgesForThisBoundary.size()-1].second;
+                int startIdOther = vertexMapGarAndIdToPatch[make_pair(vertexMapPattToGar[startId], otherpatch)];
+                cout<<startIdOther<<" start other and start bound idx  "<<startIdInBoundaryIdx<<" "<<boundary[startIdInBoundaryIdx]<<endl;
+                int counter=0;
+                while(edgesPerBoundary[otherpatch][counter].first != startIdOther){
+                    counter++;
+                }
+                int startIdOtherInBoundaryIdx = edgesPerBoundary[otherpatch][counter].second;
+                counter=0;
+                int endIdOther = vertexMapGarAndIdToPatch[std::make_pair(v0g, otherpatch)];
+                cout<<" end id other "<< endIdOther<<endl;
+                while (edgesPerBoundary[otherpatch][counter].first != endIdOther){
+                    counter++;
+                }
+                int endIdOtherInBoundaryIdx = edgesPerBoundary[otherpatch][counter].second;
+                int theirDist = firstcorner.second + (boundary.size()-startIdInBoundaryIdx);
+                theirDist = theirDist % boundary.size(); 
+                cout<<theirDist<<" dist "<<firstcorner.second<<endl;
+
+                seam* newSeam = new seam (i, otherpatch ,startId, startIdOther, v0, endIdOther,
+                                          startIdInBoundaryIdx, startIdOtherInBoundaryIdx, firstcorner.second,
+                                          endIdOtherInBoundaryIdx, theirDist
+                );
+                seamsList.push_back(newSeam);
+
+            }
+
+
+        }
+
     }
+
     cout<<"after"<<endl;
 
     gar_adapt = new garment_adaption(Vg, Fg,  Vg_pattern, Fg_pattern, edgeCorrespondences); //none have been altered at this stage
@@ -463,6 +580,8 @@ int main(int argc, char *argv[])
     viewer.callback_pre_draw = &pre_draw;
     viewer.callback_key_down = &callback_key_down;
     cout<<"launch"<<endl;
+    viewer.selected_data_index = 0;
+
     viewer.launch();
 }
 // seems to give good results, let's use this.
@@ -561,7 +680,40 @@ void showGarment(igl::opengl::glfw::Viewer& viewer) {
 // for test of edge vertices
 cout<<" in viewer setting"<<endl;
     MatrixXd testCol= MatrixXd::Zero(Vg_pattern.rows(), 3);
-    testCol.col(0)= edgeVertices;
+    if(jacFlag){
+        std::vector<std::vector<int> > boundaryL;
+        igl::boundary_loop(Fg_pattern, boundaryL);
+        // testCol.col(0)= edgeVertices;
+        cout<<seamsList.size()<<endl;
+        for(int j=0; j<seamsList.size(); j++){
+            seam* firstSeam = seamsList[j];
+            auto stP1 = firstSeam-> getStartAndPatch1();
+            auto stP2 = firstSeam-> getStartAndPatch2();
+
+            int len = firstSeam -> seamLength();
+//            cout<<boundaryL[stP1.second][stP1.first]<<" start "<<len<<endl;
+//            cout<<boundaryL[stP1.second][stP1.first+len]<<" end "<<stP1.first+len<<endl;
+            int boundLen1 = boundaryL[stP1.second].size();
+            int boundLen2 = boundaryL[stP2.second].size();
+
+            for(int i=0; i<=len; i++){
+                testCol(boundaryL[stP1.second][(stP1.first+i)% boundLen1],0) = 1.*j/8;
+                testCol(boundaryL[stP1.second][(stP1.first+i)% boundLen1],1) = 1-j*1./8.;
+                testCol(boundaryL[stP1.second][(stP1.first+i)% boundLen1],2) = 1-j*1./8.;
+
+
+                testCol(boundaryL[stP2.second][(stP2.first+i)% boundLen2], 0) = 1.*j/8;
+                testCol(boundaryL[stP2.second][(stP2.first+i)% boundLen2], 1) = 1-j*1./8.;
+                testCol(boundaryL[stP2.second][(stP2.first+i)% boundLen2], 2) = 1-j*1./8.;
+
+
+                // for the other do I need to start from the end?
+            }
+        }
+
+    }
+
+
     viewer.selected_data_index = 0;
     viewer.data().clear();
     viewer.data().set_mesh(Vg_pattern, Fg_pattern);

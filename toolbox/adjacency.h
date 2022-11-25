@@ -99,7 +99,15 @@ int edgeBetweenVertices(
         int v2,
         const std::vector< std::vector<int> > &veAdj
 );
-void vertexMapPatternToGarment(const Eigen::MatrixXi& Fg_test, const Eigen::MatrixXi& Fg_patternTest, std::map<int,int>& vertexMapPattToGar);
-
+void vertexMapPatternToGarment(
+        const Eigen::MatrixXi& Fg_test,
+        const Eigen::MatrixXi& Fg_patternTest,
+        std::map<int,int>& vertexMapPattToGar
+        );
+void vertexMapGarmentAndPatchIdToPattern(
+        const Eigen::MatrixXi& Fg,
+        const Eigen::MatrixXi& Fg_pattern,
+        Eigen::VectorXi& componentIdPerVert,
+        std::map<std::pair<int, int>,int>& vertexMapGarAndIdToPatch);
 
 #endif //EXAMPLE_ADJACENCY_H
