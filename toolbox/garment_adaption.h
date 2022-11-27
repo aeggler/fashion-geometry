@@ -35,9 +35,16 @@ public:
     garment_adaption(Eigen::MatrixXd& V, Eigen::MatrixXi& Fg, Eigen::MatrixXd & V_pattern, Eigen::MatrixXi& Fg_pattern_orig,
                      vector<std::pair<pair<int, int>, pair<int, int>>>& edgeCorrespondences
     );
+    /* A area weighted average over the neighbors to smooth the target Jacobian*/
     void smoothJacobian();
+    /* Computes per face a jacobian matrix and saves the target norm for visualization. The jacobian is computed based on initial vertex positions
+     * of the 3D garment and the corresponding 2D pattern. */
     void computeJacobian();
+    /* Even if the norms of the triangles are aligned, we have to rotate along the normal to align u (or v) direction before we apply the inverse jacobian
+     * Aleign EITHER u OR v direction. By default it is v. */
     void setUpRotationMatrix(double angle,Vector3d& axis, Matrix4d& rotationMatrix);
+    /* Use local global to compute new positions of the pattern vertices, given the current 3D model. Input iterations defines how many local global steps are
+     * performed. Bary coords are needed to align u or v direction. Output: v_newPattern  */
     void performJacobianUpdateAndMerge(Eigen::MatrixXd & V_curr, int iteratitons, const MatrixXd& baryCoords1, const MatrixXd& baryCoords2, Eigen::MatrixXd & V_newPattern);
 
     std::vector<std::pair<double, double>> perFaceTargetNorm;

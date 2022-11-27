@@ -79,6 +79,7 @@ void Barycentric(VectorXd& p, VectorXd a, VectorXd b, VectorXd c, VectorXd& bary
     baryP(2) = 1.0f - baryP(0) - baryP(1);
 }
 void garment_adaption::smoothJacobian(){
+    // currently a plain area weighted average with the neighbors
     std::vector<Eigen::MatrixXd > jacobians_orig= jacobians;
     double maxCoeff = -1;
     double minCoeff = 1;
@@ -98,8 +99,8 @@ void garment_adaption::smoothJacobian(){
             avgV += jacobians_orig[neighFace].col(1) * area(neighFace);
             weightsum += area(neighFace);
         }
-        avgU /= weightsum; // (numNeigh+1);
-        avgV /= weightsum; // (numNeigh+1);
+        avgU /= weightsum;
+        avgV /= weightsum;
         jacobians[i].col(0) = avgU;
         jacobians[i].col(1) = avgV;
         maxCoeff = max(maxCoeff, jacobians[i].col(1).norm());
