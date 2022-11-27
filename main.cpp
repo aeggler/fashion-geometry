@@ -161,7 +161,9 @@ bool pre_draw(igl::opengl::glfw::Viewer& viewer){
 static bool noStress = true;
 static bool StressU = false;
 static bool StressV = false;
-static bool StressMixed = false;
+static bool StressDiffJac = false;
+static bool StressJac = false;
+
 std::vector<std::pair<double,double>> perFaceTargetNorm;
 bool jacFlag=false;
 MatrixXd patternPreInterpol,patternPreInterpol_temp ;
@@ -365,14 +367,14 @@ int main(int argc, char *argv[])
             if(ImGui::Checkbox("Visualize no Stress", &noStress)){
                 StressU = false;
                 StressV=false;
-                StressMixed = false;
+                StressDiffJac = false;
                 whichStressVisualize = 0;
                 showGarment(viewer);
             }
             if(ImGui::Checkbox("Visualize U Stress", &StressU)){
                 noStress = false;
                 StressV = false;
-                StressMixed = false;
+                StressDiffJac = false;
 
                 whichStressVisualize = 1;
                 showGarment(viewer);
@@ -380,16 +382,31 @@ int main(int argc, char *argv[])
             if(ImGui::Checkbox("Visualize V Stress ", &StressV)){
                 noStress = false;
                 StressU = false;
-                StressMixed = false;
+                StressDiffJac = false;
                 whichStressVisualize = 2;
                 showGarment(viewer);
            }
-            if(ImGui::Checkbox("Visualize diffFrom Jacobian ", &StressMixed)){
+            if(ImGui::Checkbox("Visualize diffFrom Jacobian ", &StressDiffJac)){
                 StressV= false;
                 noStress = false;
                 StressU = false;
                 whichStressVisualize = 3;
                 showGarment(viewer);
+            }
+            if(ImGui::Checkbox("Visualize Jacobian V", &StressJac)){
+                StressV= false;
+                noStress = false;
+                StressU = false;
+                StressDiffJac = false;
+
+                Eigen::MatrixXd colJac(Fg.rows(), 3);
+              for(int i=0; i<Fg.rows(); i++){
+                  auto jac = gar_adapt->jacobians[i];
+                  double y = (jac.col(1).norm()-1) * 3; // to increase differences
+                  colJac.row(i) = Vector3d(1.0 + y, 1. - y, 0.0);
+              }
+                viewer.selected_data_index = 0;
+                viewer.data().set_colors(colJac);
             }
             static bool remMan;
             if(ImGui::Checkbox("Original View ", &remMan)){
@@ -507,61 +524,57 @@ void setNewGarmentMesh(igl::opengl::glfw::Viewer& viewer) {
     showGarment(viewer);
 }
 void showGarment(igl::opengl::glfw::Viewer& viewer) {
-//    viewer.selected_data_index = 0;
-//    viewer.data().clear();
-//    viewer.data().set_mesh(Vg, Fg);
-//    viewer.data().uniform_colors(ambient, diffuse, specular);
-//    viewer.data().show_texture = false;
-//    viewer.data().set_face_based(false);
-//    //remove wireframe
-//    viewer.data().show_lines = false;
-//   // if 0 -> no face colour
-
-// for test of edge vertices
-    MatrixXd testCol= MatrixXd::Zero(Vg_pattern.rows(), 3);
-    if(jacFlag){
-        std::vector<std::vector<int> > boundaryL;
-        igl::boundary_loop(Fg_pattern, boundaryL);
-        // testCol.col(0)= edgeVertices;
-        for(int j=0; j<seamsList.size(); j++){
-            seam* firstSeam = seamsList[j];
-            auto stP1 = firstSeam-> getStartAndPatch1();
-            auto stP2 = firstSeam-> getStartAndPatch2();
-
-            int len = firstSeam -> seamLength();
-//            cout<<boundaryL[stP1.second][stP1.first]<<" start "<<len<<endl;
-//            cout<<boundaryL[stP1.second][stP1.first+len]<<" end "<<stP1.first+len<<endl;
-            int boundLen1 = boundaryL[stP1.second].size();
-            int boundLen2 = boundaryL[stP2.second].size();
-
-            for(int i=0; i<=len; i++){
-                testCol(boundaryL[stP1.second][(stP1.first+i)% boundLen1],0) = 1.*j/8;
-                testCol(boundaryL[stP1.second][(stP1.first+i)% boundLen1],1) = 1-j*1./8.;
-                testCol(boundaryL[stP1.second][(stP1.first+i)% boundLen1],2) = 1-j*1./8.;
-
-
-                testCol(boundaryL[stP2.second][(stP2.first+i)% boundLen2], 0) = 1.*j/8;
-                testCol(boundaryL[stP2.second][(stP2.first+i)% boundLen2], 1) = 1-j*1./8.;
-                testCol(boundaryL[stP2.second][(stP2.first+i)% boundLen2], 2) = 1-j*1./8.;
-
-
-                // for the other do I need to start from the end?
-            }
-        }
-
-    }
-
-
     viewer.selected_data_index = 0;
     viewer.data().clear();
-    viewer.data().set_mesh(Vg_pattern, Fg_pattern);
+    viewer.data().set_mesh(Vg, Fg);
     viewer.data().uniform_colors(ambient, diffuse, specular);
     viewer.data().show_texture = false;
     viewer.data().set_face_based(false);
     //remove wireframe
     viewer.data().show_lines = false;
-    // if 0 -> no face colour
-    viewer.data().set_colors(testCol);
+   // if 0 -> no face colour
+
+//// for test of edge vertices
+//    MatrixXd testCol= MatrixXd::Zero(Vg_pattern.rows(), 3);
+//    if(jacFlag){
+//        std::vector<std::vector<int> > boundaryL;
+//        igl::boundary_loop(Fg_pattern, boundaryL);
+//        // testCol.col(0)= edgeVertices;
+//        for(int j=0; j<seamsList.size(); j++){
+//            seam* firstSeam = seamsList[j];
+//            auto stP1 = firstSeam-> getStartAndPatch1();
+//            auto stP2 = firstSeam-> getStartAndPatch2();
+//
+//            int len = firstSeam -> seamLength();
+////            cout<<boundaryL[stP1.second][stP1.first]<<" start "<<len<<endl;
+////            cout<<boundaryL[stP1.second][stP1.first+len]<<" end "<<stP1.first+len<<endl;
+//            int boundLen1 = boundaryL[stP1.second].size();
+//            int boundLen2 = boundaryL[stP2.second].size();
+//
+//            for(int i=0; i<=len; i++){
+//                testCol(boundaryL[stP1.second][(stP1.first+i)% boundLen1],0) = 1.*j/8;
+//                testCol(boundaryL[stP1.second][(stP1.first+i)% boundLen1],1) = 1-j*1./8.;
+//                testCol(boundaryL[stP1.second][(stP1.first+i)% boundLen1],2) = 1-j*1./8.;
+//
+//                testCol(boundaryL[stP2.second][(stP2.first+i)% boundLen2], 0) = 1.*j/8;
+//                testCol(boundaryL[stP2.second][(stP2.first+i)% boundLen2], 1) = 1-j*1./8.;
+//                testCol(boundaryL[stP2.second][(stP2.first+i)% boundLen2], 2) = 1-j*1./8.;
+//
+//                // for the other do I need to start from the end?
+//            }
+//        }
+//
+//    }
+//    viewer.selected_data_index = 0;
+//    viewer.data().clear();
+//    viewer.data().set_mesh(Vg_pattern, Fg_pattern);
+//    viewer.data().uniform_colors(ambient, diffuse, specular);
+//    viewer.data().show_texture = false;
+//    viewer.data().set_face_based(false);
+//    //remove wireframe
+//    viewer.data().show_lines = false;
+//    // if 0 -> no face colour
+//    viewer.data().set_colors(testCol);
 
     if(whichStressVisualize == 1){
         viewer.data().set_colors(colU);
@@ -683,7 +696,7 @@ bool callback_key_down(igl::opengl::glfw::Viewer& viewer, unsigned char key, int
         StressV = false;
         StressU = false;
         noStress = false;
-        StressMixed = true;
+        StressDiffJac = true;
         showGarment(viewer);
         keyRecognition = true;
     }
@@ -741,7 +754,8 @@ void reset(igl::opengl::glfw::Viewer& viewer){
     simulate=false;
     StressV = false;
     StressU = false;
-    StressMixed = false;
+    StressDiffJac = false;
+    StressJac = false;
     noStress = true;
 
     whichStressVisualize = 0;
@@ -1078,8 +1092,6 @@ void computeStress(igl::opengl::glfw::Viewer& viewer){
         normV(j) = (Gv-G).norm();
         y = (normV(j)-1) * differenceIncrementFactor;
         colV.row(j) = Vector3d ( 1. + y, 1.- y, 0.0);
-
-
 
         auto diffU = (normU(j)-perFaceTargetNorm[j].first)/ perFaceTargetNorm[j].first;
         auto diffV = (normV(j)-perFaceTargetNorm[j].second)/ perFaceTargetNorm[j].second;

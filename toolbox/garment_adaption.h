@@ -18,13 +18,14 @@ private:
     int numFace;
     int numVertGarment;
     int numVertPattern;
-    std::vector<Eigen::MatrixXd > jacobians;
+
     std::vector<Eigen::MatrixXd > inv_jacobians;
     Eigen::MatrixXd V_init;
     Eigen::MatrixXd V;
     Eigen::MatrixXi Fg;
     Eigen::MatrixXd V_pattern;
     Eigen::MatrixXi Fg_pattern;
+    std::vector< std::vector<int> > faceFaceAdjecencyList_3D;
     vector<vector<int> > vfAdj;
     Eigen::SparseMatrix<double, RowMajor> A;
     Eigen::SimplicialLDLT<Eigen::SparseMatrix<double>> cholSolver;
@@ -34,11 +35,13 @@ public:
     garment_adaption(Eigen::MatrixXd& V, Eigen::MatrixXi& Fg, Eigen::MatrixXd & V_pattern, Eigen::MatrixXi& Fg_pattern_orig,
                      vector<std::pair<pair<int, int>, pair<int, int>>>& edgeCorrespondences
     );
+    void smoothJacobian();
     void computeJacobian();
     void setUpRotationMatrix(double angle,Vector3d& axis, Matrix4d& rotationMatrix);
     void performJacobianUpdateAndMerge(Eigen::MatrixXd & V_curr, int iteratitons, const MatrixXd& baryCoords1, const MatrixXd& baryCoords2, Eigen::MatrixXd & V_newPattern);
 
     std::vector<std::pair<double, double>> perFaceTargetNorm;
+    std::vector<Eigen::MatrixXd > jacobians;
 };
 
 

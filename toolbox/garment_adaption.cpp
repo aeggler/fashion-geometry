@@ -29,6 +29,7 @@ garment_adaption::garment_adaption(Eigen::MatrixXd &Vg, Eigen::MatrixXi& Fg, Eig
     V_pattern = V_pattern_orig;
     Fg_pattern = Fg_pattern_orig;
     createVertexFaceAdjacencyList(Fg_pattern, vfAdj);
+    createFaceFaceAdjacencyList(Fg, faceFaceAdjecencyList_3D);
 // In Order to apply the inverse jacobian and get new positions for the new pattern we apply a local global approach.
 /*In the local iteration we compute the barycenter and the vectors center to vertices.
  * In the global iteration we assume they are fixed and aim at setting v such that || v - Bvec||^2 is minimized,
@@ -77,8 +78,43 @@ void Barycentric(VectorXd& p, VectorXd a, VectorXd b, VectorXd c, VectorXd& bary
     baryP(1) = (d00 * d21 - d01 * d20) / denom;
     baryP(2) = 1.0f - baryP(0) - baryP(1);
 }
+void garment_adaption::smoothJacobian(){
+    std::vector<Eigen::MatrixXd > jacobians_orig= jacobians;
+    double maxCoeff = -1;
+    double minCoeff = 1;
+    VectorXd area;
+    igl::doublearea(V_init, Fg, area);
+    area/=2;
+    for(int i=0; i<numFace; i++){
+        // we average them all with their neighbors
+        // for this we need to know which are their neighbors -> done initially for the 3D pattern
+        Vector3d avgU = jacobians[i].col(0) * area(i);
+        Vector3d avgV = jacobians[i].col(1) * area(i);
+        double weightsum = area(i);
+        int numNeigh = faceFaceAdjecencyList_3D[i].size();
+        for(int j = 0; j < numNeigh; j++){
+            int neighFace = faceFaceAdjecencyList_3D[i][j];
+            avgU += jacobians_orig[neighFace].col(0) * area(neighFace);
+            avgV += jacobians_orig[neighFace].col(1) * area(neighFace);
+            weightsum += area(neighFace);
+        }
+        avgU /= weightsum; // (numNeigh+1);
+        avgV /= weightsum; // (numNeigh+1);
+        jacobians[i].col(0) = avgU;
+        jacobians[i].col(1) = avgV;
+        maxCoeff = max(maxCoeff, jacobians[i].col(1).norm());
+        minCoeff = min (minCoeff, jacobians[i].col(1).norm());
+        perFaceTargetNorm.push_back(std::make_pair(jacobians[i].col(0).norm(), jacobians[i].col(1).norm()) );//* (jacobian.col(0).norm()-1);
+        inv_jacobians[i] = jacobians[i].inverse();
+
+    }
+    cout<<maxCoeff<<" after smoothing"<<endl;
+    cout<<minCoeff<<" min after smoothing"<<endl;
+}
 void garment_adaption::computeJacobian(){
    // perFaceTargetNorm.resize(numFace);
+   double maxCoeff = -1;
+   double minCoeff = 1;
     for(int j = 0; j<numFace; j++){
         Eigen::MatrixXd jac2to3 (3, 2);
         Eigen::MatrixXd jacobian(3, 3);
@@ -129,14 +165,13 @@ void garment_adaption::computeJacobian(){
         jacobian.col(0) = jac2to3.col(0);
         jacobian.col(1) = jac2to3.col(1);
         jacobian.col(2) = normalVec;
-
+        maxCoeff = max(maxCoeff, jacobian.col(1).norm());
+        minCoeff = min(minCoeff, jacobian.col(1).norm());
         jacobians[j] = jacobian;
-//        cout<<jacobians[j]<<" face j "<<endl<<endl;
-
         inv_jacobians[j] = jacobian.inverse();
 
         //they should have stretch 1, hence add deviation from 1 to measure
-        perFaceTargetNorm.push_back(std::make_pair(jacobian.col(0).norm(), jacobian.col(1).norm()) );//* (jacobian.col(0).norm()-1);
+//        perFaceTargetNorm.push_back(std::make_pair(jacobian.col(0).norm(), jacobian.col(1).norm()) );//* (jacobian.col(0).norm()-1);
 //        perFaceTargetNorm(j).second = ();// * (jacobian.col(1).norm()-1);
         // add some kind of angle measure
         // they should be orthogonal, hence add dot squared as norm
@@ -144,6 +179,10 @@ void garment_adaption::computeJacobian(){
 //        perFaceTargetNorm(j) += (dot * dot);
 
     }
+    cout<<maxCoeff<<"before smoothing" <<endl;
+    cout<<minCoeff <<" min before smoothing"<<endl;
+    smoothJacobian();
+
 }
 
 void garment_adaption::setUpRotationMatrix(double angle,Vector3d& axis, Matrix4d& rotationMatrix)
@@ -157,21 +196,23 @@ void garment_adaption::setUpRotationMatrix(double angle,Vector3d& axis, Matrix4d
     double v2 = v * v;
     double w2 = w * w;
 
+    rotationMatrix= Eigen::MatrixXd::Zero(4, 4);
+
     rotationMatrix(0,0) = (u2 + (v2 + w2) * cos(angle)) / L;
     rotationMatrix(0,1) = (u * v * (1 - cos(angle)) - w * sqrt(L) * sin(angle)) / L;
     rotationMatrix(0,2) = (u * w * (1 - cos(angle)) + v * sqrt(L) * sin(angle)) / L;
-    rotationMatrix(0,3) = 0.0;
+//    rotationMatrix(0,3) = 0.0;
     rotationMatrix(1,0) = (u * v * (1 - cos(angle)) + w * sqrt(L) * sin(angle)) / L;
     rotationMatrix(1,1) = (v2 + (u2 + w2) * cos(angle)) / L;
     rotationMatrix(1,2) = (v * w * (1 - cos(angle)) - u * sqrt(L) * sin(angle)) / L;
-    rotationMatrix(1,3) = 0.0;
+//    rotationMatrix(1,3) = 0.0;
     rotationMatrix(2,0) = (u * w * (1 - cos(angle)) - v * sqrt(L) * sin(angle)) / L;
     rotationMatrix(2,1) = (v * w * (1 - cos(angle)) + u * sqrt(L) * sin(angle)) / L;
     rotationMatrix(2,2) = (w2 + (u2 + v2) * cos(angle)) / L;
-    rotationMatrix(2,3) = 0.0;
-    rotationMatrix(3,0) = 0.0;
-    rotationMatrix(3,1) = 0.0;
-    rotationMatrix(3,2) = 0.0;
+//    rotationMatrix(2,3) = 0.0;
+//    rotationMatrix(3,0) = 0.0;
+//    rotationMatrix(3,1) = 0.0;
+//    rotationMatrix(3,2) = 0.0;
     rotationMatrix(3,3) = 1.0;
 }
 
