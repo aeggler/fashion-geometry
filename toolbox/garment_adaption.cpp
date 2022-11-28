@@ -29,7 +29,7 @@ garment_adaption::garment_adaption(Eigen::MatrixXd &Vg, Eigen::MatrixXi& Fg, Eig
     V_pattern = V_pattern_orig;
     Fg_pattern = Fg_pattern_orig;
     createVertexFaceAdjacencyList(Fg_pattern, vfAdj);
-    createFaceFaceAdjacencyList(Fg, faceFaceAdjecencyList_3D);
+    createFaceFaceAdjacencyList(Fg_pattern, faceFaceAdjecencyList_3D);
 // In Order to apply the inverse jacobian and get new positions for the new pattern we apply a local global approach.
 /*In the local iteration we compute the barycenter and the vectors center to vertices.
  * In the global iteration we assume they are fixed and aim at setting v such that || v - Bvec||^2 is minimized,
@@ -79,6 +79,9 @@ void Barycentric(VectorXd& p, VectorXd a, VectorXd b, VectorXd c, VectorXd& bary
 }
 void garment_adaption::smoothJacobian(){
     // currently a plain area weighted average with the neighbors
+    // do only for the direct nieghbors of V pattern !!!
+
+    //  todo only for neighbors
     std::vector<Eigen::MatrixXd > jacobians_orig= jacobians;
     double maxCoeff = -1;
     double minCoeff = 1;
@@ -169,6 +172,7 @@ void garment_adaption::computeJacobian(){
         minCoeff = min(minCoeff, jacobian.col(1).norm());
         jacobians[j] = jacobian;
         inv_jacobians[j] = jacobian.inverse();
+        perFaceTargetNorm.push_back(std::make_pair(jacobians[j].col(0).norm(), jacobians[j].col(1).norm()) );//* (jacobian.col(0).norm()-1);
 
         //they should have stretch 1, hence add deviation from 1 to measure
 //        perFaceTargetNorm.push_back(std::make_pair(jacobian.col(0).norm(), jacobian.col(1).norm()) );//* (jacobian.col(0).norm()-1);

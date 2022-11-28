@@ -47,7 +47,7 @@ public:
  * Inputs: A list of all boundaries (igl function), a maps between pattern and garment vertices, vertexFace adjacency, for each face and vertex an id which connected component
  * (to access the correct patch vertex), edge vertices that mark beginnings and ends of each seam.
  *
- * Output: edges per boundary and seams list, a list of all seams stored as seam instances 
+ * Output: edges per boundary and seams list, a list of all seams stored as seam instances
  *
  * */
 void computeAllSeams(const std::vector<std::vector<int> >& boundaryL, std::map<int,int>& vertexMapPattToGar, std::map<std::pair<int, int>,int>& vertexMapGarAndIdToPatch,
