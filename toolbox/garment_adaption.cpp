@@ -43,7 +43,6 @@ garment_adaption::garment_adaption(Eigen::MatrixXd &Vg, Eigen::MatrixXi& Fg, Eig
 
     for(int i =0; i<numVertPattern; i++){
         vector<int> neigh = vfAdj[i]; // number of faces of this vertex ,attention remove -1 faces
-        //sort(neigh.begin(), neigh.end());
         for (int j = 0; j<neigh.size(); j++){
             if(neigh[j]== -1){
                 continue;

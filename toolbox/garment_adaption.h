@@ -32,6 +32,7 @@ private:
 
 
 public:
+    /* Initialiize the class instance and set up matrix A for the local global computation */
     garment_adaption(Eigen::MatrixXd& V, Eigen::MatrixXi& Fg, Eigen::MatrixXd & V_pattern, Eigen::MatrixXi& Fg_pattern_orig,
                      vector<std::pair<pair<int, int>, pair<int, int>>>& edgeCorrespondences
     );

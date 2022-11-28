@@ -99,11 +99,15 @@ int edgeBetweenVertices(
         int v2,
         const std::vector< std::vector<int> > &veAdj
 );
+/* A helper function to create a map between a vertex on the pattern to the garment. Note that several vertices can map to the same 3D garment vertex, thus this
+ * map is not bijective. The faces, however, have to correspond to each other, also in the order of the vertices for a triangle has to be the same*/
 void vertexMapPatternToGarment(
         const Eigen::MatrixXi& Fg_test,
         const Eigen::MatrixXi& Fg_patternTest,
         std::map<int,int>& vertexMapPattToGar
         );
+/* A helper function to create a map between a vertex on the garment to its corresponding vertex on a certain patch. Note that a vertex
+ * can be on several patches, hence the additional patch id parameter is needed to get a injective map*/
 void vertexMapGarmentAndPatchIdToPattern(
         const Eigen::MatrixXi& Fg,
         const Eigen::MatrixXi& Fg_pattern,
