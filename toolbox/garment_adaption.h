@@ -7,7 +7,7 @@
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
 #include<Eigen/SparseCholesky>
-
+#include "seam.h"
 #include <Eigen/Geometry>
 using namespace std;
 using namespace Eigen;
@@ -34,7 +34,7 @@ private:
 public:
     /* Initialiize the class instance and set up matrix A for the local global computation */
     garment_adaption(Eigen::MatrixXd& V, Eigen::MatrixXi& Fg, Eigen::MatrixXd & V_pattern, Eigen::MatrixXi& Fg_pattern_orig,
-                     vector<std::pair<pair<int, int>, pair<int, int>>>& edgeCorrespondences
+                     vector<seam*>& seamsList, std::vector<std::vector<int>>& boundaryL
     );
     /* A area weighted average over the neighbors to smooth the target Jacobian*/
     void smoothJacobian();
@@ -46,7 +46,8 @@ public:
     void setUpRotationMatrix(double angle,Vector3d& axis, Matrix4d& rotationMatrix);
     /* Use local global to compute new positions of the pattern vertices, given the current 3D model. Input iterations defines how many local global steps are
      * performed. Bary coords are needed to align u or v direction. Output: v_newPattern  */
-    void performJacobianUpdateAndMerge(Eigen::MatrixXd & V_curr, int iteratitons, const MatrixXd& baryCoords1, const MatrixXd& baryCoords2, Eigen::MatrixXd & V_newPattern);
+    void performJacobianUpdateAndMerge(Eigen::MatrixXd & V_curr, int iteratitons, const MatrixXd& baryCoords1, const MatrixXd& baryCoords2,
+                                       Eigen::MatrixXd & V_newPattern, vector<seam*>& seamsList, std::vector<std::vector<int>>& boundaryL);
 
     std::vector<std::pair<double, double>> perFaceTargetNorm;
     std::vector<Eigen::MatrixXd > jacobians;

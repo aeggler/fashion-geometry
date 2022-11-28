@@ -290,7 +290,7 @@ int main(int argc, char *argv[])
 
     viewer.core().animation_max_fps = 200.;
     viewer.core().is_animating = false;
-
+    int whichSeam=0;
     //additional menu items
     menu.callback_draw_viewer_menu = [&]() {
         if (ImGui::CollapsingHeader("Garment", ImGuiTreeNodeFlags_OpenOnArrow)) {
@@ -302,6 +302,50 @@ int main(int argc, char *argv[])
             if(ImGui::Button("Adjust garment", ImVec2(-1, 0))){
                 translateMesh(viewer, 1 );
             }
+
+            ImGui::InputInt("Vis Seam No", &whichSeam, 0, 0);
+            if(ImGui::Button("Visualize Seam", ImVec2(-1, 0))){
+                MatrixXd testCol= MatrixXd::Zero(Vg_pattern.rows(), 3);
+                if(jacFlag){
+                    std::vector<std::vector<int> > boundaryL;
+                    igl::boundary_loop(Fg_pattern, boundaryL);
+                    // testCol.col(0)= edgeVertices;
+                    for(int j=whichSeam; j<whichSeam+1; j++){
+                        seam* firstSeam = seamsList[j];
+                        auto stP1 = firstSeam-> getStartAndPatch1();
+                        auto stP2 = firstSeam-> getStartAndPatch2();
+
+                        int len = firstSeam -> seamLength();
+                        int boundLen1 = boundaryL[stP1.second].size();
+                        int boundLen2 = boundaryL[stP2.second].size();
+
+                        for(int i=0; i<=len; i++){
+                            testCol(boundaryL[stP1.second][(stP1.first+i)% boundLen1],0) = 1.;
+                            testCol(boundaryL[stP1.second][(stP1.first+i)% boundLen1],1) = 0;
+                            testCol(boundaryL[stP1.second][(stP1.first+i)% boundLen1],2) = 0;
+
+                            testCol(boundaryL[stP2.second][(stP2.first+i)% boundLen2], 0) = 1.;
+                            testCol(boundaryL[stP2.second][(stP2.first+i)% boundLen2], 1) = 0;
+                            testCol(boundaryL[stP2.second][(stP2.first+i)% boundLen2], 2) = 0;
+
+                        }
+                    }
+
+                }
+                viewer.selected_data_index = 0;
+                viewer.data().clear();
+                viewer.data().set_mesh(Vg_pattern, Fg_pattern);
+                viewer.data().uniform_colors(ambient, diffuse, specular);
+                viewer.data().show_texture = false;
+                viewer.data().set_face_based(false);
+                //remove wireframe
+                viewer.data().show_lines = false;
+                // if 0 -> no face colour
+                viewer.data().set_colors(testCol);
+            }
+
+
+
         }
         if (ImGui::CollapsingHeader("Mannequin", ImGuiTreeNodeFlags_OpenOnArrow)) {
 
@@ -533,13 +577,13 @@ void showGarment(igl::opengl::glfw::Viewer& viewer) {
     viewer.data().show_lines = false;
    // if 0 -> no face colour
 
-//// for test of edge vertices
+// for test of edge vertices
 //    MatrixXd testCol= MatrixXd::Zero(Vg_pattern.rows(), 3);
 //    if(jacFlag){
 //        std::vector<std::vector<int> > boundaryL;
 //        igl::boundary_loop(Fg_pattern, boundaryL);
 //        // testCol.col(0)= edgeVertices;
-//        for(int j=0; j<seamsList.size(); j++){
+//        for(int j=0; j<1; j++){
 //            seam* firstSeam = seamsList[j];
 //            auto stP1 = firstSeam-> getStartAndPatch1();
 //            auto stP2 = firstSeam-> getStartAndPatch2();

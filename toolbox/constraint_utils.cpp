@@ -13,7 +13,7 @@
 using namespace Eigen;
 using namespace std;
 // see https://igl.ethz.ch/projects/ARAP/svd_rot.pdf
-
+//  ATTENTION THIS INCLUDES A REFLECTION
 void procrustes(const Eigen::MatrixXd& points1,    // from
                 const Eigen::MatrixXd& points2,    //to
                 Eigen::MatrixXd& R_est,
@@ -32,7 +32,7 @@ void procrustes(const Eigen::MatrixXd& points1,    // from
     Eigen::JacobiSVD<Eigen::MatrixXd> svd(S, Eigen::ComputeThinU | Eigen::ComputeThinV);
 
     Eigen::MatrixXd sigma = Eigen::MatrixXd::Identity(svd.matrixV().cols(), svd.matrixU().cols());
-    sigma(sigma.rows() - 1, sigma.cols() - 1) = (svd.matrixV() * svd.matrixU().transpose()).determinant();
+    sigma(sigma.rows() - 1, sigma.cols() - 1) = -(svd.matrixV() * svd.matrixU().transpose()).determinant();
 
     R_est = svd.matrixV() * sigma * svd.matrixU().transpose();
     //R_est = MatrixXd::Identity(3, 3);

@@ -45,6 +45,12 @@ std::pair<int, int> seam::getStartAndPatch2() {
     return std::make_pair(patch2endBoundaryLoopIdx, patch2Id);
 }
 
+// ATTENTION: start and end correspond, but in order to iterate over the boundary we need to start the iteration from the end
+std::pair<int, int> seam::getStartAndPatch2ForCorres() {
+    return std::make_pair(patch2startBoundaryLoopIdx, patch2Id);
+}
+
+
 int seam::seamLength(){
     return length;
 }

@@ -33,15 +33,18 @@ public:
          int patch1endCornerId,
          int patch2endCornerId,
          int patch1startBoundaryLoopIdx,
-    int patch2startBoundaryLoopIdx,
-    int patch1endBoundaryLoopIdx,
-    int patch2endBoundaryLoopIdx, int length) ;
+         int patch2startBoundaryLoopIdx,
+         int patch1endBoundaryLoopIdx,
+         int patch2endBoundaryLoopIdx, int length);
 
     std::pair<int, int> getStartAndPatch1();
+
     std::pair<int, int> getStartAndPatch2();
+
     int seamLength();
 
-    };
+    std::pair<int, int> getStartAndPatch2ForCorres();
+};
 /* Brief: a function that computes all seams of a given patch layout and stores them in a list.
  *
  * Inputs: A list of all boundaries (igl function), a maps between pattern and garment vertices, vertexFace adjacency, for each face and vertex an id which connected component

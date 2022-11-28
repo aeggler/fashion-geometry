@@ -8,6 +8,8 @@
 #include <igl/doublearea.h>
 #include <cmath>
 #include "adjacency.h"
+#include "seam.h"
+#include "constraint_utils.h"
 #include<Eigen/SparseCholesky>
 
 using namespace std;
@@ -17,7 +19,8 @@ typedef Eigen::SparseMatrix<double, RowMajor> SpMat; // declares a column-major 
 typedef Eigen::Triplet<double> T;
 
 garment_adaption::garment_adaption(Eigen::MatrixXd &Vg, Eigen::MatrixXi& Fg, Eigen::MatrixXd & V_pattern_orig,
-                                   Eigen::MatrixXi& Fg_pattern_orig, vector<std::pair<pair<int, int>, pair<int, int>>>& edgeCorrespondences
+                                   Eigen::MatrixXi& Fg_pattern_orig, vector<seam*>& seamsList,
+                                   std::vector<std::vector<int>>& boundaryL
 ) {
     numFace= Fg.rows();
     numVertGarment = Vg.rows();
@@ -54,7 +57,48 @@ garment_adaption::garment_adaption(Eigen::MatrixXd &Vg, Eigen::MatrixXi& Fg, Eig
 
         }
     }
+    /*new! for each vertex oon the border we introduce the seam symmetry constraint!
+     * for each seam we have one rotation translation and the vertex shoudl be where the rotation translation leads us to
+     * */
+//    cout<<" row count before we add the seams constraints:"<< rowCount<<endl;
+    for(int i=0; i<seamsList.size(); i++){
+        // iterate over all seams, take the left and right side for all seams, but here we just need the vertex index of the corresponding vertices
+        seam* currSeam = seamsList[i];
+        int seamLength = currSeam-> seamLength();
+        auto stP1 = currSeam-> getStartAndPatch1();
+        auto stP2 = currSeam-> getStartAndPatch2ForCorres();
+
+        int boundLen1 = boundaryL[stP1.second].size();
+        int boundLen2 = boundaryL[stP2.second].size();
+
+        for(int j=0; j< seamLength; j++){
+            int firstSide = boundaryL[stP1.second][(stP1.first+j)% boundLen1];
+            int secAccess = (stP2.first - j) % boundLen2;
+            if(secAccess < 0){
+                secAccess = boundLen2 + (stP2.first - j);
+            }
+            int secondSide = boundaryL[stP2.second][secAccess];
+
+//            if(i==0 && j==0 )cout<<firstSide <<" first and second "<< secondSide<<endl;
+
+            tripletList.push_back(T(3*rowCount, 3 * firstSide, 1));
+            tripletList.push_back(T(3*rowCount + 1, 3 * firstSide + 1, 1));
+            tripletList.push_back(T(3*rowCount + 2, 3 * firstSide + 2, 1));
+
+            rowCount++;
+            tripletList.push_back(T(3*rowCount, 3 * secondSide, 1));
+            tripletList.push_back(T(3*rowCount + 1, 3 * secondSide + 1, 1));
+            tripletList.push_back(T(3*rowCount + 2, 3 * secondSide + 2, 1));
+            rowCount++;
+
+        }
+
+    }
+
+//    cout<<rowCount<<" row count after the seams constraint"<<endl;
+
     A.resize(3*rowCount, 3*numVertPattern);
+
     A.setFromTriplets(tripletList.begin(), tripletList.end());
 
     SpMat LHS = (A.transpose()*A);
@@ -111,8 +155,8 @@ void garment_adaption::smoothJacobian(){
         inv_jacobians[i] = jacobians[i].inverse();
 
     }
-    cout<<maxCoeff<<" after smoothing"<<endl;
-    cout<<minCoeff<<" min after smoothing"<<endl;
+//    cout<<maxCoeff<<" after smoothing"<<endl;
+//    cout<<minCoeff<<" min after smoothing"<<endl;
 }
 void garment_adaption::computeJacobian(){
    // perFaceTargetNorm.resize(numFace);
@@ -183,8 +227,8 @@ void garment_adaption::computeJacobian(){
 //        perFaceTargetNorm(j) += (dot * dot);
 
     }
-    cout<<maxCoeff<<"before smoothing" <<endl;
-    cout<<minCoeff <<" min before smoothing"<<endl;
+//    cout<<maxCoeff<<"before smoothing" <<endl;
+//    cout<<minCoeff <<" min before smoothing"<<endl;
     smoothJacobian();
 
 }
@@ -220,7 +264,10 @@ void garment_adaption::setUpRotationMatrix(double angle,Vector3d& axis, Matrix4d
     rotationMatrix(3,3) = 1.0;
 }
 
-void garment_adaption::performJacobianUpdateAndMerge(Eigen::MatrixXd & V_curr, int iterations, const MatrixXd& baryCoords1, const MatrixXd& baryCoords2,Eigen::MatrixXd & V_newPattern ){
+void garment_adaption::performJacobianUpdateAndMerge(Eigen::MatrixXd & V_curr, int iterations, const MatrixXd& baryCoords1,
+                                                     const MatrixXd& baryCoords2,Eigen::MatrixXd & V_newPattern,
+                                                     vector<seam*>& seamsList, std::vector<std::vector<int>>& boundaryL
+                                                     ){
     V= V_pattern;
    // this is ithe skrinked model, it has too much stress, we want to enlarge it
     // j-1 gives us the pattern such that the stress is just the same as for the original
@@ -331,7 +378,7 @@ void garment_adaption::performJacobianUpdateAndMerge(Eigen::MatrixXd & V_curr, i
 
     Eigen::VectorXd b (A.rows());
 
-    for (int numIt=0; numIt< iterations ; numIt++) {
+    for (int numIt = 0; numIt < iterations ; numIt++) {//iterations
         std::vector<std::vector<std::pair<Eigen::Vector3d, int>>> perVertexPositions(numVertPattern);
 
         // the local step
@@ -350,6 +397,7 @@ void garment_adaption::performJacobianUpdateAndMerge(Eigen::MatrixXd & V_curr, i
             perVertexPositions[idp2].push_back(std::make_pair(ref + jacobi_adapted_Edges[j].col(2), j));
         }
 
+
        // the global step
         int counter = 0;
         for(int j =0; j<numVertPattern; j++) {
@@ -362,7 +410,81 @@ void garment_adaption::performJacobianUpdateAndMerge(Eigen::MatrixXd & V_curr, i
                 b(3 * counter + 2) = currPos(2);
                 counter++;
             }
+            /*new! also add the new position constraints as b */
         }
+        /* new: we compute a rotation and translation per seam and from this the new target porition of the vertices*/
+        for(int j = 0; j< seamsList.size(); j++){
+            // each seam is stored in a two matrices, from and to
+            Eigen::MatrixXd fromMat(seamsList[j]->seamLength(), 2 );// just x y coords needed
+            Eigen::MatrixXd toMat (seamsList[j]->seamLength(), 2);
+//            cout<<" seam "<<j<<", length "<<seamsList[j]->seamLength()<<endl;
+            auto stP1 = seamsList[j]-> getStartAndPatch1();
+            auto stP2 = seamsList[j]-> getStartAndPatch2ForCorres();
+
+            int boundLen1 = boundaryL[stP1.second].size();
+            int boundLen2 = boundaryL[stP2.second].size();
+            for (int seamVert = 0; seamVert < seamsList[j]->seamLength(); seamVert++){
+                int firstSide = boundaryL[stP1.second][(stP1.first + seamVert) % boundLen1];
+//                cout<<stP2.first<<" first and minus "<< stP2.first - seamVert<<" and len "<< boundLen2<<endl;
+                int secAccess = (stP2.first - seamVert) % boundLen2;
+                if(secAccess < 0){
+//                    cout<<" update to "<< boundLen2 + (stP2.first - seamVert)<< " when bound size "<<boundLen2<<endl;
+                    secAccess = boundLen2 + (stP2.first - seamVert);
+                }
+                int secondSide = boundaryL[stP2.second][secAccess];
+
+
+//                if(seamVert == 1){
+//                    cout<<endl<<" vvec pos "<<endl<<v_asVec.block(3 * firstSide, 0, 2, 1).transpose()<<endl;
+//                    cout<<" and "<<endl<<v_asVec.block(3 * secondSide, 0, 2, 1).transpose()<<endl<<endl;
+//                }
+
+                fromMat.row(seamVert) = v_asVec.block(3 * firstSide, 0, 2, 1).transpose();//V.row(firstSide).leftCols(2);
+                toMat.row(seamVert) = v_asVec.block(3 * secondSide, 0, 2, 1).transpose();// V.row(secondSide).leftCols(2);
+            }
+            Eigen::MatrixXd R_est;
+            Eigen::VectorXd T_est;
+            procrustes( fromMat , toMat,  R_est, T_est);
+
+//            if(j==0) cout<<R_est<<" our rotation and Translation "<<endl<<T_est<<endl<<endl; // they seem to be alright bc one side is ok
+
+            Eigen::MatrixXd fromMat_t = fromMat.transpose();
+//            if(j==0)cout<<fromMat_t.col(2)<<" check if ok here "<<endl<<endl;
+            Eigen::MatrixXd toMat_t = toMat.transpose();
+
+            Eigen::MatrixXd toToFrom_t = toMat_t.colwise()-T_est;
+            toToFrom_t = (R_est.transpose() * toToFrom_t);
+            Eigen::MatrixXd toToFrom = toToFrom_t.transpose();
+
+            MatrixXd fromToTo_t = (R_est * fromMat_t);
+            fromToTo_t = fromToTo_t.colwise() + T_est;
+            MatrixXd fromToTo = fromToTo_t.transpose();
+//            cout<<toMat.row(1)<<" the to mat "<<endl;
+//            cout<<fromToTo.row(1)<<" from to to , Reihe 1 "<<endl;
+//            cout<<fromMat.row(1)<<" the from mat"<<endl;
+//            cout<<toToFrom.row(1)<<" to to from , Reihe 1"<<endl;
+
+            MatrixXd targetPosOfFromVertices = (toToFrom + fromMat) / 2;
+
+            MatrixXd targetPorOfToVertices = (fromToTo + toMat) / 2;
+//            if (j==0 ){
+//                cout<<targetPosOfFromVertices.row(1)<<" the computed targets  "<<endl;
+//                cout<<targetPorOfToVertices.row(1)<<endl;
+//            }
+            for(int i = 0; i < seamsList[j]-> seamLength(); i++){
+                b(3 * counter) = targetPosOfFromVertices(i, 0);
+                b(3 * counter + 1) = targetPosOfFromVertices (i, 1);
+                b(3 * counter + 2) =  V_pattern(0, 2);// messy but they should all be the same
+                //targetPosOfFromVertices(i, 2);
+                counter ++;
+                b(3 * counter) = targetPorOfToVertices(i, 0);
+                b(3 * counter + 1) = targetPorOfToVertices (i, 1);
+                b(3 * counter + 2) = V_pattern(0, 2); //targetPorOfToVertices(i, 2);
+                counter++;
+            }
+
+        }
+
         MatrixXd RHS = A.transpose() * b;
         v_asVecOld= v_asVec;
         v_asVec = cholSolver.solve(RHS);
