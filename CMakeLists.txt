@@ -24,6 +24,7 @@ file(GLOB SRC_FILES main.cpp
         toolbox/constraint_utils.cpp        toolbox/constraint_utils.h
         toolbox/body_interpolation.cpp      toolbox/body_interpolation.h
         toolbox/garment_adaption.cpp        toolbox/garment_adaption.h
+        toolbox/seam.cpp                    toolbox/seam.h
 #
 
         )

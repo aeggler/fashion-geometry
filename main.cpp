@@ -100,7 +100,7 @@ std::vector<std::pair<Eigen::Vector3d, int>> allVertexBarycentricCoords;
 
 Eigen::MatrixXd baryCoords1, baryCoords2;
 Eigen::MatrixXd baryCoordsd1, baryCoordsd2;
-vector<std::pair<pair<int, int>, pair<int, int>>> edgeCorrespondences;
+std::vector<std::vector<int> > boundaryL;
 
 void computeBaryCoordsGarOnNewMannequin(igl::opengl::glfw::Viewer& viewer);
 
@@ -146,7 +146,7 @@ bool pre_draw(igl::opengl::glfw::Viewer& viewer){
             showGarment(viewer);// not sure if I actually need this, at least it breaks nothing
 
             if(counter%convergeIterations==0){
-                gar_adapt->performJacobianUpdateAndMerge(Vg, localGlobalIterations, baryCoords1, baryCoords2, Vg_pattern);
+                gar_adapt->performJacobianUpdateAndMerge(Vg, localGlobalIterations, baryCoords1, baryCoords2, Vg_pattern,  seamsList, boundaryL);
                 cout<<"after adaption"<<endl;
                 preComputeConstraintsForRestshape();
                 preComputeStretch();
@@ -253,7 +253,6 @@ int main(int argc, char *argv[])
     std::map<std::pair<int, int>,int> vertexMapGarAndIdToPatch;
     vertexMapPatternToGarment(Fg, Fg_pattern,vertexMapPattToGar);
 
-    std::vector<std::vector<int> > boundaryL;
     igl::boundary_loop(Fg_pattern, boundaryL);
     Eigen::VectorXi componentIdPerFace, componentIdPerVert;
     igl::facet_components(Fg_pattern, componentIdPerFace);
@@ -272,7 +271,7 @@ int main(int argc, char *argv[])
 
     cout<<"after"<<endl;
 
-    gar_adapt = new garment_adaption(Vg, Fg,  Vg_pattern, Fg_pattern, edgeCorrespondences); //none have been altered at this stage
+    gar_adapt = new garment_adaption(Vg, Fg,  Vg_pattern, Fg_pattern, seamsList, boundaryL); //none have been altered at this stage
     gar_adapt->computeJacobian();
     perFaceTargetNorm = gar_adapt->perFaceTargetNorm;
     Vg_orig = Vg;
@@ -322,7 +321,7 @@ int main(int argc, char *argv[])
                 // we start computing the pattern for the current shape
                 Eigen::MatrixXd computed_Vg_pattern;//= Vg;
                 cout<<"start computing the pattern with "<<localGlobalIterations<<" local global iterations"<<endl;
-                gar_adapt->performJacobianUpdateAndMerge(Vg, localGlobalIterations, baryCoords1, baryCoords2, computed_Vg_pattern);
+                gar_adapt->performJacobianUpdateAndMerge(Vg, localGlobalIterations, baryCoords1, baryCoords2, computed_Vg_pattern, seamsList, boundaryL);
                 igl::writeOBJ("patternComputed.obj", computed_Vg_pattern, Fg_pattern);
                 cout<<"pattern written to *patternComputed*"<<endl;
             }
@@ -331,7 +330,7 @@ int main(int argc, char *argv[])
                 // we start computing the pattern for the current shape
                 Eigen::MatrixXd computed_Vg_pattern;//= Vg;
                 cout<<"start computing the pattern with "<<localGlobalIterations<<" local global iterations"<<endl;
-                gar_adapt->performJacobianUpdateAndMerge(Vg, localGlobalIterations, baryCoords1, baryCoords2, computed_Vg_pattern);
+                gar_adapt->performJacobianUpdateAndMerge(Vg, localGlobalIterations, baryCoords1, baryCoords2, computed_Vg_pattern, seamsList, boundaryL);
                 igl::writeOBJ("patternComputed.obj", computed_Vg_pattern, Fg_pattern);
                 cout<<"pattern written to *patternComputed*"<<endl;
 
@@ -711,7 +710,7 @@ bool callback_key_down(igl::opengl::glfw::Viewer& viewer, unsigned char key, int
         // we start computing the pattern for the current shape
         Eigen::MatrixXd computed_Vg_pattern= Vg;
         cout<<"start computing the pattern with "<<localGlobalIterations<<" local global iterations"<<endl;
-        gar_adapt->performJacobianUpdateAndMerge(Vg, localGlobalIterations, baryCoords1, baryCoords2, computed_Vg_pattern);
+        gar_adapt->performJacobianUpdateAndMerge(Vg, localGlobalIterations, baryCoords1, baryCoords2, computed_Vg_pattern, seamsList, boundaryL);
 
         igl::writeOBJ("patternComputed.obj", computed_Vg_pattern, Fg_pattern);
         igl::writeOBJ("patternComputed3D.obj", Vg, Fg);
