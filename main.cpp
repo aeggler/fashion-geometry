@@ -43,12 +43,29 @@ Eigen::Vector3f garment_translation (0., 0., 0.);// optimal for the given garmen
 float garment_scale = 1.;
 Eigen::Vector3f mannequin_translation (0., 0., 0.);
 float mannequin_scale = 1.;
-bool simulate= false;
+
 
 
 //for the simulation
+double timestep= 0.02;
+bool simulate= false;
+double grav= 9.81;
+double stretchStiffnessU= 0.0010;
+double stretchStiffnessV= 0.0010;
+double stretchStiffnessD = 0.0080;
+double collisionStiffness = 1.;
+double boundaryStiffness = 0.9;
+double bendingStiffness = 0.003;// smaller for better folds , bigger for smoother results
+double edgeLengthStiffness = 0.00;
+double coll_EPS= 4.500; // like in Clo, 3 mm ? but for some reason this does not work well with the constraint function
+int num_const_iterations = 5;
+double gravityfact =.0;
+int localGlobalIterations= 2000;
+int convergeIterations = 450;
+int timestepCounter;
 
-Real grav= 9.81;
+
+// pre computations
 Eigen::MatrixXi e4list;
 int e4size, numVert, numFace;
 Eigen::MatrixXd vel;
@@ -64,19 +81,8 @@ Eigen::VectorXd w; // the particle weights
 Eigen::MatrixXd p; // the proposed new positions
 MatrixXd u1, u2; // precomputation for stretch
 PositionBasedDynamics PBD;
-Eigen::MatrixXd procrustesPatternIn3D;
-Real timestep= 0.02;
-double stretchStiffnessU= 0.0010;
-double stretchStiffnessV= 0.0010;
-double stretchStiffnessD = 0.0080;
-double collisionStiffness = 1.;
-double boundaryStiffness = 0.9;
-Real bendingStiffness = 0.003;// smaller for better folds , bigger for smoother results
-double edgeLengthStiffness = 0.00;
-double coll_EPS= 4.500; // like in Clo, 3 mm ? but for some reason this does not work well with the constraint function
-int num_const_iterations = 5;
-double gravityfact =.0;
 
+// colouring
 MatrixXd faceAvg;
 MatrixXd faceAvgWithU ;
 MatrixXd faceAvgWithV ;
@@ -86,78 +92,20 @@ MatrixXd colV ;
 VectorXd normU, normV;
 MatrixXd perFaceU, perFaceV;
 int whichStressVisualize= 0;
+
 garment_adaption* gar_adapt;
 vector<seam*> seamsList;
-int counter;
-BodyInterpolator* body_interpolator;
-bool bodyInterpolation= false;
-int localGlobalIterations= 200;
 vector<int> constrainedVertexIds;
 VectorXi closestFaceId;
-int iterationCount = 0;
+
 std::vector<std::pair<Eigen::Vector3d, int>> constrainedVertexBarycentricCoords;
 std::vector<std::pair<Eigen::Vector3d, int>> allVertexBarycentricCoords;
-
+Eigen::MatrixXd tarU, tarV, tarD1;
 Eigen::MatrixXd baryCoords1, baryCoords2;
 Eigen::MatrixXd baryCoordsd1, baryCoordsd2;
 std::vector<std::vector<int> > boundaryL;
 
-void computeBaryCoordsGarOnNewMannequin(igl::opengl::glfw::Viewer& viewer);
 
-void setNewGarmentMesh(igl::opengl::glfw::Viewer& viewer);
-void setNewMannequinMesh(igl::opengl::glfw::Viewer& viewer);
-void showGarment(igl::opengl::glfw::Viewer& viewer);
-void showMannequin(igl::opengl::glfw::Viewer& viewer);
-void translateMesh(igl::opengl::glfw::Viewer& viewer, int which);
-
-bool callback_key_down(igl::opengl::glfw::Viewer& viewer, unsigned char key, int modifiers);
-void reset(igl::opengl::glfw::Viewer& viewer);
-
-void preComputeConstraintsForRestshape();
-void dotimeStep(igl::opengl::glfw::Viewer& viewer);
-void setCollisionMesh();
-void setupCollisionConstraints();
-void computeBoundaryVertices();
-void solveBendingConstraint();
-void solveStretchConstraint();
-void solveCollisionConstraint();
-void preComputeStretch();
-void computeStress(igl::opengl::glfw::Viewer& viewer);
-void computeRigidMeasure();
-void solveRigidEnergy();
-void solveStretchUV();
-//test
-Eigen::SparseMatrix<double> L;
-//int shrinked_counter = 100;
-VectorXd normD1, normD2;
-MatrixXd perFaceD2, perFaceD1;
-
-int convergeIterations = 450;
-double incrU;
-double incrV;
-VectorXd edgeVertices;
-
-bool pre_draw(igl::opengl::glfw::Viewer& viewer){
-    viewer.data().dirty |= igl::opengl::MeshGL::DIRTY_DIFFUSE | igl::opengl::MeshGL::DIRTY_SPECULAR;
-        if(simulate){
-
-            computeStress(viewer);
-            dotimeStep(viewer);
-            showGarment(viewer);// not sure if I actually need this, at least it breaks nothing
-
-            if(counter%convergeIterations==0){
-                gar_adapt->performJacobianUpdateAndMerge(Vg, localGlobalIterations, baryCoords1, baryCoords2, Vg_pattern,  seamsList, boundaryL);
-                cout<<"after adaption"<<endl;
-                preComputeConstraintsForRestshape();
-                preComputeStretch();
-                computeStress(viewer);
-            }
-            counter++;
-
-    }
-
-    return false;
-}
 static bool noStress = true;
 static bool StressU = false;
 static bool StressV = false;
@@ -169,11 +117,58 @@ bool jacFlag=false;
 MatrixXd patternPreInterpol,patternPreInterpol_temp ;
 MatrixXd garmentPreInterpol,garmentPreInterpol_temp ;
 MatrixXd mannequinPreInterpol, mannequinPreInterpol_temp;
+
+//test
+//Eigen::SparseMatrix<double> L;
+MatrixXd perFaceD2, perFaceD1;
+VectorXd edgeVertices;
+
+void computeBaryCoordsGarOnNewMannequin(igl::opengl::glfw::Viewer& viewer);
+void setNewGarmentMesh(igl::opengl::glfw::Viewer& viewer);
+void setNewMannequinMesh(igl::opengl::glfw::Viewer& viewer);
+void showGarment(igl::opengl::glfw::Viewer& viewer);
+void showMannequin(igl::opengl::glfw::Viewer& viewer);
+void translateMesh(igl::opengl::glfw::Viewer& viewer, int which);
+
+bool callback_key_down(igl::opengl::glfw::Viewer& viewer, unsigned char key, int modifiers);
+void reset(igl::opengl::glfw::Viewer& viewer);
+void preComputeConstraintsForRestshape();
+void dotimeStep(igl::opengl::glfw::Viewer& viewer);
+void setCollisionMesh();
+void setupCollisionConstraints();
+void computeBoundaryVertices();
+void solveBendingConstraint();
+void solveStretchConstraint();
+void solveCollisionConstraint();
+void preComputeStretch();
+void computeStress(igl::opengl::glfw::Viewer& viewer);
+void solveStretchUV();
+
+bool pre_draw(igl::opengl::glfw::Viewer& viewer){
+    viewer.data().dirty |= igl::opengl::MeshGL::DIRTY_DIFFUSE | igl::opengl::MeshGL::DIRTY_SPECULAR;
+        if(simulate){
+
+            computeStress(viewer);
+            dotimeStep(viewer);
+            showGarment(viewer);// not sure if I actually need this, at least it breaks nothing
+
+            if(timestepCounter % convergeIterations==0){
+                gar_adapt->performJacobianUpdateAndMerge(Vg, localGlobalIterations, baryCoords1, baryCoords2, Vg_pattern,  seamsList, boundaryL);
+                cout<<"after adaption"<<endl;
+                preComputeConstraintsForRestshape();
+                preComputeStretch();
+                computeStress(viewer);
+            }
+            timestepCounter++;
+    }
+
+    return false;
+}
 int main(int argc, char *argv[])
 {
     // Init the viewer
     igl::opengl::glfw::Viewer viewer;
-    counter = 0;
+    timestepCounter = 0;
     // Attach a menu plugin
     igl::opengl::glfw::imgui::ImGuiPlugin plugin;
     viewer.plugins.push_back(&plugin);
@@ -225,7 +220,6 @@ int main(int argc, char *argv[])
 
 
 // TODO remember to adapt the collision constraint solving dep on avatar, sometimes normalization is needed, sometimes not for whatever magic
-//    string avatar_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/avatar/avatar.obj";
     string avatar_file_name =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/avatar/avatar_one_component.ply";
 //    string avatar_file_name =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins_petite/avatar/avatar_one_component.ply";
 
@@ -241,13 +235,9 @@ int main(int argc, char *argv[])
         cout<<"the faces are not the same!"<<endl;
     }
 
-    // fm = testMorph_F0= ...F1
-//    body_interpolator = new BodyInterpolator(Vm, testMorph_V1, Fm);
-
     setNewMannequinMesh(viewer);
     setCollisionMesh();
     cout<<" collision mesh finished "<<endl;
-
 
     std::map<int,int> vertexMapPattToGar;
     std::map<std::pair<int, int>,int> vertexMapGarAndIdToPatch;
@@ -264,12 +254,12 @@ int main(int argc, char *argv[])
     vector<vector<int> > vfAdj;
     createVertexFaceAdjacencyList(Fg, vfAdj);
     edgeVertices = VectorXd::Zero(Vg_pattern.rows());
-    vector<vector<pair<int, int>>> edgesPerBoundary;
+    vector<vector<pair<int, int>>> cornerPerBoundary;
 
-    computeAllSeams( boundaryL,  vertexMapPattToGar, vertexMapGarAndIdToPatch, vfAdj, componentIdPerFace, componentIdPerVert,
-                         edgeVertices, edgesPerBoundary,seamsList);
+    computeAllSeams( boundaryL,  vertexMapPattToGar, vertexMapGarAndIdToPatch, vfAdj, componentIdPerFace,
+                     componentIdPerVert,edgeVertices, cornerPerBoundary,seamsList);
 
-    cout<<"after"<<endl;
+
 
     gar_adapt = new garment_adaption(Vg, Fg,  Vg_pattern, Fg_pattern, seamsList, boundaryL); //none have been altered at this stage
     gar_adapt->computeJacobian();
@@ -280,7 +270,7 @@ int main(int argc, char *argv[])
     // read constrained vertex ids and compute them as barycentric coordinates of the nearest face
     computeBoundaryVertices();
     computeBaryCoordsGarOnNewMannequin(viewer);
-    Vg_orig = Vg;
+//    Vg_orig = Vg;
     Vm_orig = testMorph_V1;
 
     preComputeConstraintsForRestshape();
@@ -290,7 +280,7 @@ int main(int argc, char *argv[])
 
     viewer.core().animation_max_fps = 200.;
     viewer.core().is_animating = false;
-    int whichSeam=0;
+    int whichSeam = 0;
     //additional menu items
     menu.callback_draw_viewer_menu = [&]() {
         if (ImGui::CollapsingHeader("Garment", ImGuiTreeNodeFlags_OpenOnArrow)) {
@@ -403,7 +393,6 @@ int main(int argc, char *argv[])
             ImGui::InputDouble("Edge length Stiffness", &(edgeLengthStiffness), 0, 0, "%0.6f");
             ImGui::InputDouble("Gravity factor", &(gravityfact),  0, 0, "%0.6f");
 
-            // figure out how that really works!!does not really do much
             ImGui::InputDouble("Collision thereshold", &(coll_EPS),  0, 0, "%0.2f");
             ImGui::InputInt("Number of constraint Iterations thereshold", &(num_const_iterations),  0, 0);
 
@@ -481,7 +470,7 @@ int main(int argc, char *argv[])
     viewer.callback_pre_draw = &pre_draw;
     viewer.callback_key_down = &callback_key_down;
     viewer.selected_data_index = 0;
-
+    cout<<"finished setup"<<endl;
     viewer.launch();
 }
 // seems to give good results, let's use this.
@@ -577,48 +566,6 @@ void showGarment(igl::opengl::glfw::Viewer& viewer) {
     viewer.data().show_lines = false;
    // if 0 -> no face colour
 
-// for test of edge vertices
-//    MatrixXd testCol= MatrixXd::Zero(Vg_pattern.rows(), 3);
-//    if(jacFlag){
-//        std::vector<std::vector<int> > boundaryL;
-//        igl::boundary_loop(Fg_pattern, boundaryL);
-//        // testCol.col(0)= edgeVertices;
-//        for(int j=0; j<1; j++){
-//            seam* firstSeam = seamsList[j];
-//            auto stP1 = firstSeam-> getStartAndPatch1();
-//            auto stP2 = firstSeam-> getStartAndPatch2();
-//
-//            int len = firstSeam -> seamLength();
-////            cout<<boundaryL[stP1.second][stP1.first]<<" start "<<len<<endl;
-////            cout<<boundaryL[stP1.second][stP1.first+len]<<" end "<<stP1.first+len<<endl;
-//            int boundLen1 = boundaryL[stP1.second].size();
-//            int boundLen2 = boundaryL[stP2.second].size();
-//
-//            for(int i=0; i<=len; i++){
-//                testCol(boundaryL[stP1.second][(stP1.first+i)% boundLen1],0) = 1.*j/8;
-//                testCol(boundaryL[stP1.second][(stP1.first+i)% boundLen1],1) = 1-j*1./8.;
-//                testCol(boundaryL[stP1.second][(stP1.first+i)% boundLen1],2) = 1-j*1./8.;
-//
-//                testCol(boundaryL[stP2.second][(stP2.first+i)% boundLen2], 0) = 1.*j/8;
-//                testCol(boundaryL[stP2.second][(stP2.first+i)% boundLen2], 1) = 1-j*1./8.;
-//                testCol(boundaryL[stP2.second][(stP2.first+i)% boundLen2], 2) = 1-j*1./8.;
-//
-//                // for the other do I need to start from the end?
-//            }
-//        }
-//
-//    }
-//    viewer.selected_data_index = 0;
-//    viewer.data().clear();
-//    viewer.data().set_mesh(Vg_pattern, Fg_pattern);
-//    viewer.data().uniform_colors(ambient, diffuse, specular);
-//    viewer.data().show_texture = false;
-//    viewer.data().set_face_based(false);
-//    //remove wireframe
-//    viewer.data().show_lines = false;
-//    // if 0 -> no face colour
-//    viewer.data().set_colors(testCol);
-
     if(whichStressVisualize == 1){
         viewer.data().set_colors(colU);
     }else if (whichStressVisualize == 2){
@@ -638,11 +585,9 @@ void setNewMannequinMesh(igl::opengl::glfw::Viewer& viewer) {
 void showMannequin(igl::opengl::glfw::Viewer& viewer) {
     viewer.selected_data_index = 1;
     viewer.data().clear();
-    if(bodyInterpolation){
-        viewer.data().set_mesh(testMorph_V0, testMorph_F0);
-    }else{
+
         viewer.data().set_mesh(Vm, Fm);
-    }
+
 
     viewer.data().show_lines = false;
     viewer.data().uniform_colors(ambient_grey, diffuse_grey, specular);
@@ -759,8 +704,6 @@ bool callback_key_down(igl::opengl::glfw::Viewer& viewer, unsigned char key, int
         igl::writeOBJ("patternComputed.obj", computed_Vg_pattern, Fg_pattern);
         igl::writeOBJ("patternComputed3D.obj", Vg, Fg);
 
-//        igl::writeOBJ("patternComputed"+ to_string(timestep)+"_"+ to_string(stretchStiffnessU)+"_"+
-//                      to_string(numSimBeforeShrink)+"_"+to_string(counter)+".obj", computed_Vg_pattern, Fg_pattern);
         cout<<"pattern written to *patternComputed*"<<endl;
 
     }
@@ -773,7 +716,6 @@ bool callback_key_down(igl::opengl::glfw::Viewer& viewer, unsigned char key, int
 //        cout<<Vm.rows()<<" and faces "<<Fm.rows()<<endl;
 //        viewer.selected_data_index = 0;
 //        viewer.data().clear();
-//        bodyInterpolation = !bodyInterpolation;
  //       setNewMannequinMesh(viewer);
 //        cout<<"should be set"<<endl;
 //        body_interpolator = new BodyInterpolator(testMorph_V0, testMorph_V1, testMorph_F0);
@@ -787,7 +729,7 @@ bool callback_key_down(igl::opengl::glfw::Viewer& viewer, unsigned char key, int
 void reset(igl::opengl::glfw::Viewer& viewer){
     cout<<" reset "<<endl;
     cout<<"---------"<<endl;
-    counter = 0;
+    timestepCounter = 0;
     Vg= Vg_orig;
     Vg_pattern = Vg_pattern_orig;
     vel = Eigen::MatrixXd::Zero(numVert, 3);
@@ -810,7 +752,6 @@ void reset(igl::opengl::glfw::Viewer& viewer){
     //showGarment(viewer);
     showMannequin(viewer);
     setCollisionMesh();
-    iterationCount=0;
 }
 void preComputeConstraintsForRestshape(){
     numVert= Vg.rows();
@@ -865,7 +806,6 @@ void setupCollisionConstraints(){
             collisionVert(i)=1;
         }
     }
-//    cout<<collCount<<" collisions counted with"<<coll_EPS<<endl;
 }
 void solveBendingConstraint(){
     // for each pair of adjacent triangles, precomputed from restshape (2D pattern TODO)
@@ -886,7 +826,7 @@ void solveBendingConstraint(){
     }
 }
 
-// OLD VERSION, NOW UV DIFFERENTIATION EXISTS
+//  UV DIFFERENTIATION EXISTS
 void solveStretchConstraint(){
     /*each edges distance should remain, since we iterate over every face we iterate over every edge twice- but that should not be a problem */
     for (int j =0; j<numFace; j++){
@@ -912,7 +852,6 @@ void solveStretchConstraint(){
         p.row(id0)+= deltap0;
     }
 }
-Eigen::MatrixXd tarU, tarV, tarD1;
 void init_stretchUV(){
     tarU.resize(3*numFace, 3);
     tarV.resize(3*numFace, 3);
@@ -1090,8 +1029,6 @@ void computeStress(igl::opengl::glfw::Viewer& viewer){
      normU.resize (numFace);
      normV.resize (numFace);
 
-     normD1.resize(numFace);
-     normD2.resize(numFace);
      perFaceU.resize (numFace, 3);
      perFaceV.resize (numFace, 3);
 
@@ -1148,9 +1085,6 @@ void computeStress(igl::opengl::glfw::Viewer& viewer){
 
         }
 
-        normD1(j) = perFaceD1.row(j).norm();
-        normD2(j) = perFaceD2.row(j).norm();
-
         // this is an experiment
         y = (abs(normV(j)-1)+ abs(normU(j)-1))*3;
         colMixed.row(j) = Vector3d ( 1. + y, 1.- y, 0.0);
@@ -1162,64 +1096,6 @@ void computeStress(igl::opengl::glfw::Viewer& viewer){
     for(int i=0; i<numFace; i++){
         faceAvgWithU.row(i)+= (1 / normU.maxCoeff()) * normU(i) * 10 * perFaceU.row(i);
         faceAvgWithV.row(i)+= (1 / normV.maxCoeff()) * normV(i) * 10 * perFaceV.row(i);
-    }
-}
-Eigen::VectorXd rigidEnergy;
-void computeRigidMeasure(){
-    rigidEnergy.resize(numFace);
-
-    for (int j =0; j<numFace; j++){
-        int id0 = Fg_orig(j, 0);
-        int id1 = Fg_orig(j, 1);
-        int id2 = Fg_orig(j, 2);
-
-        Matrix3d fromMat;// should be p after
-        fromMat.row(0)= p.row(id0);
-        fromMat.row(1)= p.row(id1);
-        fromMat.row(2)= p.row(id2);
-
-        Matrix3d toMat;
-        toMat.row(0) = Vg_pattern.row(Fg_pattern(j, 0));
-        toMat.row(1) = Vg_pattern.row(Fg_pattern(j, 1));
-        toMat.row(2) = Vg_pattern.row(Fg_pattern(j, 2));
-
-        Eigen::MatrixXd R_est;
-        Eigen::VectorXd T_est;
-
-        procrustes(fromMat, toMat, R_est, T_est);
-
-        Eigen::MatrixXd appxToT = R_est * fromMat.transpose();
-        appxToT = appxToT.colwise()+ T_est;
-        MatrixXd appxTo = appxToT.transpose();
-
-        Vector3d e1 = Vg_pattern.row(Fg_pattern(j, 1)) - Vg_pattern.row(Fg_pattern(j, 0));
-        Vector3d e2 = Vg_pattern.row(Fg_pattern(j, 2)) - Vg_pattern.row(Fg_pattern(j, 0));
-
-        Vector3d e1p = appxTo.row(1)- appxTo.row(0);
-        Vector3d e2p = appxTo.row(2)- appxTo.row(0);
-
-        double diff1 = e1(0) - e1p(0);
-        double diff2 = e2(1) - e2p(1);
-        rigidEnergy(j) = (diff1 * diff1) + (diff2 * diff2);
-
-    }
-}
-void solveRigidEnergy(){
-    double rigideps= 0.000003;
-    for(int j=0; j<numFace; j++){
-        Vector3r delta0, delta1, delta2;
-
-        PBD.solve_RigidEnergy(rigidEnergy(j), rigideps, edgeLengthStiffness,
-                              procrustesPatternIn3D.row(3*j+ 0), procrustesPatternIn3D.row(3*j+ 1), procrustesPatternIn3D.row(3*j+ 2),
-                              p.row(Fg(j, 0)), p.row(Fg(j, 1)), p.row(Fg(j, 2)), delta0, delta1, delta2
-                             );
-
-//        if(!constrainedVertexIds(Fg_orig(j, 0)))
-            p.row(Fg(j, 0)) += delta0;
-//        if(!constrainedVertexIds(Fg_orig(j, 1)))
-            p.row(Fg(j, 1)) += delta1;
-//        if(!constrainedVertexIds(Fg_orig(j, 2)))
-            p.row(Fg(j, 2)) += delta2;
     }
 }
 void solveConstrainedVertices(){
@@ -1247,7 +1123,7 @@ void solveConstrainedVertices(){
 void dotimeStep(igl::opengl::glfw::Viewer& viewer){
     Timer t("Time step ");
     std::cout<<endl;
-    std::cout<<"-------------- Time Step ------------"<<counter<<endl;
+    std::cout<<"-------------- Time Step ------------"<<timestepCounter<<endl;
     // the stress is already computed, we can use it here
     Eigen::MatrixXd x_new = Vg;
     p = Vg;
@@ -1256,7 +1132,6 @@ void dotimeStep(igl::opengl::glfw::Viewer& viewer){
     vel.col(1) += timestep * w*(-1)*grav*gravityfact;
 
     // (7)
-
     for (int i = 0; i<numVert; i++){
         p.row(i) = x_new.row(i).array()+ timestep*vel.row(i).array();
     }
@@ -1297,7 +1172,6 @@ void dotimeStep(igl::opengl::glfw::Viewer& viewer){
            vel.row(i) = (t_vel - collision_damping * n_vel);
        }
     }
-
 
     //(14)
     Vg= x_new;

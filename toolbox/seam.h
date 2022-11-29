@@ -8,6 +8,7 @@
 #include <utility>
 #include <map>
 #include "Eigen/Dense"
+#include <vector>
 
 class seam {
 private:
