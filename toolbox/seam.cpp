@@ -174,7 +174,7 @@ void computeAllSeams(const std::vector<std::vector<int> >& boundaryL, std::map<i
                         }
 //                        cout<<idBeforeStart<<" id beforeStart and for other "<<idBeforeStartOther<<endl;
 //                        cout<<" is it this? "<<boundaryL[otherPatchId][counter+1]<<endl;
-                        int startIdOtherInBoundaryIdx= counter + 1;
+                        int startIdOtherInBoundaryIdx= (counter + 1)% boundaryL[otherPatchId].size();
 //                        int startIdOther = vertexMapGarAndIdToPatch[make_pair(vertexMapPattToGar[startId], otherPatchId)];
                         int startIdOther = boundaryL[otherPatchId][counter+1];
 
@@ -190,6 +190,7 @@ void computeAllSeams(const std::vector<std::vector<int> >& boundaryL, std::map<i
 //                        cout<<beforeEnd <<" before end and other before end "<<otherBeforeEnd<<endl;
 //                        cout<<" then this should be the same "<<boundaryL[otherPatchId][counter-1]<<" "<<v1<<endl;
                         int endIdOtherInBoundaryIdx;
+                        if(counter==0) counter = boundaryL[otherPatchId].size();
                         int endIdOther = boundaryL[otherPatchId][counter-1];//vertexMapGarAndIdToPatch[std::make_pair(v1g, otherPatchId)];
 
                         endIdOtherInBoundaryIdx = counter-1; //edgesPerBoundary[otherPatchId][counter].second;
@@ -208,6 +209,7 @@ void computeAllSeams(const std::vector<std::vector<int> >& boundaryL, std::map<i
 
                         if(abs( (j+1) - startIdInBoundaryIdx) != abs(theirDist)){
                             cout<<boundary.size()<<" size "<<endIdx<<" "<< startIdInBoundaryIdx<<" something wrong about the seams "<<endIdOtherInBoundaryIdx <<" "<< startIdOtherInBoundaryIdx<<endl;
+                            cout<<otherPatchId<<" other and my Id "<<myPatchId<<endl;
                         }
 //                        cout<<theirDist<<" length "<<endl;
 

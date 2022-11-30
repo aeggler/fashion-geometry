@@ -194,14 +194,82 @@ int main(int argc, char *argv[])
 
 //    string garment_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/leggins_3d/leggins_3d_merged.obj"; //
 //    string garment_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/patternComputed3D_converged.obj";
-    string garment_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/dress_2/dress_3d_lowres/dress_3d_lowres.obj";
+    string garment_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/dress_2/dress_3d_lowres/dress_3d_lowres_merged.obj";
 //    string garment_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/patternComputed3D_converged_uv10.obj";
 //    string garment_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/patternComputed3D.obj";
 
     igl::readOBJ(garment_file_name, Vg, Fg);
     igl::readOBJ(garment_file_name, Vg_orig, Fg_orig);
     cout<<"loaded garment new "<<endl;
+//    cout<<"fg should contain corner"<<Fg.row(15450)<<endl<<Fg.row(3806)<<endl;
     garmentPreInterpol = Vg;
+
+//    cout<<"before"<<endl;
+//    VectorXi fixRightV(8), fixLeftV(8);
+//    fixLeftV<<7943, 7942, 7941, 7940 ,7939, 7938 ,7937 ,7936;
+//    fixRightV<<1955, 1954, 1953, 1952, 1951, 1950, 1949, 1948;
+//cout<<"after"<<endl;
+//    VectorXi fixLRightV(8), fixLLeftV(8);
+//    fixLRightV<<7960, 7959, 7958, 7957, 7956, 7955, 7954, 7953;
+//    fixLLeftV<<1799, 1800, 1801, 1802, 1803, 1804, 1805, 1806;
+//
+//    VectorXi fixBRightV(6), fixBLeftV(6);
+//    fixBRightV<<7971, 7970, 7969, 7979, 7980, 7981 ;
+//    fixBLeftV<< 4719, 4718, 4717, 4711,  4712, 4713 ;
+//
+//    VectorXi leftArmL(9), leftArmR(9);
+//    leftArmR<<4710, 4709, 4708, 4707, 4706, 4705, 4704, 4703, 4702;
+//    leftArmL<< 33, 32, 31, 30, 29, 28, 27, 24, 23 ;
+//
+//    VectorXi rightArmL(9), rightArmR(9);
+//    for(int i=0; i<9; i++){
+//        rightArmL(i)= 4728-i;
+//        rightArmR(i) = 918+i;
+//    }
+//    rightArmL<< 4728, 4727, 4726, 4725, 4724, 4723, 4722, 4721, 4720 ;
+//    rightArmR<< 1918, 1919, 1920, 1921, 1922, 1923, 1924, 1925, 1926 ;
+
+//    for(int i = 0; i<Fg.rows(); i++){
+//        for(int j=0; j<3; j++){
+//
+//            for(int idx =0; idx< fixLeftV.rows(); idx++){
+//                if(Fg(i, j)== fixLeftV[idx]){
+//                    Fg(i, j) = fixRightV[idx];
+//                }
+//            }
+//
+//            for(int idx =0; idx< fixLLeftV.rows(); idx++){
+//                if(Fg(i, j)== fixLLeftV[idx]){
+//                    Fg(i, j) = fixLRightV[idx];
+//                }
+//            }
+//
+//            for(int idx =0; idx< fixBLeftV.rows(); idx++){
+//                if(Fg(i, j)== fixBLeftV[idx]){
+//                    Fg(i, j) = fixBRightV[idx];
+//                }
+//            }
+//
+//            for(int idx =0; idx< leftArmL.rows(); idx++){
+//                if(Fg(i, j)== leftArmL[idx]){
+//                    Fg(i, j) = leftArmR[idx];
+//                }
+//            }
+//
+//            for(int idx =0; idx< rightArmL.rows(); idx++){
+//                if(Fg(i, j)== rightArmL[idx]){
+//                    cout<<Fg(i,j)<<" ";
+//                    Fg(i, j) = rightArmR[idx];
+//                    cout<<Fg(i,j)<<endl;
+//                }
+//            }
+//        }
+//    }
+    Vg_orig = Vg; Fg_orig= Fg;
+//    cout<<"fixed, now writing pattern"<<endl;
+//    igl::writeOBJ("dress_3d_lowres_merged.obj", Vg, Fg);
+//    cout<<"finished writing"<<endl;
+
 
 //    string garment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/leggins_2d/leggins_2d.obj"; //
     string garment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/dress_2/dress_2d_lowres/dress_2d_lowres.obj"; //
@@ -287,7 +355,8 @@ cout<<" test here "<<endl;
     int whichSeam = 0;
     //additional menu items
     int whichPatchMove=0;
-    float movePatternX, movePatternY;
+    int whichBound=0;
+    float movePatternX=0; float movePatternY=0;
     menu.callback_draw_viewer_menu = [&]() {
         if (ImGui::CollapsingHeader("Garment", ImGuiTreeNodeFlags_OpenOnArrow)) {
 
@@ -375,8 +444,8 @@ cout<<" test here "<<endl;
             // same as key down with key =='P'
             if (ImGui::CollapsingHeader("Alter Pattern ", ImGuiTreeNodeFlags_OpenOnArrow)){
                 ImGui::InputInt("Which patch to move ", &(whichPatchMove),  0, 0);
-                ImGui::InputFloat("Translation X", & movePatternY , 0, 0, "%0.4f");
-                ImGui::InputFloat("Translation Y", & movePatternX , 0, 0, "%0.4f");
+                ImGui::InputFloat("Translation X", & movePatternX , 0, 0, "%0.4f");
+                ImGui::InputFloat("Translation Y", & movePatternY , 0, 0, "%0.4f");
 
                 if(ImGui::Button("Move ", ImVec2(-1, 0))){
                     MatrixXd testCol= MatrixXd::Zero(Vg_pattern.rows(), 3);
@@ -397,10 +466,28 @@ cout<<" test here "<<endl;
                     viewer.data().show_lines = false;
                     // if 0 -> no face colour
                     viewer.data().set_colors(testCol);
-                    
+
                     igl::writeOBJ("patternComputed_translated.obj", Vg_pattern, Fg_pattern);
                     cout<<"pattern written to *patternComputed_translated*"<<endl;
                 }
+                ImGui::InputInt("Which Bound vis  ", &(whichBound),  0, 0);
+                if(ImGui::Button("Vis Bound ", ImVec2(-1, 0))){
+                    MatrixXd testCol= MatrixXd::Zero(Vg_pattern.rows(), 3);
+                    for(int i=0; i<boundaryL[whichBound].size(); i++){
+                            testCol(boundaryL[whichBound][i],0)=1;
+                    }
+                    viewer.selected_data_index = 0;
+                    viewer.data().clear();
+                    viewer.data().set_mesh(Vg_pattern, Fg_pattern);
+                    viewer.data().uniform_colors(ambient, diffuse, specular);
+                    viewer.data().show_texture = false;
+                    viewer.data().set_face_based(false);
+                    //remove wireframe
+                    viewer.data().show_lines = false;
+                    // if 0 -> no face colour
+                    viewer.data().set_colors(testCol);
+                }
+
 
 
 
