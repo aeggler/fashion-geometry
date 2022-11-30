@@ -23,6 +23,7 @@
 #include "toolbox/MathFunctions.h"
 #include <igl/signed_distance.h>
 #include <map>
+#include <string>
 #include "toolbox/seam.h"
 
 using namespace std;
@@ -191,33 +192,36 @@ int main(int argc, char *argv[])
     //for ease of use, for now let it be fixed
 
 //    string garment_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/leggins_3d/leggins_3d_merged.obj"; //
-    string garment_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/patternComputed3D_converged.obj";
+//    string garment_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/patternComputed3D_converged.obj";
+    string garment_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/dress_2/dress2_3d/dress2_3d.obj";
 //    string garment_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/patternComputed3D_converged_uv10.obj";
 //    string garment_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/patternComputed3D.obj";
 
     igl::readOBJ(garment_file_name, Vg, Fg);
     igl::readOBJ(garment_file_name, Vg_orig, Fg_orig);
-    cout<<"loaded garment"<<endl;
+    cout<<"loaded garment new "<<endl;
     garmentPreInterpol = Vg;
 
-    string garment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/leggins_2d/leggins_2d.obj"; //
+//    string garment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/leggins_2d/leggins_2d.obj"; //
+    string garment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/dress_2/dress2_2d/dress2_2d.obj"; //
+
 //    string garment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/patternComputed_converged.obj";
 //    string garment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/patternComputed.obj";
-
 
     igl::readOBJ(garment_pattern_file_name, Vg_pattern, Fg_pattern);
     Vg_pattern_orig= Vg_pattern;
     patternPreInterpol= Vg_pattern;
     edgeVertices = VectorXd::Zero(Vg_pattern.rows());
-
+cout<<"read"<<endl;
     preComputeConstraintsForRestshape();
+    cout<<"before pre comp stress "<<endl;
 
     preComputeStretch();
     jacFlag=false;
+
     computeStress(viewer);
-
     setNewGarmentMesh(viewer);
-
+cout<<" test here "<<endl;
 
 // TODO remember to adapt the collision constraint solving dep on avatar, sometimes normalization is needed, sometimes not for whatever magic
     string avatar_file_name =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/avatar/avatar_one_component.ply";
@@ -258,7 +262,6 @@ int main(int argc, char *argv[])
 
     computeAllSeams( boundaryL,  vertexMapPattToGar, vertexMapGarAndIdToPatch, vfAdj, componentIdPerFace,
                      componentIdPerVert,edgeVertices, cornerPerBoundary,seamsList);
-
 
 
     gar_adapt = new garment_adaption(Vg, Fg,  Vg_pattern, Fg_pattern, seamsList, boundaryL); //none have been altered at this stage
@@ -311,12 +314,12 @@ int main(int argc, char *argv[])
 
                         for(int i=0; i<=len; i++){
                             testCol(boundaryL[stP1.second][(stP1.first+i)% boundLen1],0) = 1.;
-                            testCol(boundaryL[stP1.second][(stP1.first+i)% boundLen1],1) = 0;
-                            testCol(boundaryL[stP1.second][(stP1.first+i)% boundLen1],2) = 0;
+                            if(i==0)testCol(boundaryL[stP1.second][(stP1.first+i)% boundLen1],1) = 1.;
+
+                            if(i==len)testCol(boundaryL[stP1.second][(stP1.first+i)% boundLen1],2) = 1.;
+
 
                             testCol(boundaryL[stP2.second][(stP2.first+i)% boundLen2], 0) = 1.;
-                            testCol(boundaryL[stP2.second][(stP2.first+i)% boundLen2], 1) = 0;
-                            testCol(boundaryL[stP2.second][(stP2.first+i)% boundLen2], 2) = 0;
 
                         }
                     }
@@ -333,8 +336,24 @@ int main(int argc, char *argv[])
                 // if 0 -> no face colour
                 viewer.data().set_colors(testCol);
             }
-
-
+            if(ImGui::Button("Visualize Corner", ImVec2(-1, 0))){
+                MatrixXd testCol= MatrixXd::Zero(Vg_pattern.rows(), 3);
+                for(int i=0; i<Vg_pattern.rows(); i++){
+                    if(edgeVertices(i)){
+                        testCol(i,0)=1;
+                    }
+                }
+                viewer.selected_data_index = 0;
+                viewer.data().clear();
+                viewer.data().set_mesh(Vg_pattern, Fg_pattern);
+                viewer.data().uniform_colors(ambient, diffuse, specular);
+                viewer.data().show_texture = false;
+                viewer.data().set_face_based(false);
+                //remove wireframe
+                viewer.data().show_lines = false;
+                // if 0 -> no face colour
+                viewer.data().set_colors(testCol);
+            }
 
         }
         if (ImGui::CollapsingHeader("Mannequin", ImGuiTreeNodeFlags_OpenOnArrow)) {
@@ -460,8 +479,6 @@ int main(int argc, char *argv[])
                 showGarment(viewer);
                 showMannequin(viewer);
             }
-
-
         }
         menu.draw_viewer_menu();
     };
@@ -785,7 +802,6 @@ void preComputeConstraintsForRestshape(){
 }
 void setCollisionMesh(){
     // the mesh the garment collides with -> Vm Fm the mannequin mesh
-    //to have earlier detection, blow up the mannequin a bit and perform collision detection on this !
 
     col_tree.init(Vm, Fm);
     igl::per_face_normals(Vm, Fm, FN_m);
@@ -1025,8 +1041,9 @@ void preComputeStretch(){
     }
 }
 void computeStress(igl::opengl::glfw::Viewer& viewer){
+    cout<<"in function"<<endl;
 
-     normU.resize (numFace);
+    normU.resize (numFace);
      normV.resize (numFace);
 
      perFaceU.resize (numFace, 3);
@@ -1035,8 +1052,8 @@ void computeStress(igl::opengl::glfw::Viewer& viewer){
      perFaceD1.resize(numFace, 3);
      perFaceD2.resize(numFace, 3);
 
-
     for(int j=0; j<numFace; j++){
+
         int id0 = Fg(j, 0);
         int id1 = Fg(j, 1);
         int id2 = Fg(j, 2);
@@ -1050,15 +1067,16 @@ void computeStress(igl::opengl::glfw::Viewer& viewer){
             no stretch : y=0, thus very red , very green => yellow */
         Vector3d Gu, G, Gv;
         Vector3d Gd1, Gd2;
+
         Gu= baryCoords1(j, 0)*Vg.row(id0) + baryCoords1(j, 1)*Vg.row(id1) + baryCoords1(j, 2)*Vg.row(id2);
         Gv= baryCoords2(j, 0)*Vg.row(id0) + baryCoords2(j, 1)*Vg.row(id1) + baryCoords2(j, 2)*Vg.row(id2);
         G = (1./3)*Vg.row(id0) +(1./3)*Vg.row(id1) + (1./3)*Vg.row(id2);
+
 
         Gd1= baryCoordsd1(j, 0)*Vg.row(id0) + baryCoordsd1(j, 1)*Vg.row(id1) + baryCoordsd1(j, 2)*Vg.row(id2);
         Gd2= baryCoordsd2(j, 0)*Vg.row(id0) + baryCoordsd2(j, 1)*Vg.row(id1) + baryCoordsd2(j, 2)*Vg.row(id2);
         Vector2d d1; d1(1)= 1; d1(0)= 1; d1= d1.normalized();
         Vector2d d2; d2(1)= 1; d2(0)= -1; d1= d2.normalized();
-
 
         perFaceU.row(j) = (Gu-G);//*u2(j,1) - (Gv-G)*u1(j,1);
         perFaceV.row(j) = (Gv-G);// * u1(j, 0) - (Gu-G)* u2(j, 0);
@@ -1073,10 +1091,9 @@ void computeStress(igl::opengl::glfw::Viewer& viewer){
         y = (normV(j)-1) * differenceIncrementFactor;
         colV.row(j) = Vector3d ( 1. + y, 1.- y, 0.0);
 
-        auto diffU = (normU(j)-perFaceTargetNorm[j].first)/ perFaceTargetNorm[j].first;
-        auto diffV = (normV(j)-perFaceTargetNorm[j].second)/ perFaceTargetNorm[j].second;
-
         if(jacFlag){
+            double diffU = (normU(j)-perFaceTargetNorm[j].first)/ perFaceTargetNorm[j].first;
+            double diffV = (normV(j)-perFaceTargetNorm[j].second)/ perFaceTargetNorm[j].second;
            y = diffU + diffV ;
            y*= 3; // to better see the difference
             colJacDiff.row(j)=  Vector3d ( 1. + y, 1.- y, 0.0);
@@ -1088,11 +1105,11 @@ void computeStress(igl::opengl::glfw::Viewer& viewer){
         // this is an experiment
         y = (abs(normV(j)-1)+ abs(normU(j)-1))*3;
         colMixed.row(j) = Vector3d ( 1. + y, 1.- y, 0.0);
-
         faceAvgWithU.row(j) = faceAvg.row(j);
         faceAvgWithV.row(j) = faceAvg.row(j) ;
 
     }
+    cout<<"before final loop "<<endl;
     for(int i=0; i<numFace; i++){
         faceAvgWithU.row(i)+= (1 / normU.maxCoeff()) * normU(i) * 10 * perFaceU.row(i);
         faceAvgWithV.row(i)+= (1 / normV.maxCoeff()) * normV(i) * 10 * perFaceV.row(i);
@@ -1107,7 +1124,7 @@ void solveConstrainedVertices(){
             newSuggestedPos += baryCoeff(1)*Vm.row(Fm(closestFace, 1));
             newSuggestedPos += baryCoeff(2)*Vm.row(Fm(closestFace, 2));
 
-            // accout for offset from body!otherwise it alternates between this and collision force .  works smoothly so far,
+            // account for offset from body!otherwise it alternates between this and collision force .  works smoothly so far,
             Vector3d e1 = Vm.row(Fm(closestFace, 1)) - Vm.row(Fm(closestFace, 0));
             Vector3d e2 = Vm.row(Fm(closestFace, 2)) - Vm.row(Fm(closestFace, 0));
             Vector3d normal = e1.cross(e2);
