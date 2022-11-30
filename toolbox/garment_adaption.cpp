@@ -478,7 +478,7 @@ void garment_adaption::performJacobianUpdateAndMerge(Eigen::MatrixXd & V_curr, i
       //needs a more principled approach
         double maxPatternNorm = V_pattern.rowwise().norm().sum();
         double maxChange = norms.rowwise().norm().sum();
-        cout<<"change in percent  "<<(maxChange/maxPatternNorm)<<endl;
+        cout<<numIt<<" change in percent  "<<(maxChange/maxPatternNorm)<<endl;
         // TODO SET THIS FINISH PARAMETER
         if(maxChange/maxPatternNorm < 0.000000001){
             cout<<"fin in iteration " <<numIt<<endl;

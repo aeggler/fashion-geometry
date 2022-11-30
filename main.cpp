@@ -33,8 +33,8 @@ using Vector3r = Eigen::Matrix<Real, 3, 1, Eigen::DontAlign>;
 using Matrix4r = Eigen::Matrix<Real, 4, 4, Eigen::DontAlign>;
 
 // The matrices of mesh and garment, original and modified
-Eigen::MatrixXd Vg, Vm, testMorph_V1, testMorph_V0; // mesh for the garment and mannequin
-Eigen::MatrixXi Fg, Fm, Fg_pattern, testMorph_F1, testMorph_F0;
+Eigen::MatrixXd Vg, Vm, testMorph_V1; // mesh for the garment and mannequin
+Eigen::MatrixXi Fg, Fm, Fg_pattern, testMorph_F1;
 Eigen::MatrixXd Vg_orig, Vm_orig; // original mesh for the garment and mannequin, restore for translation
 Eigen::MatrixXd Vg_pattern, Vg_pattern_orig; // the pattern for the restshape, we might change this
 Eigen::MatrixXi Fg_orig, Fm_orig;
@@ -100,6 +100,7 @@ vector<int> constrainedVertexIds;
 VectorXi closestFaceId;
 
 std::vector<std::pair<Eigen::Vector3d, int>> constrainedVertexBarycentricCoords;
+std::vector<double> constrainedVertexDistance;
 std::vector<std::pair<Eigen::Vector3d, int>> allVertexBarycentricCoords;
 Eigen::MatrixXd tarU, tarV, tarD1;
 Eigen::MatrixXd baryCoords1, baryCoords2;
@@ -193,7 +194,7 @@ int main(int argc, char *argv[])
 
 //    string garment_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/leggins_3d/leggins_3d_merged.obj"; //
 //    string garment_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/patternComputed3D_converged.obj";
-    string garment_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/dress_2/dress2_3d/dress2_3d.obj";
+    string garment_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/dress_2/dress_3d_lowres/dress_3d_lowres.obj";
 //    string garment_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/patternComputed3D_converged_uv10.obj";
 //    string garment_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/patternComputed3D.obj";
 
@@ -203,7 +204,7 @@ int main(int argc, char *argv[])
     garmentPreInterpol = Vg;
 
 //    string garment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/leggins_2d/leggins_2d.obj"; //
-    string garment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/dress_2/dress2_2d/dress2_2d.obj"; //
+    string garment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/dress_2/dress_2d_lowres/dress_2d_lowres.obj"; //
 
 //    string garment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/patternComputed_converged.obj";
 //    string garment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/patternComputed.obj";
@@ -285,6 +286,8 @@ cout<<" test here "<<endl;
     viewer.core().is_animating = false;
     int whichSeam = 0;
     //additional menu items
+    int whichPatchMove=0;
+    float movePatternX, movePatternY;
     menu.callback_draw_viewer_menu = [&]() {
         if (ImGui::CollapsingHeader("Garment", ImGuiTreeNodeFlags_OpenOnArrow)) {
 
@@ -356,6 +359,7 @@ cout<<" test here "<<endl;
             }
 
         }
+
         if (ImGui::CollapsingHeader("Mannequin", ImGuiTreeNodeFlags_OpenOnArrow)) {
 
             ImGui::InputFloat("Translation X", &(mannequin_translation[0]),  0, 0, "%0.4f");
@@ -369,16 +373,48 @@ cout<<" test here "<<endl;
         if (ImGui::CollapsingHeader("Pattern Computation", ImGuiTreeNodeFlags_DefaultOpen)) {
             ImGui::InputInt("Number of local global iterations", &(localGlobalIterations),  0, 0);
             // same as key down with key =='P'
+            if (ImGui::CollapsingHeader("Alter Pattern ", ImGuiTreeNodeFlags_OpenOnArrow)){
+                ImGui::InputInt("Which patch to move ", &(whichPatchMove),  0, 0);
+                ImGui::InputFloat("Translation X", & movePatternY , 0, 0, "%0.4f");
+                ImGui::InputFloat("Translation Y", & movePatternX , 0, 0, "%0.4f");
+
+                if(ImGui::Button("Move ", ImVec2(-1, 0))){
+                    MatrixXd testCol= MatrixXd::Zero(Vg_pattern.rows(), 3);
+                    for(int i=0; i<Vg_pattern.rows(); i++){
+                        if( componentIdPerVert(i) == whichPatchMove){
+                            Vg_pattern(i, 0) += movePatternX;
+                            Vg_pattern(i, 1) += movePatternY;
+                            testCol(i,0)=1;
+                        }
+                    }
+                    viewer.selected_data_index = 0;
+                    viewer.data().clear();
+                    viewer.data().set_mesh(Vg_pattern, Fg_pattern);
+                    viewer.data().uniform_colors(ambient, diffuse, specular);
+                    viewer.data().show_texture = false;
+                    viewer.data().set_face_based(false);
+                    //remove wireframe
+                    viewer.data().show_lines = false;
+                    // if 0 -> no face colour
+                    viewer.data().set_colors(testCol);
+                    
+                    igl::writeOBJ("patternComputed_translated.obj", Vg_pattern, Fg_pattern);
+                    cout<<"pattern written to *patternComputed_translated*"<<endl;
+                }
+
+
+
+            }
             if(ImGui::Button("Compute pattern", ImVec2(-1, 0))){
                 simulate = false;
                 // we start computing the pattern for the current shape
                 Eigen::MatrixXd computed_Vg_pattern;//= Vg;
                 cout<<"start computing the pattern with "<<localGlobalIterations<<" local global iterations"<<endl;
                 gar_adapt->performJacobianUpdateAndMerge(Vg, localGlobalIterations, baryCoords1, baryCoords2, computed_Vg_pattern, seamsList, boundaryL);
-                igl::writeOBJ("patternComputed.obj", computed_Vg_pattern, Fg_pattern);
+                igl::writeOBJ("patternComputed.obj",Vg_pattern, Fg_pattern);
                 cout<<"pattern written to *patternComputed*"<<endl;
             }
-            if(ImGui::Button("Visualize stress of new pattern", ImVec2(-1, 0))){
+            if(ImGui::Button("Compute and Visualize stress of new pattern", ImVec2(-1, 0))){
                 simulate = false;
                 // we start computing the pattern for the current shape
                 Eigen::MatrixXd computed_Vg_pattern;//= Vg;
@@ -393,8 +429,6 @@ cout<<" test here "<<endl;
                 preComputeConstraintsForRestshape();
                 preComputeStretch();
                 computeStress(viewer);
-
-
 
             }
         }
@@ -560,6 +594,7 @@ void computeBoundaryVertices(){
             mathFun.Barycentric3D(currVert, a, b, c, currInBary);
 
             constrainedVertexBarycentricCoords.emplace_back(std::make_pair(currInBary, closestFace));
+            constrainedVertexDistance.push_back(dist);
         }
     }
 
@@ -707,7 +742,7 @@ bool callback_key_down(igl::opengl::glfw::Viewer& viewer, unsigned char key, int
     }
     if(key== 'W'){
         keyRecognition=true;
-        igl::writeOBJ("leggins_shrinked_pattern"+ to_string(garment_scale)+".obj", Vg_pattern, Fg_pattern);
+        igl::writeOBJ("writtenPattern"+ to_string(garment_scale)+".obj", Vg_pattern, Fg_pattern);
           std::cout<<" Garment file written"<<endl;
     }
     if(key == 'P'){       // Pattern
@@ -783,7 +818,7 @@ void preComputeConstraintsForRestshape(){
 
     createFacePairEdgeListWith4VerticeIDs(Fg, e4list);// from original since it has merged vertices adn thus more e4
     e4size= e4list.rows();
-    // the pattern has fewer adjacent faces since the stitching does not count here but it does in the 3D case
+    // the pattern has fewer adjacent faces since the stitching does not count here, but it does in the 3D case
 
     Q.resize(e4size, 1);
 
@@ -1041,7 +1076,6 @@ void preComputeStretch(){
     }
 }
 void computeStress(igl::opengl::glfw::Viewer& viewer){
-    cout<<"in function"<<endl;
 
     normU.resize (numFace);
      normV.resize (numFace);
@@ -1129,9 +1163,9 @@ void solveConstrainedVertices(){
             Vector3d e2 = Vm.row(Fm(closestFace, 2)) - Vm.row(Fm(closestFace, 0));
             Vector3d normal = e1.cross(e2);
             normal = normal.normalized();
-            newSuggestedPos += coll_EPS * normal;
+            newSuggestedPos += constrainedVertexDistance[i]* normal;
 
-        Vector3d dir = newSuggestedPos - p.row(constrainedVertexIds[i]).transpose();
+            Vector3d dir = newSuggestedPos - p.row(constrainedVertexIds[i]).transpose();
 
             p.row(constrainedVertexIds[i])+= boundaryStiffness * dir;
 
