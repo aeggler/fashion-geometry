@@ -25,6 +25,7 @@
 #include <map>
 #include <string>
 #include "toolbox/seam.h"
+#include <fstream>
 
 using namespace std;
 using namespace Eigen;
@@ -169,6 +170,100 @@ bool pre_draw(igl::opengl::glfw::Viewer& viewer){
 
     return false;
 }
+void saveData(string fileName, VectorXi  matrix)
+{
+    //https://eigen.tuxfamily.org/dox/structEigen_1_1IOFormat.html
+    const static IOFormat CSVFormat(FullPrecision, DontAlignCols, ", ", "\n");
+
+    ofstream file(fileName);
+    if (file.is_open())
+    {
+        file << matrix.format(CSVFormat);
+        file.close();
+    }
+}
+MatrixXi openData(string fileToOpen)
+{
+
+    // the inspiration for creating this function was drawn from here (I did NOT copy and paste the code)
+    // https://stackoverflow.com/questions/34247057/how-to-read-csv-file-and-assign-to-eigen-matrix
+
+    // the input is the file: "fileToOpen.csv":
+    // a,b,c
+    // d,e,f
+    // This function converts input file data into the Eigen matrix format
+
+
+
+    // the matrix entries are stored in this variable row-wise. For example if we have the matrix:
+    // M=[a b c
+    //    d e f]
+    // the entries are stored as matrixEntries=[a,b,c,d,e,f], that is the variable "matrixEntries" is a row vector
+    // later on, this vector is mapped into the Eigen matrix format
+    vector<int> matrixEntries;
+
+    // in this object we store the data from the matrix
+    ifstream matrixDataFile(fileToOpen);
+
+    // this variable is used to store the row of the matrix that contains commas
+    string matrixRowString;
+
+    // this variable is used to store the matrix entry;
+    string matrixEntry;
+
+    // this variable is used to track the number of rows
+    int matrixRowNumber = 0;
+
+
+    while (getline(matrixDataFile, matrixRowString)) // here we read a row by row of matrixDataFile and store every line into the string variable matrixRowString
+    {
+        stringstream matrixRowStringStream(matrixRowString); //convert matrixRowString that is a string to a stream variable.
+
+        while (getline(matrixRowStringStream, matrixEntry, ',')) // here we read pieces of the stream matrixRowStringStream until every comma, and store the resulting character into the matrixEntry
+        {
+            matrixEntries.push_back(stod(matrixEntry));   //here we convert the string to double and fill in the row vector storing all the matrix entries
+        }
+        matrixRowNumber++; //update the column numbers
+    }
+
+    // here we convet the vector variable into the matrix and return the resulting object,
+    // note that matrixEntries.data() is the pointer to the first memory location at which the entries of the vector matrixEntries are stored;
+    return Map<Matrix<int, Dynamic, Dynamic, RowMajor>>(matrixEntries.data(), matrixRowNumber, matrixEntries.size() / matrixRowNumber);
+
+}
+
+void saveDataM(string fileName, vector<vector<int>>&  matrix)
+{
+    fstream file;
+    file.open(fileName,ios_base::out);
+
+    file<<matrix.size()<<endl;
+
+    for(int i=0;i<matrix.size();i++)
+    {
+        file<<matrix[i].size()<<endl;
+        for(int j=0; j< matrix[i].size(); j++){
+            file<<matrix[i][j]<<endl;
+        }
+    }
+
+    file.close();
+
+}
+void readDataM(string fileName, vector<vector<int>>& matrix ){
+    fstream file;
+    file.open(fileName,ios_base::in);
+    int rows; file>> rows;
+    matrix.resize(rows);
+    for(int i=0; i<rows; i++){
+        int cols; file>>cols;
+        matrix[i].resize(cols);
+        for(int j=0; j<cols; j++){
+            file>>matrix[i][j];
+        }
+    }
+}
+
 int main(int argc, char *argv[])
 {
     // Init the viewer
@@ -204,6 +299,7 @@ int main(int argc, char *argv[])
     igl::readOBJ(garment_file_name, Vg, Fg);
     igl::readOBJ(garment_file_name, Vg_orig, Fg_orig);
     cout<<"loaded garment "<<endl;
+    Timer t("Setup");
     garmentPreInterpol = Vg;
     Vg_orig = Vg; Fg_orig= Fg;
 
@@ -217,9 +313,12 @@ int main(int argc, char *argv[])
     Vg_pattern_orig= Vg_pattern;
     patternPreInterpol= Vg_pattern;
     edgeVertices = VectorXd::Zero(Vg_pattern.rows());
+    t.printTime(" init");
     preComputeConstraintsForRestshape();
+    t.printTime(" preComputeConstraintsForRestshape");
 
     preComputeStretch();
+    t.printTime( " preComputeStretch");
     jacFlag=false;
 
     setNewGarmentMesh(viewer);
@@ -241,17 +340,36 @@ int main(int argc, char *argv[])
     }
 
     setNewMannequinMesh(viewer);
+    t.printTime( " read other mesh ");
     setCollisionMesh();
-    cout<<" collision mesh finished "<<endl;
+    t.printTime( " set collison mesh ");
 
     std::map<int,int> vertexMapPattToGar;
     std::map<std::pair<int, int>,int> vertexMapGarAndIdToPatch;
     vertexMapPatternToGarment(Fg, Fg_pattern,vertexMapPattToGar);
+    t.printTime( " vertexMapPatternToGarment ");
 
-    igl::boundary_loop(Fg_pattern, boundaryL);
-    Eigen::VectorXi componentIdPerFace, componentIdPerVert;
+//    igl::boundary_loop(Fg_pattern, boundaryL);
+//    saveDataM("boundaryL_dress2_lowres.txt", boundaryL);
+//    vector<vector<int>> newBoundaryL;
+    readDataM("/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/boundaryL_dress2_lowres.txt", boundaryL);
+//    if(newBoundaryL != boundaryL){
+//        cout<<"wrong"<<endl;
+//        cout<<newBoundaryL.size()<<" "<<newBoundaryL[0].size()<<" "<<newBoundaryL[0][0]<<endl;
+//
+//    }
+
+    Eigen::VectorXi componentIdPerFace,componentIdPerFaceNew, componentIdPerVert;
     igl::facet_components(Fg_pattern, componentIdPerFace);
+    saveData("componentIdPerFace_dress2_lowres.csv", componentIdPerFace);
+    componentIdPerFaceNew=  openData("/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/componentIdPerFace_dress2_lowres.csv");
+    if(componentIdPerFaceNew != componentIdPerFace){
+        cout<<" wrong"<<endl;
+    }
+
     igl::vertex_components(Fg_pattern, componentIdPerVert);
+    saveData("componentIdPerVert_dress2_lowres.csv", componentIdPerVert);
+
     vertexMapGarmentAndPatchIdToPattern(Fg, Fg_pattern, componentIdPerVert, vertexMapGarAndIdToPatch);
 
 
@@ -1088,8 +1206,8 @@ void computeStress(igl::opengl::glfw::Viewer& viewer){
      perFaceU.resize (numFace, 3);
      perFaceV.resize (numFace, 3);
 
-     perFaceD1.resize(numFace, 3);
-     perFaceD2.resize(numFace, 3);
+//     perFaceD1.resize(numFace, 3);
+//     perFaceD2.resize(numFace, 3);
 
     for(int j=0; j<numFace; j++){
 
@@ -1111,15 +1229,15 @@ void computeStress(igl::opengl::glfw::Viewer& viewer){
         G = (1./3)*Vg.row(id0) +(1./3)*Vg.row(id1) + (1./3)*Vg.row(id2);
 
 
-        Gd1= baryCoordsd1(j, 0)*Vg.row(id0) + baryCoordsd1(j, 1)*Vg.row(id1) + baryCoordsd1(j, 2)*Vg.row(id2);
-        Gd2= baryCoordsd2(j, 0)*Vg.row(id0) + baryCoordsd2(j, 1)*Vg.row(id1) + baryCoordsd2(j, 2)*Vg.row(id2);
-        Vector2d d1; d1(1)= 1; d1(0)= 1; d1= d1.normalized();
-        Vector2d d2; d2(1)= 1; d2(0)= -1; d1= d2.normalized();
+//        Gd1= baryCoordsd1(j, 0)*Vg.row(id0) + baryCoordsd1(j, 1)*Vg.row(id1) + baryCoordsd1(j, 2)*Vg.row(id2);
+//        Gd2= baryCoordsd2(j, 0)*Vg.row(id0) + baryCoordsd2(j, 1)*Vg.row(id1) + baryCoordsd2(j, 2)*Vg.row(id2);
+//        Vector2d d1; d1(1)= 1; d1(0)= 1; d1= d1.normalized();
+//        Vector2d d2; d2(1)= 1; d2(0)= -1; d1= d2.normalized();
 
         perFaceU.row(j) = (Gu-G);//*u2(j,1) - (Gv-G)*u1(j,1);
         perFaceV.row(j) = (Gv-G);// * u1(j, 0) - (Gu-G)* u2(j, 0);
-        perFaceD1.row(j) = (Gd1- G) * d2(1)- (Gd2- G) * d1(1);
-        perFaceD2.row(j) = (Gd2 -G) * d1(0) - (Gd1-G)*d2(0);
+//        perFaceD1.row(j) = (Gd1- G) * d2(1)- (Gd2- G) * d1(1);
+//        perFaceD2.row(j) = (Gd2 -G) * d1(0) - (Gd1-G)*d2(0);
 
         normU(j)= (Gu-G).norm();
         double y = (normU(j)-1) * differenceIncrementFactor; // to increase differences
