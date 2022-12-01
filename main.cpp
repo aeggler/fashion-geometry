@@ -75,6 +75,8 @@ igl::AABB<Eigen::MatrixXd, 3> col_tree;
 Eigen::MatrixXd edgeLengths;
 MatrixXd C, N;
 MatrixXi collisionVert;
+vector<int> pureCollVert;
+
 Eigen::MatrixXd FN_m, VN_m, EN_m;	// vertices of the collision mesh
 Eigen::MatrixXi E_m;				// triangles = faces of the garment mesh / faces of the collision mesh
 Eigen::VectorXi EMAP_m;
@@ -201,7 +203,7 @@ int main(int argc, char *argv[])
 
     igl::readOBJ(garment_file_name, Vg, Fg);
     igl::readOBJ(garment_file_name, Vg_orig, Fg_orig);
-    cout<<"loaded garment new "<<endl;
+    cout<<"loaded garment "<<endl;
     garmentPreInterpol = Vg;
     Vg_orig = Vg; Fg_orig= Fg;
 
@@ -220,7 +222,6 @@ int main(int argc, char *argv[])
     preComputeStretch();
     jacFlag=false;
 
-//    computeStress(viewer);
     setNewGarmentMesh(viewer);
 
 // TODO remember to adapt the collision constraint solving dep on avatar, sometimes normalization is needed, sometimes not for whatever magic
@@ -268,7 +269,7 @@ int main(int argc, char *argv[])
     gar_adapt->computeJacobian();
     perFaceTargetNorm = gar_adapt->perFaceTargetNorm;
     Vg_orig = Vg;
-    jacFlag = true;
+    jacFlag = true;// not needed anymore...  was when we computed stress without reference jacobian
 
     // read constrained vertex ids and compute them as barycentric coordinates of the nearest face
     computeBoundaryVertices();
@@ -865,6 +866,7 @@ void setupCollisionConstraints(){
     VectorXd S;
     //MatrixXd C, N;
     collisionVert = Eigen::MatrixXi::Zero(numVert, 1);
+    pureCollVert.clear();
 
     igl::signed_distance_pseudonormal(p, Vm, Fm, col_tree, FN_m, VN_m, EN_m, EMAP_m, S, closestFaceId, C, N);
     int collCount=0;
@@ -872,7 +874,12 @@ void setupCollisionConstraints(){
         if(S(i)<coll_EPS){
             collCount++;
             collisionVert(i)=1;
+            pureCollVert.push_back(i);
+
         }
+    }
+    if(pureCollVert.size()!= collCount){
+        cout<<" size problem"<<endl;
     }
 }
 void solveBendingConstraint(){
@@ -994,14 +1001,12 @@ void solveStretchUV(){
     }
 }
 void solveCollisionConstraint(){
-    for (int j=0; j<numVert; j++){
-        if(collisionVert(j)){
-            Vector3r deltap0;
-            // maybe I should compute the intersection instead of using the closest point C?
-            PBD.solve_CollisionConstraint(p.row(j),  C.row(j), N.row(j), deltap0, coll_EPS, vel.row(j));
-            p.row(j) += collisionStiffness * deltap0;
-
-        }
+    for(int i=0; i<pureCollVert.size(); i++){
+        int j = pureCollVert[i];
+        Vector3r deltap0;
+        // maybe I should compute the intersection instead of using the closest point C?
+        PBD.solve_CollisionConstraint(p.row(j),  C.row(j), N.row(j), deltap0, coll_EPS, vel.row(j));
+        p.row(j) += collisionStiffness * deltap0;
     }
 }
 
@@ -1194,7 +1199,7 @@ void dotimeStep(igl::opengl::glfw::Viewer& viewer){
             /* we precomputed the normal and collision point of each vertex, now add the constraint (instead of checking collision in each iteration
              this is imprecise but much faster and acc to paper works fine in practice*/
             solveCollisionConstraint();
-        t.printTime(" collision ");cout<<endl;
+        t.printTime(" collision ");
     }
 
         // (13) velocity and position update
