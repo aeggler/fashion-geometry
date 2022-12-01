@@ -28,6 +28,7 @@ private:
     std::vector< std::vector<int> > faceFaceAdjecencyList_3D;
     vector<vector<int> > vfAdj;
     Eigen::SparseMatrix<double, RowMajor> A;
+    Eigen::SparseMatrix<double, RowMajor> W;
     Eigen::SimplicialLDLT<Eigen::SparseMatrix<double>> cholSolver;
 
 

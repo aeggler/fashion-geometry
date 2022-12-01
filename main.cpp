@@ -802,7 +802,6 @@ int main(int argc, char *argv[])
     viewer.callback_pre_draw = &pre_draw;
     viewer.callback_key_down = &callback_key_down;
 
-
     viewer.selected_data_index = 0;
     viewer.callback_mouse_down = &callback_mouse_down;
 
@@ -836,10 +835,9 @@ bool callback_mouse_down(igl::opengl::glfw::Viewer& viewer, int button, int modi
 
     if (computePointOnMesh(viewer, Vrs, Fg_pattern, b, fid)) {
         int v_id = computeClosestVertexOnMesh(b, fid, Fg_pattern);
-        cout<<v_id<<"computed closest pattern id "<<endl ;
-//        cut_boundaries->addPointsToBoundary(Vrs, v_id);
-//        showBoundary(viewer);
+//        cout<<v_id<<"computed closest pattern id "<<endl ;
         viewer.data().set_points(Vrs.row(v_id), RowVector3d(1.0, 0.0, 0.0));
+        // TODO now we could constrain the whole patch or the boundary
         return true;
     }
     return false;

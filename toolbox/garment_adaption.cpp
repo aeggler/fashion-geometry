@@ -43,6 +43,10 @@ garment_adaption::garment_adaption(Eigen::MatrixXd &Vg, Eigen::MatrixXi& Fg, Eig
  * */
     int rowCount = 0;
     std::vector<T> tripletList;
+    std::vector<T> tripletListWeight;
+    //UPDATE 2.12.22 we add a weighting , see https://online.stat.psu.edu/stat501/lesson/13/13.1
+    // we force the symmetry by having weight 1, the jacobian to have weight 0.5 as intial guess
+
 
     for(int i =0; i<numVertPattern; i++){
         vector<int> neigh = vfAdj[i]; // number of faces of this vertex ,attention remove -1 faces
@@ -53,6 +57,11 @@ garment_adaption::garment_adaption(Eigen::MatrixXd &Vg, Eigen::MatrixXi& Fg, Eig
             tripletList.push_back(T(3 * rowCount, 3 * i, 1));
             tripletList.push_back(T(3 * rowCount + 1, 3 * i + 1, 1));
             tripletList.push_back(T(3 * rowCount + 2, 3 * i + 2, 1));
+
+            tripletListWeight.push_back(T(3 * rowCount, 3 * rowCount, 0.1));
+            tripletListWeight.push_back(T(3 * rowCount + 1, 3 * rowCount + 1, 0.1));
+            tripletListWeight.push_back(T(3 * rowCount + 2, 3 * rowCount + 2, 0.1));
+
             rowCount++;
 
         }
@@ -84,21 +93,34 @@ garment_adaption::garment_adaption(Eigen::MatrixXd &Vg, Eigen::MatrixXi& Fg, Eig
             tripletList.push_back(T(3*rowCount + 1, 3 * firstSide + 1, 1));
             tripletList.push_back(T(3*rowCount + 2, 3 * firstSide + 2, 1));
 
+            tripletListWeight.push_back(T(3*rowCount, 3*rowCount, 1));
+            tripletListWeight.push_back(T(3*rowCount + 1, 3 * rowCount + 1, 1));
+            tripletListWeight.push_back(T(3*rowCount + 2, 3 * rowCount + 2, 1));
             rowCount++;
+
             tripletList.push_back(T(3*rowCount, 3 * secondSide, 1));
             tripletList.push_back(T(3*rowCount + 1, 3 * secondSide + 1, 1));
             tripletList.push_back(T(3*rowCount + 2, 3 * secondSide + 2, 1));
+
+            tripletListWeight.push_back(T(3*rowCount, 3 * rowCount, 1));
+            tripletListWeight.push_back(T(3*rowCount + 1, 3 * rowCount + 1, 1));
+            tripletListWeight.push_back(T(3*rowCount + 2, 3 * rowCount + 2, 1));
             rowCount++;
 
         }
 
     }
 
+    W.resize(3*rowCount, 3*rowCount);
+    W.setFromTriplets(tripletListWeight.begin(), tripletListWeight.end());
+
     A.resize(3*rowCount, 3*numVertPattern);
 
     A.setFromTriplets(tripletList.begin(), tripletList.end());
 
-    SpMat LHS = (A.transpose()*A);
+    SpMat LHS = (A.transpose()*W*A);
+    // important for RHS
+
 
     cholSolver.analyzePattern(LHS);
     cholSolver.factorize(LHS);
@@ -464,9 +486,10 @@ void garment_adaption::performJacobianUpdateAndMerge(Eigen::MatrixXd & V_curr, i
 
         }
 
-        MatrixXd RHS = A.transpose() * b;
+        MatrixXd RHS = A.transpose() * W * b;
         v_asVecOld= v_asVec;
         v_asVec = cholSolver.solve(RHS);
+//        cout<<MatrixXd(W)<<endl;
 
 
         // not claiming this was very efficient ,just for debug purposes
