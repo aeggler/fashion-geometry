@@ -9,7 +9,7 @@
 #include <igl/adjacency_list.h>
 #include <igl/facet_components.h>
 #include <igl/vertex_components.h>
-
+#include <igl/unproject_onto_mesh.h>
 #include <igl/boundary_loop.h>
 #include <iostream>
 #include <Eigen/Dense>
@@ -145,6 +145,13 @@ void solveCollisionConstraint();
 void preComputeStretch();
 void computeStress(igl::opengl::glfw::Viewer& viewer);
 void solveStretchUV();
+
+
+// nice clicky interface
+bool computePointOnMesh(igl::opengl::glfw::Viewer& viewer, Eigen::MatrixXd& Vuse, Eigen::MatrixXi& Fuse, Eigen::Vector3d& position, int& fid);
+int computeClosestVertexOnMesh(Vector3d& b, int& fid, MatrixXi& F);
+bool callback_mouse_down(igl::opengl::glfw::Viewer& viewer, int button, int modifier);
+
 
 bool pre_draw(igl::opengl::glfw::Viewer& viewer){
     viewer.data().dirty |= igl::opengl::MeshGL::DIRTY_DIFFUSE | igl::opengl::MeshGL::DIRTY_SPECULAR;
@@ -524,6 +531,7 @@ int main(int argc, char *argv[])
     int whichPatchMove=0;
     int whichBound=0;
     float movePatternX=0; float movePatternY=0;
+    bool showPattern= false;
     menu.callback_draw_viewer_menu = [&]() {
         if (ImGui::CollapsingHeader("Garment", ImGuiTreeNodeFlags_OpenOnArrow)) {
 
@@ -607,6 +615,26 @@ int main(int argc, char *argv[])
             }
         }
         if (ImGui::CollapsingHeader("Pattern Computation", ImGuiTreeNodeFlags_DefaultOpen)) {
+            if(ImGui::Checkbox("Show Pattern", &showPattern)){
+
+                viewer.selected_data_index = 0;
+                viewer.data().clear();
+
+
+                if(showPattern){
+                    viewer.data().set_mesh(Vg_pattern, Fg_pattern);
+                }else{
+                    viewer.data().set_mesh(Vg, Fg);
+                }
+                viewer.data().uniform_colors(ambient, diffuse, specular);
+                viewer.data().show_texture = false;
+                viewer.data().set_face_based(false);
+                //remove wireframe
+                viewer.data().show_lines = true;
+
+                // TODO we want the chance to click on a patch and make it constrained
+
+            }
             ImGui::InputInt("Number of local global iterations", &(localGlobalIterations),  0, 0);
             // same as key down with key =='P'
             if (ImGui::CollapsingHeader("Alter Pattern ", ImGuiTreeNodeFlags_OpenOnArrow)){
@@ -654,9 +682,6 @@ int main(int argc, char *argv[])
                     // if 0 -> no face colour
                     viewer.data().set_colors(testCol);
                 }
-
-
-
 
             }
             if(ImGui::Button("Compute pattern", ImVec2(-1, 0))){
@@ -714,7 +739,7 @@ int main(int argc, char *argv[])
                 noStress = false;
                 StressV = false;
                 StressDiffJac = false;
-
+                StressJac = false;
                 whichStressVisualize = 1;
                 showGarment(viewer);
             }
@@ -722,6 +747,7 @@ int main(int argc, char *argv[])
                 noStress = false;
                 StressU = false;
                 StressDiffJac = false;
+                StressJac = false;
                 whichStressVisualize = 2;
                 showGarment(viewer);
            }
@@ -729,6 +755,7 @@ int main(int argc, char *argv[])
                 StressV= false;
                 noStress = false;
                 StressU = false;
+                StressJac = false;
                 whichStressVisualize = 3;
                 showGarment(viewer);
             }
@@ -774,11 +801,84 @@ int main(int argc, char *argv[])
     // Add content to the default menu window
     viewer.callback_pre_draw = &pre_draw;
     viewer.callback_key_down = &callback_key_down;
+
+
     viewer.selected_data_index = 0;
+    viewer.callback_mouse_down = &callback_mouse_down;
+
     t.printTime( " fin ");
     viewer.launch();
 }
-// seems to give good results, let's use this.
+
+bool computePointOnMesh(igl::opengl::glfw::Viewer& viewer, MatrixXd& V, MatrixXi& F, Vector3d& b, int& fid) {
+    double x = viewer.current_mouse_x;
+    double y = viewer.core().viewport(3) - viewer.current_mouse_y;
+    return igl::unproject_onto_mesh(Vector2f(x, y), viewer.core().view, viewer.core().proj, viewer.core().viewport, V, F, fid, b);
+}
+int computeClosestVertexOnMesh(Vector3d& b, int& fid, MatrixXi& F) {
+    // get the closest vertex in that face
+    int v_id;
+    if (b(0) > b(1) && b(0) > b(2))
+        v_id = F(fid, 0);
+    else if (b(1) > b(0) && b(1) > b(2))
+        v_id = F(fid, 1);
+    else
+        v_id = F(fid, 2);
+    return v_id;
+}
+bool callback_mouse_down(igl::opengl::glfw::Viewer& viewer, int button, int modifier){
+    if (button == (int)igl::opengl::glfw::Viewer::MouseButton::Right)
+        return false;
+
+    int fid;
+    Eigen::Vector3d b;
+    MatrixXd Vrs = Vg_pattern;
+
+    if (computePointOnMesh(viewer, Vrs, Fg_pattern, b, fid)) {
+        int v_id = computeClosestVertexOnMesh(b, fid, Fg_pattern);
+        cout<<v_id<<"computed closest pattern id "<<endl ;
+//        cut_boundaries->addPointsToBoundary(Vrs, v_id);
+//        showBoundary(viewer);
+        viewer.data().set_points(Vrs.row(v_id), RowVector3d(1.0, 0.0, 0.0));
+        return true;
+    }
+    return false;
+}
+/*
+ *void GarmentBoundaries::markClosestBoundaryAsFixed(const MatrixXd& Vm, Vector3d& v) {
+
+    // get coordinates of the current boundaries
+    double dist = 1e10;
+    double boundary_id = 0;
+
+    for (int i = 0; i < boundaries.size(); i++) {
+        MatrixXd bverts;
+        smooth.getCoordinates(Vm, boundaries[i], bverts);
+        for (int j = 0; j < bverts.rows(); j++) {
+            double new_dist = (bverts.row(j).transpose() - v).norm();
+            if (new_dist < dist) {
+                dist = new_dist;
+                boundary_id = i;
+            }
+        }
+    }
+
+    // fix
+    bool already_fixed = false;
+    for (int i = 0; i < fixed.size(); i++)
+        if (fixed[i] == boundary_id)
+            already_fixed = true;
+    if (!already_fixed) {
+        fixed.push_back(boundary_id);
+        cout << "Fixed boundary." << endl;
+    }
+    else {
+        fixed.erase(remove(fixed.begin(), fixed.end(), boundary_id), fixed.end());
+        cout << "Released boundary." << endl;
+    }
+}
+ *
+ * */
 void computeBaryCoordsGarOnNewMannequin(igl::opengl::glfw::Viewer& viewer){
     VectorXd S;
     VectorXd distVec(Vg.rows());
@@ -1366,13 +1466,13 @@ void dotimeStep(igl::opengl::glfw::Viewer& viewer){
     }
 
     // detect collisions and solve for them in the loop
-    t.printTime(" position setup finished ");cout<<endl;
+    t.printTime(" position setup finished ");
 
     setupCollisionConstraints();
-    t.printTime(" setup collision constraints ");cout<<endl;
+    t.printTime(" setup collision constraints ");
 
     init_stretchUV();
-    t.printTime(" setup uv stretch ");cout<<endl;
+    t.printTime(" setup uv stretch ");
     //(9)-(11), the loop should be repeated several times per timestep (according to Jan Bender)
     for(int i = 0; i < num_const_iterations; i++){
             solveBendingConstraint();
