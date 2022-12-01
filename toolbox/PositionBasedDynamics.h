@@ -52,6 +52,11 @@ public:
     bool init_UVStretch(const  Vector3r& perFaceU,const Vector3r& perFaceV,
                                                const Eigen::MatrixXd& patternCoords, const Eigen::Matrix3d& targetPositions,
                         Vector3r &tarUV0, Vector3r &tarUV1, Vector3r &tarUV2, int uORv, double DiagStiffness);
+
+    bool init_UVStretchBoth(const Vector3r& perFaceU, const Vector3r& perFaceV,
+    const Eigen::MatrixXd& patternCoords, const Eigen::Matrix3d& targetPositions,
+            Vector3r &tarU0, Vector3r &tarU1, Vector3r &tarU2, Vector3r &tarV0, Vector3r &tarV1, Vector3r &tarV2, double DiagStiffness );
+
     bool init_Diag_Stretch( const Vector3r& perFaceU,const Vector3r& perFaceV,
                                                   const Eigen::MatrixXd& patternCoords, const Eigen::Matrix3d& targetPositions,
                                                   Vector3r &tarUV0, Vector3r &tarUV1, Vector3r &tarUV2);

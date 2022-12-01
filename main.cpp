@@ -1175,10 +1175,6 @@ void solveStretchUV(){
         targetPositions.col(0)= p.row(Fg_orig(j, 0));
         targetPositions.col(1)= p.row(Fg_orig(j, 1));
         targetPositions.col(2)= p.row(Fg_orig(j, 2));
-//
-//        Vector3r tar0= tarD1.row(3*j +0);
-//        Vector3r tar1= tarD1.row(3*j +1);
-//        Vector3r tar2= tarD1.row(3*j +2);
 
         Vector3r tar0= tarU.row(3*j +0);
         Vector3r tar1= tarU.row(3*j +1);
@@ -1238,30 +1234,19 @@ void preComputeStretch(){
         int id2 = Fg_pattern(j, 2);
 
         Vector2d  gU, gV,centralG;
-        Vector2d  gD1, gD2; // both diagonals for arap
 
-        // new part: we compute the barycentric coordinates for the vectors u, v, and digaonals. They are the reference for the stress
+        // new part: we compute the barycentric coordinates for the vectors u, v. They are the reference for the stress
         centralG(0) = (Vg_pattern(id0, 0) + Vg_pattern(id1, 0) + Vg_pattern(id2, 0)) / 3.;
         centralG(1) = (Vg_pattern(id0, 1) + Vg_pattern(id1, 1) + Vg_pattern(id2, 1)) / 3.;
         gU = centralG;
         gV = centralG;
-
-        gD1 = centralG;
-        gD2 = centralG;
-
+        
         gU(0) += 1;
         gV (1) += 1;
-
-        gD1 (0) += 1; gD1(1) += 1;
-        gD2(0) -= 1; gD2 (1) += 1;
 
 //        double det = gU( 0) * gV(1) - (gV(0)*gU(1));// 90 deg, should be 0 - no they are not vectors but pints
         u1(j,0)= 1; u1(j, 1)= 0;//gU/det;
         u2(j, 0)= 0; u2(j, 1) = 1; //gV/det;
-
-        gD1 -= centralG; gD1 = gD1.normalized(); gD1 += centralG;
-        gD2 -= centralG; gD2 = gD2.normalized(); gD2 += centralG;
-
 
         MathFunctions mathFun;
         Vector2d p0, p1, p2;
@@ -1278,14 +1263,10 @@ void preComputeStretch(){
 
         mathFun.Barycentric(gU, p0, p1, p2, u1InBary);
         mathFun.Barycentric(gV, p0, p1, p2, u2InBary);
-        mathFun.Barycentric(gD1, p0, p1, p2, d1InBary);
-        mathFun.Barycentric(gD2, p0, p1, p2, d2InBary);
-
+//
         baryCoords1.row(j) = u1InBary;
         baryCoords2.row(j) = u2InBary;
-        baryCoordsd1.row(j) = d1InBary;
-        baryCoordsd2.row(j) = d2InBary;
-
+//
     }
 }
 void computeStress(igl::opengl::glfw::Viewer& viewer){
