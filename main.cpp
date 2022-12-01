@@ -1154,6 +1154,10 @@ void init_stretchUV(){
         targetPositions.col(2)= p.row(Fg_orig(j, 2));
 
         Vector3r tar0 , tar1, tar2;
+//        Vector3r tar0V , tar1V, tar2V;
+//        PBD.init_UVStretchBoth(perFaceU.row(j), perFaceV.row(j), patternCoords, targetPositions,
+//                               tar0, tar1, tar2, tar0V, tar1V, tar2V,stretchStiffnessD );
+
 
         PBD.init_UVStretch(perFaceU.row(j), perFaceV.row(j), patternCoords, targetPositions, tar0, tar1, tar2, 1,stretchStiffnessD );
         tarU.row(3*j)= tar0.transpose();
@@ -1240,7 +1244,7 @@ void preComputeStretch(){
         centralG(1) = (Vg_pattern(id0, 1) + Vg_pattern(id1, 1) + Vg_pattern(id2, 1)) / 3.;
         gU = centralG;
         gV = centralG;
-        
+
         gU(0) += 1;
         gV (1) += 1;
 
@@ -1277,9 +1281,6 @@ void computeStress(igl::opengl::glfw::Viewer& viewer){
      perFaceU.resize (numFace, 3);
      perFaceV.resize (numFace, 3);
 
-//     perFaceD1.resize(numFace, 3);
-//     perFaceD2.resize(numFace, 3);
-
     for(int j=0; j<numFace; j++){
 
         int id0 = Fg(j, 0);
@@ -1300,15 +1301,8 @@ void computeStress(igl::opengl::glfw::Viewer& viewer){
         G = (1./3)*Vg.row(id0) +(1./3)*Vg.row(id1) + (1./3)*Vg.row(id2);
 
 
-//        Gd1= baryCoordsd1(j, 0)*Vg.row(id0) + baryCoordsd1(j, 1)*Vg.row(id1) + baryCoordsd1(j, 2)*Vg.row(id2);
-//        Gd2= baryCoordsd2(j, 0)*Vg.row(id0) + baryCoordsd2(j, 1)*Vg.row(id1) + baryCoordsd2(j, 2)*Vg.row(id2);
-//        Vector2d d1; d1(1)= 1; d1(0)= 1; d1= d1.normalized();
-//        Vector2d d2; d2(1)= 1; d2(0)= -1; d1= d2.normalized();
-
         perFaceU.row(j) = (Gu-G);//*u2(j,1) - (Gv-G)*u1(j,1);
         perFaceV.row(j) = (Gv-G);// * u1(j, 0) - (Gu-G)* u2(j, 0);
-//        perFaceD1.row(j) = (Gd1- G) * d2(1)- (Gd2- G) * d1(1);
-//        perFaceD2.row(j) = (Gd2 -G) * d1(0) - (Gd1-G)*d2(0);
 
         normU(j)= (Gu-G).norm();
         double y = (normU(j)-1) * differenceIncrementFactor; // to increase differences
