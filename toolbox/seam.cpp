@@ -104,34 +104,34 @@ void computeAllSeams(const std::vector<std::vector<int> >& boundaryL, std::map<i
                     }else otherPatchId = face0id1;
                     if(myPatchId==otherPatchId){
                         int startId = edgesForThisBoundary[edgesForThisBoundary.size()-2].first;
-                        for(int all=0; all<edgesForThisBoundary.size(); all++){
-                            cout<<" previous: "<< edgesForThisBoundary[all].first<<endl;
-                        }
-                        cout<<boundary.size()<<" size and id "<<myPatchId<<" both ids are the same, corner id "<<v1<<" and start in " <<startId <<endl;
+//                        for(int all=0; all<edgesForThisBoundary.size(); all++){
+//                            cout<<" previous: "<< edgesForThisBoundary[all].first<<endl;
+//                        }
+//                        cout<<boundary.size()<<" size and id "<<myPatchId<<" both ids are the same, corner id "<<v1<<" and start in " <<startId <<endl;
                         int startIdInBoundaryIdx = edgesForThisBoundary[edgesForThisBoundary.size()-2].second;
-                        cout<<" start index "<<startIdInBoundaryIdx<<" and ending in "<<j+1<<endl;
+//                        cout<<" start index "<<startIdInBoundaryIdx<<" and ending in "<<j+1<<endl;
 
                         int startIdOther = vertexMapGarAndIdToPatch[make_pair(vertexMapPattToGar[startId], otherPatchId)];
                         int maxID = componentIdPerVert.maxCoeff();
                         if( startIdOther == startId) startIdOther = vertexMapGarAndIdToPatch[make_pair(vertexMapPattToGar[startId], maxID+1+ otherPatchId)];
-                        cout<<" start ID other "<<startIdOther <<endl;
+//                        cout<<" start ID other "<<startIdOther <<endl;
                         int counter=0;
                         int startIdOtherInBoundaryIdx;
-                        cout<<startId<<" here, other "<<startIdOther<<endl;
+//                        cout<<startId<<" here, other "<<startIdOther<<endl;
 
-                        cout<<edgesForThisBoundary.size()<<" in edge queue already "<<endl;
+//                        cout<<edgesForThisBoundary.size()<<" in edge queue already "<<endl;
                         while(edgesForThisBoundary[counter].first != startIdOther && counter < edgesForThisBoundary.size()){
                             counter++;
                         }
                         if(edgesForThisBoundary[counter].first != startIdOther) {cout<<" should not be there yet, dropping it "<<endl<<endl<<endl; continue; }
                         startIdOtherInBoundaryIdx = edgesForThisBoundary[counter].second;
-                        cout<<"found it with ID "<<startIdOtherInBoundaryIdx<<endl;
+//                        cout<<"found it with ID "<<startIdOtherInBoundaryIdx<<endl;
 
                         counter=0;
                         int endIdOtherInBoundaryIdx;
                         int endIdOther = vertexMapGarAndIdToPatch[std::make_pair(v1g, otherPatchId)];
                         if(endIdOther == v1) endIdOther = vertexMapGarAndIdToPatch[make_pair(vertexMapPattToGar[v1], maxID+1+ otherPatchId)];
-                        cout<<(j+1) %boundary.size()<<" here end, other "<<endIdOther<<endl;
+//                        cout<<(j+1) %boundary.size()<<" here end, other "<<endIdOther<<endl;
 
                         while (edgesForThisBoundary[counter].first != endIdOther && counter < startIdOtherInBoundaryIdx){
                              counter++;
@@ -140,12 +140,12 @@ void computeAllSeams(const std::vector<std::vector<int> >& boundaryL, std::map<i
                              cout<<" something is fishy, drop it "<<endl; continue;
                         }
                         endIdOtherInBoundaryIdx = edgesForThisBoundary[counter].second;
-                        cout<<" other boundary ids are "<< endIdOtherInBoundaryIdx<<" and "<< startIdOtherInBoundaryIdx<<"compared to "<<(j+1) %boundary.size()<<" and "<<startIdInBoundaryIdx<<endl;
+//                        cout<<" other boundary ids are "<< endIdOtherInBoundaryIdx<<" and "<< startIdOtherInBoundaryIdx<<"compared to "<<(j+1) %boundary.size()<<" and "<<startIdInBoundaryIdx<<endl;
 
                         int endIdx = (j+1) ;
                         int theirDist = startIdOtherInBoundaryIdx- endIdOtherInBoundaryIdx;
                         int mydist = endIdx - startIdInBoundaryIdx;
-                        cout<<mydist <<" and other dist "<<theirDist<<endl;
+//                        cout<<mydist <<" and other dist "<<theirDist<<endl;
 
 
                         seam* newSeam = new seam (myPatchId, otherPatchId,startId, startIdOther, v1, endIdOther,

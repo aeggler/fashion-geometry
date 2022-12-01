@@ -419,7 +419,6 @@ void vertexMapGarmentAndPatchIdToPattern(const MatrixXi& Fg, const  MatrixXi& Fg
             // and it comes from a different patch position
             if(vertexMapGarAndIdToPatch[std::make_pair(Fg(i,0), comp0)] != v0p){
                 vertexMapGarAndIdToPatch[std::make_pair(Fg(i,0), maxID+1+comp0)]= v0p;
-                if(v0p<100) cout<<" we map "<<v0p<<" and "<<vertexMapGarAndIdToPatch[std::make_pair(Fg(i,0), comp0)]<<" to the same"<<endl;
             }
 
         }else {// a hack since a vertex can be on a pat at most twice (right?)
@@ -430,7 +429,6 @@ void vertexMapGarmentAndPatchIdToPattern(const MatrixXi& Fg, const  MatrixXi& Fg
 
             if(vertexMapGarAndIdToPatch[std::make_pair(Fg(i,1), comp1)] != v1p){
                 vertexMapGarAndIdToPatch[std::make_pair(Fg(i,1), maxID+1+comp1)]= v1p;
-                if(v0p<100)cout<<" we map "<<v1p<<" and "<<vertexMapGarAndIdToPatch[std::make_pair(Fg(i,1), comp1)]<<" to the same"<<endl;
 
             }
 
@@ -442,7 +440,6 @@ void vertexMapGarmentAndPatchIdToPattern(const MatrixXi& Fg, const  MatrixXi& Fg
 
             if(vertexMapGarAndIdToPatch[std::make_pair(Fg(i,2), comp2)] != v2p){
                 vertexMapGarAndIdToPatch[std::make_pair(Fg(i,2), maxID+1+ comp2)]= v2p;
-                if(v0p<100) cout<<" we map "<<v2p<<" and "<<vertexMapGarAndIdToPatch[std::make_pair(Fg(i,2), comp2)]<<" to the same"<<endl;
 
             }
 
