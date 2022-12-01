@@ -484,9 +484,9 @@ int main(int argc, char *argv[])
 //    saveData("EMAP_m_dress2.csv", EMAP_m);
 // end save time
 
-    computeBoundaryVertices();
+//    computeBoundaryVertices();
     t.printTime( " boundary ");
-    computeBaryCoordsGarOnNewMannequin(viewer);
+    computeBaryCoordsGarOnNewMannequin(viewer);// contains boundary vertices now
     t.printTime( " bary ");
     Vm = testMorph_V1;
     Vm_orig = testMorph_V1;
@@ -782,6 +782,13 @@ int main(int argc, char *argv[])
 void computeBaryCoordsGarOnNewMannequin(igl::opengl::glfw::Viewer& viewer){
     VectorXd S;
     VectorXd distVec(Vg.rows());
+
+    constrainedVertexIds.clear();
+    vector<vector<int> > vvAdj, vfAdj;
+    igl::adjacency_list(Fg,vvAdj);
+    createVertexFaceAdjacencyList(Fg, vfAdj);
+    int boundarycount = 0;
+
     igl::signed_distance_pseudonormal(Vg, Vm, Fm, col_tree, FN_m, VN_m, EN_m, EMAP_m, S, closestFaceId, C, N);
     for(int i=0; i<Vg.rows(); i++){
         int closestFace = closestFaceId(i);
@@ -800,6 +807,12 @@ void computeBaryCoordsGarOnNewMannequin(igl::opengl::glfw::Viewer& viewer){
         Vector3d currInBary;
         MathFunctions mathFun;
         mathFun.Barycentric3D(currVert, a, b, c, currInBary);
+        if(isBoundaryVertex(Vg, i, vvAdj, vfAdj)){
+            constrainedVertexIds.emplace_back(i); // (i)= 1;
+            boundarycount++;
+            constrainedVertexBarycentricCoords.emplace_back(std::make_pair(currInBary, closestFace));
+            constrainedVertexDistance.push_back(distVec(i));
+        }
         allVertexBarycentricCoords.emplace_back(std::make_pair(currInBary, closestFace));
 
         a = testMorph_V1.row(Fm(closestFace, 0));
@@ -809,45 +822,6 @@ void computeBaryCoordsGarOnNewMannequin(igl::opengl::glfw::Viewer& viewer){
         normalVec = (b-a).cross(c-a);
         normalVec = normalVec.normalized();
         Vg.row(i) = newPos + distVec(i) * normalVec;
-    }
-
-
-
-}
-void computeBoundaryVertices(){
-    constrainedVertexIds.clear();
-    vector<vector<int> > vvAdj, vfAdj;
-    igl::adjacency_list(Fg,vvAdj);
-    createVertexFaceAdjacencyList(Fg, vfAdj);
-    int boundarycount = 0;
-    VectorXd S;
-    igl::signed_distance_pseudonormal(Vg, Vm, Fm, col_tree, FN_m, VN_m, EN_m, EMAP_m, S, closestFaceId, C, N);
-
-    // TODO Barycentric coordinates of garment vertex on avatar, project to closest face for bary coordinates , for lose garments we need a different approach!!
-    for(int i=0; i<Vg.rows(); i++){
-        if(isBoundaryVertex(Vg, i, vvAdj, vfAdj)){
-            constrainedVertexIds.emplace_back(i); // (i)= 1;
-            boundarycount++;
-            int closestFace = closestFaceId(i);
-            Vector3d a = Vm.row(Fm(closestFace, 0));
-            Vector3d b = Vm.row(Fm(closestFace, 1));
-            Vector3d c = Vm.row(Fm(closestFace, 2));
-
-            Vector3d bary = (a+b+c)/3;
-            Vector3d vvec = Vg.row(i).transpose() - bary;
-            Vector3d normalVec = (b-a).cross(c-a);
-            normalVec = normalVec.normalized();
-            auto dist = vvec.dot(normalVec);
-
-            Vector3d currVert = Vg.row(i).transpose()- dist*normalVec;
-
-            Vector3d currInBary;
-            MathFunctions mathFun;
-            mathFun.Barycentric3D(currVert, a, b, c, currInBary);
-
-            constrainedVertexBarycentricCoords.emplace_back(std::make_pair(currInBary, closestFace));
-            constrainedVertexDistance.push_back(dist);
-        }
     }
 
 }
