@@ -84,9 +84,6 @@ MatrixXd u1, u2; // precomputation for stretch
 PositionBasedDynamics PBD;
 
 // colouring
-MatrixXd faceAvg;
-MatrixXd faceAvgWithU ;
-MatrixXd faceAvgWithV ;
 MatrixXd colU, colJacDiff ;
 MatrixXd colMixed;
 MatrixXd colV ;
@@ -102,7 +99,7 @@ VectorXi closestFaceId;
 std::vector<std::pair<Eigen::Vector3d, int>> constrainedVertexBarycentricCoords;
 std::vector<double> constrainedVertexDistance;
 std::vector<std::pair<Eigen::Vector3d, int>> allVertexBarycentricCoords;
-Eigen::MatrixXd tarU, tarV, tarD1;
+Eigen::MatrixXd tarU, tarV;// tarD1;
 Eigen::MatrixXd baryCoords1, baryCoords2;
 Eigen::MatrixXd baryCoordsd1, baryCoordsd2;
 std::vector<std::vector<int> > boundaryL;
@@ -149,9 +146,12 @@ void solveStretchUV();
 bool pre_draw(igl::opengl::glfw::Viewer& viewer){
     viewer.data().dirty |= igl::opengl::MeshGL::DIRTY_DIFFUSE | igl::opengl::MeshGL::DIRTY_SPECULAR;
         if(simulate){
+            Timer t("Draw loop");
 
             computeStress(viewer);
+            t.printTime(" stress computed ");cout<<endl;
             dotimeStep(viewer);
+            t.printTime(" timestep finished  ");cout<<endl;
             showGarment(viewer);// not sure if I actually need this, at least it breaks nothing
 
             if(timestepCounter % convergeIterations==0){
@@ -160,6 +160,7 @@ bool pre_draw(igl::opengl::glfw::Viewer& viewer){
                 preComputeConstraintsForRestshape();
                 preComputeStretch();
                 computeStress(viewer);
+                t.printTime(" pattern computed ");cout<<endl;
             }
             timestepCounter++;
     }
@@ -201,75 +202,8 @@ int main(int argc, char *argv[])
     igl::readOBJ(garment_file_name, Vg, Fg);
     igl::readOBJ(garment_file_name, Vg_orig, Fg_orig);
     cout<<"loaded garment new "<<endl;
-//    cout<<"fg should contain corner"<<Fg.row(15450)<<endl<<Fg.row(3806)<<endl;
     garmentPreInterpol = Vg;
-
-//    cout<<"before"<<endl;
-//    VectorXi fixRightV(8), fixLeftV(8);
-//    fixLeftV<<7943, 7942, 7941, 7940 ,7939, 7938 ,7937 ,7936;
-//    fixRightV<<1955, 1954, 1953, 1952, 1951, 1950, 1949, 1948;
-//cout<<"after"<<endl;
-//    VectorXi fixLRightV(8), fixLLeftV(8);
-//    fixLRightV<<7960, 7959, 7958, 7957, 7956, 7955, 7954, 7953;
-//    fixLLeftV<<1799, 1800, 1801, 1802, 1803, 1804, 1805, 1806;
-//
-//    VectorXi fixBRightV(6), fixBLeftV(6);
-//    fixBRightV<<7971, 7970, 7969, 7979, 7980, 7981 ;
-//    fixBLeftV<< 4719, 4718, 4717, 4711,  4712, 4713 ;
-//
-//    VectorXi leftArmL(9), leftArmR(9);
-//    leftArmR<<4710, 4709, 4708, 4707, 4706, 4705, 4704, 4703, 4702;
-//    leftArmL<< 33, 32, 31, 30, 29, 28, 27, 24, 23 ;
-//
-//    VectorXi rightArmL(9), rightArmR(9);
-//    for(int i=0; i<9; i++){
-//        rightArmL(i)= 4728-i;
-//        rightArmR(i) = 918+i;
-//    }
-//    rightArmL<< 4728, 4727, 4726, 4725, 4724, 4723, 4722, 4721, 4720 ;
-//    rightArmR<< 1918, 1919, 1920, 1921, 1922, 1923, 1924, 1925, 1926 ;
-
-//    for(int i = 0; i<Fg.rows(); i++){
-//        for(int j=0; j<3; j++){
-//
-//            for(int idx =0; idx< fixLeftV.rows(); idx++){
-//                if(Fg(i, j)== fixLeftV[idx]){
-//                    Fg(i, j) = fixRightV[idx];
-//                }
-//            }
-//
-//            for(int idx =0; idx< fixLLeftV.rows(); idx++){
-//                if(Fg(i, j)== fixLLeftV[idx]){
-//                    Fg(i, j) = fixLRightV[idx];
-//                }
-//            }
-//
-//            for(int idx =0; idx< fixBLeftV.rows(); idx++){
-//                if(Fg(i, j)== fixBLeftV[idx]){
-//                    Fg(i, j) = fixBRightV[idx];
-//                }
-//            }
-//
-//            for(int idx =0; idx< leftArmL.rows(); idx++){
-//                if(Fg(i, j)== leftArmL[idx]){
-//                    Fg(i, j) = leftArmR[idx];
-//                }
-//            }
-//
-//            for(int idx =0; idx< rightArmL.rows(); idx++){
-//                if(Fg(i, j)== rightArmL[idx]){
-//                    cout<<Fg(i,j)<<" ";
-//                    Fg(i, j) = rightArmR[idx];
-//                    cout<<Fg(i,j)<<endl;
-//                }
-//            }
-//        }
-//    }
     Vg_orig = Vg; Fg_orig= Fg;
-//    cout<<"fixed, now writing pattern"<<endl;
-//    igl::writeOBJ("dress_3d_lowres_merged.obj", Vg, Fg);
-//    cout<<"finished writing"<<endl;
-
 
 //    string garment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/leggins_2d/leggins_2d.obj"; //
     string garment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/dress_2/dress_2d_lowres/dress_2d_lowres.obj"; //
@@ -281,16 +215,13 @@ int main(int argc, char *argv[])
     Vg_pattern_orig= Vg_pattern;
     patternPreInterpol= Vg_pattern;
     edgeVertices = VectorXd::Zero(Vg_pattern.rows());
-cout<<"read"<<endl;
     preComputeConstraintsForRestshape();
-    cout<<"before pre comp stress "<<endl;
 
     preComputeStretch();
     jacFlag=false;
 
-    computeStress(viewer);
+//    computeStress(viewer);
     setNewGarmentMesh(viewer);
-cout<<" test here "<<endl;
 
 // TODO remember to adapt the collision constraint solving dep on avatar, sometimes normalization is needed, sometimes not for whatever magic
     string avatar_file_name =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/avatar/avatar_one_component.ply";
@@ -342,7 +273,6 @@ cout<<" test here "<<endl;
     // read constrained vertex ids and compute them as barycentric coordinates of the nearest face
     computeBoundaryVertices();
     computeBaryCoordsGarOnNewMannequin(viewer);
-//    Vg_orig = Vg;
     Vm_orig = testMorph_V1;
 
     preComputeConstraintsForRestshape();
@@ -993,7 +923,7 @@ void solveStretchConstraint(){
 void init_stretchUV(){
     tarU.resize(3*numFace, 3);
     tarV.resize(3*numFace, 3);
-    tarD1.resize(3*numFace, 3);
+//    tarD1.resize(3*numFace, 3);
     for(int j = 0; j<numFace; j++){
         Eigen::MatrixXd patternCoords(2, 3);
         patternCoords(0,0) = Vg_pattern( Fg_pattern(j, 0), 0);
@@ -1020,13 +950,6 @@ void init_stretchUV(){
         tarV.row(3*j+1) = tar1.transpose();
         tarV.row(3*j+2 )= tar2.transpose();
 
-
-        PBD.init_Diag_Stretch(perFaceD1.row(j), perFaceD2.row(j), patternCoords, targetPositions,
-                               tar0, tar1, tar2);
-        tarD1.row(3*j)= tar0.transpose();
-        tarD1.row(3*j+1) = tar1.transpose();
-        tarD1.row(3*j+2 )= tar2.transpose();
-
     }
 }
 void solveStretchUV(){
@@ -1037,21 +960,14 @@ void solveStretchUV(){
         targetPositions.col(0)= p.row(Fg_orig(j, 0));
         targetPositions.col(1)= p.row(Fg_orig(j, 1));
         targetPositions.col(2)= p.row(Fg_orig(j, 2));
-
-        Vector3r tar0= tarD1.row(3*j +0);
-        Vector3r tar1= tarD1.row(3*j +1);
-        Vector3r tar2= tarD1.row(3*j +2);
-//        PBD.solve_Stretch(targetPositions,
-//                               tar0, tar1, tar2, stretchStiffnessD,deltap0,  deltap1, deltap2);
 //
-//        p.row(Fg_orig(j, 2)) += deltap2;
-//        p.row(Fg_orig(j, 1)) += deltap1;
-//        p.row(Fg_orig(j, 0)) += deltap0;
+//        Vector3r tar0= tarD1.row(3*j +0);
+//        Vector3r tar1= tarD1.row(3*j +1);
+//        Vector3r tar2= tarD1.row(3*j +2);
 
-
-        tar0= tarU.row(3*j +0);
-        tar1= tarU.row(3*j +1);
-        tar2= tarU.row(3*j +2);
+        Vector3r tar0= tarU.row(3*j +0);
+        Vector3r tar1= tarU.row(3*j +1);
+        Vector3r tar2= tarU.row(3*j +2);
         targetPositions.col(0)= p.row(Fg_orig(j, 0));
         targetPositions.col(1)= p.row(Fg_orig(j, 1));
         targetPositions.col(2)= p.row(Fg_orig(j, 2));
@@ -1090,9 +1006,6 @@ void solveCollisionConstraint(){
 }
 
 void preComputeStretch(){
-    faceAvg.resize(numFace, 3);
-    faceAvgWithU.resize(numFace, 3);
-    faceAvgWithV.resize(numFace, 3);
     colU = Eigen::MatrixXd ::Zero(numFace, 3);
     colJacDiff = Eigen::MatrixXd ::Zero(numFace, 3);
 
@@ -1178,7 +1091,6 @@ void computeStress(igl::opengl::glfw::Viewer& viewer){
         int id0 = Fg(j, 0);
         int id1 = Fg(j, 1);
         int id2 = Fg(j, 2);
-        faceAvg.row(j) = (Vg.row(id0)+Vg.row(id1)+Vg.row(id2))/3;
 
         double differenceIncrementFactor = 3.0;
 
@@ -1220,20 +1132,11 @@ void computeStress(igl::opengl::glfw::Viewer& viewer){
             colJacDiff.row(j)=  Vector3d ( 1. + y, 1.- y, 0.0);
         }else{
             colJacDiff.row(j)=  Vector3d ( 1. , 1., 0.0);
-
         }
 
         // this is an experiment
         y = (abs(normV(j)-1)+ abs(normU(j)-1))*3;
         colMixed.row(j) = Vector3d ( 1. + y, 1.- y, 0.0);
-        faceAvgWithU.row(j) = faceAvg.row(j);
-        faceAvgWithV.row(j) = faceAvg.row(j) ;
-
-    }
-    cout<<"before final loop "<<endl;
-    for(int i=0; i<numFace; i++){
-        faceAvgWithU.row(i)+= (1 / normU.maxCoeff()) * normU(i) * 10 * perFaceU.row(i);
-        faceAvgWithV.row(i)+= (1 / normV.maxCoeff()) * normV(i) * 10 * perFaceV.row(i);
     }
 }
 void solveConstrainedVertices(){
@@ -1275,10 +1178,13 @@ void dotimeStep(igl::opengl::glfw::Viewer& viewer){
     }
 
     // detect collisions and solve for them in the loop
+    t.printTime(" position setup finished ");cout<<endl;
+
     setupCollisionConstraints();
+    t.printTime(" setup collision constraints ");cout<<endl;
 
     init_stretchUV();
-
+    t.printTime(" setup uv stretch ");cout<<endl;
     //(9)-(11), the loop should be repeated several times per timestep (according to Jan Bender)
     for(int i = 0; i < num_const_iterations; i++){
             solveBendingConstraint();
@@ -1288,28 +1194,26 @@ void dotimeStep(igl::opengl::glfw::Viewer& viewer){
             /* we precomputed the normal and collision point of each vertex, now add the constraint (instead of checking collision in each iteration
              this is imprecise but much faster and acc to paper works fine in practice*/
             solveCollisionConstraint();
-//        t.printTime(" collision ");cout<<endl;
+        t.printTime(" collision ");cout<<endl;
     }
 
         // (13) velocity and position update
+    double collision_damping = 0.5;
     for(int i=0; i<numVert; i++){
          for(int j=0; j<3; j++){
             vel(i,j) = (p(i,j) - x_new(i,j)) / timestep;
          }
          x_new.row(i) = p.row(i);
-    }
 
-    double collision_damping = 0.5;
-    for(int i=0; i<numVert; i++){
-       if(collisionVert(i)){
-
-           Vector3d vel_i = vel.row(i);
-           Vector3d normal = N.row(i).normalized();
-           Vector3d n_vel = normal.dot(vel_i) * normal;
-           Vector3d t_vel = vel_i-n_vel;
-           vel.row(i) = (t_vel - collision_damping * n_vel);
-       }
+        if(collisionVert(i)){
+            Vector3d vel_i = vel.row(i);
+            Vector3d normal = N.row(i).normalized();
+            Vector3d n_vel = normal.dot(vel_i) * normal;
+            Vector3d t_vel = vel_i-n_vel;
+            vel.row(i) = (t_vel - collision_damping * n_vel);
+        }
     }
+    
 
     //(14)
     Vg= x_new;
@@ -1317,6 +1221,6 @@ void dotimeStep(igl::opengl::glfw::Viewer& viewer){
     /*The velocity of each vertex for which a collision constraint has been generated is dampened perpendicular to the collision normal
      * and reflected in the direction of the collision normal.*/
     cout<<normU.sum()<<" sum of the norm u, and v norm  "<<normV.sum()<<endl;
-
+    t.printTime(" final ");cout<<endl;
     showGarment(viewer);
 }
