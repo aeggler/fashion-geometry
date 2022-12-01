@@ -156,7 +156,7 @@ bool pre_draw(igl::opengl::glfw::Viewer& viewer){
             dotimeStep(viewer);
             t.printTime(" timestep finished  ");cout<<endl;
             showGarment(viewer);// not sure if I actually need this, at least it breaks nothing
-
+            t.printTime(" showing   ");cout<<endl;
             if(timestepCounter % convergeIterations==0){
                 gar_adapt->performJacobianUpdateAndMerge(Vg, localGlobalIterations, baryCoords1, baryCoords2, Vg_pattern,  seamsList, boundaryL);
                 cout<<"after adaption"<<endl;
@@ -171,6 +171,30 @@ bool pre_draw(igl::opengl::glfw::Viewer& viewer){
     return false;
 }
 void saveData(string fileName, VectorXi  matrix)
+{
+    //https://eigen.tuxfamily.org/dox/structEigen_1_1IOFormat.html
+    const static IOFormat CSVFormat(FullPrecision, DontAlignCols, ", ", "\n");
+
+    ofstream file(fileName);
+    if (file.is_open())
+    {
+        file << matrix.format(CSVFormat);
+        file.close();
+    }
+}
+void saveData(string fileName, MatrixXi  matrix)
+{
+    //https://eigen.tuxfamily.org/dox/structEigen_1_1IOFormat.html
+    const static IOFormat CSVFormat(FullPrecision, DontAlignCols, ", ", "\n");
+
+    ofstream file(fileName);
+    if (file.is_open())
+    {
+        file << matrix.format(CSVFormat);
+        file.close();
+    }
+}
+void saveData(string fileName, MatrixXd  matrix)
 {
     //https://eigen.tuxfamily.org/dox/structEigen_1_1IOFormat.html
     const static IOFormat CSVFormat(FullPrecision, DontAlignCols, ", ", "\n");
@@ -229,6 +253,55 @@ MatrixXi openData(string fileToOpen)
     // here we convet the vector variable into the matrix and return the resulting object,
     // note that matrixEntries.data() is the pointer to the first memory location at which the entries of the vector matrixEntries are stored;
     return Map<Matrix<int, Dynamic, Dynamic, RowMajor>>(matrixEntries.data(), matrixRowNumber, matrixEntries.size() / matrixRowNumber);
+
+}
+MatrixXd openDataD(string fileToOpen)
+{
+
+    // the inspiration for creating this function was drawn from here (I did NOT copy and paste the code)
+    // https://stackoverflow.com/questions/34247057/how-to-read-csv-file-and-assign-to-eigen-matrix
+
+    // the input is the file: "fileToOpen.csv":
+    // a,b,c
+    // d,e,f
+    // This function converts input file data into the Eigen matrix format
+
+
+
+    // the matrix entries are stored in this variable row-wise. For example if we have the matrix:
+    // M=[a b c
+    //    d e f]
+    // the entries are stored as matrixEntries=[a,b,c,d,e,f], that is the variable "matrixEntries" is a row vector
+    // later on, this vector is mapped into the Eigen matrix format
+    vector<double> matrixEntries;
+
+    // in this object we store the data from the matrix
+    ifstream matrixDataFile(fileToOpen);
+
+    // this variable is used to store the row of the matrix that contains commas
+    string matrixRowString;
+
+    // this variable is used to store the matrix entry;
+    string matrixEntry;
+
+    // this variable is used to track the number of rows
+    int matrixRowNumber = 0;
+
+
+    while (getline(matrixDataFile, matrixRowString)) // here we read a row by row of matrixDataFile and store every line into the string variable matrixRowString
+    {
+        stringstream matrixRowStringStream(matrixRowString); //convert matrixRowString that is a string to a stream variable.
+
+        while (getline(matrixRowStringStream, matrixEntry, ',')) // here we read pieces of the stream matrixRowStringStream until every comma, and store the resulting character into the matrixEntry
+        {
+            matrixEntries.push_back(stod(matrixEntry));   //here we convert the string to double and fill in the row vector storing all the matrix entries
+        }
+        matrixRowNumber++; //update the column numbers
+    }
+
+    // here we convet the vector variable into the matrix and return the resulting object,
+    // note that matrixEntries.data() is the pointer to the first memory location at which the entries of the vector matrixEntries are stored;
+    return Map<Matrix<double, Dynamic, Dynamic, RowMajor>>(matrixEntries.data(), matrixRowNumber, matrixEntries.size() / matrixRowNumber);
 
 }
 
@@ -341,7 +414,8 @@ int main(int argc, char *argv[])
 
     setNewMannequinMesh(viewer);
     t.printTime( " read other mesh ");
-    setCollisionMesh();
+
+
     t.printTime( " set collison mesh ");
 
     std::map<int,int> vertexMapPattToGar;
@@ -360,44 +434,88 @@ int main(int argc, char *argv[])
 //    }
 
     Eigen::VectorXi componentIdPerFace,componentIdPerFaceNew, componentIdPerVert;
-    igl::facet_components(Fg_pattern, componentIdPerFace);
-    saveData("componentIdPerFace_dress2_lowres.csv", componentIdPerFace);
-    componentIdPerFaceNew=  openData("/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/componentIdPerFace_dress2_lowres.csv");
-    if(componentIdPerFaceNew != componentIdPerFace){
-        cout<<" wrong"<<endl;
-    }
+//    igl::facet_components(Fg_pattern, componentIdPerFace);
+//    saveData("componentIdPerFace_dress2_lowres.csv", componentIdPerFace);
+    componentIdPerFace=  openData("/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/componentIdPerFace_dress2_lowres.csv");
+//    if(componentIdPerFaceNew != componentIdPerFace){
+//        cout<<" wrong"<<endl;
+//    }
 
-    igl::vertex_components(Fg_pattern, componentIdPerVert);
-    saveData("componentIdPerVert_dress2_lowres.csv", componentIdPerVert);
+//    igl::vertex_components(Fg_pattern, componentIdPerVert);
+//    saveData("componentIdPerVert_dress2_lowres.csv", componentIdPerVert);
+    componentIdPerVert = openData("/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/componentIdPerVert_dress2_lowres.csv");
 
     vertexMapGarmentAndPatchIdToPattern(Fg, Fg_pattern, componentIdPerVert, vertexMapGarAndIdToPatch);
 
 
-        // use adjacentFacesToEdge of the 3D
+    // use adjacentFacesToEdge of the 3D
     vector<vector<int> > vfAdj;
     createVertexFaceAdjacencyList(Fg, vfAdj);
     edgeVertices = VectorXd::Zero(Vg_pattern.rows());
     vector<vector<pair<int, int>>> cornerPerBoundary;
-
+    t.printTime( " before seams list  ");
     computeAllSeams( boundaryL,  vertexMapPattToGar, vertexMapGarAndIdToPatch, vfAdj, componentIdPerFace,
                      componentIdPerVert,edgeVertices, cornerPerBoundary,seamsList);
-
+    t.printTime( " after seams list  ");
 
     gar_adapt = new garment_adaption(Vg, Fg,  Vg_pattern, Fg_pattern, seamsList, boundaryL); //none have been altered at this stage
+    t.printTime( " garment iniit  ");
     gar_adapt->computeJacobian();
+    t.printTime( " jacobian ");
     perFaceTargetNorm = gar_adapt->perFaceTargetNorm;
     Vg_orig = Vg;
     jacFlag = true;// not needed anymore...  was when we computed stress without reference jacobian
 
     // read constrained vertex ids and compute them as barycentric coordinates of the nearest face
+
+    // save time
+//    setCollisionMesh();
+    col_tree.init(Vm, Fm);
+    t.printTime( " tree ");
+    FN_m = openDataD("/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/FN_m_dress2.csv");
+//    saveData("FN_m_dress2.csv", FN_m);
+    VN_m = openDataD("/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/VN_m_dress2.csv");
+//    saveData("VN_m_dress2.csv", VN_m);
+    EN_m =  openDataD("/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/EN_m_dress2.csv");
+//    saveData("EN_m_dress2.csv", EN_m);
+    E_m = openData("/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/E_m_dress2.csv");
+//    saveData("E_m_dress2.csv", E_m);
+    EMAP_m = openData("/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/EMAP_m_dress2.csv");
+//    saveData("EMAP_m_dress2.csv", EMAP_m);
+// end save time
+
     computeBoundaryVertices();
+    t.printTime( " boundary ");
     computeBaryCoordsGarOnNewMannequin(viewer);
+    t.printTime( " bary ");
+    Vm = testMorph_V1;
     Vm_orig = testMorph_V1;
+    showGarment(viewer);
+    showMannequin(viewer);
+
 
     preComputeConstraintsForRestshape();
     preComputeStretch();
     computeStress(viewer);
-    setCollisionMesh();
+    t.printTime( " unnötig?  ");
+
+//    setCollisionMesh();
+    // save time
+//    setCollisionMesh();
+    col_tree.init(Vm, Fm);
+    t.printTime( " tree again  ");
+    FN_m = openDataD("/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/FN_m_dress2_second.csv");
+//    saveData("FN_m_dress2_second.csv", FN_m);
+    VN_m = openDataD("/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/VN_m_dress2_second.csv");
+//    saveData("VN_m_dress2_second.csv", VN_m);
+    EN_m =  openDataD("/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/EN_m_dress2_second.csv");
+//    saveData("EN_m_dress2_second.csv", EN_m);
+    E_m = openData("/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/E_m_dress2_second.csv");
+//    saveData("E_m_dress2_second.csv", E_m);
+    EMAP_m = openData("/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/EMAP_m_dress2_second.csv");
+//    saveData("EMAP_m_dress2_second.csv", EMAP_m);
+// end save time
+
 
     viewer.core().animation_max_fps = 200.;
     viewer.core().is_animating = false;
@@ -657,7 +775,7 @@ int main(int argc, char *argv[])
     viewer.callback_pre_draw = &pre_draw;
     viewer.callback_key_down = &callback_key_down;
     viewer.selected_data_index = 0;
-    cout<<"finished setup"<<endl;
+    t.printTime( " fin ");
     viewer.launch();
 }
 // seems to give good results, let's use this.
@@ -692,9 +810,7 @@ void computeBaryCoordsGarOnNewMannequin(igl::opengl::glfw::Viewer& viewer){
         normalVec = normalVec.normalized();
         Vg.row(i) = newPos + distVec(i) * normalVec;
     }
-    Vm = testMorph_V1;
-    showGarment(viewer);
-    showMannequin(viewer);
+
 
 
 }

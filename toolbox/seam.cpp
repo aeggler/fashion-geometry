@@ -123,7 +123,10 @@ void computeAllSeams(const std::vector<std::vector<int> >& boundaryL, std::map<i
                         while(edgesForThisBoundary[counter].first != startIdOther && counter < edgesForThisBoundary.size()){
                             counter++;
                         }
-                        if(edgesForThisBoundary[counter].first != startIdOther) {cout<<" should not be there yet, dropping it "<<endl<<endl<<endl; continue; }
+                        if(edgesForThisBoundary[counter].first != startIdOther) {
+//                            cout<<" should not be there yet, dropping it "<<endl<<endl;
+                            continue;
+                        }
                         startIdOtherInBoundaryIdx = edgesForThisBoundary[counter].second;
 //                        cout<<"found it with ID "<<startIdOtherInBoundaryIdx<<endl;
 
