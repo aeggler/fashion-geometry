@@ -154,6 +154,8 @@ void computeAllSeams(const std::vector<std::vector<int> >& boundaryL, std::map<i
 //                        cout<<" other boundary ids are "<< endIdOtherInBoundaryIdx<<" and "<< startIdOtherInBoundaryIdx<<"compared to "<<(j+1) %boundary.size()<<" and "<<startIdInBoundaryIdx<<endl;
 
                         int endIdx = (j+1) ;
+                        if(endIdx - startIdInBoundaryIdx<=2)cout<<" detected small with same patches: id "<<seamsList.size()<<endl;
+
                         int theirDist = startIdOtherInBoundaryIdx- endIdOtherInBoundaryIdx;
                         int mydist = endIdx - startIdInBoundaryIdx;
 //                        cout<<mydist <<" and other dist "<<theirDist<<endl;
@@ -163,6 +165,12 @@ void computeAllSeams(const std::vector<std::vector<int> >& boundaryL, std::map<i
                                                   startIdInBoundaryIdx, startIdOtherInBoundaryIdx, endIdx,
                                                   endIdOtherInBoundaryIdx, theirDist, false
                         );
+
+                        cout<<endl;
+                        cout<<"Seam no "<<seamsList.size()<<" starting in one patch at "<< startId<<" and other rin "<<startIdOther<<" end in "<<v1<<" "<<endIdOther<<endl;
+                        cout<<" the indices "<<startIdInBoundaryIdx<<" "<<endIdx<<" with size "<<boundaryL[myPatchId].size()<<", "<<startIdOtherInBoundaryIdx<<" "<<endIdOtherInBoundaryIdx<<" with size "<<boundaryL[otherPatchId].size()<<endl;
+                        cout<<endl;
+
                         seamsList.push_back(newSeam);
 
                         cout<<" set new same seam "<<endl;
@@ -176,7 +184,7 @@ void computeAllSeams(const std::vector<std::vector<int> >& boundaryL, std::map<i
                         // corner can be duplicated, use the one before the corner
                         int idBeforeStart = boundary[startIdInBoundaryIdx+1];
                         int idBeforeStartOther = vertexMapGarAndIdToPatch[make_pair(vertexMapPattToGar[idBeforeStart], otherPatchId)];
-if(myPatchId==4 && otherPatchId == 2) cout<<idBeforeStartOther<<" other and mine "<<idBeforeStart<<endl;
+if(myPatchId==6 && otherPatchId == 3) cout<<idBeforeStartOther<<" other and mine "<<idBeforeStart<<endl;
                         if(isBoundaryVertexVec(idBeforeStartOther)==0){
                             cout<<" we detected a pocket"<<endl; continue;
                             //TODO
@@ -191,7 +199,7 @@ if(myPatchId==4 && otherPatchId == 2) cout<<idBeforeStartOther<<" other and mine
                             cout<<"issue detected, not found"<<endl;
                         // if partner not boundary vertex then issue solved we oonly look at thiis one
                         }
-                        if(myPatchId==4 && otherPatchId == 2){
+                        if(myPatchId==6 && otherPatchId == 3){
                             cout<< (counter + 1)% boundaryL[otherPatchId].size()<<" "<<(counter - 1)% boundaryL[otherPatchId].size()<<endl;
                             cout<<boundaryL[otherPatchId][(counter + 1)% boundaryL[otherPatchId].size()]<<" "<<boundaryL[otherPatchId][(counter - 1)% boundaryL[otherPatchId].size()]<<endl;
                             cout<<vertexMapPattToGar[startId]<<" what we compare to "<<idBeforeStart<< " "<<vertexMapPattToGar[boundaryL[otherPatchId][(counter + 1)% boundaryL[otherPatchId].size()]] <<endl;
@@ -202,7 +210,7 @@ if(myPatchId==4 && otherPatchId == 2) cout<<idBeforeStartOther<<" other and mine
                         int startIdOtherInBoundaryIdx =   (counter + 1)% boundaryL[otherPatchId].size();
                         if(vertexMapPattToGar[startId] != vertexMapPattToGar[boundaryL[otherPatchId][(counter + 1)% boundaryL[otherPatchId].size()]] ){
                             startIdOtherInBoundaryIdx = (counter - 1)% boundaryL[otherPatchId].size();
-                            cout<<"--------------inverted"<<endl;
+//                            cout<<"--------------inverted"<<endl;
                             invertedflag = true;
                         }
 
@@ -231,11 +239,15 @@ if(myPatchId==4 && otherPatchId == 2) cout<<idBeforeStartOther<<" other and mine
                         endIdOtherInBoundaryIdx = (vertexMapPattToGar[v1]== vertexMapPattToGar[boundaryL[otherPatchId][(counter-1)]])? counter-1: counter+1;
 
                         int endIdx = (j+1) % boundary.size();
+                        if(endIdx - startIdInBoundaryIdx<=2)cout<<" detected small with diff patches: id "<<seamsList.size()<<endl;
 //
                         int theirDist =  startIdOtherInBoundaryIdx-endIdOtherInBoundaryIdx;
                         if(invertedflag) theirDist = endIdOtherInBoundaryIdx- startIdOtherInBoundaryIdx;
-                        if(myPatchId!= otherPatchId && endIdOtherInBoundaryIdx > startIdOtherInBoundaryIdx && !invertedflag){
+                        if(endIdOtherInBoundaryIdx > startIdOtherInBoundaryIdx && !invertedflag){
                             theirDist = startIdOtherInBoundaryIdx  +  (boundaryL[otherPatchId].size()-endIdOtherInBoundaryIdx);
+                        }
+                        if( endIdOtherInBoundaryIdx< startIdOtherInBoundaryIdx && invertedflag){
+                            theirDist = endIdOtherInBoundaryIdx + (boundaryL[otherPatchId].size()-startIdOtherInBoundaryIdx);
                         }
 
                         if(abs( (j+1) - startIdInBoundaryIdx) != abs(theirDist)){
@@ -244,10 +256,17 @@ if(myPatchId==4 && otherPatchId == 2) cout<<idBeforeStartOther<<" other and mine
                             cout<<startId<<" "<< startIdOther<<" "<< v1<<" "<< endIdOther<<" the absolute found indices "<<endl;
                             cout<< endIdOtherInBoundaryIdx- startIdOtherInBoundaryIdx<<" inverted dist and mine "<< abs( (j+1) - startIdInBoundaryIdx)<<endl;
                         }
+                        if(myPatchId==6 && otherPatchId==3){
+                            cout<<v1<<" my end "<< endIdOther<<endl;
+                        }
 
                         seam* newSeam = new seam (myPatchId, otherPatchId,startId, startIdOther, v1, endIdOther,
                                                       startIdInBoundaryIdx, startIdOtherInBoundaryIdx, endIdx,
                                                       endIdOtherInBoundaryIdx, theirDist, invertedflag);
+                        cout<<endl;
+                        cout<<"Seam no "<<seamsList.size()<<" starting in one patch at "<< startId<<" and other rin "<<startIdOther<<" end in "<<v1<<" "<<endIdOther<<endl;
+                        cout<<invertedflag<<" the indices "<<startIdInBoundaryIdx<<" "<<endIdx<<" with size "<<boundaryL[myPatchId].size()<<",     "<<startIdOtherInBoundaryIdx<<" "<<endIdOtherInBoundaryIdx<<" with size "<<boundaryL[otherPatchId].size()<<endl;
+                        cout<<endl;
                         seamsList.push_back(newSeam);
 
                     }else if(otherPatchId != -1 ){// case if it is just a patch with smaller id than it' s parent

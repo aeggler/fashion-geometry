@@ -88,7 +88,7 @@ garment_adaption::garment_adaption(Eigen::MatrixXd &Vg, Eigen::MatrixXi& Fg, Eig
         int boundLen1 = boundaryL[stP1.second].size();
         int boundLen2 = boundaryL[stP2.second].size();
 
-        for(int j=0; j< seamLength; j++){
+        for(int j=0; j<= seamLength; j++){
             int firstSide = boundaryL[stP1.second][(stP1.first+j)% boundLen1];
             int secAccess = (stP2.first - j) % boundLen2;
             if(secAccess < 0){
@@ -98,7 +98,7 @@ garment_adaption::garment_adaption(Eigen::MatrixXd &Vg, Eigen::MatrixXi& Fg, Eig
 
             int secondSide = boundaryL[stP2.second][secAccess];
 
-            if(i==10 && j==3) cout<< secondSide<<" second side and first side "<<firstSide<<endl;
+            if(i==14) cout<< secondSide<<" second side and first side "<<firstSide<<endl;
 
 
             tripletList.push_back(T(3*rowCount, 3 * firstSide, 1));
@@ -464,7 +464,7 @@ cout<<" in loop"<<endl;
 
             int boundLen1 = boundaryL[stP1.second].size();
             int boundLen2 = boundaryL[stP2.second].size();
-            for (int seamVert = 0; seamVert < seamsList[j]->seamLength(); seamVert++){
+            for (int seamVert = 0; seamVert <= seamsList[j]->seamLength(); seamVert++){
                 int firstSide = boundaryL[stP1.second][(stP1.first + seamVert) % boundLen1];
                 // what is the start of one side is the end for the other. (different traversal direction). ensure the counter does not get negative
                 int secAccess = (stP2.first - seamVert) % boundLen2;
@@ -475,7 +475,7 @@ cout<<" in loop"<<endl;
 
                 int secondSide = boundaryL[stP2.second][secAccess];
 
-                if(j==10 && seamVert<10) cout<< secondSide<<" second side and first side "<<firstSide<<endl;
+//                if(j==10 && seamVert<10) cout<< secondSide<<" second side and first side "<<firstSide<<endl;
 
 
 

@@ -556,24 +556,35 @@ int main(int argc, char *argv[])
                     for(int j=whichSeam; j<whichSeam+1; j++){
                         seam* firstSeam = seamsList[j];
                         auto stP1 = firstSeam-> getStartAndPatch1();
-                        auto stP2 = firstSeam-> getStartAndPatch2();
+                        auto stP2 = firstSeam-> getStartAndPatch2ForCorres();
 
                         int len = firstSeam -> seamLength();
                         int boundLen1 = boundaryL[stP1.second].size();
                         int boundLen2 = boundaryL[stP2.second].size();
 
+                        /*
+                int firstSide = boundaryL[stP1.second][(stP1.first + seamVert) % boundLen1];
+                // what is the start of one side is the end for the other. (different traversal direction). ensure the counter does not get negative
+                int secAccess = (stP2.first - seamVert) % boundLen2;
+                if(secAccess < 0){
+                    secAccess = boundLen2 + (stP2.first - seamVert);
+                }
+                if(seamsList[j]->inverted) secAccess = (stP2.first + seamVert) % boundLen2;
+
+                int secondSide = boundaryL[stP2.second][secAccess];
+                         * */
                         for(int i=0; i<=len; i++){
                             testCol(boundaryL[stP1.second][(stP1.first+i)% boundLen1],0) = 1.;
                             if(i==0)testCol(boundaryL[stP1.second][(stP1.first+i)% boundLen1],1) = 1.;
-
                             if(i==len)testCol(boundaryL[stP1.second][(stP1.first+i)% boundLen1],2) = 1.;
 
-                            if(firstSeam->inverted) {
-                                int which = (stP2.first-i)% boundLen2;
-                                if(which<0) which +=boundLen2;
-                                testCol(boundaryL[stP2.second][(stP2.first-i)% boundLen2], 0) = 1.;
-                            }else
-                            testCol(boundaryL[stP2.second][(stP2.first+i)% boundLen2], 0) = 1.;
+                            int setAccess = (stP2.first-i)% boundLen2;
+                            if(setAccess < 0) {
+                                setAccess +=boundLen2;
+//                                testCol(boundaryL[stP2.second][(stP2.first-i)% boundLen2], 0) = 1.;
+                            }
+                            if(seamsList[j]->inverted) setAccess = (stP2.first + i) % boundLen2;
+                            testCol(boundaryL[stP2.second][setAccess], 0) = 1.;
 
                         }
                     }
