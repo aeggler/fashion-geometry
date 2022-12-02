@@ -433,26 +433,26 @@ int main(int argc, char *argv[])
     vertexMapPatternToGarment(Fg, Fg_pattern,vertexMapPattToGar);
     t.printTime( " vertexMapPatternToGarment ");
 
-//    igl::boundary_loop(Fg_pattern, boundaryL);
+    igl::boundary_loop(Fg_pattern, boundaryL);
 //    saveDataM("boundaryL_dress2_lowres.txt", boundaryL);
 //    vector<vector<int>> newBoundaryL;
-    readDataM("/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/boundaryL_dress2_lowres.txt", boundaryL);
+//    readDataM("/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/boundaryL_dress2_lowres.txt", boundaryL);
 //    if(newBoundaryL != boundaryL){
 //        cout<<"wrong"<<endl;
 //        cout<<newBoundaryL.size()<<" "<<newBoundaryL[0].size()<<" "<<newBoundaryL[0][0]<<endl;
 //
 //    }
 
-//    igl::facet_components(Fg_pattern, componentIdPerFace);
+    igl::facet_components(Fg_pattern, componentIdPerFace);
 //    saveData("componentIdPerFace_dress2_lowres.csv", componentIdPerFace);
-    componentIdPerFace=  openData("/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/componentIdPerFace_dress2_lowres.csv");
+//    componentIdPerFace=  openData("/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/componentIdPerFace_dress2_lowres.csv");
 //    if(componentIdPerFaceNew != componentIdPerFace){
 //        cout<<" wrong"<<endl;
 //    }
 
-//    igl::vertex_components(Fg_pattern, componentIdPerVert);
+    igl::vertex_components(Fg_pattern, componentIdPerVert);
 //    saveData("componentIdPerVert_dress2_lowres.csv", componentIdPerVert);
-    componentIdPerVert = openData("/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/componentIdPerVert_dress2_lowres.csv");
+//    componentIdPerVert = openData("/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/componentIdPerVert_dress2_lowres.csv");
 
     vertexMapGarmentAndPatchIdToPattern(Fg, Fg_pattern, componentIdPerVert, vertexMapGarAndIdToPatch);
 
@@ -468,29 +468,29 @@ int main(int argc, char *argv[])
     t.printTime( " after seams list  ");
 
     gar_adapt = new garment_adaption(Vg, Fg,  Vg_pattern, Fg_pattern, seamsList, boundaryL); //none have been altered at this stage
-    t.printTime( " garment iniit  ");
+    t.printTime( " garment init  ");
     gar_adapt->computeJacobian();
     t.printTime( " jacobian ");
     perFaceTargetNorm = gar_adapt->perFaceTargetNorm;
     Vg_orig = Vg;
     jacFlag = true;// not needed anymore...  was when we computed stress without reference jacobian
-    cout<<vertexMapPattToGar[8060]<<" 8060 and 8081 "<<vertexMapPattToGar[8081]<<endl;
-    cout<<vertexMapPattToGar[8059]<<" 8059 and 8082 "<<vertexMapPattToGar[8082]<<endl;
+//    cout<<vertexMapPattToGar[8060]<<" 8060 and 8081 "<<vertexMapPattToGar[8081]<<endl;
+//    cout<<vertexMapPattToGar[8059]<<" 8059 and 8082 "<<vertexMapPattToGar[8082]<<endl;
     // read constrained vertex ids and compute them as barycentric coordinates of the nearest face
 
     // save time
-//    setCollisionMesh();
-    col_tree.init(Vm, Fm);
-    t.printTime( " tree ");
-    FN_m = openDataD("/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/FN_m_dress2.csv");
+    setCollisionMesh();
+//    col_tree.init(Vm, Fm);
+//    t.printTime( " tree ");
+//    FN_m = openDataD("/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/FN_m_dress2.csv");
 //    saveData("FN_m_dress2.csv", FN_m);
-    VN_m = openDataD("/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/VN_m_dress2.csv");
+//    VN_m = openDataD("/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/VN_m_dress2.csv");
 //    saveData("VN_m_dress2.csv", VN_m);
-    EN_m =  openDataD("/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/EN_m_dress2.csv");
+//    EN_m =  openDataD("/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/EN_m_dress2.csv");
 //    saveData("EN_m_dress2.csv", EN_m);
-    E_m = openData("/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/E_m_dress2.csv");
+//    E_m = openData("/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/E_m_dress2.csv");
 //    saveData("E_m_dress2.csv", E_m);
-    EMAP_m = openData("/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/EMAP_m_dress2.csv");
+//    EMAP_m = openData("/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/EMAP_m_dress2.csv");
 //    saveData("EMAP_m_dress2.csv", EMAP_m);
 // end save time
 
@@ -511,18 +511,18 @@ int main(int argc, char *argv[])
 
 //    setCollisionMesh();
     // save time
-//    setCollisionMesh();
-    col_tree.init(Vm, Fm);
-    t.printTime( " tree again  ");
-    FN_m = openDataD("/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/FN_m_dress2_second.csv");
+    setCollisionMesh();
+//    col_tree.init(Vm, Fm);
+//    t.printTime( " tree again  ");
+//    FN_m = openDataD("/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/FN_m_dress2_second.csv");
 //    saveData("FN_m_dress2_second.csv", FN_m);
-    VN_m = openDataD("/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/VN_m_dress2_second.csv");
+//    VN_m = openDataD("/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/VN_m_dress2_second.csv");
 //    saveData("VN_m_dress2_second.csv", VN_m);
-    EN_m =  openDataD("/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/EN_m_dress2_second.csv");
+//    EN_m =  openDataD("/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/EN_m_dress2_second.csv");
 //    saveData("EN_m_dress2_second.csv", EN_m);
-    E_m = openData("/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/E_m_dress2_second.csv");
+//    E_m = openData("/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/E_m_dress2_second.csv");
 //    saveData("E_m_dress2_second.csv", E_m);
-    EMAP_m = openData("/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/EMAP_m_dress2_second.csv");
+//    EMAP_m = openData("/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/EMAP_m_dress2_second.csv");
 //    saveData("EMAP_m_dress2_second.csv", EMAP_m);
 // end save time
 
@@ -568,7 +568,11 @@ int main(int argc, char *argv[])
 
                             if(i==len)testCol(boundaryL[stP1.second][(stP1.first+i)% boundLen1],2) = 1.;
 
-
+                            if(firstSeam->inverted) {
+                                int which = (stP2.first-i)% boundLen2;
+                                if(which<0) which +=boundLen2;
+                                testCol(boundaryL[stP2.second][(stP2.first-i)% boundLen2], 0) = 1.;
+                            }else
                             testCol(boundaryL[stP2.second][(stP2.first+i)% boundLen2], 0) = 1.;
 
                         }

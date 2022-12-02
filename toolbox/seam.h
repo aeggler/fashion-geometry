@@ -27,6 +27,7 @@ private:
 
     int length; // to avoid annoying length computation modulo
 
+
 public:
     seam(int patch1Id, int patch2Id,
          int patch1startCornerId, // boundary loop index [patch1id][patch1startCornerid] to end
@@ -36,13 +37,14 @@ public:
          int patch1startBoundaryLoopIdx,
          int patch2startBoundaryLoopIdx,
          int patch1endBoundaryLoopIdx,
-         int patch2endBoundaryLoopIdx, int length);
+         int patch2endBoundaryLoopIdx, int length, bool inverted);
 
     std::pair<int, int> getStartAndPatch1();
 
     std::pair<int, int> getStartAndPatch2();
 
     int seamLength();
+    bool inverted;
 
     std::pair<int, int> getStartAndPatch2ForCorres();
 };
