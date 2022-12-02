@@ -81,10 +81,10 @@ void computeAllSeams(const std::vector<std::vector<int> >& boundaryL, std::map<i
             if(facese1.second != -1) face1id2= componentIdPerFace(facese1.second);
 
             bool samePatch = (face1id1==face0id1 && face1id2 == face0id2);
-            bool samePatchCrossover = (face1id1==face0id2 && face1id2 == face0id2);
+            bool samePatchCrossover = (face1id1==face0id2 && face1id2 == face0id1);
+            if(v1==8060) cout<<face0id1<<" "<<face0id2<<" "<<face1id1<<" "<<face1id2<<" "<<samePatch<<" "<<samePatchCrossover<<" the ids, for corner at "<<v1<<endl;
 
             if(!(samePatch || samePatchCrossover)){
-//                cout<<face0id1<<" "<<face0id2<<" "<<face1id1<<" "<<face1id2<<" the ids, for corner at "<<v1<<endl;
 //                cout<<facese0.first<<" "<<facese0.second<<" "<<facese1.first<<" "<<facese1.second<<" the face ids, currently at "<<j+1<<endl;
 
                 // two consecutive edges are not the same patch. We have found a corner

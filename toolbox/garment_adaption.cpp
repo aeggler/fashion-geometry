@@ -119,8 +119,6 @@ garment_adaption::garment_adaption(Eigen::MatrixXd &Vg, Eigen::MatrixXi& Fg, Eig
     A.setFromTriplets(tripletList.begin(), tripletList.end());
 
     SpMat LHS = (A.transpose()*W*A);
-    // important for RHS
-
 
     cholSolver.analyzePattern(LHS);
     cholSolver.factorize(LHS);
@@ -489,8 +487,6 @@ void garment_adaption::performJacobianUpdateAndMerge(Eigen::MatrixXd & V_curr, i
         MatrixXd RHS = A.transpose() * W * b;
         v_asVecOld= v_asVec;
         v_asVec = cholSolver.solve(RHS);
-//        cout<<MatrixXd(W)<<endl;
-
 
         // not claiming this was very efficient ,just for debug purposes
         auto diff = (v_asVecOld-v_asVec);

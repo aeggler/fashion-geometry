@@ -113,12 +113,13 @@ static bool StressU = false;
 static bool StressV = false;
 static bool StressDiffJac = false;
 static bool StressJac = false;
-
+int whichPatchMove=0;
 std::vector<std::pair<double,double>> perFaceTargetNorm;
 bool jacFlag=false;
 MatrixXd patternPreInterpol,patternPreInterpol_temp ;
 MatrixXd garmentPreInterpol,garmentPreInterpol_temp ;
 MatrixXd mannequinPreInterpol, mannequinPreInterpol_temp;
+Eigen::VectorXi componentIdPerFace,componentIdPerFaceNew, componentIdPerVert;
 
 //test
 //Eigen::SparseMatrix<double> L;
@@ -372,7 +373,9 @@ int main(int argc, char *argv[])
 
 //    string garment_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/leggins_3d/leggins_3d_merged.obj"; //
 //    string garment_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/patternComputed3D_converged.obj";
-    string garment_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/dress_2/dress_3d_lowres/dress_3d_lowres_merged.obj";
+    string garment_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/dress_2/dress_3d_lowres/dress_3d_lowres_merged_inlay.obj";
+//    string garment_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/dress_3d_lowres_merged_new_new_new9.obj";
+
 //    string garment_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/patternComputed3D_converged_uv10.obj";
 //    string garment_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/patternComputed3D.obj";
 
@@ -440,7 +443,6 @@ int main(int argc, char *argv[])
 //
 //    }
 
-    Eigen::VectorXi componentIdPerFace,componentIdPerFaceNew, componentIdPerVert;
 //    igl::facet_components(Fg_pattern, componentIdPerFace);
 //    saveData("componentIdPerFace_dress2_lowres.csv", componentIdPerFace);
     componentIdPerFace=  openData("/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/componentIdPerFace_dress2_lowres.csv");
@@ -472,7 +474,8 @@ int main(int argc, char *argv[])
     perFaceTargetNorm = gar_adapt->perFaceTargetNorm;
     Vg_orig = Vg;
     jacFlag = true;// not needed anymore...  was when we computed stress without reference jacobian
-
+    cout<<vertexMapPattToGar[8060]<<" 8060 and 8081 "<<vertexMapPattToGar[8081]<<endl;
+    cout<<vertexMapPattToGar[8059]<<" 8059 and 8082 "<<vertexMapPattToGar[8082]<<endl;
     // read constrained vertex ids and compute them as barycentric coordinates of the nearest face
 
     // save time
@@ -528,7 +531,7 @@ int main(int argc, char *argv[])
     viewer.core().is_animating = false;
     int whichSeam = 0;
     //additional menu items
-    int whichPatchMove=0;
+
     int whichBound=0;
     float movePatternX=0; float movePatternY=0;
     bool showPattern= false;
@@ -837,6 +840,7 @@ bool callback_mouse_down(igl::opengl::glfw::Viewer& viewer, int button, int modi
         int v_id = computeClosestVertexOnMesh(b, fid, Fg_pattern);
 //        cout<<v_id<<"computed closest pattern id "<<endl ;
         viewer.data().set_points(Vrs.row(v_id), RowVector3d(1.0, 0.0, 0.0));
+        whichPatchMove = componentIdPerVert(v_id);
         // TODO now we could constrain the whole patch or the boundary
         return true;
     }
