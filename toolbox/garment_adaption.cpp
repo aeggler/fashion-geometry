@@ -99,7 +99,7 @@ garment_adaption::garment_adaption(Eigen::MatrixXd &Vg, Eigen::MatrixXi& Fg, Eig
             int secondSide = boundaryL[stP2.second][secAccess];
 
             if(j==0) cout<<endl<<" now seam "<<i<<endl;
-            cout<< secondSide<<" second side and first side "<<firstSide<<endl;
+//            cout<< secondSide<<" second side and first side "<<firstSide<<endl;
 /*
  * testCol(boundaryL[stP1.second][(stP1.first+i)% boundLen1],0) = 1.;
 
@@ -133,7 +133,7 @@ garment_adaption::garment_adaption(Eigen::MatrixXd &Vg, Eigen::MatrixXi& Fg, Eig
         }
 
     }
-//    cout<<" testing "<<testcount++<<endl;
+   cout<<" built a  "<<endl;
 
 
     W.resize(3*rowCount, 3*rowCount);
@@ -316,7 +316,6 @@ void garment_adaption::performJacobianUpdateAndMerge(Eigen::MatrixXd & V_curr, i
     // but j-1 gives a different vertex position per face, thus we average it
     // so for each face we apply the inverse and get two new edges. these edges start from v_curr_0
     int testcount = 0;
-//    cout<<" testing  update "<<testcount++<<endl;
 
     std::vector<Eigen::Matrix3d> jacobi_adapted_Edges (numFace);
     for (int j = 0; j < numFace; j++) {
@@ -333,7 +332,7 @@ void garment_adaption::performJacobianUpdateAndMerge(Eigen::MatrixXd & V_curr, i
         positions.col(1) = V_curr.row(id1) - barycenter;
         positions.col(2) = V_curr.row(id2) - barycenter;
 
-        /*test: we take the normal of the current and of the original triangle and align the original to the current
+        /* we take the normal of the current and of the original triangle and align the original to the current
             * , the same rotation is then also applied to the jacobian*/
         Vector3d p2 = V_curr.row(id2) - V_curr.row(id0);
         Vector3d p1 =V_curr.row(id1) - V_curr.row(id0);
@@ -410,25 +409,20 @@ void garment_adaption::performJacobianUpdateAndMerge(Eigen::MatrixXd & V_curr, i
         jacobi_adapted_Edges[j]= jacobi_adapted_Edge;
 
     }
-//    cout<<" testing  update "<<testcount++<<endl;
 
     Eigen::VectorXd v_asVec (3*numVertPattern);
     Eigen::VectorXd v_asVecOld = VectorXd::Zero(3*numVertPattern);
-//    cout<<" testing  update "<<testcount++<<endl;
 
     for(int i = 0; i<numVertPattern; i++){
         v_asVec(3 * i) = V(i, 0);
         v_asVec(3*i+1) = V(i, 1);
         v_asVec(3*i+2) = V(i, 2);
     }
-//    cout<<" testing  update "<<testcount++<<endl;
 
     Eigen::VectorXd b (A.rows());
-//    cout<<" testing  update "<<testcount++<<endl;
 
     for (int numIt = 0; numIt < iterations ; numIt++) {//iterations
         std::vector<std::vector<std::pair<Eigen::Vector3d, int>>> perVertexPositions(numVertPattern);
-//cout<<" in loop"<<endl;
         // the local step
         for(int j=0; j<numFace; j++){
             // now the reference is the barycenter of the 2D patter of the unshrinked model
@@ -444,7 +438,6 @@ void garment_adaption::performJacobianUpdateAndMerge(Eigen::MatrixXd & V_curr, i
             perVertexPositions[idp1].push_back(std::make_pair(ref + jacobi_adapted_Edges[j].col(1), j));
             perVertexPositions[idp2].push_back(std::make_pair(ref + jacobi_adapted_Edges[j].col(2), j));
         }
-//        cout<<" testing  update "<<testcount++<<endl;
 
 
        // the global step
@@ -467,8 +460,8 @@ void garment_adaption::performJacobianUpdateAndMerge(Eigen::MatrixXd & V_curr, i
          * */
         for(int j = 0; j< seamsList.size(); j++){
             // each seam is stored in a two matrices, from and to
-            Eigen::MatrixXd fromMat(seamsList[j]->seamLength(), 2 );// just x y coords needed
-            Eigen::MatrixXd toMat (seamsList[j]->seamLength(), 2);
+            Eigen::MatrixXd fromMat(seamsList[j]->seamLength()+1, 2 );// just x y coords needed
+            Eigen::MatrixXd toMat (seamsList[j]->seamLength()+1, 2);
             auto stP1 = seamsList[j]-> getStartAndPatch1();
             auto stP2 = seamsList[j]-> getStartAndPatch2ForCorres();
 //            cout<<" testing  list "<<j<<endl;
@@ -476,24 +469,18 @@ void garment_adaption::performJacobianUpdateAndMerge(Eigen::MatrixXd & V_curr, i
             int boundLen1 = boundaryL[stP1.second].size();
             int boundLen2 = boundaryL[stP2.second].size();
             for (int seamVert = 0; seamVert <= seamsList[j]->seamLength(); seamVert++){
-                int firstSide = boundaryL[stP1.second][(stP1.first + seamVert) % boundLen1];
-                // what is the start of one side is the end for the other. (different traversal direction). ensure the counter does not get negative
-                int secAccess = (stP2.first - seamVert) % boundLen2;
-                if(secAccess < 0){
-                    secAccess = boundLen2 + (stP2.first - seamVert);
+                int aSide = boundaryL[stP1.second][(stP1.first + seamVert) % boundLen1];
+//                // what is the start of one side is the end for the other. (different traversal direction). ensure the counter does not get negative
+                int temp = (stP2.first - seamVert) % boundLen2;
+                if(temp < 0){
+                    temp += boundLen2;
                 }
-                if(seamsList[j]->inverted) secAccess = (stP2.first + seamVert) % boundLen2;
+                if(seamsList[j]->inverted) temp = (stP2.first + seamVert) % boundLen2;
 
-                int secondSide = boundaryL[stP2.second][secAccess];
+                int bSide = boundaryL[stP2.second][temp];
 
-
-
-
-
-//                int secondSide = boundaryL[stP2.second][secAccess];
-
-                fromMat.row(seamVert) = v_asVec.block(3 * firstSide, 0, 2, 1).transpose();
-                toMat.row(seamVert) = v_asVec.block(3 * secondSide, 0, 2, 1).transpose();
+                fromMat.row(seamVert) = v_asVec.block(3 * aSide, 0, 2, 1).transpose();
+                toMat.row(seamVert) = v_asVec.block(3 * bSide, 0, 2, 1).transpose();
             }
             Eigen::MatrixXd R_est;
             Eigen::VectorXd T_est;
@@ -509,14 +496,14 @@ void garment_adaption::performJacobianUpdateAndMerge(Eigen::MatrixXd & V_curr, i
             MatrixXd fromToTo_t = (R_est * fromMat_t);
             fromToTo_t = fromToTo_t.colwise() + T_est;
             MatrixXd fromToTo = fromToTo_t.transpose();
+//            cout<<" before targets "<<endl;
 
             MatrixXd targetPosOfFromVertices = (toToFrom + fromMat) / 2;
             MatrixXd targetPorOfToVertices = (fromToTo + toMat) / 2;
-
-            for(int i = 0; i < seamsList[j]-> seamLength(); i++){
+            for(int i = 0; i <= seamsList[j]-> seamLength(); i++){
                 b(3 * counter) = targetPosOfFromVertices(i, 0);
                 b(3 * counter + 1) = targetPosOfFromVertices (i, 1);
-                b(3 * counter + 2) =  V_pattern(0, 2);// messy but they should all be the same
+                b(3 * counter + 2) = V_pattern(0, 2);// messy but they should all be the same
 
                 counter ++;
                 b(3 * counter) = targetPorOfToVertices(i, 0);
@@ -524,9 +511,9 @@ void garment_adaption::performJacobianUpdateAndMerge(Eigen::MatrixXd & V_curr, i
                 b(3 * counter + 2) = V_pattern(0, 2);
                 counter++;
             }
+//            cout<<" after setting"<<endl;
 
         }
-//        cout<<" testing special  update "<<testcount++<<endl;
 
 
         MatrixXd RHS = A.transpose() * W * b;
