@@ -98,7 +98,8 @@ garment_adaption::garment_adaption(Eigen::MatrixXd &Vg, Eigen::MatrixXi& Fg, Eig
 
             int secondSide = boundaryL[stP2.second][secAccess];
 
-            if(i==1) cout<< secondSide<<" second side and first side "<<firstSide<<endl;
+            if(j==0) cout<<endl<<" now seam "<<i<<endl;
+            cout<< secondSide<<" second side and first side "<<firstSide<<endl;
 /*
  * testCol(boundaryL[stP1.second][(stP1.first+i)% boundLen1],0) = 1.;
 
