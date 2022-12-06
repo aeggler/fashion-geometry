@@ -66,7 +66,8 @@ int localGlobalIterations= 2000;
 int convergeIterations = 450;
 int timestepCounter;
 
-
+enum MouseMode { SELECTPATCH, SELECTBOUNDARY, NONE };
+MouseMode mouse_mode = NONE;
 // pre computations
 Eigen::MatrixXi e4list;
 int e4size, numVert, numFace;
@@ -165,7 +166,7 @@ bool pre_draw(igl::opengl::glfw::Viewer& viewer){
             t.printTime(" timestep finished  ");cout<<endl;
             showGarment(viewer);// not sure if I actually need this, at least it breaks nothing
             t.printTime(" showing   ");cout<<endl;
-            if(timestepCounter % convergeIterations==0){
+            if(timestepCounter % convergeIterations == 10){
                 gar_adapt->performJacobianUpdateAndMerge(Vg, localGlobalIterations, baryCoords1, baryCoords2, Vg_pattern,  seamsList, boundaryL);
                 cout<<"after adaption"<<endl;
                 preComputeConstraintsForRestshape();
@@ -372,10 +373,9 @@ int main(int argc, char *argv[])
     //for ease of use, for now let it be fixed
 
 //    string garment_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/leggins_3d/leggins_3d_merged.obj"; //
-//    string garment_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/patternComputed3D_converged.obj";
-    string garment_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/dress_2/dress_3d_lowres/dress_3d_lowres_merged_inlay.obj";
+    string garment_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/patternComputed3D_converged.obj";// smaller collision thereshold to make sure it is not "eaten" after intiial step , 3.5 instead of 4.5 is ok
+//    string garment_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/dress_2/dress_3d_lowres/dress_3d_lowres_merged_inlay.obj";// for the dress
 //    string garment_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/dress_3d_lowres_merged_new_new_new9.obj";
-
 //    string garment_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/patternComputed3D_converged_uv10.obj";
 //    string garment_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/patternComputed3D.obj";
 
@@ -386,9 +386,8 @@ int main(int argc, char *argv[])
     garmentPreInterpol = Vg;
     Vg_orig = Vg; Fg_orig= Fg;
 
-//    string garment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/leggins_2d/leggins_2d.obj"; //
-    string garment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/dress_2/dress_2d_lowres/dress_2d_lowres.obj"; //
-
+    string garment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/leggins_2d/leggins_2d.obj"; //
+//    string garment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/dress_2/dress_2d_lowres/dress_2d_lowres.obj"; //dress
 //    string garment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/patternComputed_converged.obj";
 //    string garment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/patternComputed.obj";
 
@@ -423,7 +422,6 @@ int main(int argc, char *argv[])
     }
 
     setNewMannequinMesh(viewer);
-    t.printTime( " read other mesh ");
 
 
     t.printTime( " set collison mesh ");
@@ -437,18 +435,11 @@ int main(int argc, char *argv[])
 //    saveDataM("boundaryL_dress2_lowres.txt", boundaryL);
 //    vector<vector<int>> newBoundaryL;
 //    readDataM("/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/boundaryL_dress2_lowres.txt", boundaryL);
-//    if(newBoundaryL != boundaryL){
-//        cout<<"wrong"<<endl;
-//        cout<<newBoundaryL.size()<<" "<<newBoundaryL[0].size()<<" "<<newBoundaryL[0][0]<<endl;
 //
-//    }
 
     igl::facet_components(Fg_pattern, componentIdPerFace);
 //    saveData("componentIdPerFace_dress2_lowres.csv", componentIdPerFace);
 //    componentIdPerFace=  openData("/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/componentIdPerFace_dress2_lowres.csv");
-//    if(componentIdPerFaceNew != componentIdPerFace){
-//        cout<<" wrong"<<endl;
-//    }
 
     igl::vertex_components(Fg_pattern, componentIdPerVert);
 //    saveData("componentIdPerVert_dress2_lowres.csv", componentIdPerVert);
@@ -474,8 +465,7 @@ int main(int argc, char *argv[])
     perFaceTargetNorm = gar_adapt->perFaceTargetNorm;
     Vg_orig = Vg;
     jacFlag = true;// not needed anymore...  was when we computed stress without reference jacobian
-//    cout<<vertexMapPattToGar[8060]<<" 8060 and 8081 "<<vertexMapPattToGar[8081]<<endl;
-//    cout<<vertexMapPattToGar[8059]<<" 8059 and 8082 "<<vertexMapPattToGar[8082]<<endl;
+    
     // read constrained vertex ids and compute them as barycentric coordinates of the nearest face
 
     // save time
@@ -497,6 +487,7 @@ int main(int argc, char *argv[])
 //    computeBoundaryVertices();
     t.printTime( " boundary ");
     computeBaryCoordsGarOnNewMannequin(viewer);// contains boundary vertices now
+//    Vg = Vg_orig;
     t.printTime( " bary ");
     Vm = testMorph_V1;
     Vm_orig = testMorph_V1;
@@ -507,7 +498,6 @@ int main(int argc, char *argv[])
     preComputeConstraintsForRestshape();
     preComputeStretch();
     computeStress(viewer);
-    t.printTime( " unnötig?  ");
 
 //    setCollisionMesh();
     // save time
@@ -637,8 +627,7 @@ int main(int argc, char *argv[])
 
                 viewer.selected_data_index = 0;
                 viewer.data().clear();
-
-
+                mouse_mode = SELECTPATCH;
                 if(showPattern){
                     viewer.data().set_mesh(Vg_pattern, Fg_pattern);
                 }else{
@@ -844,20 +833,23 @@ int computeClosestVertexOnMesh(Vector3d& b, int& fid, MatrixXi& F) {
     return v_id;
 }
 bool callback_mouse_down(igl::opengl::glfw::Viewer& viewer, int button, int modifier){
-    if (button == (int)igl::opengl::glfw::Viewer::MouseButton::Right)
-        return false;
+    if(mouse_mode == SELECTBOUNDARY || mouse_mode == SELECTPATCH ){
+        if (button == (int)igl::opengl::glfw::Viewer::MouseButton::Right)
+            return false;
 
-    int fid;
-    Eigen::Vector3d b;
-    MatrixXd Vrs = Vg_pattern;
+        int fid;
+        Eigen::Vector3d b;
+        MatrixXd Vrs = Vg_pattern;
 
-    if (computePointOnMesh(viewer, Vrs, Fg_pattern, b, fid)) {
-        int v_id = computeClosestVertexOnMesh(b, fid, Fg_pattern);
+        if (computePointOnMesh(viewer, Vrs, Fg_pattern, b, fid)) {
+            int v_id = computeClosestVertexOnMesh(b, fid, Fg_pattern);
 //        cout<<v_id<<"computed closest pattern id "<<endl ;
-        viewer.data().set_points(Vrs.row(v_id), RowVector3d(1.0, 0.0, 0.0));
-        whichPatchMove = componentIdPerVert(v_id);
-        // TODO now we could constrain the whole patch or the boundary
-        return true;
+            viewer.data().set_points(Vrs.row(v_id), RowVector3d(1.0, 0.0, 0.0));
+            whichPatchMove = componentIdPerVert(v_id);
+            // TODO now we could constrain the whole patch or the boundary
+            return true;
+        }
+        return false;
     }
     return false;
 }
