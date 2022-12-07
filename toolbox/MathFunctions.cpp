@@ -46,7 +46,7 @@ void MathFunctions::Barycentric3D(const Vector3d& p,const Vector3d& a,const Vect
     baryP(0) = 1.0f - baryP(1) - baryP(2);
 }
 
-void MathFunctions::setUpRotationMatrix(double angle,Vector3d& axis, Matrix4d& rotationMatrix)
+void MathFunctions::setUpRotationMatrix(double angle, Vector3d& axis, Matrix4d& rotationMatrix)
 {
     double u= axis(0);
     double v= axis(1);

@@ -6,6 +6,8 @@
 typedef double Real;
 
 using Vector3r = Eigen::Matrix<Real, 3, 1, Eigen::DontAlign>;
+using Vector2r = Eigen::Matrix<Real, 2, 1, Eigen::DontAlign>;
+
 using Matrix4r = Eigen::Matrix<Real, 4, 4, Eigen::DontAlign>;
 using Matrix2r = Eigen::Matrix<Real, 2, 2, Eigen::DontAlign>;
 
@@ -53,9 +55,10 @@ public:
                                                const Eigen::MatrixXd& patternCoords, const Eigen::Matrix3d& targetPositions,
                         Vector3r &tarUV0, Vector3r &tarUV1, Vector3r &tarUV2, int uORv, double DiagStiffness);
 
-    bool init_UVStretchBoth(const Vector3r& perFaceU, const Vector3r& perFaceV,
-    const Eigen::MatrixXd& patternCoords, const Eigen::Matrix3d& targetPositions,
-            Vector3r &tarU0, Vector3r &tarU1, Vector3r &tarU2, Vector3r &tarV0, Vector3r &tarV1, Vector3r &tarV2, double DiagStiffness );
+    bool init_UVStretchPattern( const Vector2r& perFaceU, const Vector2r& perFaceV,
+                                                       const Eigen::MatrixXd& patternCoords,
+                                                       Vector2r &tarUV0, Vector2r &tarUV1, Vector2r &tarUV2, int uORv, double DiagStiffness );
+
 
     bool init_Diag_Stretch( const Vector3r& perFaceU,const Vector3r& perFaceV,
                                                   const Eigen::MatrixXd& patternCoords, const Eigen::Matrix3d& targetPositions,
