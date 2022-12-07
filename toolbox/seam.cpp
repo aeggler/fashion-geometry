@@ -190,10 +190,10 @@ void computeAllSeams(const std::vector<std::vector<int> >& boundaryL, std::map<i
                                                   endIdOtherInBoundaryIdx, theirDist, false
                         );
 
-                        cout<<endl;
-                        cout<<"Seam no "<<seamsList.size()<<" starting in one patch at "<< startId<<" and other in "<<startIdOther<<" end in "<<v1<<" "<<endIdOther<<endl;
-                        cout<<" the indices "<<startIdInBoundaryIdx<<" "<<endIdx<<" with size "<<boundaryL[myPatchId].size()<<", "<<startIdOtherInBoundaryIdx<<" "<<endIdOtherInBoundaryIdx<<" with size "<<boundaryL[otherPatchId].size()<<endl;
-                        cout<<endl;
+//                        cout<<endl;
+//                        cout<<"Seam no "<<seamsList.size()<<" starting in one patch at "<< startId<<" and other in "<<startIdOther<<" end in "<<v1<<" "<<endIdOther<<endl;
+//                        cout<<" the indices "<<startIdInBoundaryIdx<<" "<<endIdx<<" with size "<<boundaryL[myPatchId].size()<<", "<<startIdOtherInBoundaryIdx<<" "<<endIdOtherInBoundaryIdx<<" with size "<<boundaryL[otherPatchId].size()<<endl;
+//                        cout<<endl;
 
                         seamsList.push_back(newSeam);
 
@@ -278,10 +278,10 @@ void computeAllSeams(const std::vector<std::vector<int> >& boundaryL, std::map<i
                                                       endIdOtherInBoundaryIdx, theirDist, invertedflag);
                         if(endIdx - startIdInBoundaryIdx<=2)cout<<endl<<"-----------------"<<" detected small with same patches: id "<<seamsList.size()<<" size: "<<theirDist<<" and patch id: "<<myPatchId<<endl;
 
-                        cout<<endl;
-                        cout<<"Seam no "<<seamsList.size()<<" starting in one patch at "<< startId<<" and other in "<<startIdOther<<" end in "<<v1<<" "<<endIdOther<<endl;
-                        cout<<invertedflag<<" the indices "<<startIdInBoundaryIdx<<" "<<endIdx<<" with size "<<boundaryL[myPatchId].size()<<",     "<<startIdOtherInBoundaryIdx<<" "<<endIdOtherInBoundaryIdx<<" with size "<<boundaryL[otherPatchId].size()<<endl;
-                        cout<<endl;
+//                        cout<<endl;
+//                        cout<<"Seam no "<<seamsList.size()<<" starting in one patch at "<< startId<<" and other in "<<startIdOther<<" end in "<<v1<<" "<<endIdOther<<endl;
+//                        cout<<invertedflag<<" the indices "<<startIdInBoundaryIdx<<" "<<endIdx<<" with size "<<boundaryL[myPatchId].size()<<",     "<<startIdOtherInBoundaryIdx<<" "<<endIdOtherInBoundaryIdx<<" with size "<<boundaryL[otherPatchId].size()<<endl;
+//                        cout<<endl;
                         seamsList.push_back(newSeam);
 
                     }else if(otherPatchId != -1 ){// case if it is just a patch with smaller id than it' s parent
@@ -334,7 +334,7 @@ void computeAllSeams(const std::vector<std::vector<int> >& boundaryL, std::map<i
                                           startIdInBoundaryIdx, startIdOtherInBoundaryIdx, firstcorner.second,
                                           endIdOtherInBoundaryIdx, theirDist, false
                 );
-                cout<<" we use the final function "<<endl<<endl<<endl;
+//                cout<<" we use the final function "<<endl<<endl<<endl;
                 seamsList.push_back(newSeam);
 
 

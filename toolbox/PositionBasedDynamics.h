@@ -56,7 +56,7 @@ public:
                         Vector3r &tarUV0, Vector3r &tarUV1, Vector3r &tarUV2, int uORv, double DiagStiffness);
 
     bool init_UVStretchPattern( const Vector2r& perFaceU, const Vector2r& perFaceV,
-                                                       const Eigen::MatrixXd& patternCoords,
+                                                       const Eigen::MatrixXd& patternCoords,const Eigen::MatrixXd& targetPositions,
                                                        Vector2r &tarUV0, Vector2r &tarUV1, Vector2r &tarUV2, int uORv, double DiagStiffness );
 
 
