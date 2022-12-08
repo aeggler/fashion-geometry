@@ -824,68 +824,10 @@ int main(int argc, char *argv[])
                 string fromPatternFile = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/patternComputed.obj";
                 // quick
                 igl::readOBJ(fromPatternFile, fromPattern, Fg_pattern);
-//
-//fromPattern.resize(25, 3);
-//for(int i=0; i<5; i++){
-//    for(int j =0; j<5; j++){
-//        fromPattern(i*5+ j, 0)= j;
-//        fromPattern(i*5+ j, 1) = i;
-//        fromPattern(i*5+ j, 2) = 200;
-//
-//    }
-//}
-//                fromPattern<<0,0,200,
-//                1, 0, 200,
-//                2, 0, 200,
-//                0, 1, 200,
-//                2, 1, 200,
-//                2, 2, 200,
-//                1, 2, 200,
-//                0, 2, 200;
+
 //                 fromPattern = Vg_pattern;NOOOO
-//                currPattern.resize(fromPattern.rows(), 3);
                  currPattern = fromPattern;
-
-                 std::vector<pair<int, int>> cornersTest;
-                 cornersTest.push_back(make_pair(0, 0));
-                cornersTest.push_back(make_pair(4,0));
-                cornersTest.push_back(make_pair(20,0));
-                cornersTest.push_back(make_pair(24,0));
-                vector<vector<pair<int, int>>> newCorners; newCorners.push_back(cornersTest);
-//                cornerPerBoundary = newCorners;
-
-                  toPattern= Vg_pattern_orig;
-//               toPattern.resize(fromPattern.rows(), 3);
-//               toPattern = fromPattern;
-//               toPattern(0,0)+= -1; toPattern(0, 1) += -1;
-//               toPattern(4, 0) += 1; toPattern(4, 1) += -1;
-//               toPattern(20, 0) += -1; toPattern(20, 1) += 1;
-//               toPattern(24, 0) += 1; toPattern(24, 1) += 1;
-
-
-//               Fg_pattern.clear();
-//                Fg_pattern.resize(32, 3);
-//                int count = 0 ;
-//                for(int i=0; i<4; i++){
-//                    for(int j=0; j<4; j++){
-//                        Fg_pattern(count, 0)= i*5+j;
-//                        Fg_pattern(count, 1)= i*5+j+1;
-//                        Fg_pattern(count, 2)= (i+1)*5+j;
-//
-//                        count++;
-//                        Fg_pattern(count, 0)= i*5+j+1;
-//                        Fg_pattern(count, 1)= (i+1)*5+j;
-//                        Fg_pattern(count, 2)= (i+1)*5+j+1;
-//                        count++;
-//
-//                    }
-//                }
-//                1, 2, 4,
-//                3, 6, 7,
-//                6, 4, 5,
-//                1, 3, 6,
-//                1, 6, 4;
-//                cout<<Fg_pattern<<" the pattern "<<endl;
+                 toPattern= Vg_pattern_orig;
 
                 // use with PBD_adaption
                 baryCoordsUPattern.resize(Fg_pattern.rows(), 3);
@@ -914,7 +856,7 @@ int main(int argc, char *argv[])
                     baryCoordsVPattern.row(i) = vInBary;
 
                 }
-                viewer.core().is_animating = false;
+                viewer.core().is_animating = true;
                 adaptionFlag = true;
             }
         }
@@ -1110,9 +1052,9 @@ bool callback_key_down(igl::opengl::glfw::Viewer& viewer, unsigned char key, int
     bool keyRecognition= false;
 
     if(key == 'A'){
-        adaptionFlag = false;
+        adaptionFlag = !adaptionFlag ;
         keyRecognition = true;
-        viewer.core().is_animating = false;
+        viewer.core().is_animating = !viewer.core().is_animating;
     }
     if(key == 'S'){
         simulate= !simulate;
@@ -1556,10 +1498,6 @@ void solveStretchAdaption(MatrixXd& perFaceU_adapt,MatrixXd& perFaceV_adapt){
         targetPositions.col(2)=  p_adaption.row(Fg_pattern(i, 2)).leftCols(2).transpose() ;
 
         int uOrv = 1;
-//        if(i==0|| i==1||i==2){
-//            uOrv = 11;
-//            cout<<endl<<" face i="<<i<<" contains 1 "<<endl;
-//        }
         PBD_adaption.init_UVStretchPattern( perFaceU_adapt.row(i),  perFaceV_adapt.row(i), patternCoords,targetPositions,
                                                 tarUV0, tarUV1,tarUV2, uOrv, 2 * stretchStiffnessD);
 
@@ -1649,7 +1587,6 @@ int adaptioncount = 0 ;
 void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
     Timer t(" Adaption time step ");
 
-    std::cout<<endl;
     adaptioncount++;
 
     std::cout<<"-------------- Time Step ------------"<<adaptioncount<<endl;
@@ -1659,9 +1596,9 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
 // the stretch as a simple solve stretch of the rest position and the stretched position?
 // constrained corners as constrained condition: new suggested position= mapped position, then the direction is added to p
 // bending: not needed if we don;t touch the z coordinate
+
     p_adaption.resize(currPattern.rows(), 3);
     p_adaption = currPattern;
-//    cout<<"P adaption initial"<<endl<<endl;
     p_adaption.col(2)= Eigen::VectorXd::Ones(currPattern.rows());
     p_adaption.col(2)*= 200;
 
@@ -1670,7 +1607,6 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
 
     t.printTime(" init ");
     for(int i=0; i<5; i++){
-        cout<<endl<<endl;
         t.printTime(" iteration");
         solveCornerMappedVertices();
         // now we treat the stretch
