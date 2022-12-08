@@ -27,6 +27,10 @@ void computeTear(Eigen::MatrixXd & fromPattern, MatrixXd&  currPattern, MatrixXi
     createVertexFaceAdjacencyList(Fg_pattern, vfAdj);
 
     VectorXd relativeStretch(boundary.size());
+    double lastSum = -1;
+    int tearIdx = -1;
+    int tearBoundIdxl = -1;
+    int tearBoundIdxr = -1;
     for(int i=0; i< boundary.size(); i++){
         // for each edge we check how stressed it is
         // get old length
@@ -52,10 +56,30 @@ void computeTear(Eigen::MatrixXd & fromPattern, MatrixXd&  currPattern, MatrixXi
         double origLength = lengthsOrig(faceIdx, whichEdge);
         double newLength = lengthsCurr ( faceIdx, whichEdge);
         relativeStretch(i) = newLength/origLength;// assuming the new one is stretched it is certainly longer
+        if(i>0){
+            if(lastSum< relativeStretch(i)+ relativeStretch(i-1)){
+                lastSum = relativeStretch(i)+ relativeStretch(i-1);
+                tearIdx = idx1;
+                tearBoundIdxl = i-1;
+                tearBoundIdxr = i;
+
+            }
+        }
+
+    }
+    if(lastSum< relativeStretch(0)+ relativeStretch(boundary.size()-1)){
+        lastSum = relativeStretch(0)+ relativeStretch(boundary.size()-1);
+        tearIdx = boundary[0];
+        tearBoundIdxl = 0;
+        tearBoundIdxr = boundary.size()-1;
 
     }
 
-    cout<<relativeStretch<<" the reltaive stretches of pattern 4 "<<endl;
+    cout<<relativeStretch<<" the relative stretches of pattern 4 "<<endl;
+    cout<<lastSum <<" highest sum "<<endl;
+    cout<< tearIdx <<" tearIdx sum "<<endl;
+    cout<<tearBoundIdxl <<" tearBoundIdxl  "<<endl;
+    cout<<tearBoundIdxr <<" tearBoundIdxr  "<<endl;
 
 
 }
