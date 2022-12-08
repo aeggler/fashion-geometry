@@ -152,14 +152,12 @@ bool PositionBasedDynamics::init_UVStretchPattern( const Vector2r& perFaceU, con
     double angle = acos((Jn_0).dot(Jn_1));
     double deg = angle*180/M_PI;
     double delta = abs(90-deg)/2;
-    if(uORv == 11) cout<<deg<<" angle"<<endl;
+
     Eigen::Matrix2d newRot= Eigen::MatrixXd::Identity(2, 2);
     newRot(0, 0)= cos(DiagStiffness * delta);
     newRot(1, 1) = newRot(0, 0);
     newRot(0, 1) = - sin (DiagStiffness * delta);
     newRot(1, 0) =  sin ( DiagStiffness * delta);
-
-    // check if correct
 
     if(deg<=90){
         Jnorm.col(0) = newRot.transpose() * Jnorm.col(0);
@@ -187,7 +185,7 @@ bool PositionBasedDynamics::init_UVStretchPattern( const Vector2r& perFaceU, con
 
 }
 
-//TODO PRETTY SURE THIS SHOULD BE WITHOUT REFLECTION
+
 bool PositionBasedDynamics::init_UVStretch( const Vector3r& perFaceU, const Vector3r& perFaceV,
                                            const Eigen::MatrixXd& patternCoords, const Eigen::Matrix3d& targetPositions,
                                            Vector3r &tarUV0, Vector3r &tarUV1, Vector3r &tarUV2, int uORv, double DiagStiffness ){
@@ -217,7 +215,7 @@ bool PositionBasedDynamics::init_UVStretch( const Vector3r& perFaceU, const Vect
     MathFunctions::setUpRotationMatrix(DiagStiffness * delta, crossVec, newrotMat);
     Matrix3d newnewRot = newrotMat.block(0,0,3,3);
 
-    //  todo change if negative ??
+    // change if negative , fixed 8.12.2022
     if(deg<=90){
         Jnorm.col(0) = newnewRot.transpose() * Jnorm.col(0);
         Jnorm.col(1) = newnewRot * Jnorm.col(1);
