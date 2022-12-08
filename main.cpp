@@ -21,6 +21,7 @@
 #include "toolbox/body_interpolation.h"
 #include "toolbox/garment_adaption.h"
 #include "toolbox/MathFunctions.h"
+#include "toolbox/patternAdaption.h"
 #include <igl/signed_distance.h>
 #include <map>
 #include <string>
@@ -876,35 +877,8 @@ int main(int argc, char *argv[])
 
                 toPattern= Vg_pattern_orig;
 
-                // use with PBD_adaption
-                baryCoordsUPattern.resize(Fg_pattern.rows(), 3);
-                baryCoordsVPattern.resize(Fg_pattern.rows(), 3);
-                for(int i=0; i<Fg_pattern.rows(); i++){
-                    int id0 = Fg_pattern(i, 0);
-                    int id1 = Fg_pattern(i, 1);
-                    int id2 = Fg_pattern(i, 2);
+                computeTear(fromPattern, currPattern, Fg_pattern, seamsList);
 
-                    Vector2d Gu, Gv, G;
-                    Vector2d p0, p1, p2;
-                    p0 = fromPattern.block(id0, 0, 1, 2).transpose();
-                    p1 = fromPattern.block(id1, 0, 1, 2).transpose();
-                    p2 = fromPattern.block(id2, 0, 1, 2).transpose();
-
-                    G = (1./3.) * p0 + (1./3.) * p1 + (1./3.) * p2;
-
-                    Gu = G; Gu(0) += 1;
-                    Gv = G; Gv(1) += 1;
-                    Vector3d uInBary, vInBary;
-                    MathFunctions mathFun;
-                    mathFun.Barycentric(Gu, p0, p1, p2, uInBary);
-                    mathFun.Barycentric(Gv, p0, p1, p2, vInBary);
-
-                    baryCoordsUPattern.row(i) = uInBary;
-                    baryCoordsVPattern.row(i) = vInBary;
-
-                }
-                viewer.core().is_animating = true;
-                adaptionFlag = true;
             }
 
         }
@@ -1653,23 +1627,6 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
     //remove wireframe
     viewer.data().show_lines = true;
 
-//    MatrixXd patternCol ( Fg_pattern.rows(), 3);
-//    double differenceIncrementFactor = 5;
-//    double maxnorm  = -1;
-//    double maxnormV = -1;
-//    for(int i=0; i<Fg_pattern.rows(); i++){
-//
-//        double normU= perFaceU_adapt.row(i).norm();
-//        double normV = perFaceV_adapt.row(i).norm();
-//        maxnorm = max(maxnorm ,normU);
-//        maxnormV = max(maxnormV, normV);
-////        double y = (normU-1) * differenceIncrementFactor; // to increase differences
-////        double yV = (normV-1) * differenceIncrementFactor; // to increase differences
-//
-////        patternCol.row(i) = Vector3d(min(1.0 + y, 1.), max(1. - y, 0.), 0.0);
-////        patternCol.row(i) = Vector3d(min(1.0 + yV, 1.), max(1. - yV, 0.), 0.0);
-//
-//    }
     cout<<(colPatternV.col(0).maxCoeff()-1)/5 +1 <<" max norm v direction "<<endl;
     cout<<(colPatternU.col(0).maxCoeff()-1)/5 +1<<" max norm in u direction"<<endl;
     viewer.data().set_colors(colPatternV);
