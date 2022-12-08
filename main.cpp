@@ -186,7 +186,7 @@ bool pre_draw(igl::opengl::glfw::Viewer& viewer){
             timestepCounter++;
     }
      if (adaptionFlag){
-         cout<<" adaption flag on, arrived in loop "<<endl;
+//         cout<<" adaption flag on, arrived in loop "<<endl;
 
         doAdaptionStep(viewer);
     }
@@ -825,15 +825,15 @@ int main(int argc, char *argv[])
                 // quick
                 igl::readOBJ(fromPatternFile, fromPattern, Fg_pattern);
 //
-fromPattern.resize(25, 3);
-for(int i=0; i<5; i++){
-    for(int j =0; j<5; j++){
-        fromPattern(i*5+ j, 0)= j;
-        fromPattern(i*5+ j, 1) = i;
-        fromPattern(i*5+ j, 2) = 200;
-
-    }
-}
+//fromPattern.resize(25, 3);
+//for(int i=0; i<5; i++){
+//    for(int j =0; j<5; j++){
+//        fromPattern(i*5+ j, 0)= j;
+//        fromPattern(i*5+ j, 1) = i;
+//        fromPattern(i*5+ j, 2) = 200;
+//
+//    }
+//}
 //                fromPattern<<0,0,200,
 //                1, 0, 200,
 //                2, 0, 200,
@@ -852,35 +852,34 @@ for(int i=0; i<5; i++){
                 cornersTest.push_back(make_pair(20,0));
                 cornersTest.push_back(make_pair(24,0));
                 vector<vector<pair<int, int>>> newCorners; newCorners.push_back(cornersTest);
-                cornerPerBoundary = newCorners;
+//                cornerPerBoundary = newCorners;
 
-//                  toPattern= Vg_pattern_orig;
-               toPattern.resize(fromPattern.rows(), 3);
-               toPattern = fromPattern;
-               toPattern(0,0)+= -1; toPattern(0, 1) += -1;
-               toPattern(4, 0) += 1; toPattern(4, 1) += -1;
-               toPattern(20, 0) += -1; toPattern(20, 1) += 1;
-               toPattern(24, 0) += 1; toPattern(24, 1) += 1;
+                  toPattern= Vg_pattern_orig;
+//               toPattern.resize(fromPattern.rows(), 3);
+//               toPattern = fromPattern;
+//               toPattern(0,0)+= -1; toPattern(0, 1) += -1;
+//               toPattern(4, 0) += 1; toPattern(4, 1) += -1;
+//               toPattern(20, 0) += -1; toPattern(20, 1) += 1;
+//               toPattern(24, 0) += 1; toPattern(24, 1) += 1;
 
 
 //               Fg_pattern.clear();
-                Fg_pattern.resize(32, 3);
-                int count = 0 ;
-                for(int i=0; i<4; i++){
-                    for(int j=0; j<4; j++){
-                        Fg_pattern(count, 0)= i*5+j;
-                        Fg_pattern(count, 1)= i*5+j+1;
-                        Fg_pattern(count, 2)= (i+1)*5+j;
-
-                        count++;
-                        Fg_pattern(count, 0)= i*5+j+1;
-                        Fg_pattern(count, 1)= (i+1)*5+j;
-                        Fg_pattern(count, 2)= (i+1)*5+j+1;
-                        count++;
-
-                    }
-                }
-cout<<count<<" count"<<endl;
+//                Fg_pattern.resize(32, 3);
+//                int count = 0 ;
+//                for(int i=0; i<4; i++){
+//                    for(int j=0; j<4; j++){
+//                        Fg_pattern(count, 0)= i*5+j;
+//                        Fg_pattern(count, 1)= i*5+j+1;
+//                        Fg_pattern(count, 2)= (i+1)*5+j;
+//
+//                        count++;
+//                        Fg_pattern(count, 0)= i*5+j+1;
+//                        Fg_pattern(count, 1)= (i+1)*5+j;
+//                        Fg_pattern(count, 2)= (i+1)*5+j+1;
+//                        count++;
+//
+//                    }
+//                }
 //                1, 2, 4,
 //                3, 6, 7,
 //                6, 4, 5,
@@ -915,6 +914,7 @@ cout<<count<<" count"<<endl;
                     baryCoordsVPattern.row(i) = vInBary;
 
                 }
+                viewer.core().is_animating = false;
                 adaptionFlag = true;
             }
         }
@@ -1556,10 +1556,10 @@ void solveStretchAdaption(MatrixXd& perFaceU_adapt,MatrixXd& perFaceV_adapt){
         targetPositions.col(2)=  p_adaption.row(Fg_pattern(i, 2)).leftCols(2).transpose() ;
 
         int uOrv = 1;
-        if(i==0|| i==1||i==2){
-            uOrv = 11;
-            cout<<endl<<" face i="<<i<<" contains 1 "<<endl;
-        }
+//        if(i==0|| i==1||i==2){
+//            uOrv = 11;
+//            cout<<endl<<" face i="<<i<<" contains 1 "<<endl;
+//        }
         PBD_adaption.init_UVStretchPattern( perFaceU_adapt.row(i),  perFaceV_adapt.row(i), patternCoords,targetPositions,
                                                 tarUV0, tarUV1,tarUV2, uOrv, 2 * stretchStiffnessD);
 
@@ -1567,32 +1567,32 @@ void solveStretchAdaption(MatrixXd& perFaceU_adapt,MatrixXd& perFaceV_adapt){
         Vector2d dir1 = tarUV1 - p_adaption.row(Fg_pattern(i, 1)).leftCols(2).transpose() ;
         Vector2d dir2 = tarUV2 - p_adaption.row(Fg_pattern(i, 2)).leftCols(2).transpose() ;
 
-        if(i<3){
-            cout<<"Currently at "<<endl;
-            cout<<p_adaption.row(Fg_pattern(i, 0))<<endl;
-            cout<<p_adaption.row(Fg_pattern(i, 1))<<endl;
-            cout<<p_adaption.row(Fg_pattern(i, 2))<<endl;
-        }
+//        if(i<0){
+//            cout<<"Currently at "<<endl;
+//            cout<<p_adaption.row(Fg_pattern(i, 0))<<endl;
+//            cout<<p_adaption.row(Fg_pattern(i, 1))<<endl;
+//            cout<<p_adaption.row(Fg_pattern(i, 2))<<endl;
+//        }
         p_adaption.row(Fg_pattern(i,0)).leftCols(2) += (10 * stretchStiffnessU * dir0);
         p_adaption.row(Fg_pattern(i,1)).leftCols(2) += (10 * stretchStiffnessU * dir1);
         p_adaption.row(Fg_pattern(i,2)).leftCols(2) += (10 * stretchStiffnessU * dir2);
-        if(i>2) continue;
-        
-            cout<<"Target w "<<endl;
-            cout<< (tarUV0).transpose()<<endl;
-            cout<< (tarUV1).transpose()<<endl;
-            cout<< (tarUV2).transpose()<<endl;
-            cout<<endl;
+//        if(i>0) continue;
 
-
-            cout<<"Direction"<<endl;
-            cout<<dir0.transpose()<<endl;
-            cout<<dir1.transpose()<<endl;
-            cout<<dir2.transpose()<<endl;
-            cout<<" new Positions"<<endl;
-        cout<<p_adaption.row(Fg_pattern(i, 0))<<endl;
-        cout<<p_adaption.row(Fg_pattern(i, 1))<<endl;
-        cout<<p_adaption.row(Fg_pattern(i, 2))<<endl;
+//            cout<<"Target w "<<endl;
+//            cout<< (tarUV0).transpose()<<endl;
+//            cout<< (tarUV1).transpose()<<endl;
+//            cout<< (tarUV2).transpose()<<endl;
+//            cout<<endl;
+//
+//
+//            cout<<"Direction"<<endl;
+//            cout<<dir0.transpose()<<endl;
+//            cout<<dir1.transpose()<<endl;
+//            cout<<dir2.transpose()<<endl;
+//            cout<<" new Positions"<<endl;
+//        cout<<p_adaption.row(Fg_pattern(i, 0))<<endl;
+//        cout<<p_adaption.row(Fg_pattern(i, 1))<<endl;
+//        cout<<p_adaption.row(Fg_pattern(i, 2))<<endl;
     }
 }
 void computePatternStress(MatrixXd& perFaceU_adapt,MatrixXd& perFaceV_adapt ){
@@ -1634,13 +1634,13 @@ void solveCornerMappedVertices(){
         for(int j=0; j< cornerPerBoundary[i].size(); j++){
             int vertIdx = get<0>(cornerPerBoundary[i][j]);
 //            cout<<"cornered id "<<vertIdx<<endl;
-            cout<<p_adaption.row(vertIdx)<<" before position "<<vertIdx<<endl;
+//            cout<<p_adaption.row(vertIdx)<<" before position "<<vertIdx<<endl;
 
             Vector2d newSuggestedPos = toPattern.row(vertIdx).leftCols(2);
             Vector2d dir = newSuggestedPos - p_adaption.row(vertIdx).leftCols(2).transpose();
 
             p_adaption.row(vertIdx).leftCols(2) += boundaryStiffness * dir;
-            cout<<p_adaption.row(vertIdx)<<" cornered position "<<vertIdx<<endl;
+//            cout<<p_adaption.row(vertIdx)<<" cornered position "<<vertIdx<<endl;
         }
     }
 
@@ -1652,7 +1652,6 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
     std::cout<<endl;
     adaptioncount++;
 
-    if(adaptioncount > 50) return;
     std::cout<<"-------------- Time Step ------------"<<adaptioncount<<endl;
     // we have no velocity or collision
     // but we do have stretch, constrainedStretch and bending
@@ -1662,8 +1661,7 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
 // bending: not needed if we don;t touch the z coordinate
     p_adaption.resize(currPattern.rows(), 3);
     p_adaption = currPattern;
-//    cout<<p_adaption<<endl;
-    cout<<"P adaption initial"<<endl<<endl;
+//    cout<<"P adaption initial"<<endl<<endl;
     p_adaption.col(2)= Eigen::VectorXd::Ones(currPattern.rows());
     p_adaption.col(2)*= 200;
 
@@ -1702,9 +1700,9 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
         patternCol.row(i) = Vector3d(1.0 + y, 1. - y, 0.0);
     }
     viewer.data().set_colors(patternCol);
-    igl::writeOBJ("testFileMappingFrom.obj", fromPattern, Fg_pattern);
-    igl::writeOBJ("testFileMappingTo.obj", toPattern , Fg_pattern);
-    igl::writeOBJ("testFileMapping.obj", currPattern,Fg_pattern);
+//    igl::writeOBJ("testFileMappingFrom.obj", fromPattern, Fg_pattern);
+//    igl::writeOBJ("testFileMappingTo.obj", toPattern , Fg_pattern);
+//    igl::writeOBJ("testFileMapping.obj", currPattern,Fg_pattern);
 
 }
 void dotimeStep(igl::opengl::glfw::Viewer& viewer){
