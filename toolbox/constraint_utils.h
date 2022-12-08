@@ -26,6 +26,11 @@
                     Eigen::MatrixXd &Rot_est,
                     Eigen::VectorXd &Trans_est
     );
+void procrustesWORef(const Eigen::MatrixXd &points1,
+                const Eigen::MatrixXd &points2,
+                Eigen::MatrixXd &Rot_est,
+                Eigen::VectorXd &Trans_est
+);
 
 void initProcrustesPatternTo3D(const Eigen::MatrixXd& Vg_pattern,const Eigen::MatrixXi& Fg_pattern,
                            const Eigen::MatrixXi& Fg_orig, const Eigen::MatrixXd& p, Eigen::MatrixXd& procrustesPatternIn3D);

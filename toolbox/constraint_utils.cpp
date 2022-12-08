@@ -39,6 +39,33 @@ void procrustes(const Eigen::MatrixXd& points1,    // from
     T_est = qb - R_est * pb;
 }
 
+
+
+void procrustesWORef(const Eigen::MatrixXd& points1,    // from
+                const Eigen::MatrixXd& points2,    //to
+                Eigen::MatrixXd& R_est,
+                Eigen::VectorXd& T_est
+){
+    Eigen::MatrixXd points1t = points1.transpose();
+    Eigen::MatrixXd points2t = points2.transpose();
+
+    Eigen::VectorXd pb = points1t.rowwise().mean();
+    Eigen::VectorXd qb = points2t.rowwise().mean();
+
+    Eigen::MatrixXd X = (points1t.colwise() - pb);
+    Eigen::MatrixXd Y = (points2t.colwise() - qb);
+    Eigen::MatrixXd S = X * Y.transpose();
+
+    Eigen::JacobiSVD<Eigen::MatrixXd> svd(S, Eigen::ComputeThinU | Eigen::ComputeThinV);
+
+    Eigen::MatrixXd sigma = Eigen::MatrixXd::Identity(svd.matrixV().cols(), svd.matrixU().cols());
+    sigma(sigma.rows() - 1, sigma.cols() - 1) = (svd.matrixV() * svd.matrixU().transpose()).determinant();
+
+    R_est = svd.matrixV() * sigma * svd.matrixU().transpose();
+    //R_est = MatrixXd::Identity(3, 3);
+    T_est = qb - R_est * pb;
+}
+
 void initProcrustesPatternTo3D( const Eigen::MatrixXd& Vg_pattern,const Eigen::MatrixXi& Fg_pattern,
                                const Eigen::MatrixXi& Fg_orig, const Eigen::MatrixXd& p, Eigen::MatrixXd& procrustesPatternIn3D ){
 
