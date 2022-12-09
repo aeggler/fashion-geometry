@@ -7,6 +7,7 @@
 #include "seam.h"
 #include <igl/edge_lengths.h>
 #include <igl/adjacency_list.h>
+#include "igl/boundary_loop.h"
 #include "adjacency.h"
 
 using namespace std;
@@ -80,7 +81,7 @@ int printList(Node * node, int length){
     int currIdx = 0;
 //    while (node != NULL){
     while(currIdx < length){
-//        cout<<node->vertId<<" "<< node->stretchLeft <<" and face to the left  "<<node-> next->vertId <<endl;
+//        cout<<node->vertId<<" "<< node->stretchLeft <<" and face to the left  "<<node->faceId<<" and id "<<node-> next->vertId <<endl;
         if(node->stretchLeft + node->prev->stretchLeft > maxStretch){
             maxStretch = node->stretchLeft + node->prev->stretchLeft;
             idxMax = currIdx;
@@ -195,9 +196,13 @@ void splitVertex(Node** head, int & listLength, int  whichTear, MatrixXd& Vg, Ma
     else {
         Fg(node->prev->faceId, 2) = newVertIdx;
     }
+    cout<<Fg.row(5319)<<" cout TEST FACE CHANGED"<<endl;
 
 // adapt the position
     double eps = 0.01;
+    cout<<"orig "<<Vg.row(whichTear)<<endl;
+    cout<<toRight.transpose()<<" right"<<endl;
+    cout<<toLeft.transpose()<<" left"<<endl;
     newVg.row(newVertIdx)= Vg.row(whichTear)+ (eps * toRight).transpose();
     newVg.row(whichTear) = Vg.row(whichTear) + (eps * toLeft).transpose();
     Vg.resize(Vg.rows()+1, 3);
@@ -208,6 +213,7 @@ void splitVertex(Node** head, int & listLength, int  whichTear, MatrixXd& Vg, Ma
         // we take one edge and check it's side
         int testVert;
         if(Fg(adjacentFaces[i], 0)!= whichTear &&
+        Fg(adjacentFaces[i], 0)!= newVertIdx &&
         Fg(adjacentFaces[i], 0)!= leftId &&
         Fg(adjacentFaces[i], 0)!= rightId &&
         Fg(adjacentFaces[i], 0)!= insertIdx
@@ -215,12 +221,14 @@ void splitVertex(Node** head, int & listLength, int  whichTear, MatrixXd& Vg, Ma
             testVert = Fg(adjacentFaces[i], 0);
         }else if(
                 Fg(adjacentFaces[i], 1)!= whichTear &&
+                Fg(adjacentFaces[i], 1)!= newVertIdx &&
         Fg(adjacentFaces[i], 1)!= leftId &&
         Fg(adjacentFaces[i], 1)!= rightId &&
         Fg(adjacentFaces[i], 1)!= insertIdx ){
             testVert = Fg(adjacentFaces[i], 1);
         }
         else if(Fg(adjacentFaces[i], 2)!= whichTear &&
+                Fg(adjacentFaces[i], 2)!= newVertIdx &&
                  Fg(adjacentFaces[i], 2)!= leftId &&
                  Fg(adjacentFaces[i], 2)!= rightId &&
                  Fg(adjacentFaces[i], 2)!= insertIdx ){
@@ -228,19 +236,23 @@ void splitVertex(Node** head, int & listLength, int  whichTear, MatrixXd& Vg, Ma
         }
         else{
             // we can take none, there is less than 4 adjacent faces, so it has to be adj to some. If it is the right one change index
-            if( Fg(adjacentFaces[i], 0)== rightId){
-                Fg(adjacentFaces[i], 0) = newVertIdx;
-            }else if ( Fg(adjacentFaces[i], 1)== rightId){
-                Fg(adjacentFaces[i], 1) = newVertIdx;
-            }else if (Fg(adjacentFaces[i], 2)== rightId ){
-                Fg(adjacentFaces[i], 2) = newVertIdx;
-            }
+            // but we changed the vertex of the right side face already
+//            if( Fg(adjacentFaces[i], 0)== rightId || Fg(adjacentFaces[i], 1)== rightId|| Fg(adjacentFaces[i], 2)== rightId){
+//
+//                Fg(adjacentFaces[i], 0) = newVertIdx;
+//            }else if ( Fg(adjacentFaces[i], 1)== rightId){
+//                Fg(adjacentFaces[i], 1) = newVertIdx;
+//            }else if (Fg(adjacentFaces[i], 2)== rightId ){
+//                Fg(adjacentFaces[i], 2) = newVertIdx;
+//            }
         }
 
         double d = (Vg(testVert, 0) - x1)*(y2-y1)-(Vg(testVert, 1) - y1)*(x2 - x1);
+//        cout<<"face "<<adjacentFaces[i]<<" becomes  CHECKPOINT "<< Fg.row(adjacentFaces[i])<<endl;
 
         // if it is one the same side as the one we call right
         if (rightDSmaller == (d<0)){
+//            if(i==0)cout<<" in loop"<<endl;
             // same side as what we call right
             if(Fg(adjacentFaces[i], 1)== whichTear){
                 Fg(adjacentFaces[i], 1) = newVertIdx;
@@ -253,7 +265,7 @@ void splitVertex(Node** head, int & listLength, int  whichTear, MatrixXd& Vg, Ma
             }
 
         }
-//        cout<<"face "<<adjacentFaces[i]<<" becomes "<< Fg.row(adjacentFaces[i])<<endl;
+        cout<<"face "<<adjacentFaces[i]<<" becomes "<< Fg.row(adjacentFaces[i])<<endl;
     }
 //    cout<<endl;
 
@@ -305,9 +317,9 @@ void splitVertex(Node** head, int & listLength, int  whichTear, MatrixXd& Vg, Ma
  cout<<nextToTear<<" fin split function "<<endl;
 
 }
-void computeTear(Eigen::MatrixXd & fromPattern, MatrixXd&  currPattern, MatrixXi& Fg_pattern,vector<seam*>& seamsList, std::vector<std::vector<int> >& boundaryL, bool & finished){
+void computeTear(Eigen::MatrixXd & fromPattern, MatrixXd&  currPattern, MatrixXi& Fg_pattern,MatrixXi& Fg_pattern_orig,
+                 vector<seam*>& seamsList, std::vector<std::vector<int> >& boundaryL, bool & finished){
     cout<<" in tear function"<<endl;
-    cout<<currPattern.row(2879)<<" when in compute Tear function "<<endl;
 
     // idea: we iterate over the first patch and see where it breaks apart
 // for practical reasons we start with a small patch instead of the first on e
@@ -318,11 +330,10 @@ void computeTear(Eigen::MatrixXd & fromPattern, MatrixXd&  currPattern, MatrixXi
     int listLength = 0;
     MatrixXd lengthsOrig, lengthsCurr;
     igl::edge_lengths(currPattern, Fg_pattern, lengthsCurr);
-    igl::edge_lengths(fromPattern, Fg_pattern, lengthsOrig);
+    igl::edge_lengths(fromPattern, Fg_pattern_orig, lengthsOrig);
     vector<vector<int> > vfAdj;
     createVertexFaceAdjacencyList(Fg_pattern, vfAdj);
-
-    VectorXd relativeStretch(boundary.size());
+    cout<<"creating list"<<endl;
     for(int i=0; i< boundary.size(); i++){
         // for each edge we check how stressed it is
         // get old length
@@ -331,13 +342,11 @@ void computeTear(Eigen::MatrixXd & fromPattern, MatrixXd&  currPattern, MatrixXi
         int faceIdx =  adjacentFaceToEdge( idx1, idx2, -1, vfAdj );
 
         int whichEdge =  findWhichEdgeOfFace(faceIdx, idx1, idx2, Fg_pattern);
+        // assuming the new one is stretched it is certainly longer
+        double stretch = lengthsCurr ( faceIdx, whichEdge)/lengthsOrig(faceIdx, whichEdge);
+        cout<<stretch<<" i="<<i<<" "<<idx1<<endl;
 
-        double origLength = lengthsOrig(faceIdx, whichEdge);
-        double newLength = lengthsCurr ( faceIdx, whichEdge);
-
-        relativeStretch(i) = newLength/origLength;// assuming the new one is stretched it is certainly longer
-
-        push(&tail, idx1, -1, faceIdx, whichEdge, relativeStretch(i), listLength);
+        push(&tail, idx1, -1, faceIdx, whichEdge, stretch, listLength);
 
         if(head == NULL){
             head = tail; // now head points to the first element
@@ -346,7 +355,7 @@ void computeTear(Eigen::MatrixXd & fromPattern, MatrixXd&  currPattern, MatrixXi
     // need to add the right stretch of the last element
     head->prev = tail;
     tail-> next = head;
-
+cout<<" stitched list"<<endl;
     int whichTear = printList(head, listLength);
     cout<<endl;
     cout<<whichTear<<" Tearing index"<<endl;
@@ -354,9 +363,18 @@ void computeTear(Eigen::MatrixXd & fromPattern, MatrixXd&  currPattern, MatrixXi
     cout<<currPattern.rows()<<"initial rows"<<endl;
     splitVertex(&head,listLength, whichTear,currPattern, Fg_pattern,vfAdj, lengthsOrig,lengthsCurr);
     cout<<listLength<<" list length"<<endl;
-    cout<<currPattern.rows()<<"after rows"<<endl;
-    cout<<currPattern.row(3036)<<endl;
+    cout<<currPattern.rows()<<" after rows"<<endl;
+    cout<<currPattern.row(2898)<<endl;
+    cout<<currPattern.row(3037)<<endl;
 //    cout<<Fg_pattern.col(0).maxCoeff()<<" "<<Fg_pattern.col(1).maxCoeff()<<" "<<Fg_pattern.col(2).maxCoeff()<<" "<<endl;
+    std::vector<std::vector<int> > boundaryLnew;
+    igl::boundary_loop(Fg_pattern, boundaryLnew);
+    cout<<boundaryLnew[4].size()<<" bound size"<<endl;
+    if(boundaryLnew[4].size()==24){
+        for(int i=0; i<24; i++){
+            cout<<boundaryLnew[4][i]<<" ";
+        }
+    }cout<<endl;
     if(printList(head, listLength)== -1){
         cout<<"finished tearing "<<endl;
         finished = true;

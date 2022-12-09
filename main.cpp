@@ -528,7 +528,9 @@ int main(int argc, char *argv[])
     // quick
     //TODO LATER NO MORE
     igl::readOBJ(fromPatternFile, fromPattern, Fg_pattern);
-    currPattern = fromPattern;
+    string mappedPatternFile = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/mappedPattern.obj";
+    igl::readOBJ(mappedPatternFile, currPattern, Fg_pattern);
+    toPattern= Vg_pattern_orig;
 
     viewer.core().animation_max_fps = 200.;
     viewer.core().is_animating = false;
@@ -828,13 +830,9 @@ int main(int argc, char *argv[])
 //later these matrices should be fixed from the pattern adaption, this is precomputation for simplification
 
 
-                string mappedFile = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/mappedPattern.obj";
-                igl::readOBJ(mappedFile, currPattern, Fg_pattern);
-
-                toPattern= Vg_pattern_orig;
                 bool fin = false;
                 cout<<"at old boundary loop "<<boundaryL[4].size()<<endl;
-                computeTear(fromPattern, currPattern, Fg_pattern, seamsList ,  boundaryL,fin);
+                computeTear(fromPattern, currPattern, Fg_pattern,Fg_pattern_orig, seamsList ,  boundaryL,fin);
 //                cout<<currPattern.rows()<<"after rows"<<endl;
 //                cout<<currPattern.row(3036)<<endl;
 //                cout<<Fg_pattern.col(0).maxCoeff()<<" "<<Fg_pattern.col(1).maxCoeff()<<" "<<Fg_pattern.col(2).maxCoeff()<<" "<<endl;
@@ -845,15 +843,15 @@ int main(int argc, char *argv[])
                 std::vector<std::vector<int> > boundaryLnew;
                 igl::boundary_loop(Fg_pattern, boundaryLnew);
 
-                cout<<boundaryLnew[4][2]<<" arrived at new boundary loop "<<boundaryLnew[4].size()<<endl;
+//                cout<<boundaryLnew[4][2]<<" arrived at new boundary loop "<<boundaryLnew[4].size()<<endl;
                 boundaryL.clear();
                 boundaryL= boundaryLnew;
                 cout<<boundaryL[4][2]<<" arrived at new boundary loop "<<boundaryL[4].size()<<endl;
 
                 preComputeAdaption();
                 cout<<"precomputed new adaption"<<endl;
-                viewer.core().is_animating = true;
-                adaptionFlag = true;
+                if(boundaryL[4].size()!= 24) viewer.core().is_animating = true;
+                if(boundaryL[4].size()!= 24) adaptionFlag = true;
 
 
             }
@@ -874,9 +872,9 @@ int main(int argc, char *argv[])
 }
 void preComputeAdaption(){
     simulate = false;
-    stretchStiffnessU = 0.8;
+    stretchStiffnessU = 0.88;
     stretchStiffnessD *= 2;
-    boundaryStiffness = 0.99;
+    boundaryStiffness = 0.999;
     toPattern= Vg_pattern_orig;
     //   fromPattern = Vg_pattern;NOt yet
 

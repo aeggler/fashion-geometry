@@ -14,7 +14,7 @@ using namespace Eigen;
 
 
 
-void computeTear(MatrixXd& fromPatternFile, MatrixXd&  currPattern, MatrixXi& Fg_pattern, vector<seam*>& seamsList, std::vector<std::vector<int> >& boundaryL, bool& finished);
+void computeTear(MatrixXd& fromPatternFile, MatrixXd&  currPattern, MatrixXi& Fg_pattern,MatrixXi& Fg_pattern_orig, vector<seam*>& seamsList, std::vector<std::vector<int> >& boundaryL, bool& finished);
 
 
 #endif //EXAMPLE_PATTERNADAPTION_H
