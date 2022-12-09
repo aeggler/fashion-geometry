@@ -80,7 +80,7 @@ int printList(Node * node, int length){
     int currIdx = 0;
 //    while (node != NULL){
     while(currIdx < length){
-        cout<<node->vertId<<" "<< node->stretchLeft <<" and face to the left  "<<node-> faceId <<endl;
+//        cout<<node->vertId<<" "<< node->stretchLeft <<" and face to the left  "<<node-> next->vertId <<endl;
         if(node->stretchLeft + node->prev->stretchLeft > maxStretch){
             maxStretch = node->stretchLeft + node->prev->stretchLeft;
             idxMax = currIdx;
@@ -113,10 +113,10 @@ Node getDataOfIdx(Node * node, int whichTear){
 
 }
 
-void splitVertex(Node* head, int & listLength, int  whichTear, MatrixXd& Vg, MatrixXi& Fg, vector<vector<int> >& vfAdj, MatrixXd& lengthsOrig, MatrixXd& lengthsCurr){
+void splitVertex(Node** head, int & listLength, int  whichTear, MatrixXd& Vg, MatrixXi& Fg, vector<vector<int> >& vfAdj, MatrixXd& lengthsOrig, MatrixXd& lengthsCurr){
 
-    Node splitNodetemp  = getDataOfIdx(head, whichTear);
-    Node* splitNode = &splitNodetemp;
+//    Node splitNodetemp  = getDataOfIdx((*head), whichTear);
+//    Node* splitNode = &splitNodetemp;
     cout<<"splitting "<<endl;
 //    cout<<splitNode->vertId<<" "<< splitNode->stretchLeft + splitNode->prev->stretchLeft<<endl;
 //    cout<<splitNode -> faceId<<" "<< splitNode -> edgeOfFaceId<<" "<< splitNode -> duplicate<<" the left side"<<endl;
@@ -126,8 +126,14 @@ void splitVertex(Node* head, int & listLength, int  whichTear, MatrixXd& Vg, Mat
     MatrixXd newVg (newVertIdx+1, 3);
     newVg.block(0,0, newVertIdx, 3)= Vg;
 
-    whichTear = splitNode->vertId;
-    Node* node = splitNode;
+    Node* node = (*head);
+    int currIdx = 0;
+    while (currIdx<whichTear){
+        node = node-> next;
+        currIdx++;
+    }
+    whichTear = node->vertId;
+
     node -> duplicate = newVertIdx;
     // we need to know which is closest to normal to insert this and new vertex and in right order
     int leftId = node -> next -> vertId;
@@ -136,8 +142,11 @@ void splitVertex(Node* head, int & listLength, int  whichTear, MatrixXd& Vg, Mat
     Vector3d toLeft = Vg.row(leftId)- Vg.row(whichTear);
     Vector3d toRight = Vg.row(rightId) - Vg.row(whichTear);
     Vector3d midVec = (toLeft.normalized()+ toRight.normalized())/2;
-    midVec= midVec.normalized();
-    cout<<midVec<<" mid vector"<<endl;//TODO THIS IS WRONG
+    midVec(0)= -toLeft.normalized()(1);
+    midVec(1)= toLeft.normalized()(0);
+//    cout<<midVec.transpose()<<" mid vector"<<endl;//TODO THIS IS a heuristic
+//    double angle = acos((toLeft.normalized()).dot(toRight.normalized()));
+//    double deg = angle*180/M_PI;
 
 // to which faces it the vertex adjacent? from there we get all the adjacent edges
     vector<vector<int>> vvAdj;
@@ -151,26 +160,20 @@ void splitVertex(Node* head, int & listLength, int  whichTear, MatrixXd& Vg, Mat
         int adjVert = vvAdj[whichTear][i];
         Vector3d edgeVec = Vg.row(adjVert)- Vg.row(whichTear);
         edgeVec= edgeVec.normalized();
-        double dist = (midVec - edgeVec).norm();
-        if(dist>1){
-            // midvec is pointing in the wrong direction
-            auto temp = midVec;
-            midVec(0)= -temp(1);
-            midVec(1)= temp(0);
-        }
-//        cout<<edgeVec<<" the edge vec and direction to mid is "<<midVec - edgeVec<<endl;
+//        cout<<dist <<" "<<(midVec - edgeVec).norm()<<" for vert"<<adjVert<<endl;
         // both have unit distance, so as a measure we can take the distance form another
-//        cout<<adjVert<<" to tear, has distance "<<(midVec - edgeVec).norm()<<" to mid vec "<<endl;
         if((midVec - edgeVec).norm()<dist){
             idxofClosest= i;
+            dist = (midVec - edgeVec).norm();
         }
 
     }
     // is the new to be inserted vertex
     int insertIdx =  vvAdj[whichTear][idxofClosest];
-    cout<<" the insert idx is "<<insertIdx<<endl<<endl;
+//    cout<<" the insert idx is "<<insertIdx<<endl<<endl;
     // TODO if this is a boundary vertex we disconnect the mesh and are finished
-//    Vector3d splitNormal = (Vg.row(insertIdx)- Vg.row(whichTear)).transpose();
+
+//    if(isBoundaryVertex(Vg, insertIdx, vvAdj, vfAdj))
     double x1 = Vg(whichTear, 0); double y1 = Vg(whichTear, 1);
     double x2 = Vg(insertIdx, 0); double y2 = Vg(insertIdx, 1);
 
@@ -197,6 +200,7 @@ void splitVertex(Node* head, int & listLength, int  whichTear, MatrixXd& Vg, Mat
     double eps = 0.01;
     newVg.row(newVertIdx)= Vg.row(whichTear)+ (eps * toRight).transpose();
     newVg.row(whichTear) = Vg.row(whichTear) + (eps * toLeft).transpose();
+    Vg.resize(Vg.rows()+1, 3);
     Vg= newVg;
 
     // adapt the faces to have the right id
@@ -251,20 +255,20 @@ void splitVertex(Node* head, int & listLength, int  whichTear, MatrixXd& Vg, Mat
         }
 //        cout<<"face "<<adjacentFaces[i]<<" becomes "<< Fg.row(adjacentFaces[i])<<endl;
     }
-    cout<<endl;
+//    cout<<endl;
 
     // update vertexFace
     createVertexFaceAdjacencyList(Fg, vfAdj);
     int faceOfMid = adjacentFaceToEdge( insertIdx, whichTear, -1, vfAdj );
     int faceOfRight = adjacentFaceToEdge( insertIdx, newVertIdx, -1, vfAdj );
-    
+
     // now insert into the linked list
 // node is the left side, insert idx follows right and then the new one
     Node* middle_node = new Node();
     middle_node->vertId = insertIdx;
     middle_node->faceId = faceOfMid;
     middle_node -> duplicate = -1;
-cout<<insertIdx<<" face of mid "<<faceOfMid<<" and face of right"<<faceOfRight<<" "<<newVertIdx <<endl<<endl;
+//cout<<insertIdx<<" face of mid "<<faceOfMid<<" and face of right"<<faceOfRight<<" "<<newVertIdx <<endl<<endl;
 
     Node* right_noed = new Node();
     right_noed-> vertId = newVertIdx;
@@ -283,9 +287,9 @@ cout<<insertIdx<<" face of mid "<<faceOfMid<<" and face of right"<<faceOfRight<<
     // find right node edge of face id
 
     middle_node->edgeOfFaceId = findWhichEdgeOfFace(faceOfMid, insertIdx, whichTear, Fg);
-    cout<< middle_node->edgeOfFaceId<<" edge left "<<endl;
+//    cout<< middle_node->edgeOfFaceId<<" edge left "<<endl;
     right_noed->edgeOfFaceId = findWhichEdgeOfFace(faceOfRight, newVertIdx, whichTear, Fg);
-    cout<< right_noed->edgeOfFaceId<<" edge right "<<endl;
+//    cout<< right_noed->edgeOfFaceId<<" edge right "<<endl;
 
     double origLength = lengthsOrig(faceOfMid, middle_node->edgeOfFaceId);
     double newLength = lengthsCurr ( faceOfMid, middle_node->edgeOfFaceId);
@@ -297,13 +301,11 @@ cout<<insertIdx<<" face of mid "<<faceOfMid<<" and face of right"<<faceOfRight<<
 
     right_noed-> stretchLeft = newLength/origLength;// assuming the new one is stretched it is certainly longer
 
-    int nextToTear = printList(head, listLength);
-    cout<<nextToTear<<" next to tear"<<endl;
-
-
+    int nextToTear = printList((*head), listLength);
+ cout<<nextToTear<<" fin split function "<<endl;
 
 }
-void computeTear(Eigen::MatrixXd & fromPattern, MatrixXd&  currPattern, MatrixXi& Fg_pattern,vector<seam*>& seamsList, std::vector<std::vector<int> >& boundaryL){
+void computeTear(Eigen::MatrixXd & fromPattern, MatrixXd&  currPattern, MatrixXi& Fg_pattern,vector<seam*>& seamsList, std::vector<std::vector<int> >& boundaryL, bool & finished){
     cout<<" in tear function"<<endl;
     cout<<currPattern.row(2879)<<" when in compute Tear function "<<endl;
 
@@ -327,23 +329,9 @@ void computeTear(Eigen::MatrixXd & fromPattern, MatrixXd&  currPattern, MatrixXi
         int idx1 = boundary[i];
         int idx2 = boundary[(i+1) % boundary.size()];
         int faceIdx =  adjacentFaceToEdge( idx1, idx2, -1, vfAdj );
-//        cout<<idx1<<" "<<faceIdx<<" face index and row "<<Fg_pattern.row(faceIdx)<<endl;
 
-//        int faceidxv1, faceidxv2;
-//        for(int j=0; j<3; j++){
-//            if(Fg_pattern(faceIdx, j)== idx1) faceidxv1 = j;
-//            if(Fg_pattern(faceIdx, j)== idx2) faceidxv2 = j;
-//
-//        }
         int whichEdge =  findWhichEdgeOfFace(faceIdx, idx1, idx2, Fg_pattern);
-        //[1,2],[2,0],[0,1] is the order of igl edge lengths
-//        if(  (faceidxv1==1 && faceidxv2==2)   ||  (faceidxv2==1 && faceidxv1==2)){
-//            whichEdge = 0;
-//        }  else if ( (faceidxv1==0 && faceidxv2==2)   ||  (faceidxv2==0 && faceidxv1==2) ){
-//            whichEdge=1;
-//        }else {
-//            whichEdge = 2;
-//        }
+
         double origLength = lengthsOrig(faceIdx, whichEdge);
         double newLength = lengthsCurr ( faceIdx, whichEdge);
 
@@ -358,15 +346,20 @@ void computeTear(Eigen::MatrixXd & fromPattern, MatrixXd&  currPattern, MatrixXi
     // need to add the right stretch of the last element
     head->prev = tail;
     tail-> next = head;
-//    head -> faceIdRight = tail -> prev -> faceId;
-//    head-> edgeOfFaceIdRight = tail -> prev -> edgeOfFaceId;
 
     int whichTear = printList(head, listLength);
     cout<<endl;
     cout<<whichTear<<" Tearing index"<<endl;
     printDataOfIdx(head, whichTear);
-    cout<<currPattern.row(2879)<<" when after print  "<<endl;
-
-    splitVertex(head,listLength, whichTear,currPattern, Fg_pattern,vfAdj, lengthsOrig,lengthsCurr);
+    cout<<currPattern.rows()<<"initial rows"<<endl;
+    splitVertex(&head,listLength, whichTear,currPattern, Fg_pattern,vfAdj, lengthsOrig,lengthsCurr);
+    cout<<listLength<<" list length"<<endl;
+    cout<<currPattern.rows()<<"after rows"<<endl;
+    cout<<currPattern.row(3036)<<endl;
+//    cout<<Fg_pattern.col(0).maxCoeff()<<" "<<Fg_pattern.col(1).maxCoeff()<<" "<<Fg_pattern.col(2).maxCoeff()<<" "<<endl;
+    if(printList(head, listLength)== -1){
+        cout<<"finished tearing "<<endl;
+        finished = true;
+    }
 
 }
