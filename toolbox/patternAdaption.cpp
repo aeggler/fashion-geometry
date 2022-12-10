@@ -211,7 +211,7 @@ void splitVertex(Node** head, int & listLength, int  whichTear, MatrixXd& Vg, Ma
     // adapt the faces to have the right id
     for(int i=0; i<adjacentFaces.size(); i++){
         // we take one edge and check it's side
-        int testVert;
+        int testVert =-1;
         if(Fg(adjacentFaces[i], 0)!= whichTear &&
         Fg(adjacentFaces[i], 0)!= newVertIdx &&
         Fg(adjacentFaces[i], 0)!= leftId &&
@@ -235,6 +235,8 @@ void splitVertex(Node** head, int & listLength, int  whichTear, MatrixXd& Vg, Ma
             testVert = Fg(adjacentFaces[i], 2);
         }
         else{
+            cout<<"face "<<adjacentFaces[i]<<" becomes skipped and remains "<< Fg.row(adjacentFaces[i])<<endl;
+            continue; 
             // we can take none, there is less than 4 adjacent faces, so it has to be adj to some. If it is the right one change index
             // but we changed the vertex of the right side face already
 //            if( Fg(adjacentFaces[i], 0)== rightId || Fg(adjacentFaces[i], 1)== rightId|| Fg(adjacentFaces[i], 2)== rightId){
@@ -252,15 +254,15 @@ void splitVertex(Node** head, int & listLength, int  whichTear, MatrixXd& Vg, Ma
 
         // if it is one the same side as the one we call right
         if (rightDSmaller == (d<0)){
-//            if(i==0)cout<<" in loop"<<endl;
+            if(adjacentFaces[i]==5319)cout<<" in loop"<<endl;
             // same side as what we call right
-            if(Fg(adjacentFaces[i], 1)== whichTear){
+            if(Fg(adjacentFaces[i], 1)== whichTear && testVert!= -1  ){
                 Fg(adjacentFaces[i], 1) = newVertIdx;
             }
-            else if(Fg(adjacentFaces[i], 0)== whichTear){
+            else if(Fg(adjacentFaces[i], 0)== whichTear && testVert!= -1){
                 Fg(adjacentFaces[i], 0) = newVertIdx;
             }
-            else {
+            else if(testVert!= -1){
                 Fg(adjacentFaces[i], 2) = newVertIdx;
             }
 

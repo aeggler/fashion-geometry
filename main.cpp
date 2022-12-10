@@ -852,7 +852,12 @@ int main(int argc, char *argv[])
                 cout<<"precomputed new adaption"<<endl;
                 if(boundaryL[4].size()!= 24) viewer.core().is_animating = true;
                 if(boundaryL[4].size()!= 24) adaptionFlag = true;
-
+// it does support multiple cuts, but they are not in the same area. also ,, what we see is stress in vu direction, but what we use in the cut is edge length
+// it does not automatically cut furthter
+// no thereshold on when to stop cutting
+// cutting onlu for a single patch (5)
+// not auto generated from mapping but precomputed and loaded
+// maybe memory issues 
 
             }
 
