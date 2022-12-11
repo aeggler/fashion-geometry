@@ -130,8 +130,9 @@ bool PositionBasedDynamics::solve_DistanceConstraint(
     Vector3r corr;
     corr = stiffness * n * (d - restLength) / wSum;
 
-    corr0 =  invMass0 * corr;
-    corr1 = -invMass1 * corr;
+    corr0 =    corr;
+    corr1 = - corr;
+    if(invMass0==5) cout<<d<<" "<<restLength<<endl;
     return true;
 }
 // ----------------------------------------------------------------------------------------------
@@ -159,6 +160,9 @@ bool PositionBasedDynamics::init_UVStretchPattern( const Vector2r& perFaceU, con
     newRot(0, 1) = - sin (DiagStiffness * delta);
     newRot(1, 0) =  sin ( DiagStiffness * delta);
 
+    if(uORv ==11){
+//        cout<<" deg"<<deg<<endl;
+    }
     if(deg<=90){
         Jnorm.col(0) = newRot.transpose() * Jnorm.col(0);
         Jnorm.col(1) = newRot * Jnorm.col(1);
@@ -168,6 +172,9 @@ bool PositionBasedDynamics::init_UVStretchPattern( const Vector2r& perFaceU, con
     }
 
     Eigen::MatrixXd jacobiStretchedPattern = Jnorm * patternCoords;
+//    if(uORv ==11) cout<<endl<<patternCoords<<" pattern coords"<<endl ;
+//    if(uORv ==11) cout<<endl<<jacobiStretchedPattern<<" jacobi coords"<<endl ;
+//    if(uORv ==11) cout<<endl<<Jnorm<<" jacobian norm coords after angle spread"<<endl ;
 
     // compute rotation and translation of that matrix to best fit the original
     Eigen::MatrixXd R_est;
@@ -177,10 +184,17 @@ bool PositionBasedDynamics::init_UVStretchPattern( const Vector2r& perFaceU, con
 
     Eigen::MatrixXd rotTargetPos =   R_est* jacobiStretchedPattern ;
     Eigen::MatrixXd refTargetPos = rotTargetPos.colwise() + T_est;
-
+//    if(uORv ==11) cout<<endl<<refTargetPos<<" rot trans coords"<<endl ;
+    if( uORv ==11){
+//        refTargetPos =  targetPositions;
+//        tarUV1 =  targetPositions.col(1);
+//        tarUV2 =  targetPositions.col(2);
+    }
     tarUV0 = refTargetPos.col(0);
     tarUV1 = refTargetPos.col(1);
     tarUV2 = refTargetPos.col(2);
+
+
     return true;
 
 }

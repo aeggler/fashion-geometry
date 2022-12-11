@@ -361,7 +361,7 @@ void readDataM(string fileName, vector<vector<int>>& matrix ){
         }
     }
 }
-
+MatrixXd patternEdgeLengths_orig;
 int main(int argc, char *argv[])
 {
     // Init the viewer
@@ -843,21 +843,24 @@ int main(int argc, char *argv[])
                 std::vector<std::vector<int> > boundaryLnew;
                 igl::boundary_loop(Fg_pattern, boundaryLnew);
 
-//                cout<<boundaryLnew[4][2]<<" arrived at new boundary loop "<<boundaryLnew[4].size()<<endl;
                 boundaryL.clear();
                 boundaryL= boundaryLnew;
                 cout<<boundaryL[4][2]<<" arrived at new boundary loop "<<boundaryL[4].size()<<endl;
 
                 preComputeAdaption();
                 cout<<"precomputed new adaption"<<endl;
-                if(boundaryL[4].size()!= 24) viewer.core().is_animating = true;
-                if(boundaryL[4].size()!= 24) adaptionFlag = true;
+//                if(boundaryL[4].size()!= 27)
+                    viewer.core().is_animating = true;
+//                if(boundaryL[4].size()!= 27)
+                    adaptionFlag = true;
 // it does support multiple cuts, but they are not in the same area. also ,, what we see is stress in vu direction, but what we use in the cut is edge length
-// it does not automatically cut furthter
+// it does not automatically cut further
 // no thereshold on when to stop cutting
-// cutting onlu for a single patch (5)
+// cutting only for a single patch (5)
 // not auto generated from mapping but precomputed and loaded
-// maybe memory issues 
+// maybe memory issues
+
+// why is the mapped pattern often so much bent? this makes no sense. There has to be an issue with that
 
             }
 
@@ -883,14 +886,16 @@ void preComputeAdaption(){
     toPattern= Vg_pattern_orig;
     //   fromPattern = Vg_pattern;NOt yet
 
-    cout<<" request to start the pattern adaptation"<<endl;
-    cout<<"begin by mapping the original to the computed pattern "<<endl;
+    cout<<" ***** start pattern adaptation ****** "<<endl;
+    cout<<"mapping the original to the computed pattern "<<endl;
     if(cornerPerBoundary.size()==0){
         cout<<" there are no corners to map"<<endl;
     }
     if(currPattern.rows()!= toPattern.rows()){
-        cout<<" the number of vertices does not match ! "<<endl;
+        cout<<" the number of vertices does not match ! We inserted vertices already "<<endl;
     }
+//    patternEdgeLengths.resize(Fg_pattern.rows() ,3);
+    igl::edge_lengths(fromPattern,Fg_pattern_orig, patternEdgeLengths_orig);
 
     // use with PBD_adaption
     baryCoordsUPattern.resize(Fg_pattern.rows(), 3);
@@ -1528,8 +1533,27 @@ void solveConstrainedVertices(){
 
     }
 }
+void solveStretchAdaptionViaEdgeLength(){
+//    MatrixXd patternEdgeLengthsCurr;
+//    igl::edge_lengths(currPattern, Fg_pattern, patternEdgeLengthsCurr);
+    for(int i=0; i<Fg_pattern.rows(); i++){
+        for(int j=0; j<3; j++){
+            Vector3r corr0, corr1;
+
+            Vector3d p0 =  p_adaption.row(Fg_pattern(i,j));
+            Vector3d p1 =  p_adaption.row(Fg_pattern(i,(j+1)%3));
+            double mass0 = 1;
+
+            PBD.solve_DistanceConstraint(p0, mass0, p1, 1, patternEdgeLengths_orig(i, (j+2) % 3),stretchStiffnessU, corr0, corr1);
+            p_adaption.row(Fg_pattern(i,j)) += corr0;
+            p_adaption.row(Fg_pattern(i,(j+1) % 3 )) += corr1;
+
+        }
+    }
+}
 void solveStretchAdaption(MatrixXd& perFaceU_adapt,MatrixXd& perFaceV_adapt){
     // force that pulls back to the original position in fromPattern
+    // it does not quite work after tthe 3rd cut. Jacobian seems to be fine but it messes up
     for(int i=0; i< Fg_pattern.rows(); i++){
         Eigen::MatrixXd patternCoords(2, 3);
         patternCoords.col(0) = fromPattern.row(Fg_pattern_orig(i, 0)).leftCols(2).transpose();
@@ -1545,9 +1569,18 @@ void solveStretchAdaption(MatrixXd& perFaceU_adapt,MatrixXd& perFaceV_adapt){
         targetPositions.col(2)=  p_adaption.row(Fg_pattern(i, 2)).leftCols(2).transpose() ;
 
         int uOrv = 1;
+        if( boundaryL[4].size()==27 ) uOrv = 11;
 //        TODO STIFFNESS PARAMETER
+
+// in the third iteration some strange artifacts arise form here
         PBD_adaption.init_UVStretchPattern( perFaceU_adapt.row(i),  perFaceV_adapt.row(i), patternCoords,targetPositions,
                                                 tarUV0, tarUV1,tarUV2, uOrv,  stretchStiffnessD);
+//        if( boundaryL[4].size()==27) tarUV0 =  targetPositions.col(0);
+//        if( boundaryL[4].size()==27) tarUV1 =  targetPositions.col(1);
+//        if( boundaryL[4].size()==27) tarUV2 =  targetPositions.col(2);
+//        if( boundaryL[4].size()==27 && i== 5328) cout<< p_adaption.row(Fg_pattern(i, 0)).leftCols(2)<<endl;
+//        if( boundaryL[4].size()==27 && i== 5328) cout<< p_adaption.row(Fg_pattern(i, 1)).leftCols(2)<<endl;
+//        if( boundaryL[4].size()==27 && i== 5328) cout<< p_adaption.row(Fg_pattern(i, 2)).leftCols(2)<<endl;
 
         Vector2d dir0 = tarUV0 - p_adaption.row(Fg_pattern(i, 0)).leftCols(2).transpose() ;
         Vector2d dir1 = tarUV1 - p_adaption.row(Fg_pattern(i, 1)).leftCols(2).transpose() ;
@@ -1564,15 +1597,14 @@ void computePatternStress(MatrixXd& perFaceU_adapt,MatrixXd& perFaceV_adapt ){
     // we compute the stress between the current pattern and the one we started from
     colPatternU.resize(Fg_pattern.rows(), 3);
     colPatternV.resize(Fg_pattern.rows(), 3);
-
     for(int j=0; j<Fg_pattern.rows(); j++) {
         int id0 = Fg_pattern(j, 0);
         int id1 = Fg_pattern(j, 1);
         int id2 = Fg_pattern(j, 2);
 
-        Vector2d p0 = p_adaption.block(id0, 0, 1, 2).transpose();
+        Vector2d p0 = p_adaption.row(id0).leftCols(2);
         Vector2d p1 = p_adaption.row(id1).leftCols(2);
-        Vector2d p2 = p_adaption.block(id2, 0, 1, 2).transpose();
+        Vector2d p2 = p_adaption.row(id2).leftCols(2);
 
         Vector2d Gu, Gv, G;
         G = (1. / 3.) * p0 + (1. / 3.) * p1 + (1. / 3.) * p2;
@@ -1580,7 +1612,9 @@ void computePatternStress(MatrixXd& perFaceU_adapt,MatrixXd& perFaceV_adapt ){
         Gv = baryCoordsVPattern(j, 0) * p0 + baryCoordsVPattern(j, 1) * p1 + baryCoordsVPattern(j, 2) * p2;
 
         perFaceU_adapt.row(j) = (Gu - G).transpose();
+
         perFaceV_adapt.row(j) = (Gv - G).transpose();
+//        if(j==5328 && boundaryL[4].size()>=24) cout<< perFaceV_adapt.row(j)<<"  v jacobian  "<<endl ;
 
         double normU = perFaceU_adapt.row(j).norm();
         double normV = perFaceV_adapt.row(j).norm();
@@ -1634,8 +1668,9 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
 //        t.printTime(" iteration");
         solveCornerMappedVertices();
         // now we treat the stretch
+
         computePatternStress(perFaceU_adapt, perFaceV_adapt);
-        solveStretchAdaption(perFaceU_adapt, perFaceV_adapt);
+         solveStretchAdaptionViaEdgeLength();//perFaceU_adapt, perFaceV_adapt);
 
     }
     currPattern = p_adaption;
@@ -1653,6 +1688,13 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
 
     cout<<(colPatternV(5324, 0)-1)/5 +1 <<" max norm v direction "<<endl;
     cout<<(colPatternU(5324,0)-1)/5 +1<<" max norm in u direction"<<endl;
+    MatrixXd currLengths; igl::edge_lengths(currPattern, Fg_pattern, currLengths);
+    currLengths = patternEdgeLengths_orig - currLengths;// TODO BETTER COLORING THIS CAN AVERAGE BADLY
+    VectorXd stressCurr = currLengths.col(0);// todo .rowwise().sum();
+    for(int i=0; i<stressCurr.size(); i++){
+        stressCurr(i)/= patternEdgeLengths_orig(i,0);//.sum() ;
+    }
+    colPatternU.col(0)=VectorXd::Ones(stressCurr.size())+15* stressCurr; colPatternU.col(1) = VectorXd::Ones(stressCurr.size()) - 15*stressCurr;
     viewer.data().set_colors(colPatternU);
 
 }
