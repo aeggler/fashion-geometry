@@ -141,7 +141,7 @@ void splitVertex(Node** head, int & listLength, int  whichTear, MatrixXd& Vg, Ma
     vector<int> adjacentFaces = vfAdj[whichTear];
     if(adjacentFaces.size()<2){
         // there is nothing to split, only left and right vertex are adjacent
-        cout<<" no splitting here"<<endl; 
+        cout<<" no splitting here"<<endl;
         return;
     }
 
@@ -257,7 +257,7 @@ void splitVertex(Node** head, int & listLength, int  whichTear, MatrixXd& Vg, Ma
 
         double d = (Vg(testVert, 0) - x1)*(y2-y1)-(Vg(testVert, 1) - y1)*(x2 - x1);
 
-        // if it is one the same side as the one we call right
+        // if it is one of the same side as the one we call right
         if (rightDSmaller == (d<0)){
             if(adjacentFaces[i]==5319)cout<<" in loop"<<endl;
             // same side as what we call right
@@ -369,9 +369,6 @@ cout<<" stitched list"<<endl;
     splitVertex(&head,listLength, whichTear,currPattern, Fg_pattern,vfAdj, lengthsOrig,lengthsCurr);
     cout<<listLength<<" list length"<<endl;
     cout<<currPattern.rows()<<" after rows"<<endl;
-//    cout<<currPattern.row(2898)<<endl;
-//    cout<<currPattern.row(3037)<<endl;
-//    cout<<Fg_pattern.col(0).maxCoeff()<<" "<<Fg_pattern.col(1).maxCoeff()<<" "<<Fg_pattern.col(2).maxCoeff()<<" "<<endl;
     std::vector<std::vector<int> > boundaryLnew;
     igl::boundary_loop(Fg_pattern, boundaryLnew);
     cout<<boundaryLnew[4].size()<<" bound size"<<endl;
