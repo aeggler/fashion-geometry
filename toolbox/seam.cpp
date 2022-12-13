@@ -125,10 +125,16 @@ void computeAllSeams(const std::vector<std::vector<int> >& boundaryL, std::map<i
 
             bool samePatch = (face1id1==face0id1 && face1id2 == face0id2);
             bool samePatchCrossover = (face1id1==face0id2 && face1id2 == face0id1);
+            if(v1== 783 || v1 == 788){
+                cout<<samePatchCrossover<<" "<<samePatch<<" checking same patch and crossover "<<v1<<" "<<j<<endl;
+            }
             if(!(samePatch || samePatchCrossover)){
 //
                 edgesForThisBoundary.push_back(make_pair(v1, (j + 1) % boundary.size())); //pattern id
                 // but one must be the same since they are from the same patch
+                if(v1== 783 || v1 == 788){
+                    cout<<" "<<edgesForThisBoundary.size()<<" checking size"<<endl;
+                }
                 if(edgesForThisBoundary.size()>1){
                     // we finish the previous here and add the seam
 
@@ -138,7 +144,9 @@ void computeAllSeams(const std::vector<std::vector<int> >& boundaryL, std::map<i
                         otherPatchId = face0id2;
 
                     }else otherPatchId = face0id1;
-
+                    if(v1== 783 || v1 == 788){
+                        cout<<myPatchId<<" "<<otherPatchId<<" checking  patch id"<<endl;
+                    }
                     if(myPatchId==otherPatchId){
 
                         int startId = edgesForThisBoundary[edgesForThisBoundary.size()-2].first;
@@ -294,7 +302,8 @@ void computeAllSeams(const std::vector<std::vector<int> >& boundaryL, std::map<i
                         int endId = v1;
                         int len = endIdx - startIdInBoundaryIdx;
                         if(len<0) len+= boundaryL[i].size();
-                        minusOneSeam* m0 = new minusOneSeam(myPatchId, startId, endId, startIdInBoundaryIdx ,endIdx, len);
+                        minusOneSeam* m0 = new minusOneSeam (myPatchId, startId, endId, startIdInBoundaryIdx ,endIdx, len);
+
                         minusSeams.push_back(m0);
 
                     }
@@ -322,7 +331,7 @@ void computeAllSeams(const std::vector<std::vector<int> >& boundaryL, std::map<i
             }else{
                 otherpatch = facesid0;
             }
-
+// todo check code above this is not updated
             if(otherpatch != -1 && otherpatch<i ){
 
                 int startId = edgesForThisBoundary[edgesForThisBoundary.size()-1].first;
@@ -433,8 +442,36 @@ void computeAllSeams(const std::vector<std::vector<int> >& boundaryL, std::map<i
                         seamsList.push_back(newSeam);
                  * */
             }
+            else if (otherpatch == -1){
+                int startId = edgesForThisBoundary[edgesForThisBoundary.size()-1].first;
+                int startIdInBoundaryIdx = edgesForThisBoundary[edgesForThisBoundary.size()-1].second;
+
+                int endIdx = edgesForThisBoundary[0].second;
+                int mydist =endIdx+ boundaryL[i].size() - startIdInBoundaryIdx;
+                mydist = mydist % boundaryL[i].size();
+                int endId = v0;
+                minusOneSeam* m0 = new minusOneSeam (i, startId, endId, startIdInBoundaryIdx ,endIdx, mydist);
+//cout<<i <<" "<< startId <<" "<< endId <<" "<< startIdInBoundaryIdx <<" "<<  endIdx <<" "<< mydist<<endl;
+if(boundaryL[i][startIdInBoundaryIdx] != startId || boundaryL[i][endIdx] !=endId){
+    cout<<" somehting is wrong in the seams computation of the minus one boundaries "<<endl;
+}
+                minusSeams.push_back(m0);
+
+
+            }
         }
     }
 
+
+}
+
+minusOneSeam::minusOneSeam(int patchId, int startVert, int endVert, int startIdInBoundaryLoop, int endIdInBoundaryLoop,
+                           int len) {
+    this-> patchId = patchId;
+    this -> startVert = startVert;
+    this -> endVert = endVert;
+    this -> startIdInBoundaryLoop = startIdInBoundaryLoop;
+    this -> endIdInBoundaryLoop = endIdInBoundaryLoop;
+    this -> len = len;
 
 }

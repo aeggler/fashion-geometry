@@ -412,7 +412,7 @@ void projectBackOnBoundary(const MatrixXd & Vg_to, MatrixXd& p, const vector<sea
     // update the current position towards the projected
     int numSeams = seamsList.size();
     for (int j = 0; j<numSeams; j++){
-        cout<<" handling seam "<<j<<endl;
+//        cout<<" handling seam "<<j<<endl;
 
         seam* currSeam  = seamsList[j];
         auto stP1= currSeam-> getStartAndPatch1();
@@ -425,7 +425,6 @@ void projectBackOnBoundary(const MatrixXd & Vg_to, MatrixXd& p, const vector<sea
         MatrixXd Vg_seam1to(len+1 + (len), 3);
         MatrixXd Vg_seam2to(len+1 + len, 3);
         MatrixXi Fg_seamto(len, 3);
-//        MatrixXi Fg_seam2to(len, 3);
 
         for(int i = 0; i<= len ; i++){
             int v1_oneSide = boundaryL_toPattern[stP1.second][(stP1.first+i)% boundLen1];
@@ -470,8 +469,7 @@ void projectBackOnBoundary(const MatrixXd & Vg_to, MatrixXd& p, const vector<sea
         }// and one more!!
         updatePositionToIntersection(p, next,Vg_seam1to,Fg_seamto);
         int sizeOneSide = i1+1; // account for  0and last
-
-
+        
         int i2 = 0;
         bsize = boundaryL[stP2.second].size();
         int nextidx = (stP2.first) % bsize;
@@ -489,11 +487,11 @@ void projectBackOnBoundary(const MatrixXd & Vg_to, MatrixXd& p, const vector<sea
             next = boundaryL[stP2.second][nextidx];
         }// and one more!!
         updatePositionToIntersection(p, next,Vg_seam2to,Fg_seamto);
-        cout<<endl<<len+1<<" len "<<sizeOneSide<<" size of one, other "<<i2+1<<" size of other side "<<endl;
 
     }
 
     for(int j=0; j<minusOneSeams.size(); j++){
+//        cout<<"minus one seam "<<j<<endl;
         minusOneSeam* currSeam  = minusOneSeams[j];
         int patch = currSeam -> getPatch();
         int startidx = currSeam -> getStartIdx();
@@ -522,10 +520,11 @@ void projectBackOnBoundary(const MatrixXd & Vg_to, MatrixXd& p, const vector<sea
 
             }
         }
-
+//        cout<<patch<<" patch"<<endl;
         int next = boundaryL[patch][startidx];
         int i1=0;
         while(next != endVert){
+//            cout<<"next: "<<next<<endl;
             updatePositionToIntersection( p, next,Vg_seamto,Fg_seamto);
             i1++;
             next = boundaryL[patch][( startidx+i1 ) % boundLen];

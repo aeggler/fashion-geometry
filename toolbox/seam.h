@@ -61,7 +61,7 @@ private:
     int startVert;
     int endVert;
     int startIdInBoundaryLoop;
-    int endIdInBondaryLoop;
+    int endIdInBoundaryLoop;
     int len;
 
 
@@ -70,7 +70,7 @@ public:
     int startVert,
     int endVert,
     int startIdInBoundaryLoop,
-    int endIdInBondaryLoop,
+    int endIdInBoundaryLoop,
     int len);
 
     int getPatch(){

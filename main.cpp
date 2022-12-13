@@ -454,7 +454,7 @@ int main(int argc, char *argv[])
 
     t.printTime( " before seams list  ");
     computeAllSeams( boundaryL,  vertexMapPattToGar, vertexMapGarAndIdToPatch, vfAdj, componentIdPerFace,
-                     componentIdPerVert,edgeVertices, cornerPerBoundary,seamsList, minusOneSeamsListt);
+                     componentIdPerVert,edgeVertices, cornerPerBoundary,seamsList, minusOneSeamsList);
     t.printTime( " after seams list  ");
 
     gar_adapt = new garment_adaption(Vg, Fg,  Vg_pattern, Fg_pattern, seamsList, boundaryL); //none have been altered at this stage
