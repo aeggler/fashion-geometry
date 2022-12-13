@@ -37,7 +37,10 @@ public:
          int patch1startBoundaryLoopIdx,
          int patch2startBoundaryLoopIdx,
          int patch1endBoundaryLoopIdx,
-         int patch2endBoundaryLoopIdx, int length, bool inverted);
+         int patch2endBoundaryLoopIdx,
+         int length,// TODO     we need both lengths to ensure it's ok even if we insert vertices in one position
+         bool inverted
+         );
 
     std::pair<int, int> getStartAndPatch1();
 
@@ -47,6 +50,9 @@ public:
     bool inverted;
 
     std::pair<int, int> getStartAndPatch2ForCorres();
+    std::pair<int, int> getEndCornerIds(){
+        return std::make_pair(patch1endCornerId, patch2endCornerId);
+    }
 };
 /* Brief: a function that computes all seams of a given patch layout and stores them in a list.
  *

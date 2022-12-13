@@ -107,7 +107,7 @@ std::vector<std::pair<Eigen::Vector3d, int>> allVertexBarycentricCoords;
 Eigen::MatrixXd tarU, tarV;// tarD1;
 Eigen::MatrixXd baryCoords1, baryCoords2;
 Eigen::MatrixXd baryCoordsd1, baryCoordsd2;
-std::vector<std::vector<int> > boundaryL;
+std::vector<std::vector<int> > boundaryL, boundaryL_toPattern;
 
 
 static bool noStress = true;
@@ -439,19 +439,9 @@ int main(int argc, char *argv[])
     t.printTime( " vertexMapPatternToGarment ");
 
     igl::boundary_loop(Fg_pattern, boundaryL);
-//    saveDataM("boundaryL_dress2_lowres.txt", boundaryL);
-//    vector<vector<int>> newBoundaryL;
-//    readDataM("/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/boundaryL_dress2_lowres.txt", boundaryL);
-//
 
     igl::facet_components(Fg_pattern, componentIdPerFace);
-//    saveData("componentIdPerFace_dress2_lowres.csv", componentIdPerFace);
-//    componentIdPerFace=  openData("/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/componentIdPerFace_dress2_lowres.csv");
-
     igl::vertex_components(Fg_pattern, componentIdPerVert);
-//    saveData("componentIdPerVert_dress2_lowres.csv", componentIdPerVert);
-//    componentIdPerVert = openData("/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/componentIdPerVert_dress2_lowres.csv");
-
     vertexMapGarmentAndPatchIdToPattern(Fg, Fg_pattern, componentIdPerVert, vertexMapGarAndIdToPatch);
 
 
@@ -473,29 +463,11 @@ int main(int argc, char *argv[])
     Vg_orig = Vg;
     jacFlag = true;// not needed anymore...  was when we computed stress without reference jacobian
 
-    // read constrained vertex ids and compute them as barycentric coordinates of the nearest face
 
-    // save time
     setCollisionMesh();
-//    col_tree.init(Vm, Fm);
-//    t.printTime( " tree ");
-//    FN_m = openDataD("/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/FN_m_dress2.csv");
-//    saveData("FN_m_dress2.csv", FN_m);
-//    VN_m = openDataD("/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/VN_m_dress2.csv");
-//    saveData("VN_m_dress2.csv", VN_m);
-//    EN_m =  openDataD("/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/EN_m_dress2.csv");
-//    saveData("EN_m_dress2.csv", EN_m);
-//    E_m = openData("/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/E_m_dress2.csv");
-//    saveData("E_m_dress2.csv", E_m);
-//    EMAP_m = openData("/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/EMAP_m_dress2.csv");
-//    saveData("EMAP_m_dress2.csv", EMAP_m);
-// end save time
 
-//    computeBoundaryVertices();
-    t.printTime( " boundary ");
     computeBaryCoordsGarOnNewMannequin(viewer);// contains boundary vertices now
 //    Vg = Vg_orig;
-    t.printTime( " bary ");
     Vm = testMorph_V1;
     Vm_orig = testMorph_V1;
     showGarment(viewer);
@@ -506,30 +478,15 @@ int main(int argc, char *argv[])
     preComputeStretch();
     computeStress(viewer);
 
-//    setCollisionMesh();
-    // save time
     setCollisionMesh();
-//    col_tree.init(Vm, Fm);
-//    t.printTime( " tree again  ");
-//    FN_m = openDataD("/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/FN_m_dress2_second.csv");
-//    saveData("FN_m_dress2_second.csv", FN_m);
-//    VN_m = openDataD("/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/VN_m_dress2_second.csv");
-//    saveData("VN_m_dress2_second.csv", VN_m);
-//    EN_m =  openDataD("/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/EN_m_dress2_second.csv");
-//    saveData("EN_m_dress2_second.csv", EN_m);
-//    E_m = openData("/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/E_m_dress2_second.csv");
-//    saveData("E_m_dress2_second.csv", E_m);
-//    EMAP_m = openData("/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/EMAP_m_dress2_second.csv");
-//    saveData("EMAP_m_dress2_second.csv", EMAP_m);
-// end save time
 
     // copy the matrices to not mess with them
     string fromPatternFile = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/patternComputed.obj";
     // quick
     //TODO LATER NO MORE
     igl::readOBJ(fromPatternFile, fromPattern, Fg_pattern);
-    string mappedPatternFile = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/mappedPattern.obj";
-    igl::readOBJ(mappedPatternFile, currPattern, Fg_pattern);
+//    string mappedPatternFile = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/mappedPattern.obj";
+//    igl::readOBJ(mappedPatternFile, currPattern, Fg_pattern);
     toPattern= Vg_pattern_orig;
 
     viewer.core().animation_max_fps = 200.;
@@ -555,8 +512,8 @@ int main(int argc, char *argv[])
             if(ImGui::Button("Visualize Seam", ImVec2(-1, 0))){
                 MatrixXd testCol= MatrixXd::Zero(Vg_pattern.rows(), 3);
                 if(jacFlag){
-                    std::vector<std::vector<int> > boundaryL;
-                    igl::boundary_loop(Fg_pattern, boundaryL);
+//                    std::vector<std::vector<int> > boundaryL;
+//                    igl::boundary_loop(Fg_pattern, boundaryL);
                     // testCol.col(0)= edgeVertices;
                     for(int j=whichSeam; j<whichSeam+1; j++){
                         seam* firstSeam = seamsList[j];
@@ -567,17 +524,6 @@ int main(int argc, char *argv[])
                         int boundLen1 = boundaryL[stP1.second].size();
                         int boundLen2 = boundaryL[stP2.second].size();
 
-                        /*
-                int firstSide = boundaryL[stP1.second][(stP1.first + seamVert) % boundLen1];
-                // what is the start of one side is the end for the other. (different traversal direction). ensure the counter does not get negative
-                int secAccess = (stP2.first - seamVert) % boundLen2;
-                if(secAccess < 0){
-                    secAccess = boundLen2 + (stP2.first - seamVert);
-                }
-                if(seamsList[j]->inverted) secAccess = (stP2.first + seamVert) % boundLen2;
-
-                int secondSide = boundaryL[stP2.second][secAccess];
-                         * */
                         for(int i=0; i<=len; i++){
                             testCol(boundaryL[stP1.second][(stP1.first+i)% boundLen1],0) = 1.;
                             if(i==0)testCol(boundaryL[stP1.second][(stP1.first+i)% boundLen1],1) = 1.;
@@ -589,6 +535,7 @@ int main(int argc, char *argv[])
 //                                testCol(boundaryL[stP2.second][(stP2.first-i)% boundLen2], 0) = 1.;
                             }
                             if(seamsList[j]->inverted) setAccess = (stP2.first + i) % boundLen2;
+//                            cout<<setAccess<<endl;
                             testCol(boundaryL[stP2.second][setAccess], 0) = 1.;
 
                         }
@@ -820,22 +767,21 @@ int main(int argc, char *argv[])
         if (ImGui::CollapsingHeader("Pattern adaption", ImGuiTreeNodeFlags_DefaultOpen)){
             if(ImGui::Button("Compute adaptation", ImVec2(-1, 0))){
                 preComputeAdaption();
+
+                currPattern = fromPattern;
                 viewer.core().is_animating = true;
                 adaptionFlag = true;
             }
+
             if(ImGui::Button("Compute first Tear", ImVec2(-1, 0))){
                 simulate = false;
                 adaptionFlag = false;
                 viewer.core().is_animating = false;
 //later these matrices should be fixed from the pattern adaption, this is precomputation for simplification
 
-
                 bool fin = false;
                 cout<<"at old boundary loop "<<boundaryL[4].size()<<endl;
                 computeTear(fromPattern, currPattern, Fg_pattern,Fg_pattern_orig, seamsList ,  boundaryL,fin);
-//                cout<<currPattern.rows()<<"after rows"<<endl;
-//                cout<<currPattern.row(3036)<<endl;
-//                cout<<Fg_pattern.col(0).maxCoeff()<<" "<<Fg_pattern.col(1).maxCoeff()<<" "<<Fg_pattern.col(2).maxCoeff()<<" "<<endl;
 
                 viewer.selected_data_index = 0;
                 viewer.data().clear();
@@ -853,7 +799,7 @@ int main(int argc, char *argv[])
                     viewer.core().is_animating = true;
 //                if(boundaryL[4].size()!= 27)
                     adaptionFlag = true;
-// it does support multiple cuts, but they are not in the same area. also ,, what we see is stress in vu direction, but what we use in the cut is edge length
+// it does support multiple cuts, but they are not in the same area. also , what we see is stress in vu direction, but what we use in the cut is edge length
 // it does not automatically cut further
 // no thereshold on when to stop cutting
 // cutting only for a single patch (5)
@@ -880,7 +826,7 @@ int main(int argc, char *argv[])
 }
 void preComputeAdaption(){
     simulate = false;
-    stretchStiffnessU = 0.88;
+    stretchStiffnessU = 0.08;
     stretchStiffnessD *= 2;
     boundaryStiffness = 0.999;
     toPattern= Vg_pattern_orig;
@@ -896,7 +842,7 @@ void preComputeAdaption(){
     }
 //    patternEdgeLengths.resize(Fg_pattern.rows() ,3);
     igl::edge_lengths(fromPattern,Fg_pattern_orig, patternEdgeLengths_orig);
-
+    igl::boundary_loop(Fg_pattern_orig, boundaryL_toPattern);
     // use with PBD_adaption
     baryCoordsUPattern.resize(Fg_pattern.rows(), 3);
     baryCoordsVPattern.resize(Fg_pattern.rows(), 3);
@@ -1536,6 +1482,8 @@ void solveConstrainedVertices(){
 void solveStretchAdaptionViaEdgeLength(){
 //    MatrixXd patternEdgeLengthsCurr;
 //    igl::edge_lengths(currPattern, Fg_pattern, patternEdgeLengthsCurr);
+
+//why does it not just go back to it's original position?
     for(int i=0; i<Fg_pattern.rows(); i++){
         for(int j=0; j<3; j++){
             Vector3r corr0, corr1;
@@ -1547,6 +1495,9 @@ void solveStretchAdaptionViaEdgeLength(){
             PBD.solve_DistanceConstraint(p0, mass0, p1, 1, patternEdgeLengths_orig(i, (j+2) % 3),stretchStiffnessU, corr0, corr1);
             p_adaption.row(Fg_pattern(i,j)) += corr0;
             p_adaption.row(Fg_pattern(i,(j+1) % 3 )) += corr1;
+//            if(Fg_pattern(i,j) == 3036 || Fg_pattern(i,(j+1) % 3 )==3036){
+//                cout<<"updating with face "<<i<<" "<<corr0<<endl;
+//            }
 
         }
     }
@@ -1665,12 +1616,13 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
 
     t.printTime(" init ");
     for(int i=0; i<5; i++){
-//        t.printTime(" iteration");
-        solveCornerMappedVertices();
-        // now we treat the stretch
 
+        // now we treat the stretch
         computePatternStress(perFaceU_adapt, perFaceV_adapt);
-         solveStretchAdaptionViaEdgeLength();//perFaceU_adapt, perFaceV_adapt);
+        solveStretchAdaptionViaEdgeLength();//perFaceU_adapt, perFaceV_adapt);
+        solveCornerMappedVertices();
+        // before cutting the boundaries should be the same
+        projectBackOnBoundary( toPattern, p_adaption, seamsList, Fg_pattern, Fg_pattern_orig, boundaryL_toPattern, boundaryL );
 
     }
     currPattern = p_adaption;
@@ -1689,12 +1641,37 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
     cout<<(colPatternV(5324, 0)-1)/5 +1 <<" max norm v direction "<<endl;
     cout<<(colPatternU(5324,0)-1)/5 +1<<" max norm in u direction"<<endl;
     MatrixXd currLengths; igl::edge_lengths(currPattern, Fg_pattern, currLengths);
+
     currLengths = patternEdgeLengths_orig - currLengths;// TODO BETTER COLORING THIS CAN AVERAGE BADLY
     VectorXd stressCurr = currLengths.col(0);// todo .rowwise().sum();
     for(int i=0; i<stressCurr.size(); i++){
         stressCurr(i)/= patternEdgeLengths_orig(i,0);//.sum() ;
     }
     colPatternU.col(0)=VectorXd::Ones(stressCurr.size())+15* stressCurr; colPatternU.col(1) = VectorXd::Ones(stressCurr.size()) - 15*stressCurr;
+
+    vector<vector<int> > vfAdj;
+    createVertexFaceAdjacencyList(Fg_pattern, vfAdj);
+    // new idea, ,colour just the boundary
+    colPatternU.col(0)=VectorXd::Ones(stressCurr.size())+0* stressCurr; colPatternU.col(1) = VectorXd::Ones(stressCurr.size()) - 0*stressCurr;
+    for(int i=0; i<boundaryL.size(); i++){
+        for(int j=0; j<boundaryL[i].size(); j++){
+            int idx = boundaryL[i][j];
+            int idx2 = boundaryL[i][(j+1)% boundaryL[i].size()];
+            int faceIDx = adjacentFaceToEdge(idx, idx2, -1, vfAdj);
+            // needed since wtih that index we cannot access the original old pattern
+            int whichE = findWhichEdgeOfFace( faceIDx, idx, idx2, Fg_pattern);
+            double newlength = (currPattern.row(idx)- currPattern.row(idx2)).norm();
+            double oldlen = patternEdgeLengths_orig(faceIDx,whichE );
+            double relStretch = (newlength- oldlen)/ oldlen;
+//            if(faceIDx == 5302)cout<<relStretch<<" relative, absolut its for 5302  "<< newlength - oldlen <<endl;
+//            if(faceIDx == 5319)cout<<relStretch<<" relative, absolut its for 5319 "<< newlength - oldlen <<endl;
+            colPatternU(faceIDx, 0) += 15 * relStretch;
+            colPatternU(faceIDx, 1) -= 15 * relStretch;
+
+        }
+    }
+
+
     viewer.data().set_colors(colPatternU);
 
 }

@@ -8,6 +8,7 @@
 #include <igl/edge_lengths.h>
 #include <igl/adjacency_list.h>
 #include "igl/boundary_loop.h"
+#include <igl/signed_distance.h>
 #include "adjacency.h"
 
 using namespace std;
@@ -26,8 +27,6 @@ public:
     double stretchLeft;
 //    double stretchRight;
 };
-
-
 
 int findWhichEdgeOfFace(int face, int v1, int v2, MatrixXi& Fg){
     int faceidxv1, faceidxv2;
@@ -381,5 +380,122 @@ cout<<" stitched list"<<endl;
         cout<<"finished tearing "<<endl;
         finished = true;
     }
+
+}
+
+void updatePositionToIntersection(MatrixXd& p,int next,  const MatrixXd& Vg_bound, const MatrixXi &Fg_bound){
+    VectorXd S, I; MatrixXi C; MatrixXd N;
+    igl::signed_distance(p.row(next), Vg_bound, Fg_bound, igl::SIGNED_DISTANCE_TYPE_PSEUDONORMAL, S, I, C, N );
+    // we know that the first two indices of the face define the egdge we want to intersect with
+    Vector3d R = Vg_bound.row(Fg_bound(I(0), 0));
+    Vector3d Q =  Vg_bound.row(Fg_bound(I(0), 1));
+    // derive where QR and P meet = t, https://math.stackexchange.com/questions/1521128/given-a-line-and-a-point-in-3d-how-to-find-the-closest-point-on-the-line
+    double t = (R-Q).dot(Q-p.row(next).transpose())/((R-Q).dot(R-Q));
+    Vector3d targetPos = Q-t*(R-Q);
+    double stiffness = 0.8; //todo
+    p.row(next)+= stiffness * (targetPos.transpose()-p.row(next));
+}
+
+/*we build a new structure to find the closest position on the original boundary
+        *     v0*-------------------*v1*---------------------*v2
+        *           - v_(len+1)-          - v_(len+1+1) -
+        *
+        *           where v_(len+i) are defined as (vi + v(i+1))/2 + eps* n w
+        *           where n is the normal
+        *
+*/
+void projectBackOnBoundary(const MatrixXd & Vg_to, MatrixXd& p, const vector<seam*>& seamsList, const MatrixXi& Fg_pattern,
+                           const MatrixXi& Fg_pattern_orig, const std::vector<std::vector<int> >& boundaryL_toPattern, const std::vector<std::vector<int> >& boundaryL ){
+    // Idea:
+    // iterate over every seam, create a triangle mesh of the original boundary of that seam
+    // then for each boundary vertex, project it's current position to the boundary
+    // update the current position towards the projected
+    int numSeams = seamsList.size();
+    for (int j = 0; j<numSeams; j++){
+        cout<<" handling seam "<<j<<endl;
+
+        seam* currSeam  = seamsList[j];
+        auto stP1= currSeam-> getStartAndPatch1();
+        auto stP2 =  currSeam -> getStartAndPatch2ForCorres(); // attention this is with respect to the original pattern
+        int len  = currSeam -> seamLength();
+        int boundLen1 = boundaryL_toPattern[stP1.second].size();
+        int boundLen2 = boundaryL_toPattern[stP2.second].size();
+
+        // build the structure for closest search
+        MatrixXd Vg_seam1to(len+1 + (len), 3);
+        MatrixXd Vg_seam2to(len+1 + len, 3);
+        MatrixXi Fg_seamto(len, 3);
+//        MatrixXi Fg_seam2to(len, 3);
+
+        for(int i = 0; i<= len ; i++){
+            int v1_oneSide = boundaryL_toPattern[stP1.second][(stP1.first+i)% boundLen1];
+            int v1_otherSide_idx = (stP2.first-i)% boundLen2;
+            if(v1_otherSide_idx < 0) {
+                v1_otherSide_idx +=boundLen2;
+            }
+            if(seamsList[j]->inverted) v1_otherSide_idx = (stP2.first + i) % boundLen2;
+            int v1_otherSide = boundaryL[stP2.second][v1_otherSide_idx];
+
+            Vg_seam1to.row(i) = Vg_to.row(v1_oneSide);
+            Vg_seam2to.row(i) = Vg_to.row(v1_otherSide);
+
+            if(i>0){
+                Fg_seamto(i-1, 0)= i;
+                Fg_seamto(i-1, 1)= i-1;
+                Fg_seamto(i-1, 2)= len + i;// from len+1 + (i-1)
+
+                Vg_seam1to.row(len+i ) = (Vg_seam1to.row(i)+  Vg_seam1to.row(i-1)) / 2; // still need the normal
+                Vg_seam2to.row(len+i ) = (Vg_seam2to.row(i)+  Vg_seam2to.row(i-1)) / 2; // still need the normal
+                // todo very ugly, just pick one side, don't care which ... this is not 100% correct
+                Vector3d d =  (Vg_seam1to.row(i)-  Vg_seam1to.row(i-1));
+                Vector3d normal = d; normal(0)= -d(1); normal(1)= d(0);
+                Vg_seam1to.row(len+i )+= 0.001*normal;
+
+                d =  (Vg_seam2to.row(i)-  Vg_seam2to.row(i-1));
+                normal = d; normal(0)= -d(1); normal(1)= d(0);
+                Vg_seam2to.row(len+i )+= 0.001*normal;
+            }
+        }
+        cout<<" set up both helper meshes"<<endl;
+
+        // for each vertex of the new boundary we need to check the closest position
+        // todo never ever cut the corner or change the corner index
+        auto ends = currSeam->getEndCornerIds();
+        int i1=0;
+        int bsize = boundaryL[stP1.second].size();
+        int next = boundaryL[stP1.second][(stP1.first+i1)% bsize];
+
+        while( next!= ends.first ){
+            updatePositionToIntersection( p, next,Vg_seam1to,Fg_seamto);
+            i1++;
+            next = boundaryL[stP1.second][(stP1.first+i1)% bsize];
+        }// and one more!!
+        updatePositionToIntersection(p, next,Vg_seam1to,Fg_seamto);
+        int sizeOneSide = i1+1; // account for  0and last
+
+
+        int i2 = 0;
+        bsize = boundaryL[stP2.second].size();
+        int nextidx = (stP2.first) % bsize;
+        if(nextidx < 0) nextidx += bsize;
+        next = boundaryL[stP2.second][nextidx];
+
+        while( next!= ends.second ){
+            updatePositionToIntersection(p, next,Vg_seam2to,Fg_seamto);
+
+            i2++;
+            nextidx = (stP2.first - i2) % (bsize);
+
+            if(nextidx < 0) {nextidx += bsize;}
+            if(seamsList[j]->inverted) nextidx = (stP2.first + i2) % bsize;
+            next = boundaryL[stP2.second][nextidx];
+        }// and one more!!
+        updatePositionToIntersection(p, next,Vg_seam2to,Fg_seamto);
+        cout<<endl<<len+1<<" len "<<sizeOneSide<<" size of one, other "<<i2+1<<" size of other side "<<endl;
+
+    }
+
+
+
 
 }
