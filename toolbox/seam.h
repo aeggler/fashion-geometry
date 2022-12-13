@@ -20,7 +20,7 @@ private:
     int patch1endCornerId;
     int patch2endCornerId;
 
-    int patch1startBoundaryLoopIdx;
+    int patch1startBoundaryLoopIdx;//TODO attention they are wrt the original boundary loop index , not any modified inserted versions!!
     int patch2startBoundaryLoopIdx;
     int patch1endBoundaryLoopIdx;
     int patch2endBoundaryLoopIdx;
@@ -54,6 +54,40 @@ public:
         return std::make_pair(patch1endCornerId, patch2endCornerId);
     }
 };
+
+class minusOneSeam{
+private:
+    int patchId;
+    int startVert;
+    int endVert;
+    int startIdInBoundaryLoop;
+    int endIdInBondaryLoop;
+    int len;
+
+
+public:
+    minusOneSeam(int patchId,
+    int startVert,
+    int endVert,
+    int startIdInBoundaryLoop,
+    int endIdInBondaryLoop,
+    int len);
+
+    int getPatch(){
+        return patchId;
+    };
+    int getStartIdx(){
+        return startIdInBoundaryLoop;
+    }
+    int getEndVert(){
+        return endVert;
+    }
+    int getLength(){
+        return len ;
+    }
+};
+
+
 /* Brief: a function that computes all seams of a given patch layout and stores them in a list.
  *
  * Inputs: A list of all boundaries (igl function), a maps between pattern and garment vertices, vertexFace adjacency, for each face and vertex an id which connected component
@@ -64,8 +98,6 @@ public:
  * */
 void computeAllSeams(const std::vector<std::vector<int> >& boundaryL, std::map<int,int>& vertexMapPattToGar, std::map<std::pair<int, int>,int>& vertexMapGarAndIdToPatch,
                      std::vector<std::vector<int> >& vfAdj, Eigen::VectorXi& componentIdPerFace, Eigen::VectorXi& componentIdPerVert,
-                     Eigen::VectorXd& edgeVertices, std::vector<std::vector<std::pair<int, int>>>& edgesPerBoundary, std::vector<seam*>& seamsList
+                     Eigen::VectorXd& edgeVertices, std::vector<std::vector<std::pair<int, int>>>& edgesPerBoundary, std::vector<seam*>& seamsList ,std::vector<minusOneSeam*>& minusSeams
 );
-
-
 #endif //EXAMPLE_SEAM_H

@@ -58,7 +58,7 @@ int seam::seamLength(){
 
 void computeAllSeams(const std::vector<std::vector<int> >& boundaryL, std::map<int,int>& vertexMapPattToGar, std::map<std::pair<int, int>,int>& vertexMapGarAndIdToPatch,
                       std::vector<std::vector<int> >& vfAdj, Eigen::VectorXi& componentIdPerFace, Eigen::VectorXi& componentIdPerVert,
-                      Eigen::VectorXd& edgeVertices, std::vector<std::vector<std::pair<int, int>>>& edgesPerBoundary, std::vector<seam*>& seamsList
+                      Eigen::VectorXd& edgeVertices, std::vector<std::vector<std::pair<int, int>>>& edgesPerBoundary, std::vector<seam*>& seamsList, std::vector<minusOneSeam*>& minusSeams
                      ){
     // we would like a seam to seam mapping where a seam is defined by its two endpoints
     Eigen::VectorXi isBoundaryVertexVec= Eigen::VectorXi::Zero(componentIdPerVert.rows());
@@ -284,8 +284,20 @@ void computeAllSeams(const std::vector<std::vector<int> >& boundaryL, std::map<i
 //                        cout<<endl;
                         seamsList.push_back(newSeam);
 
-                    }else if(otherPatchId != -1 ){// case if it is just a patch with smaller id than it' s parent
-                         }
+                    }else if(otherPatchId != -1 ){//todo case if it is just a pocket with smaller id than it' s parent
+                         }else if (otherPatchId==-1){
+                        // we found a global boundary
+                        int startId = edgesForThisBoundary[edgesForThisBoundary.size()-2].first;
+                        int startIdInBoundaryIdx = edgesForThisBoundary[edgesForThisBoundary.size()-2].second;
+                        int endIdx = (j+1);
+                        int mydist = endIdx - startIdInBoundaryIdx;
+                        int endId = v1;
+                        int len = endIdx - startIdInBoundaryIdx;
+                        if(len<0) len+= boundaryL[i].size();
+                        minusOneSeam* m0 = new minusOneSeam(myPatchId, startId, endId, startIdInBoundaryIdx ,endIdx, len);
+                        minusSeams.push_back(m0);
+
+                    }
                 }
             }
         }

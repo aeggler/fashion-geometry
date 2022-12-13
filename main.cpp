@@ -98,6 +98,8 @@ int whichStressVisualize= 0;
 
 garment_adaption* gar_adapt;
 vector<seam*> seamsList;
+vector<minusOneSeam*> minusOneSeamsList;
+
 vector<int> constrainedVertexIds;
 VectorXi closestFaceId;
 
@@ -452,7 +454,7 @@ int main(int argc, char *argv[])
 
     t.printTime( " before seams list  ");
     computeAllSeams( boundaryL,  vertexMapPattToGar, vertexMapGarAndIdToPatch, vfAdj, componentIdPerFace,
-                     componentIdPerVert,edgeVertices, cornerPerBoundary,seamsList);
+                     componentIdPerVert,edgeVertices, cornerPerBoundary,seamsList, minusOneSeamsListt);
     t.printTime( " after seams list  ");
 
     gar_adapt = new garment_adaption(Vg, Fg,  Vg_pattern, Fg_pattern, seamsList, boundaryL); //none have been altered at this stage
@@ -1622,7 +1624,7 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
         solveStretchAdaptionViaEdgeLength();//perFaceU_adapt, perFaceV_adapt);
         solveCornerMappedVertices();
         // before cutting the boundaries should be the same
-        projectBackOnBoundary( toPattern, p_adaption, seamsList, Fg_pattern, Fg_pattern_orig, boundaryL_toPattern, boundaryL );
+        projectBackOnBoundary( toPattern, p_adaption, seamsList,minusOneSeamsList,  Fg_pattern, Fg_pattern_orig, boundaryL_toPattern, boundaryL );
 
     }
     currPattern = p_adaption;

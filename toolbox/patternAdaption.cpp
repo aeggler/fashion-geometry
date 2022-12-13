@@ -404,7 +404,7 @@ void updatePositionToIntersection(MatrixXd& p,int next,  const MatrixXd& Vg_boun
         *           where n is the normal
         *
 */
-void projectBackOnBoundary(const MatrixXd & Vg_to, MatrixXd& p, const vector<seam*>& seamsList, const MatrixXi& Fg_pattern,
+void projectBackOnBoundary(const MatrixXd & Vg_to, MatrixXd& p, const vector<seam*>& seamsList, const vector<minusOneSeam*> & minusOneSeams,  const MatrixXi& Fg_pattern,
                            const MatrixXi& Fg_pattern_orig, const std::vector<std::vector<int> >& boundaryL_toPattern, const std::vector<std::vector<int> >& boundaryL ){
     // Idea:
     // iterate over every seam, create a triangle mesh of the original boundary of that seam
@@ -456,8 +456,6 @@ void projectBackOnBoundary(const MatrixXd & Vg_to, MatrixXd& p, const vector<sea
                 Vg_seam2to.row(len+i )+= 0.001*normal;
             }
         }
-        cout<<" set up both helper meshes"<<endl;
-
         // for each vertex of the new boundary we need to check the closest position
         // todo never ever cut the corner or change the corner index
         auto ends = currSeam->getEndCornerIds();
@@ -492,6 +490,50 @@ void projectBackOnBoundary(const MatrixXd & Vg_to, MatrixXd& p, const vector<sea
         }// and one more!!
         updatePositionToIntersection(p, next,Vg_seam2to,Fg_seamto);
         cout<<endl<<len+1<<" len "<<sizeOneSide<<" size of one, other "<<i2+1<<" size of other side "<<endl;
+
+    }
+
+    for(int j=0; j<minusOneSeams.size(); j++){
+        minusOneSeam* currSeam  = minusOneSeams[j];
+        int patch = currSeam -> getPatch();
+        int startidx = currSeam -> getStartIdx();
+        int endVert = currSeam -> getEndVert();
+        int len = currSeam -> getLength();
+        int boundLen = boundaryL_toPattern[patch].size();
+
+        // build the structure for closest search
+        MatrixXd Vg_seamto(len+1 + (len), 3);
+        MatrixXi Fg_seamto(len, 3);
+
+        for(int i = 0; i<= len ; i++){
+            int v1 = boundaryL_toPattern[patch][(startidx+i)% boundLen];
+            Vg_seamto.row(i) = Vg_to.row(v1);
+
+            if(i>0){
+                Fg_seamto(i-1, 0)= i;
+                Fg_seamto(i-1, 1)= i-1;
+                Fg_seamto(i-1, 2)= len + i;// from len+1 + (i-1)
+
+                Vg_seamto.row(len+i ) = (Vg_seamto.row(i)+  Vg_seamto.row(i-1)) / 2; // still need the normal
+                // todo very ugly, just pick one side, don't care which ... this is not 100% correct
+                Vector3d d =  (Vg_seamto.row(i)-  Vg_seamto.row(i-1));
+                Vector3d normal = d; normal(0)= -d(1); normal(1)= d(0);
+                Vg_seamto.row(len+i )+= 0.001*normal;
+
+            }
+        }
+
+        int next = boundaryL[patch][startidx];
+        int i1=0;
+        while(next != endVert){
+            updatePositionToIntersection( p, next,Vg_seamto,Fg_seamto);
+            i1++;
+            next = boundaryL[patch][( startidx+i1 ) % boundLen];
+        }
+
+
+
+
 
     }
 
