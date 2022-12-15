@@ -96,8 +96,16 @@ public:
  * Output: edges per boundary and seams list, a list of all seams stored as seam instances
  *
  * */
-void computeAllSeams(const std::vector<std::vector<int> >& boundaryL, std::map<int,int>& vertexMapPattToGar, std::map<std::pair<int, int>,int>& vertexMapGarAndIdToPatch,
-                     std::vector<std::vector<int> >& vfAdj, Eigen::VectorXi& componentIdPerFace, Eigen::VectorXi& componentIdPerVert,
-                     Eigen::VectorXd& edgeVertices, std::vector<std::vector<std::pair<int, int>>>& edgesPerBoundary, std::vector<seam*>& seamsList ,std::vector<minusOneSeam*>& minusSeams
+void computeAllSeams(const std::vector<std::vector<int> >& boundaryL, std::map<int,int>& vertexMapPattToGar,
+                     std::map<std::pair<int, int>,int>& vertexMapGarAndIdToPatch,
+                     std::vector<std::vector<int> >& vfAdj, Eigen::VectorXi& componentIdPerFace,
+                     Eigen::VectorXi& componentIdPerVert,
+                     Eigen::VectorXd& edgeVertices, std::vector<std::vector<std::pair<int, int>>>& edgesPerBoundary,
+                     std::vector<seam*>& seamsList ,std::vector<minusOneSeam*>& minusSeams,
+                     Eigen::VectorXd& seamIdPerCorner,  Eigen::VectorXd& directionPerCorner
+
 );
+
+
+
 #endif //EXAMPLE_SEAM_H

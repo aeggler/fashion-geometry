@@ -58,8 +58,10 @@ int seam::seamLength(){
 
 void computeAllSeams(const std::vector<std::vector<int> >& boundaryL, std::map<int,int>& vertexMapPattToGar, std::map<std::pair<int, int>,int>& vertexMapGarAndIdToPatch,
                       std::vector<std::vector<int> >& vfAdj, Eigen::VectorXi& componentIdPerFace, Eigen::VectorXi& componentIdPerVert,
-                      Eigen::VectorXd& edgeVertices, std::vector<std::vector<std::pair<int, int>>>& edgesPerBoundary, std::vector<seam*>& seamsList, std::vector<minusOneSeam*>& minusSeams
+                      Eigen::VectorXd& edgeVertices, std::vector<std::vector<std::pair<int, int>>>& edgesPerBoundary, std::vector<seam*>& seamsList, std::vector<minusOneSeam*>& minusSeams,
+                      VectorXd& seamIdPerCorner,  VectorXd& directionPerCorner
                      ){
+
     // we would like a seam to seam mapping where a seam is defined by its two endpoints
     Eigen::VectorXi isBoundaryVertexVec= Eigen::VectorXi::Zero(componentIdPerVert.rows());
     for(int i=0; i< boundaryL.size(); i++){
@@ -125,9 +127,7 @@ void computeAllSeams(const std::vector<std::vector<int> >& boundaryL, std::map<i
 
             bool samePatch = (face1id1==face0id1 && face1id2 == face0id2);
             bool samePatchCrossover = (face1id1==face0id2 && face1id2 == face0id1);
-            if(v1== 783 || v1 == 788){
-                cout<<samePatchCrossover<<" "<<samePatch<<" checking same patch and crossover "<<v1<<" "<<j<<endl;
-            }
+
             if(!(samePatch || samePatchCrossover)){
 //
                 edgesForThisBoundary.push_back(make_pair(v1, (j + 1) % boundary.size())); //pattern id
@@ -202,7 +202,10 @@ void computeAllSeams(const std::vector<std::vector<int> >& boundaryL, std::map<i
 //                        cout<<"Seam no "<<seamsList.size()<<" starting in one patch at "<< startId<<" and other in "<<startIdOther<<" end in "<<v1<<" "<<endIdOther<<endl;
 //                        cout<<" the indices "<<startIdInBoundaryIdx<<" "<<endIdx<<" with size "<<boundaryL[myPatchId].size()<<", "<<startIdOtherInBoundaryIdx<<" "<<endIdOtherInBoundaryIdx<<" with size "<<boundaryL[otherPatchId].size()<<endl;
 //                        cout<<endl;
-
+                        seamIdPerCorner(startId) = seamsList.size();
+                        seamIdPerCorner(startIdOther) = seamsList.size();
+                        directionPerCorner(startId)= 1;
+                        directionPerCorner(startIdOther) = -1;
                         seamsList.push_back(newSeam);
 
 //                        cout<<" set new same seam "<<endl;
@@ -290,6 +293,7 @@ void computeAllSeams(const std::vector<std::vector<int> >& boundaryL, std::map<i
 //                        cout<<"Seam no "<<seamsList.size()<<" starting in one patch at "<< startId<<" and other in "<<startIdOther<<" end in "<<v1<<" "<<endIdOther<<endl;
 //                        cout<<invertedflag<<" the indices "<<startIdInBoundaryIdx<<" "<<endIdx<<" with size "<<boundaryL[myPatchId].size()<<",     "<<startIdOtherInBoundaryIdx<<" "<<endIdOtherInBoundaryIdx<<" with size "<<boundaryL[otherPatchId].size()<<endl;
 //                        cout<<endl;
+                        seamIdPerCorner(startId) = seamsList.size();
                         seamsList.push_back(newSeam);
 
                     }else if(otherPatchId != -1 ){//todo case if it is just a pocket with smaller id than it' s parent
@@ -303,7 +307,7 @@ void computeAllSeams(const std::vector<std::vector<int> >& boundaryL, std::map<i
                         int len = endIdx - startIdInBoundaryIdx;
                         if(len<0) len+= boundaryL[i].size();
                         minusOneSeam* m0 = new minusOneSeam (myPatchId, startId, endId, startIdInBoundaryIdx ,endIdx, len);
-
+                        seamIdPerCorner(startId) = -minusSeams.size();
                         minusSeams.push_back(m0);
 
                     }

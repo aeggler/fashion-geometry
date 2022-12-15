@@ -453,8 +453,11 @@ int main(int argc, char *argv[])
     edgeVertices = VectorXd::Zero(Vg_pattern.rows());
 
     t.printTime( " before seams list  ");
-    computeAllSeams( boundaryL,  vertexMapPattToGar, vertexMapGarAndIdToPatch, vfAdj, componentIdPerFace,
-                     componentIdPerVert,edgeVertices, cornerPerBoundary,seamsList, minusOneSeamsList);
+    Eigen::VectorXd seamIdPerCorner(Vg_pattern.rows());
+    Eigen::VectorXd directionPerCorner(Vg_pattern.rows());
+
+    computeAllSeams( boundaryL,vertexMapPattToGar, vertexMapGarAndIdToPatch, vfAdj, componentIdPerFace,
+                     componentIdPerVert,edgeVertices, cornerPerBoundary, seamsList, minusOneSeamsList, seamIdPerCorner, directionPerCorner);
     t.printTime( " after seams list  ");
 
     gar_adapt = new garment_adaption(Vg, Fg,  Vg_pattern, Fg_pattern, seamsList, boundaryL); //none have been altered at this stage
@@ -779,11 +782,10 @@ int main(int argc, char *argv[])
                 simulate = false;
                 adaptionFlag = false;
                 viewer.core().is_animating = false;
-//later these matrices should be fixed from the pattern adaption, this is precomputation for simplification
 
                 bool fin = false;
                 cout<<"at old boundary loop "<<boundaryL[4].size()<<endl;
-                computeTear(fromPattern, currPattern, Fg_pattern,Fg_pattern_orig, seamsList ,  boundaryL,fin);
+                computeTear(fromPattern, currPattern, Fg_pattern,Fg_pattern_orig, seamsList ,  minusOneSeams,boundaryL,fin,  cornerPerBoundary, seamIdPerCorner, directionPerCorner);
 
                 viewer.selected_data_index = 0;
                 viewer.data().clear();

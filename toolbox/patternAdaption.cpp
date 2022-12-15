@@ -8,7 +8,8 @@
 #include <igl/edge_lengths.h>
 #include <igl/adjacency_list.h>
 #include "igl/boundary_loop.h"
-#include <igl/signed_distance.h>
+//
+#include "/Library/gurobi1000/macos_universal2/include/gurobi_c++.h"
 #include "adjacency.h"
 
 using namespace std;
@@ -321,9 +322,238 @@ void splitVertex(Node** head, int & listLength, int  whichTear, MatrixXd& Vg, Ma
 // cout<<nextToTear<<" fin split function "<<endl;
 
 }
-void computeTear(Eigen::MatrixXd & fromPattern, MatrixXd&  currPattern, MatrixXi& Fg_pattern,MatrixXi& Fg_pattern_orig,
-                 vector<seam*>& seamsList, std::vector<std::vector<int> >& boundaryL, bool & finished){
+void setLP_ex(){
+    // Create an environment
+    GRBEnv env = GRBEnv(true);
+    env.set("LogFile", "mip1.log");
+    env.start();
+
+    // Create an empty model
+    GRBModel model = GRBModel(env);
+    // Create variables
+    GRBVar x = model.addVar(0.0, 1.0, 0.0, GRB_BINARY, "x");
+    GRBVar y = model.addVar(0.0, 1.0, 0.0, GRB_BINARY, "y");
+    GRBVar z = model.addVar(0.0, 1.0, 0.0, GRB_BINARY, "z");
+
+    // Set objective: maximize x + y + 2 z
+    model.setObjective(x + y + 2 * z, GRB_MAXIMIZE);
+
+    // Add constraint: x + 2 y + 3 z <= 4
+    model.addConstr(x + 2 * y + 3 * z <= 4, "c0");
+
+    // Add constraint: x + y >= 1
+    model.addConstr(x + y >= 1, "c1");
+
+    // Optimize model
+    model.optimize();
+
+    cout << x.get(GRB_StringAttr_VarName) << " "
+         << x.get(GRB_DoubleAttr_X) << endl;
+    cout << y.get(GRB_StringAttr_VarName) << " "
+         << y.get(GRB_DoubleAttr_X) << endl;
+    cout << z.get(GRB_StringAttr_VarName) << " "
+         << z.get(GRB_DoubleAttr_X) << endl;
+
+    cout << "Obj: " << model.get(GRB_DoubleAttr_ObjVal) << endl;
+
+
+
+}
+
+GRBVar addVarToModel (int vert, int nextVert, vector<vector<int>> & vfAdj ,vector<GRBVar>& cornerVars,GRBModel& model,bool isCorner, MatrixXi& Fg_pattern,MatrixXd& lengthsOrig, MatrixXd& lengthsCurr ){
+    int faceIdx = adjacentFaceToEdge(vert, nextVert, -1, vfAdj );
+    int whichEdge = findWhichEdgeOfFace(faceIdx, vert, nextVert, Fg_pattern);
+    double w_init = lengthsCurr(faceIdx, whichEdge)/lengthsOrig(faceIdx, whichEdge);
+    GRBVar grbVarFirst = model.addVar(0., 1., w_init, GRB_BINARY );
+    if(isCorner) cornerVars.push_back(grbVarFirst);
+    if(isCorner && cornerVars.size()>1){
+        int size = cornerVars.size();
+        model.addConstr( cornerVars[size-2]+ cornerVars[size-1] <=1);
+    }
+    return grbVarFirst;
+
+
+}
+void setLP(std::vector<std::vector<int> >& boundaryL , vector<vector<int>> & vfAdj, MatrixXi& Fg_pattern,
+MatrixXd& lengthsOrig, MatrixXd& lengthsCurr,const std::vector<std::vector<std::pair<int, int>>>& edgesPerBoundary,const VectorXd& seamIdPerCorner,const VectorXd& directionPerCorner,
+           vector<seam*>& seamsList, const vector<minusOneSeam*> & minusOneSeams,
+int tearPatch, int tearVert, int tearVertInBoundaryIndex ){
+
+// Create an environment
+    GRBEnv env = GRBEnv(true);
+    env.set("LogFile", "mip1.log");
+    env.start();
+    // Create an empty model
+    GRBModel model = GRBModel(env);
+    GRBLinExpr obj = 0.0;
+    double minConstrained = 0.25;
+    int varCount =0;
+
+    for(int i=0; i<edgesPerBoundary.size(); i++){
+        int boundSize = boundaryL[i].size();
+        vector<GRBVar> cornerVars;
+        for(int j=0; j<edgesPerBoundary[i].size(); j++){
+            // first is the absolute index, second the index wrt the boundary loop
+
+            auto cornerPair = edgesPerBoundary[i][j];
+            int seamId = seamIdPerCorner[cornerPair.first];
+            // really bad initialization
+            auto intSumConstr = model.addConstr( "interior sum");
+            auto lSumConstr = model.addConstr(0<=1);
+            auto rSumConstr = model.addConstr( "rght sum");
+
+            if(seamId>=0){
+                seam * seam = seamsList[seamId];
+                int count=0;
+                // check for direction
+
+                if(directionPerCorner[cornerPair.first]==1){
+                    auto startAndPatch = seam-> getStartAndPatch1();
+                    int idx = startAndPatch.first;
+                    int vert = boundaryL[startAndPatch.second][idx];
+                    int end = seam ->getEndCornerIds().first;
+
+                    addVarToModel ( vert,  boundaryL[startAndPatch.second][(idx + 1) % boundSize], vfAdj,cornerVars, model, true, Fg_pattern, lengthsOrig, lengthsCurr);
+                    // we set up 3 constraints: middle, mid+l, mid+3 and in the end double corner
+                    // add the first to the left
+                    model.chgCoeff(cornerVars[cornerVars.size()-1], lSumConstr,1);
+
+                    while (vert != end){
+                        // might need a map for patch and vert id to seam adn first or Second
+                        double relId = ((double)count)/seam->seamLength();
+                        if (relId> minConstrained && relId < (1- minConstrained)){
+                            GRBVar grbVar = addVarToModel(vert, boundaryL[startAndPatch.second][(idx + 1) % boundSize], vfAdj, cornerVars, model ,false, Fg_pattern, lengthsOrig, lengthsCurr );
+
+                                // ad to sum middle <= 1
+                                model.chgCoeff(grbVar, intSumConstr,1);
+                                // add to sum with right and left  <= 1
+                                model.chgCoeff(grbVar, rSumConstr,1);
+                                model.chgCoeff(grbVar, lSumConstr,1);
+                        }
+                        idx = (idx + 1) % boundSize;
+                        vert = boundaryL[startAndPatch.second][idx];
+                        count++;
+                    }// handle the last, and first and all other constraints
+                    addVarToModel ( vert,  boundaryL[startAndPatch.second][(idx + 1) % boundSize], vfAdj,cornerVars, model, true, Fg_pattern, lengthsOrig, lengthsCurr);
+                    // add the last to the right
+                    model.chgCoeff(cornerVars[cornerVars.size()-1], rSumConstr,1);
+
+                    // first and last of seam
+                    auto duplSumConstr = model.addConstr( cornerVars[cornerVars.size()-1]+ cornerVars[cornerVars.size()-2] <= 2);// since they are binary this is redundant
+                    if (j==edgesPerBoundary[i].size()){
+                        // this was the last seam, hence stitch the end with the beginning
+                        model.addConstr( cornerVars[0]+ cornerVars[cornerVars.size() - 1] <= 1);
+                    }
+
+                }else{
+                    // iterate in inverse direction
+                    auto startAndPatch = seam -> getStartAndPatch2ForCorres();
+                    int idx = startAndPatch.first;
+                    if(startAndPatch.second != i) cout<<" something is wrong, it shoudl be in patch "<<i<<" but the seam is from patch  "<<startAndPatch.second<<endl;
+                    int vert = boundaryL[startAndPatch.second][idx];
+                    int end = seam -> getEndCornerIds().second;
+                    count++;
+                    int nextidx = (startAndPatch.first - count) % boundSize;
+                    if(nextidx <0) nextidx += boundSize;
+                    if(seam->inverted) nextidx = (startAndPatch.first + count) % boundSize;
+                    int nextvert = boundaryL[startAndPatch.second][nextidx];
+
+                    addVarToModel(vert, nextvert, vfAdj, cornerVars, model, true, Fg_pattern, lengthsOrig, lengthsCurr );
+                    // add the first to the left
+                    model.chgCoeff(cornerVars[cornerVars.size()-1], lSumConstr,1);
+
+                    while(vert!= end){
+                        double relId = ((double)count)/seam->seamLength();
+                        if (relId> minConstrained && relId < (1- minConstrained)){
+                            GRBVar grbVar = addVarToModel(vert, nextvert, vfAdj, cornerVars, model, false, Fg_pattern, lengthsOrig, lengthsCurr );
+                            model.chgCoeff(grbVar, intSumConstr,1);
+                            // add to sum with right and left  <= 1
+                            model.chgCoeff(grbVar, rSumConstr,1);
+                            model.chgCoeff(grbVar, lSumConstr,1);
+
+                        }
+
+                        vert = nextvert;
+                        count++;
+                        nextidx = (startAndPatch.first - count) % boundSize;
+                        if(nextidx<0) nextidx += boundSize;
+                        if(seam->inverted) nextidx = (startAndPatch.first + count) % boundSize;
+                        nextvert = boundaryL[startAndPatch.second][nextidx];
+
+                    }// handle least element and set constraints
+                    addVarToModel( vert, nextvert, vfAdj,cornerVars, model, true, Fg_pattern, lengthsOrig, lengthsCurr);
+                    // add the last to the right
+                    model.chgCoeff(cornerVars[cornerVars.size()-1], rSumConstr,1);
+
+                    // first and last of seam
+                    auto duplSumConstr = model.addConstr( cornerVars[cornerVars.size()-1]+ cornerVars[cornerVars.size()-2] <= 2);// since they are binary this is redundant
+                    if (j==edgesPerBoundary[i].size()){
+                        // this was the last seam, hence stitch the end with the beginning
+                        model.addConstr( cornerVars[0]+ cornerVars[cornerVars.size() - 1] <= 1);
+                    }
+
+                }
+
+            }else{
+                int count = 0;
+                minusOneSeam* currSeam  = minusOneSeams[-seamId];
+                int patch = currSeam -> getPatch();
+                if(patch != i) cout<<" now in th e-1 seams the patch does not match where we are in the loop"<<endl;
+                int idx = currSeam -> getStartIdx();
+                int vert = boundaryL[i][idx];
+                int end = currSeam -> getEndVert();
+                addVarToModel ( vert,  boundaryL[patch][(idx + 1) % boundSize], vfAdj,cornerVars, model, true, Fg_pattern, lengthsOrig, lengthsCurr);
+                model.chgCoeff(cornerVars[cornerVars.size()-1], lSumConstr,1);
+
+                while (vert!= end){
+                    double relId = ((double)count)/currSeam->getPatch();
+                    if(relId> minConstrained && relId < (1- minConstrained)){
+                        GRBVar grbVar = addVarToModel(vert, boundaryL[patch][(idx + 1) % boundSize], vfAdj, cornerVars, model ,false, Fg_pattern, lengthsOrig, lengthsCurr );
+                        model.chgCoeff(grbVar, intSumConstr,1);
+                        // add to sum with right and left  <= 1
+                        model.chgCoeff(grbVar, rSumConstr,1);
+                        model.chgCoeff(grbVar, lSumConstr,1);
+                    }
+                    idx = (idx + 1) % boundSize;
+                    vert = boundaryL[i][idx];
+                    count++;
+                }// and one more
+                addVarToModel (vert, boundaryL[patch][(idx + 1) % boundSize], vfAdj,cornerVars, model, true, Fg_pattern, lengthsOrig, lengthsCurr);
+                // add the last to the right
+                model.chgCoeff(cornerVars[cornerVars.size()-1], rSumConstr,1);
+
+                // first and last of seam
+                auto duplSumConstr = model.addConstr( cornerVars[cornerVars.size()-1]+ cornerVars[cornerVars.size()-2] <= 2);// since they are binary this is redundant
+                if (j==edgesPerBoundary[i].size()){
+                    // this was the last seam, hence stitch the end with the beginning
+                    model.addConstr( cornerVars[0]+ cornerVars[cornerVars.size() - 1] <= 1);
+                }
+            }
+        }
+    }
+    model.setObjective(obj, GRB_MAXIMIZE);
+
+}
+void computeTear(Eigen::MatrixXd & fromPattern, MatrixXd&  currPattern, MatrixXi& Fg_pattern, MatrixXi& Fg_pattern_orig,
+                 vector<seam*>& seamsList,  const vector<minusOneSeam*> & minusOneSeams, std::vector<std::vector<int> >& boundaryL, bool & finished,
+                 const std::vector<std::vector<std::pair<int, int>>>& edgesPerBoundary, const VectorXd& seamIdPerCorner, const VectorXd& directionPerCorner
+                 ){
     cout<<" in tear function"<<endl;
+    vector<vector<int> > vfAdj;
+    createVertexFaceAdjacencyList(Fg_pattern, vfAdj);
+    MatrixXd lengthsOrig, lengthsCurr;
+    igl::edge_lengths(currPattern, Fg_pattern, lengthsCurr);
+    igl::edge_lengths(fromPattern, Fg_pattern_orig, lengthsOrig);
+
+    // first we need to know where to tear, set up LP for this
+    // information we need: stress. For stress we need lengths old and ned
+    // for lengths old an new we need which edge of face
+    // for which edge of face we need face
+    // for face we need vertices
+    // for vertices we need boundary loop
+    int tearPatch, tearVert, tearVertInBoundaryIndex;
+    setLP( boundaryL, vfAdj, Fg_pattern, lengthsOrig, lengthsCurr, edgesPerBoundary, seamIdPerCorner, directionPerCorner, seamsList, minusOneSeams,
+           tearPatch, tearVert, tearVertInBoundaryIndex );
 
     // idea: we iterate over the first patch and see where it breaks apart
 // for practical reasons we start with a small patch instead of the first on e
@@ -332,11 +562,7 @@ void computeTear(Eigen::MatrixXd & fromPattern, MatrixXd&  currPattern, MatrixXi
     Node* head = NULL;
     Node* tail = NULL;
     int listLength = 0;
-    MatrixXd lengthsOrig, lengthsCurr;
-    igl::edge_lengths(currPattern, Fg_pattern, lengthsCurr);
-    igl::edge_lengths(fromPattern, Fg_pattern_orig, lengthsOrig);
-    vector<vector<int> > vfAdj;
-    createVertexFaceAdjacencyList(Fg_pattern, vfAdj);
+
     cout<<"creating list"<<endl;
     for(int i=0; i< boundary.size(); i++){
         // for each edge we check how stressed it is
@@ -359,7 +585,8 @@ void computeTear(Eigen::MatrixXd & fromPattern, MatrixXd&  currPattern, MatrixXi
     // need to add the right stretch of the last element
     head->prev = tail;
     tail-> next = head;
-cout<<" stitched list"<<endl;
+    cout<<" stitched list"<<endl;
+
     int whichTear = printList(head, listLength, vfAdj);
     cout<<endl;
     cout<<whichTear<<" Tearing index"<<endl;
@@ -483,7 +710,6 @@ void projectBackOnBoundary(const MatrixXd & Vg_to, MatrixXd& p, const vector<sea
         }
 
     }
-//  todo
     for(int j=0; j<minusOneSeams.size(); j++){
 //        cout<<"minus one seam "<<j<<endl;
         minusOneSeam* currSeam  = minusOneSeams[j];
