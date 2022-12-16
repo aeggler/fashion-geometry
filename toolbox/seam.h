@@ -82,6 +82,7 @@ public:
     int getEndVert(){
         return endVert;
     }
+
     int getLength(){
         return len ;
     }
@@ -102,7 +103,7 @@ void computeAllSeams(const std::vector<std::vector<int> >& boundaryL, std::map<i
                      Eigen::VectorXi& componentIdPerVert,
                      Eigen::VectorXd& edgeVertices, std::vector<std::vector<std::pair<int, int>>>& edgesPerBoundary,
                      std::vector<seam*>& seamsList ,std::vector<minusOneSeam*>& minusSeams,
-                     Eigen::VectorXd& seamIdPerCorner,  Eigen::VectorXd& directionPerCorner
+                     std::map<int, std::vector<std::pair<int, int>>>& seamIdPerCorner
 
 );
 

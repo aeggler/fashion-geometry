@@ -453,21 +453,19 @@ int main(int argc, char *argv[])
     edgeVertices = VectorXd::Zero(Vg_pattern.rows());
 
     t.printTime( " before seams list  ");
-    Eigen::VectorXd seamIdPerCorner(Vg_pattern.rows());
-    Eigen::VectorXd directionPerCorner(Vg_pattern.rows());
-
+//    Eigen::VectorXd seamIdPerCorner(Vg_pattern.rows());
+//    Eigen::VectorXd directionPerCorner(Vg_pattern.rows());
+    // contains corner id and a list of which seams start here (max 2), each vector element  is a pair where first is if it's a -1 seam, and second is which index in corresponding List. If negative it's a backside ,i.e. part 2 of the seam
+    map<int, vector<pair<int, int>>> seamIdPerCorner;
     computeAllSeams( boundaryL,vertexMapPattToGar, vertexMapGarAndIdToPatch, vfAdj, componentIdPerFace,
-                     componentIdPerVert,edgeVertices, cornerPerBoundary, seamsList, minusOneSeamsList, seamIdPerCorner, directionPerCorner);
-    t.printTime( " after seams list  ");
+                     componentIdPerVert,edgeVertices, cornerPerBoundary, seamsList, minusOneSeamsList, seamIdPerCorner);
+    cout<<seamIdPerCorner.size()<<" the size of the map final "<<endl;
 
     gar_adapt = new garment_adaption(Vg, Fg,  Vg_pattern, Fg_pattern, seamsList, boundaryL); //none have been altered at this stage
-    t.printTime( " garment init  ");
     gar_adapt->computeJacobian();
-    t.printTime( " jacobian ");
     perFaceTargetNorm = gar_adapt->perFaceTargetNorm;
     Vg_orig = Vg;
     jacFlag = true;// not needed anymore...  was when we computed stress without reference jacobian
-
 
     setCollisionMesh();
 
@@ -478,12 +476,25 @@ int main(int argc, char *argv[])
     showGarment(viewer);
     showMannequin(viewer);
 
-
     preComputeConstraintsForRestshape();
     preComputeStretch();
     computeStress(viewer);
 
     setCollisionMesh();
+
+    /*------------- testing the setup -------------------*/
+//    for (auto const& [key, val] : seamIdPerCorner)
+//    {
+//        std::cout << key        // string (key)
+//                  << ':'
+//                  << val.size()<<" size,: "<<val[0].first<<" "<<  val[0].second      // string's value
+//                  << " "<< seamIdPerCorner[key][0].first
+//                  << std::endl;
+//    }
+
+    /*------------- end testing the setup -------------------*/
+
+
 
     // copy the matrices to not mess with them
     string fromPatternFile = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/patternComputed.obj";
@@ -785,7 +796,9 @@ int main(int argc, char *argv[])
 
                 bool fin = false;
                 cout<<"at old boundary loop "<<boundaryL[4].size()<<endl;
-                computeTear(fromPattern, currPattern, Fg_pattern,Fg_pattern_orig, seamsList ,  minusOneSeams,boundaryL,fin,  cornerPerBoundary, seamIdPerCorner, directionPerCorner);
+                computeTear(fromPattern, currPattern, Fg_pattern,Fg_pattern_orig, seamsList ,
+                            minusOneSeamsList,boundaryL,fin,  cornerPerBoundary, seamIdPerCorner);
+
 
                 viewer.selected_data_index = 0;
                 viewer.data().clear();
@@ -799,9 +812,7 @@ int main(int argc, char *argv[])
 
                 preComputeAdaption();
                 cout<<"precomputed new adaption"<<endl;
-//                if(boundaryL[4].size()!= 27)
                     viewer.core().is_animating = true;
-//                if(boundaryL[4].size()!= 27)
                     adaptionFlag = true;
 // it does support multiple cuts, but they are not in the same area. also , what we see is stress in vu direction, but what we use in the cut is edge length
 // it does not automatically cut further
