@@ -450,7 +450,7 @@ int main(int argc, char *argv[])
     // use adjacentFacesToEdge of the 3D
     vector<vector<int> > vfAdj;
     createVertexFaceAdjacencyList(Fg, vfAdj);
-    edgeVertices = VectorXd::Zero(Vg_pattern.rows());
+    edgeVertices = VectorXd::Zero(Vg_pattern.rows());// 1 for each corner
 
     t.printTime( " before seams list  ");
 //    Eigen::VectorXd seamIdPerCorner(Vg_pattern.rows());

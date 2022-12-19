@@ -22,11 +22,32 @@ public:
     Node *prev;
     int faceId;
     int edgeOfFaceId;
-//    int faceIdRight;
-//    int edgeOfFaceIdRight;
     int duplicate;
     double stretchLeft;
-//    double stretchRight;
+};
+
+class cutVertEntry{
+public:
+    int vert;
+    int seamType;
+    int seamIdInList;
+    int patch;
+    bool startCorner;
+    bool endCorner;
+    bool continuedCorner;
+    Vector3d continuedDirection;
+
+    cutVertEntry( int vert, int seamType, int seamIdInList ){
+        this-> vert = vert;
+        this -> seamType = seamType;
+        this -> seamIdInList = seamIdInList;
+    }
+    cutVertEntry ( int vert, int seamType, int seamIdInList, int patch){
+        this -> vert = vert;
+        this -> seamType = seamType;
+        this -> seamIdInList = seamIdInList;
+        this -> patch = patch;
+    }
 };
 
 int findWhichEdgeOfFace(int face, int v1, int v2, MatrixXi& Fg){
@@ -116,16 +137,145 @@ Node getDataOfIdx(Node * node, int whichTear){
     return *node;
 
 }
+void splitVertexFromCVE( const cutVertEntry* cve, MatrixXd& Vg, MatrixXi& Fg, vector<vector<int> >& vfAdj, MatrixXd& lengthsOrig, MatrixXd& lengthsCurr,
+                         std::vector<std::vector<int> >& boundaryL ){
+    vector<vector<int>> vvAdj;
+    igl::adjacency_list(Fg,vvAdj);
+    vector<int> adjacentFaces = vfAdj[cve->vert];
 
+    int newVertIdx = Vg.rows();
+    MatrixXd newVg (newVertIdx+1, 3);
+    newVg.block(0,0, newVertIdx, 3)= Vg;
+    auto boundary = boundaryL[cve->patch];
+    int idx = 0;
+    int leftId, rightId;
+    while (boundary[idx] != cve->vert){
+        idx++;
+    }
+    leftId = (idx+1) % boundary.size();
+    rightId = (idx -1 ); if(rightId<0) rightId += boundary.size();
+    int leftFaceId = adjacentFaceToEdge(leftId, cve-> vert, -1, vfAdj );
+    int rightFaceId = adjacentFaceToEdge(rightId, cve-> vert, -1, vfAdj );
+
+    Vector3d toLeft = Vg.row(leftId)- Vg.row(cve->vert);
+    Vector3d toRight = Vg.row(rightId)- Vg.row(cve->vert);
+    Vector3d midVec;
+    midVec(0)= -toLeft.normalized()(1);
+    midVec(1)= toLeft.normalized()(0);
+
+    if(cve->startCorner|| cve-> endCorner ){
+        for(int i=0; i < adjacentFaces.size(); i++){
+            
+            if(Fg(adjacentFaces[i], 0)!= cve-> vert &&
+               Fg(adjacentFaces[i], 0)!= newVertIdx &&// it cannot be bc we continued that case
+               Fg(adjacentFaces[i], 0)!= insertIdx ){
+                testVert = Fg(adjacentFaces[i], 0);
+            }else if( Fg(adjacentFaces[i], 1)!= cve-> vert &&
+                      Fg(adjacentFaces[i], 1)!= newVertIdx &&
+                      Fg(adjacentFaces[i], 1)!= insertIdx ){
+                testVert = Fg(adjacentFaces[i], 1);
+            }
+            else {
+                testVert = Fg(adjacentFaces[i], 2);
+            }
+            if(testVert == -1 )cout<<" no suitable test vert found, something is wrong "<<endl;
+            double d = (Vg(testVert, 0) - x1)*(y2-y1)-(Vg(testVert, 1) - y1)*(x2 - x1);
+            // if it is one of the same side as the one we call right
+            if (rightDSmaller == (d<0)){
+                if(Fg(adjacentFaces[i], 1)== cve-> vert && testVert!= -1  ){
+                    Fg(adjacentFaces[i], 1) = newVertIdx;
+                }
+                else if(Fg(adjacentFaces[i], 0)== cve-> vert && testVert!= -1){
+                    Fg(adjacentFaces[i], 0) = newVertIdx;
+                }
+                else if(testVert!= -1 && Fg(adjacentFaces[i], 2)== cve-> vert){
+                    Fg(adjacentFaces[i], 2) = newVertIdx;
+                }
+            }
+
+        }
+    }
+
+
+    double dist = std::numeric_limits<double>::max();
+    int idxofClosest = -1;
+    for(int i=0; i<vvAdj[cve -> vert ].size(); i++){
+        int adjVert = vvAdj[cve -> vert][i];
+        if(adjVert== rightId || adjVert == leftId) continue; // we want a middle one
+
+        Vector3d edgeVec = Vg.row(adjVert)- Vg.row(cve -> vert);
+        edgeVec= edgeVec.normalized();
+        // both have unit distance, so as a measure we can take the distance form another
+        if((midVec - edgeVec).norm()<dist){
+            idxofClosest= i;
+            dist = (midVec - edgeVec).norm();
+        }
+    }
+    // is the new to be inserted vertex
+    int insertIdx =  vvAdj[cve -> vert][idxofClosest];
+    cout<<insertIdx<<" the inserted index"<<endl;
+    // TODO if this is a boundary vertex we disconnect the mesh and are finished
+
+    double x1 = Vg(cve-> vert, 0); double y1 = Vg(cve-> vert, 1);
+    double x2 = Vg(insertIdx, 0); double y2 = Vg(insertIdx, 1);
+
+    // right gets  newVertIdx
+    double dRight = (Vg(rightId, 0) - x1) * (y2-y1) - (Vg(rightId, 1) - y1) * (x2 - x1);
+    // defines the side of right, left is the opposite
+    bool rightDSmaller = (dRight<0);
+    if(Fg(rightFaceId , 1) == cve->vert ){
+        Fg(rightFaceId , 1) = newVertIdx;
+    }
+    else if(Fg(rightFaceId  , 0)== cve->vert ){
+        Fg(rightFaceId , 0) = newVertIdx;
+    }
+    else {
+        Fg(rightFaceId , 2) = newVertIdx;
+    }
+
+    // adapt the position
+    double eps = 0.01;
+    newVg.row(newVertIdx)= Vg.row(cve->vert)+ (eps * toRight).transpose();
+    newVg.row(cve->vert) = Vg.row(cve->vert) + (eps * toLeft).transpose();
+    Vg.resize(Vg.rows()+1, 3);
+    Vg= newVg;
+
+    for(int i=0; i< adjacentFaces.size(); i++){
+        if(adjacentFaces[i] == leftFaceId || adjacentFaces[i] == rightFaceId ) continue; // they are handled separately
+        int testVert =-1;
+        // we take one edge and check it's side
+        if(Fg(adjacentFaces[i], 0)!= cve-> vert &&
+           Fg(adjacentFaces[i], 0)!= newVertIdx &&// it cannot be bc we continued that case
+           Fg(adjacentFaces[i], 0)!= insertIdx ){
+            testVert = Fg(adjacentFaces[i], 0);
+        }else if( Fg(adjacentFaces[i], 1)!= cve-> vert &&
+                Fg(adjacentFaces[i], 1)!= newVertIdx &&
+                Fg(adjacentFaces[i], 1)!= insertIdx ){
+            testVert = Fg(adjacentFaces[i], 1);
+        }
+        else {
+            testVert = Fg(adjacentFaces[i], 2);
+        }
+        if(testVert == -1 )cout<<" no suitable test vert found, something is wrong "<<endl;
+        double d = (Vg(testVert, 0) - x1)*(y2-y1)-(Vg(testVert, 1) - y1)*(x2 - x1);
+        // if it is one of the same side as the one we call right
+        if (rightDSmaller == (d<0)){
+            if(Fg(adjacentFaces[i], 1)== cve-> vert && testVert!= -1  ){
+                Fg(adjacentFaces[i], 1) = newVertIdx;
+            }
+            else if(Fg(adjacentFaces[i], 0)== cve-> vert && testVert!= -1){
+                Fg(adjacentFaces[i], 0) = newVertIdx;
+            }
+            else if(testVert!= -1 && Fg(adjacentFaces[i], 2)== cve-> vert){
+                Fg(adjacentFaces[i], 2) = newVertIdx;
+            }
+        }
+
+    }
+    // todo insert idx is the new one where we could potentially cut.
+}
 void splitVertex(Node** head, int & listLength, int  whichTear, MatrixXd& Vg, MatrixXi& Fg, vector<vector<int> >& vfAdj, MatrixXd& lengthsOrig, MatrixXd& lengthsCurr){
-
-//    Node splitNodetemp  = getDataOfIdx((*head), whichTear);
-//    Node* splitNode = &splitNodetemp;
     cout<<"splitting "<<endl;
-//    cout<<splitNode->vertId<<" "<< splitNode->stretchLeft + splitNode->prev->stretchLeft<<endl;
-//    cout<<splitNode -> faceId<<" "<< splitNode -> edgeOfFaceId<<" "<< splitNode -> duplicate<<" the left side"<<endl;
-//    cout<<  splitNode ->prev->faceId  <<" "<< splitNode-> prev->edgeOfFaceId  <<" the right side"<<endl;
-
 
     Node* node = (*head);
     int currIdx = 0;
@@ -162,8 +312,6 @@ void splitVertex(Node** head, int & listLength, int  whichTear, MatrixXd& Vg, Ma
 //    cout<<midVec.transpose()<<" mid vector"<<endl;//TODO THIS IS a heuristic
 //    double angle = acos((toLeft.normalized()).dot(toRight.normalized()));
 //    double deg = angle*180/M_PI;
-
-
 
     // first: find closest to mid, this is the new inserted voundary point
     double dist = std::numeric_limits<double>::max();
@@ -313,25 +461,6 @@ void splitVertex(Node** head, int & listLength, int  whichTear, MatrixXd& Vg, Ma
 
 }
 
-class cutVertEntry{
-public:
-    int vert;
-    int seamType;
-    int seamIdInList;
-    int patch;
-
-    cutVertEntry( int vert, int seamType, int seamIdInList ){
-       this-> vert = vert;
-       this -> seamType = seamType;
-       this -> seamIdInList = seamIdInList;
-    }
-    cutVertEntry ( int vert, int seamType, int seamIdInList, int patch){
-        this -> vert = vert;
-        this -> seamType = seamType;
-        this -> seamIdInList = seamIdInList;
-        this -> patch = patch;
-    }
-};
 int addoncount=0;
 void addVarToModel (int vert, int nextVert, vector<vector<int>> & vfAdj, bool isConstrained, int& varCount, GRBVar* & cutVar,
                       MatrixXi& Fg_pattern,MatrixXd& lengthsOrig, MatrixXd& lengthsCurr, map <int, cutVertEntry*> & mapVarIdToVertId,
@@ -401,7 +530,8 @@ void addVarToModel (int vert, int nextVert, vector<vector<int>> & vfAdj, bool is
 void setLP(std::vector<std::vector<int> >& boundaryL , vector<vector<int>> & vfAdj, MatrixXi& Fg_pattern,
 MatrixXd& lengthsOrig, MatrixXd& lengthsCurr,const std::vector<std::vector<std::pair<int, int>>>& edgesPerBoundary, map<int, vector<pair<int, int>>>& seamIdPerCorner,
            vector<seam*>& seamsList, const vector<minusOneSeam*> & minusOneSeams,
-            int tearPatch, int tearVert, int tearVertInBoundaryIndex, double tailor_lazyness, double minConstrained, vector <cutVertEntry*>& cutPositions ){
+            int tearPatch, int tearVert, int tearVertInBoundaryIndex, double tailor_lazyness, double minConstrained, vector <cutVertEntry*>& cutPositions,
+            VectorXd& cornerVert){
 
     // Create an environment
     GRBEnv env = GRBEnv(true);
@@ -637,6 +767,23 @@ MatrixXd& lengthsOrig, MatrixXd& lengthsCurr,const std::vector<std::vector<std::
             cout<<patch<<" chosen Id  "<< mapVarIdToVertId[i]->vert<<" from which kind of seam "<<mapVarIdToVertId[i]->seamType<<" and id "<<mapVarIdToVertId[i]->seamIdInList <<endl;// ALRIGHT BUT NOW WE NEED A SEAM ID
 
             cutVertEntry* cve = new cutVertEntry ( vert, seamType, seamId, patch);
+            if(cornerVert[vert]==1){
+                // left or right corner?
+                int firstInSeam;
+                if(seamType == -1 ){
+                    firstInSeam = minusOneSeams[seamId]->getStartVert() ;
+                }else if(seamId>=0){
+                    firstInSeam = seamsList[mapVarIdToVertId[i]->seamIdInList]->getStartAndPatch1().first;
+                }else{
+                    firstInSeam = seamsList[mapVarIdToVertId[i]->seamIdInList]->getStartAndPatch2ForCorres().first;
+
+                }
+                if(firstInSeam==vert){
+                    cve -> startCorner = true;
+                }else{
+                    cve-> endCorner = true;
+                }
+            }
             cutPositions.push_back(cve);
 
         }
@@ -645,6 +792,7 @@ MatrixXd& lengthsOrig, MatrixXd& lengthsCurr,const std::vector<std::vector<std::
 
 
 }
+
 void computeTear(Eigen::MatrixXd & fromPattern, MatrixXd&  currPattern, MatrixXi& Fg_pattern, MatrixXi& Fg_pattern_orig,
                  vector<seam*>& seamsList,  const vector<minusOneSeam*> & minusOneSeams, std::vector<std::vector<int> >& boundaryL, bool & finished,
                  const std::vector<std::vector<std::pair<int, int>>>& edgesPerBoundary,  map<int, vector<pair<int, int>>>& seamIdPerCorner
@@ -667,6 +815,11 @@ void computeTear(Eigen::MatrixXd & fromPattern, MatrixXd&  currPattern, MatrixXi
     double minConstrained = 0.25;
     setLP( boundaryL, vfAdj, Fg_pattern, lengthsOrig, lengthsCurr, edgesPerBoundary, seamIdPerCorner,
            seamsList, minusOneSeams, tearPatch, tearVert, tearVertInBoundaryIndex, tailor_lazyness, minConstrained, cutPositions);
+
+    // we cut the first one
+    for(int i = 0; i < 1; i++){// cutPositions.size(); i++){
+
+    }
 
 
 //    vector<int> boundary = boundaryL[4];

@@ -76,6 +76,9 @@ public:
     int getPatch(){
         return patchId;
     };
+    int getStartVert(){
+        return startVert;
+    }
     int getStartIdx(){
         return startIdInBoundaryLoop;
     }
