@@ -322,73 +322,33 @@ void splitVertex(Node** head, int & listLength, int  whichTear, MatrixXd& Vg, Ma
 // cout<<nextToTear<<" fin split function "<<endl;
 
 }
-void setLP_ex(){
-    // Create an environment
-    GRBEnv env = GRBEnv(true);
-    env.set("LogFile", "mip1.log");
-    env.start();
 
-    // Create an empty model
-    GRBModel model = GRBModel(env);
-    // Create variables
-    GRBVar x = model.addVar(0.0, 1.0, 0.0, GRB_BINARY, "x");
-    GRBVar y = model.addVar(0.0, 1.0, 0.0, GRB_BINARY, "y");
-    GRBVar z = model.addVar(0.0, 1.0, 0.0, GRB_BINARY, "z");
-
-    // Set objective: maximize x + y + 2 z
-    model.setObjective(x + y + 2 * z, GRB_MAXIMIZE);
-
-    // Add constraint: x + 2 y + 3 z <= 4
-    model.addConstr(x + 2 * y + 3 * z <= 4, "c0");
-
-    // Add constraint: x + y >= 1
-    model.addConstr(x + y >= 1, "c1");
-
-    // Optimize model
-    model.optimize();
-
-    cout << x.get(GRB_StringAttr_VarName) << " "
-         << x.get(GRB_DoubleAttr_X) << endl;
-    cout << y.get(GRB_StringAttr_VarName) << " "
-         << y.get(GRB_DoubleAttr_X) << endl;
-    cout << z.get(GRB_StringAttr_VarName) << " "
-         << z.get(GRB_DoubleAttr_X) << endl;
-
-    cout << "Obj: " << model.get(GRB_DoubleAttr_ObjVal) << endl;
-
-
-
-}
-
-void addVarToModel (int vert, int nextVert, vector<vector<int>> & vfAdj, bool isConstrained, int varCount, GRBVar* & cutVar,
-                      MatrixXi& Fg_pattern,MatrixXd& lengthsOrig, MatrixXd& lengthsCurr ){
+void addVarToModel (int vert, int nextVert, vector<vector<int>> & vfAdj, bool isConstrained, int& varCount, GRBVar* & cutVar,
+                      MatrixXi& Fg_pattern,MatrixXd& lengthsOrig, MatrixXd& lengthsCurr, map <int, int> & mapVarIdToVertId ){
 
     int faceIdx = adjacentFaceToEdge(vert, nextVert, -1, vfAdj );
     int whichEdge = findWhichEdgeOfFace(faceIdx, vert, nextVert, Fg_pattern);
     double w_init = lengthsCurr(faceIdx, whichEdge)/lengthsOrig(faceIdx, whichEdge);
+//    cout<<varCount<<"is constrained ? "<<isConstrained<<" ";
     if(isConstrained){
         // we add it with coefficient 0, it should be ignored
         cutVar[varCount].set(GRB_DoubleAttr_Obj, 0);
     }else{
         cutVar[varCount].set(GRB_DoubleAttr_Obj, w_init);
+        //cout << w_init << endl;
     }
-
-//    if(isCorner) cornerVars.push_back(grbVarFirst);
-//    if(isCorner && cornerVars.size()>1){
-//        int size = cornerVars.size();
-//        model.addConstr( cornerVars[size-2]+ cornerVars[size-1] <=1);
-//    }
+    mapVarIdToVertId[varCount]= vert;
     varCount++;
-//    return grbVarFirst;
 
 
 }
+
 void setLP(std::vector<std::vector<int> >& boundaryL , vector<vector<int>> & vfAdj, MatrixXi& Fg_pattern,
 MatrixXd& lengthsOrig, MatrixXd& lengthsCurr,const std::vector<std::vector<std::pair<int, int>>>& edgesPerBoundary, map<int, vector<pair<int, int>>>& seamIdPerCorner,
            vector<seam*>& seamsList, const vector<minusOneSeam*> & minusOneSeams,
-int tearPatch, int tearVert, int tearVertInBoundaryIndex ){
+            int tearPatch, int tearVert, int tearVertInBoundaryIndex ){
 
-// Create an environment
+    // Create an environment
     GRBEnv env = GRBEnv(true);
     env.set("LogFile", "mip1.log");
     env.start();
@@ -402,10 +362,13 @@ int tearPatch, int tearVert, int tearVertInBoundaryIndex ){
         numVar += edgesPerBoundary[i].size();
         numVar+= boundaryL[i].size();
     }
+    map<int, int> trackCornerIds;
+    map <int, int>  mapVarIdToVertId;
+    // a map to track the gurobi id of a corner.  whenever we set a corner we add the corner id, so we know once we set the second and connect them
 
     GRBVar* cutVar = model.addVars(numVar, GRB_BINARY);
-
-    for(int i=0; i<edgesPerBoundary.size(); i++) {
+    //edgesPerBoundary.size();
+    for(int i=0; i< edgesPerBoundary.size(); i++) {
         int boundSize = boundaryL[i].size();
         int startVarPatch = varCount;
         cout<<"Processing patch "<<i<<endl ;
@@ -416,6 +379,7 @@ int tearPatch, int tearVert, int tearVertInBoundaryIndex ){
             if(seamIdPerCorner.find(cornerPair.first)== seamIdPerCorner.end()) continue;
             vector<pair<int, int>> seamId = seamIdPerCorner[cornerPair.first];
             cout<<seamId.size()<<" the size ";
+            if(seamId.size()>2) cout<<" something is veryy odd!! we have more than two seams for a corner. impossible."<<endl;
             for(int si = 0; si<seamId.size(); si++) {
                 cout<<" info "<<seamId[si].first<<" "<<seamId[si].second<<endl;
 
@@ -427,127 +391,159 @@ int tearPatch, int tearVert, int tearVertInBoundaryIndex ){
                 // check for direction
                 // first if it is a seam or a -1 seam
                 // second gives the direction, if less than 0 take i -1 in negative direction
-//                if ((seamId[si].first >= 0 && seamId[si].second >= 0) || seamId[si].first < 0) {
-//                    int idx;
-//                    int vert;
-//                    int end;
-//                    int length;
-//                    if (seamId[si].second >= 0) {
-//                        seam *seam = seamsList[seamId[si].second];
-//                        auto startAndPatch = seam->getStartAndPatch1();
-//                        if (startAndPatch.second != i)
-//                            cout << " now in th e+1 seams the patch does not match where we are in the loop" << endl;
-//                        idx = startAndPatch.first;
-//                        vert = boundaryL[startAndPatch.second][idx];
-//                        end = seam->getEndCornerIds().first;
-//                        length = seam->seamLength();
-//
-//                    } else if (seamId[si].first < 0) {
-//                        minusOneSeam *currSeam = minusOneSeams[seamId[si].second];
-//                        int patch = currSeam->getPatch();
-//                        if (patch != i)
-//                            cout << " now in th e-1 seams the patch does not match where we are in the loop" << endl;
-//                        idx = currSeam->getStartIdx();
-//                        vert = boundaryL[i][idx];
-//                        end = currSeam->getEndVert();
-//                        length = currSeam->getLength();
-//                    }
-//
-//                    while (vert != end) {
-//                        // might need a map for patch and vert id to seam adn first or Second
-//                        double relId = ((double) count) / length;
-//                        bool isConstrained = true;
-//                        if (relId == 0 || relId > minConstrained && relId < (1 - minConstrained)) {
-//                            isConstrained = false;
-//                        }
-//                        addVarToModel(vert, boundaryL[i][(idx + 1) % boundSize], vfAdj, isConstrained, varCount, cutVar,
-//                                      Fg_pattern, lengthsOrig, lengthsCurr);
-//                        if (!isConstrained) {
-//                            lSumConstr += cutVar[startVarOfThis + count];
-//                            if (relId != 0) {
-//                                rSumConstr += cutVar[startVarOfThis + count];
-//                                innerSumConstr += cutVar[startVarOfThis + count];
-//                            }
-//                        }
-//                        idx = (idx + 1) % boundSize;
-//                        vert = boundaryL[i][idx];
-//                        count++;
-//                    }// handle the last, add it to the right sum
-//                    addVarToModel(vert, boundaryL[i][(idx + 1) % boundSize], vfAdj, false, varCount, cutVar, Fg_pattern,
-//                                  lengthsOrig, lengthsCurr);
-//                    rSumConstr += cutVar[startVarOfThis + count];
-//
-//                    //  make sure duplicate corner is chosen only once, and if we found the last consider its duplicate with start of this patch
-//                    if (startVarOfThis > 0) model.addConstr(cutVar[startVarOfThis] + cutVar[startVarOfThis - 1] <= 1);
-//                    if (j == edgesPerBoundary[i].size()) {
-//                        model.addConstr(cutVar[startVarOfThis + count] + cutVar[startVarPatch] <= 1);
-//                    }
-//
-//                } else {
-//                    // iterate in inverse direction
-//                    seam *seam = seamsList[(seamId[si].second + 1) * -1];
-//                    auto startAndPatch = seam -> getStartAndPatch2ForCorres();
-//                    int idx = startAndPatch.first;
-//                    if (startAndPatch.second != i)
-//                        cout << " something is wrong, it shoudl be in patch " << i << " but the seam is from patch  "
-//                             << startAndPatch.second << endl;
-//                    int vert = boundaryL[startAndPatch.second][idx];
-//                    int end = seam->getEndCornerIds().second;
-//
-//                    int nextidx = (startAndPatch.first - (1 + count)) % boundSize;
-//                    if (nextidx < 0) nextidx += boundSize;
-//                    if (seam->inverted) nextidx = (startAndPatch.first + (1 + count)) % boundSize;
-//                    int nextvert = boundaryL[startAndPatch.second][nextidx];
-//
-//                    while (vert != end) {
-//                        double relId = ((double) count) / seam->seamLength();
-//                        bool isConstrained = true;
-//                        if (relId == 0 || relId > minConstrained && relId < (1 - minConstrained)) {
-//                            isConstrained = false;
-//                        }
-//                        addVarToModel(vert, nextvert, vfAdj, isConstrained, varCount, cutVar, Fg_pattern, lengthsOrig,
-//                                      lengthsCurr);
-//                        if (!isConstrained) {
-//                            lSumConstr += cutVar[startVarOfThis + count];
-//                            if (relId != 0) {
-//                                rSumConstr += cutVar[startVarOfThis + count];
-//                                innerSumConstr += cutVar[startVarOfThis + count];
-//                            }
-//                        }
-//
-//                        vert = nextvert;
-//                        count++;
-//                        nextidx = (startAndPatch.first - (1 + count)) % boundSize;
-//                        if (nextidx < 0) nextidx += boundSize;
-//                        if (seam->inverted) nextidx = (startAndPatch.first + (1 + count)) % boundSize;
-//                        nextvert = boundaryL[startAndPatch.second][nextidx];
-//
-//                    }// handle least element and set constraints
-//                    addVarToModel(vert, boundaryL[startAndPatch.second][(idx + 1) % boundSize], vfAdj, false, varCount,
-//                                  cutVar, Fg_pattern, lengthsOrig, lengthsCurr);
-//                    rSumConstr += cutVar[startVarOfThis + count];
-//
-//                    //  make sure duplicate corner is chosen only once, and if we found the last consider its duplicate with start of this patch
-//                    if (startVarOfThis > 0) model.addConstr(cutVar[startVarOfThis] + cutVar[startVarOfThis - 1] <= 1);
-//                    if (j == edgesPerBoundary[i].size()) {
-//                        model.addConstr(cutVar[startVarOfThis + count] + cutVar[startVarPatch] <= 1);
-//                    }
-//
-//
-//                }
+                if ((seamId[si].first >= 0 && seamId[si].second >= 0) || seamId[si].first < 0) {
+                    int idx;
+                    int vert;// first corner
+                    int end;// last corner
+                    int length;
+                    if (seamId[si].first >= 0) {
+                        seam *seam = seamsList[seamId[si].second];
+                        auto startAndPatch = seam->getStartAndPatch1();
+                        if (startAndPatch.second != i)
+                            cout << " now in th e+1 seams the patch does not match where we are in the loop "<< startAndPatch.second << endl;
+                        idx = startAndPatch.first;
+                        vert = boundaryL[startAndPatch.second][idx];
+                        end = seam->getEndCornerIds().first;
+                        length = seam->seamLength();
+
+                    } else if (seamId[si].first < 0) {
+                        minusOneSeam *currSeam = minusOneSeams[seamId[si].second];
+                        int patch = currSeam->getPatch();
+
+                        if (patch != i)
+                            cout << " now in th e-1 seams the patch does not match where we are in the loop , would be patch "<<patch << endl;
+                        idx = currSeam->getStartIdx();
+                        vert = boundaryL[i][idx];
+                        end = currSeam->getEndVert();
+                        length = currSeam->getLength();
+                    }
+                    // check if the corners exist already. If so then connect with corner, else add the indices
+                    if(trackCornerIds.find(vert) != trackCornerIds.end()){
+                        model.addConstr(cutVar[ trackCornerIds[vert]] + cutVar[varCount] <= 1);
+                    }else{
+                        trackCornerIds[vert] = varCount;
+                    }
+
+                    while (vert != end) {
+                        // might need a map for patch and vert id to seam adn first or Second
+                        double relId = ((double) count) / length;
+                        bool isConstrained = true;
+                        if (relId == 0 || relId > minConstrained && relId < (1 - minConstrained)) {
+                            isConstrained = false;
+                        }else{
+                            model.addConstr(cutVar[varCount] == 0);
+                        }
+                        addVarToModel(vert, boundaryL[i][(idx + 1) % boundSize], vfAdj, isConstrained, varCount, cutVar,
+                                      Fg_pattern, lengthsOrig, lengthsCurr, mapVarIdToVertId );
+                        if(varCount-1 != startVarOfThis+count){
+                            cout<<varCount<<"---------------------counting is off -----------------"<< startVarOfThis+count<<" "<<count<<endl;
+                        }
+                        if (!isConstrained) {
+                            lSumConstr += cutVar[startVarOfThis + count];
+                            if (relId != 0) {
+                                rSumConstr += cutVar[startVarOfThis + count];
+                                innerSumConstr += cutVar[startVarOfThis + count];
+                            }
+                        }
+                        idx = (idx + 1) % boundSize;
+                        vert = boundaryL[i][idx];
+                        count++;
+                    }// handle the last, add it to the right sum
+
+                    //  make sure duplicate corner is chosen only once, and if we found the last consider its duplicate with start of this patch
+
+                    if(trackCornerIds.find(end) != trackCornerIds.end()){
+                        model.addConstr(cutVar[ trackCornerIds[end]] + cutVar[varCount] <= 1);
+                    }else{
+                        trackCornerIds[end] = varCount;
+                    }
+                    rSumConstr += cutVar[varCount];
+                    addVarToModel(vert, boundaryL[i][(idx + 1) % boundSize], vfAdj, false, varCount, cutVar, Fg_pattern,
+                                  lengthsOrig, lengthsCurr, mapVarIdToVertId);
 
 
-//                // set lin expr
-//                model.addConstr(innerSumConstr <= 1);
-//                model.addConstr(lSumConstr <= 1);
-//                model.addConstr(rSumConstr <= 1);
+
+                } else {
+                    // iterate in inverse direction
+                    seam *seam = seamsList[(seamId[si].second ) * -1 -1];
+                    cout<<" seam id "<<(seamId[si].second ) * -1 -1<<endl;
+                    auto startAndPatch = seam -> getStartAndPatch2ForCorres();
+                    int idx = startAndPatch.first;
+
+                    if (startAndPatch.second != i) cout << " something is wrong, it should be in patch " << i << " but the seam is from patch  " << startAndPatch.second << endl;
+                    int vert = boundaryL[startAndPatch.second][idx];
+                    int end = seam->getEndCornerIds().second;
+
+                    int nextidx = (startAndPatch.first - (1 + count)) % boundSize;
+                    if (nextidx < 0) nextidx += boundSize;
+                    if (seam->inverted) nextidx = (startAndPatch.first + (1 + count)) % boundSize;
+                    int nextvert = boundaryL[startAndPatch.second][nextidx];
+
+                    // check if vert is in map, if so then add constraint to connect it
+                    if(trackCornerIds.find(vert) != trackCornerIds.end()){
+                        model.addConstr(cutVar[ trackCornerIds[vert]] + cutVar[varCount] <= 1);
+                    }else{
+                        trackCornerIds[vert] = varCount;
+                    }
+
+                    while (vert != end) {
+                        double relId = ((double) count) / seam->seamLength();
+                        bool isConstrained = true;
+                        if (relId == 0 || relId > minConstrained && relId < (1 - minConstrained)) {
+                            isConstrained = false;
+                        }else{
+                            model.addConstr(cutVar[varCount] == 0);
+                        }
+                        addVarToModel(vert, nextvert, vfAdj, isConstrained, varCount, cutVar, Fg_pattern, lengthsOrig,
+                                      lengthsCurr, mapVarIdToVertId);
+                        if (!isConstrained) {
+                            lSumConstr += cutVar[startVarOfThis + count];
+                            if (relId != 0) {
+                                rSumConstr += cutVar[startVarOfThis + count];
+                                innerSumConstr += cutVar[startVarOfThis + count];
+                            }
+                        }
+
+                        vert = nextvert;
+                        count++;
+                        nextidx = (startAndPatch.first - (1 + count)) % boundSize;
+                        if (nextidx < 0) nextidx += boundSize;
+                        if (seam->inverted) nextidx = (startAndPatch.first + (1 + count)) % boundSize;
+                        nextvert = boundaryL[startAndPatch.second][nextidx];
+
+                    }// handle least element and set constraints
+                    if(trackCornerIds.find(end) != trackCornerIds.end()){
+                        model.addConstr(cutVar[ trackCornerIds[end]] + cutVar[varCount] <= 1);
+                    }else{
+                        trackCornerIds[end] = varCount;
+                    }
+
+                    addVarToModel(vert, boundaryL[startAndPatch.second][(idx + 1) % boundSize], vfAdj, false, varCount,
+                                  cutVar, Fg_pattern, lengthsOrig, lengthsCurr, mapVarIdToVertId);
+                    rSumConstr += cutVar[startVarOfThis + count];
+
+                }
+
+                // set lin expr
+                model.addConstr(innerSumConstr <= 1);
+                model.addConstr(lSumConstr <= 1);
+                model.addConstr(rSumConstr <= 1);
             }
 
         }
     }
-//    model.set(GRB_IntAttr_ModelSense, GRB_MAXIMIZE);
-//    model.optimize();
-cout<<"read them all"<<endl;
+    model.set(GRB_IntAttr_ModelSense, GRB_MAXIMIZE);
+    model.optimize();
+//    cout<<"read them all "<<varCount<<endl;
+//    cout<<mapVarIdToVertId.size()<<" the size of the map, should be num var which is "<<numVar<<endl;
+    for(int i =0; i< numVar; i++){
+//        cout<<(cutVar[i].get(GRB_DoubleAttr_X ) )<<" i "<<i<<endl;
+        if( cutVar[i].get(GRB_DoubleAttr_X ) >0.99){
+            cout<<"bigger "<< mapVarIdToVertId[i] <<endl;// ALRIGHT BUT NOW WE NEED A SEAM ID 
+        }
+
+    }
+
 
 }
 void computeTear(Eigen::MatrixXd & fromPattern, MatrixXd&  currPattern, MatrixXi& Fg_pattern, MatrixXi& Fg_pattern_orig,
