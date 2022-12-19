@@ -343,10 +343,8 @@ void addVarToModel (int vert, int nextVert, vector<vector<int>> & vfAdj, bool is
     int faceIdx = adjacentFaceToEdge(vert, nextVert, -1, vfAdj );
     int whichEdge = findWhichEdgeOfFace(faceIdx, vert, nextVert, Fg_pattern);
     double w_init = lengthsCurr(faceIdx, whichEdge)/lengthsOrig(faceIdx, whichEdge);
-//    cout<<" 1"<<endl;
 
     if(isConstrained){
-//        cout<<" is 2"<<endl;
 
         // we add it with coefficient 0, it should be ignored
         try {
@@ -357,11 +355,10 @@ void addVarToModel (int vert, int nextVert, vector<vector<int>> & vfAdj, bool is
             cout<<varCount<<endl;
         }
     }else{
-//        cout<<" is not  2"<<endl;
 
         int tailorLazyFactor = 1; if(corner) tailorLazyFactor*= tailor_lazyness;
         try{
-            cutVar[varCount].set(GRB_DoubleAttr_Obj, tailorLazyFactor * w_init);
+            cutVar[varCount].set(GRB_DoubleAttr_Obj, tailorLazyFactor * 1/w_init);
 
         }catch(GRBException e){
             cout << "Error code = " << e.getErrorCode() << endl;
@@ -370,7 +367,6 @@ void addVarToModel (int vert, int nextVert, vector<vector<int>> & vfAdj, bool is
 
         }
     }
-//    cout<<" 3"<<endl;
 
     cutVertEntry* cve = new cutVertEntry(vert, seamType, seamIdInList);
     mapVarIdToVertId[varCount]= cve;
@@ -383,25 +379,39 @@ void addVarToModel (int vert, int nextVert, vector<vector<int>> & vfAdj, bool is
     if(seamIdInList<0){
         seamIdToCompare = (seamIdInList+1 )*(-1);
     }
-
-    mapVertAndSeamToVar[make_pair(vert, seamIdToCompare)]= varCount;
+    int thisVar = varCount;
+    if(seamIdInList== -1){
+        cout<<seamIdToCompare<<" to compare ID ";
+    }
 
     if(mapVertAndSeamToVar.find(make_pair(counterpart, seamIdToCompare))!= mapVertAndSeamToVar.end()){
+//        if(seamIdInList== -7){
+//            cout<< vert <<" and counterpart "<<counterpart<<" "<<thisVar<<" "<<mapVertAndSeamToVar[make_pair(counterpart, seamIdToCompare)]<<endl;
+//        }
 
-        cout<<vert<< " counterpart "<<counterpart<< endl;
+//        cout<<vert<< " counterpart "<<counterpart<< endl;
 
         // if the counterpart exists already, we use another variable for the XNOR constraint
         //https://yetanothermathprogrammingconsultant.blogspot.com/2022/06/xnor-as-linear-inequalities.html
         int otherVar = mapVertAndSeamToVar[make_pair(counterpart, seamIdToCompare)];
-        // the helper, does not appear in the objective
-        cutVar[varCount+1].set(GRB_DoubleAttr_Obj, 0);
+        // the helper, appear in the objective with higher weight since we prefer consistency over perfect cuts
+        cutVar[varCount+1].set(GRB_DoubleAttr_Obj, 10);
 
         model.addConstr(1- cutVar[varCount+1] <=  cutVar[ varCount] + cutVar[ otherVar] );
-        model.addConstr(1- cutVar[varCount+1] >=  cutVar[ varCount] - cutVar[ otherVar] );
-        model.addConstr(1- cutVar[varCount+1] >=  cutVar[ otherVar] + cutVar[varCount ] );
+        model.addConstr(1- cutVar[varCount+1] >=  cutVar[ otherVar] - cutVar[ varCount] );
+        model.addConstr(1- cutVar[varCount+1] >=  cutVar[ varCount] - cutVar[otherVar ] );
         model.addConstr(1- cutVar[varCount+1] <= 2 - cutVar[ varCount] - cutVar[ otherVar] );
-        varCount++;addoncount++;
+        varCount++;
+        addoncount++;
 
+    }
+// overwritten if it was in already
+
+
+// todo figurre out why none in the middle cut and only the ones without the matching constraints
+    else{
+        mapVertAndSeamToVar[make_pair(vert, seamIdToCompare)] = thisVar;
+//        cout<<"mapped "<<vert<<", "<<seamIdToCompare<<" to "<<thisVar<<endl;
     }
     varCount++;
 
@@ -424,11 +434,11 @@ MatrixXd& lengthsOrig, MatrixXd& lengthsCurr,const std::vector<std::vector<std::
     int numVar=0; // whole boundary and all corners duplicate
     for(int i=0; i<edgesPerBoundary.size(); i++){
         numVar += edgesPerBoundary[i].size();
-        numVar+= boundaryL[i].size();
+        numVar += boundaryL[i].size();
     }
     // with the constraints we have for each counterpart another variable
     if(numVar%2 != 0 )cout<<"----------------------------------not divisible by 2, the number of constraints is wrong------------------"<<endl<<endl<<endl;
-    numVar += (numVar/2);// 574 without mapping -> 287 added ones ? we dont need them all bc there are no common ones for th -1s 
+    numVar += (numVar/2);// 574 without mapping -> 287 added ones ? we dont need them all bc there are no common ones for th -1s
     cout<<numVar<<" num Var"<<endl;
     map<int, int> trackCornerIds;
     map <int, cutVertEntry*>  mapVarIdToVertId;
@@ -438,7 +448,7 @@ MatrixXd& lengthsOrig, MatrixXd& lengthsCurr,const std::vector<std::vector<std::
 
     GRBVar* cutVar = model.addVars(numVar, GRB_BINARY);
     //edgesPerBoundary.size();
-    for(int i=0; i<edgesPerBoundary.size(); i++) {
+    for(int i = 0; i < edgesPerBoundary.size(); i++) {
         int boundSize = boundaryL[i].size();
         int startVarPatch = varCount;
         cout<<endl<<varCount<<" Processing patch "<<i<<endl ;
@@ -464,7 +474,7 @@ MatrixXd& lengthsOrig, MatrixXd& lengthsCurr,const std::vector<std::vector<std::
                 // first if it is a seam or a -1 seam
                 // second gives the direction, if less than 0 take i -1 in negative direction
                 if ((seamId[si].first >= 0 && seamId[si].second >= 0) || seamId[si].first < 0) {
-                    cout<<"Var count "<<varCount<<endl ;
+//                    cout<<"Var count "<<varCount<<endl ;
                     int idx;
                     int vert;// first corner
                     int end;// last corner
@@ -558,7 +568,7 @@ MatrixXd& lengthsOrig, MatrixXd& lengthsCurr,const std::vector<std::vector<std::
                     cout<<length<<" length"<<endl;
                 } else {
                     // iterate in inverse direction
-                    cout<<"Var count "<<varCount<<endl ;
+//                    cout<<"Var count "<<varCount<<endl ;
                     seam *seam = seamsList[(seamId[si].second ) * -1 -1];
                     cout<<" seam id "<<(seamId[si].second ) * -1 -1<<endl;
                     auto startAndPatch = seam -> getStartAndPatch2ForCorres();
@@ -632,16 +642,20 @@ MatrixXd& lengthsOrig, MatrixXd& lengthsCurr,const std::vector<std::vector<std::
                 model.addConstr(lSumConstr <= 1);
                 model.addConstr(rSumConstr <= 1);
             }
-            cout<<"patch "<<i<<" seam "<<j<<" addon count "<<addoncount<<endl<<endl;
+//            cout<<"patch "<<i<<" seam "<<j<<" addon count "<<addoncount<<endl<<endl;
         }
 
     }
     model.set(GRB_IntAttr_ModelSense, GRB_MAXIMIZE);
     model.optimize();
-cout<<numVar<<" computed and acutally "<<varCount<<endl;
-    for(int i =0; i< numVar; i++){
-//        cout<<(cutVar[i].get(GRB_DoubleAttr_X ) )<<" i "<<i<<endl;
+//cout<<numVar<<" computed and acutally "<<varCount<<endl;
+    for(int i =0; i< varCount; i++){
         if( cutVar[i].get(GRB_DoubleAttr_X ) >0.99){
+         //   cout<<i<<endl;
+            if(mapVarIdToVertId.find(i)== mapVarIdToVertId.end()){
+//                cout<<"not in map, it's one of the xnor variables. Skip it "<<endl;
+                continue;
+            }
             cout<<"chosen Id  "<< mapVarIdToVertId[i]->vert<<" from which kind of seam "<<mapVarIdToVertId[i]->seamType<<" and id "<<mapVarIdToVertId[i]->seamIdInList <<endl;// ALRIGHT BUT NOW WE NEED A SEAM ID
             if(mapVarIdToVertId[i]->seamType > 0 ){
                 if(mapVarIdToVertId[i]->seamIdInList>=0){
