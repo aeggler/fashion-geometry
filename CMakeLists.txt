@@ -31,12 +31,7 @@ file(GLOB SRC_FILES main.cpp
         )
 add_executable(${PROJECT_NAME} ${SRC_FILES})
 target_link_libraries(${PROJECT_NAME} PUBLIC igl::glfw igl::imgui)
-#
-#list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
-#set(CMAKE_FIND_LIBRARY_SUFFIXES ".so" ".a" ".dylib")
 find_package(GUROBI REQUIRED)
-#
-
 
 #In my Mac GUROBI_INCLUDE_DIRS points to "/Library/gurobi951/macos_universal2/include"
 
@@ -45,12 +40,6 @@ find_package(GUROBI REQUIRED)
 #In my Mac GUROBI_CXX_LIBRARY points to "/Library/gurobi951/macos_universal2/lib/libgurobi_c++.a"
 #and GUROBI_LIBRARY points to "/Library/gurobi951/macos_universal2/lib/libgurobi95.dylib"
 
-
 target_include_directories (${PROJECT_NAME} PUBLIC ${GUROBI_INCLUDE_DIRS})
-#
-#if(CXX)
-#    set(CMAKE_CXX_STANDARD 17)
-#    target_link_libraries(example PUBLIC )
-#endif()
 SET(GUROBI_CXX_LIBRARY "/Library/gurobi1000/macos_universal2/lib/libgurobi_c++.a" )
 target_link_libraries(example PUBLIC ${GUROBI_CXX_LIBRARY} ${GUROBI_LIBRARY})

@@ -323,8 +323,21 @@ void splitVertex(Node** head, int & listLength, int  whichTear, MatrixXd& Vg, Ma
 
 }
 
+class cutVertEntry{
+public:
+    int vert;
+    int seamType;
+    int seamIdInList;
+
+    cutVertEntry( int vert, int seamType, int seamIdInList ){
+       this-> vert = vert;
+       this -> seamType = seamType;
+       this -> seamIdInList = seamIdInList;
+    }
+};
+
 void addVarToModel (int vert, int nextVert, vector<vector<int>> & vfAdj, bool isConstrained, int& varCount, GRBVar* & cutVar,
-                      MatrixXi& Fg_pattern,MatrixXd& lengthsOrig, MatrixXd& lengthsCurr, map <int, int> & mapVarIdToVertId ){
+                      MatrixXi& Fg_pattern,MatrixXd& lengthsOrig, MatrixXd& lengthsCurr, map <int, cutVertEntry*> & mapVarIdToVertId, int seamType, int seamIdInList ){
 
     int faceIdx = adjacentFaceToEdge(vert, nextVert, -1, vfAdj );
     int whichEdge = findWhichEdgeOfFace(faceIdx, vert, nextVert, Fg_pattern);
@@ -337,7 +350,8 @@ void addVarToModel (int vert, int nextVert, vector<vector<int>> & vfAdj, bool is
         cutVar[varCount].set(GRB_DoubleAttr_Obj, w_init);
         //cout << w_init << endl;
     }
-    mapVarIdToVertId[varCount]= vert;
+    cutVertEntry* cve = new cutVertEntry(vert, seamType, seamIdInList);
+    mapVarIdToVertId[varCount]= cve;
     varCount++;
 
 
@@ -363,7 +377,7 @@ MatrixXd& lengthsOrig, MatrixXd& lengthsCurr,const std::vector<std::vector<std::
         numVar+= boundaryL[i].size();
     }
     map<int, int> trackCornerIds;
-    map <int, int>  mapVarIdToVertId;
+    map <int, cutVertEntry*>  mapVarIdToVertId;
     // a map to track the gurobi id of a corner.  whenever we set a corner we add the corner id, so we know once we set the second and connect them
 
     GRBVar* cutVar = model.addVars(numVar, GRB_BINARY);
@@ -434,7 +448,7 @@ MatrixXd& lengthsOrig, MatrixXd& lengthsCurr,const std::vector<std::vector<std::
                             model.addConstr(cutVar[varCount] == 0);
                         }
                         addVarToModel(vert, boundaryL[i][(idx + 1) % boundSize], vfAdj, isConstrained, varCount, cutVar,
-                                      Fg_pattern, lengthsOrig, lengthsCurr, mapVarIdToVertId );
+                                      Fg_pattern, lengthsOrig, lengthsCurr, mapVarIdToVertId, seamId[si].first, seamId[si].second );
                         if(varCount-1 != startVarOfThis+count){
                             cout<<varCount<<"---------------------counting is off -----------------"<< startVarOfThis+count<<" "<<count<<endl;
                         }
@@ -459,7 +473,7 @@ MatrixXd& lengthsOrig, MatrixXd& lengthsCurr,const std::vector<std::vector<std::
                     }
                     rSumConstr += cutVar[varCount];
                     addVarToModel(vert, boundaryL[i][(idx + 1) % boundSize], vfAdj, false, varCount, cutVar, Fg_pattern,
-                                  lengthsOrig, lengthsCurr, mapVarIdToVertId);
+                                  lengthsOrig, lengthsCurr, mapVarIdToVertId, seamId[si].first, seamId[si].second );
 
 
 
@@ -495,7 +509,7 @@ MatrixXd& lengthsOrig, MatrixXd& lengthsCurr,const std::vector<std::vector<std::
                             model.addConstr(cutVar[varCount] == 0);
                         }
                         addVarToModel(vert, nextvert, vfAdj, isConstrained, varCount, cutVar, Fg_pattern, lengthsOrig,
-                                      lengthsCurr, mapVarIdToVertId);
+                                      lengthsCurr, mapVarIdToVertId, seamId[si].first, seamId[si].second );
                         if (!isConstrained) {
                             lSumConstr += cutVar[startVarOfThis + count];
                             if (relId != 0) {
@@ -519,7 +533,7 @@ MatrixXd& lengthsOrig, MatrixXd& lengthsCurr,const std::vector<std::vector<std::
                     }
 
                     addVarToModel(vert, boundaryL[startAndPatch.second][(idx + 1) % boundSize], vfAdj, false, varCount,
-                                  cutVar, Fg_pattern, lengthsOrig, lengthsCurr, mapVarIdToVertId);
+                                  cutVar, Fg_pattern, lengthsOrig, lengthsCurr, mapVarIdToVertId, seamId[si].first, seamId[si].second );
                     rSumConstr += cutVar[startVarOfThis + count];
 
                 }
@@ -539,7 +553,18 @@ MatrixXd& lengthsOrig, MatrixXd& lengthsCurr,const std::vector<std::vector<std::
     for(int i =0; i< numVar; i++){
 //        cout<<(cutVar[i].get(GRB_DoubleAttr_X ) )<<" i "<<i<<endl;
         if( cutVar[i].get(GRB_DoubleAttr_X ) >0.99){
-            cout<<"bigger "<< mapVarIdToVertId[i] <<endl;// ALRIGHT BUT NOW WE NEED A SEAM ID 
+            cout<<"chosen Id  "<< mapVarIdToVertId[i]->vert<<" from which kind of seam "<<mapVarIdToVertId[i]->seamType<<" and id "<<mapVarIdToVertId[i]->seamIdInList <<endl;// ALRIGHT BUT NOW WE NEED A SEAM ID
+            if(mapVarIdToVertId[i]->seamType > 0 ){
+                if(mapVarIdToVertId[i]->seamIdInList>=0){
+                    cout<<seamsList[mapVarIdToVertId[i]->seamIdInList]->getStartAndPatch1().second<<" the patch"<<endl<<endl;
+
+                }else{
+                    cout<<seamsList[(mapVarIdToVertId[i]->seamIdInList +1)*(-1)]->getStartAndPatch2().second<<" the patch"<<endl<<endl;
+                }
+
+            }else{
+                cout<<minusOneSeams[mapVarIdToVertId[i]->seamIdInList]->getPatch()<<" the patch"<<endl<<endl;
+            }
         }
 
     }
