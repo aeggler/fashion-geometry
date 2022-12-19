@@ -135,7 +135,7 @@ void splitVertex(Node** head, int & listLength, int  whichTear, MatrixXd& Vg, Ma
     }
     whichTear = node->vertId;
 
-    // to which vert it the vertex adjacent? from there we get all the adjacent edges
+    // to which vert is the vertex adjacent? from there we get all the adjacent edges
     vector<vector<int>> vvAdj;
     igl::adjacency_list(Fg,vvAdj);
     vector<int> adjacentFaces = vfAdj[whichTear];
@@ -150,7 +150,7 @@ void splitVertex(Node** head, int & listLength, int  whichTear, MatrixXd& Vg, Ma
     newVg.block(0,0, newVertIdx, 3)= Vg;
 
     node -> duplicate = newVertIdx;
-    // we need to know which is closest to normal to insert this and new vertex and in right order
+    // we need to know which is closest to normal in order to insert this and new vertex and in right order
     int leftId = node -> next -> vertId;
     int rightId = node -> prev -> vertId;
 
@@ -173,7 +173,6 @@ void splitVertex(Node** head, int & listLength, int  whichTear, MatrixXd& Vg, Ma
         if(adjVert== rightId || adjVert == leftId) continue; // we want a middle one
         Vector3d edgeVec = Vg.row(adjVert)- Vg.row(whichTear);
         edgeVec= edgeVec.normalized();
-//        cout<<dist <<" "<<(midVec - edgeVec).norm()<<" for vert"<<adjVert<<endl;
         // both have unit distance, so as a measure we can take the distance form another
         if((midVec - edgeVec).norm()<dist){
             idxofClosest= i;
@@ -190,15 +189,12 @@ void splitVertex(Node** head, int & listLength, int  whichTear, MatrixXd& Vg, Ma
     double x2 = Vg(insertIdx, 0); double y2 = Vg(insertIdx, 1);
 
     // it should be sufficient to check one edge per face since it cannot happen that a face has edges on both sides
-    // if it coudl then it is a) not stressed or b) we found no splitnormal
+    // if it coudl then it is (a) not stressed or (b) we found no splitnormal
 
     // right gets  newVertIdx
     double dRight = (Vg(rightId, 0) - x1) * (y2-y1) - (Vg(rightId, 1) - y1) * (x2 - x1);
     // defines the side of right, left is the opposite
     bool rightDSmaller = (dRight<0);
-
-//    if(whichTear== 2898)
-//        cout<<dRight<<" right of 2898  smaller 0 ? "<<rightDSmaller<<endl;
 
     if(Fg(node->prev->faceId , 1) == whichTear){
         Fg(node->prev->faceId, 1) = newVertIdx;
@@ -209,9 +205,6 @@ void splitVertex(Node** head, int & listLength, int  whichTear, MatrixXd& Vg, Ma
     else {
         Fg(node->prev->faceId, 2) = newVertIdx;
     }
-    cout<<Fg.row(5319)<<" cout TEST FACE CHANGED 5319"<<endl;
-    cout<<Fg.row(5328 )<<" cout TEST FACE CHANGED 5328"<<endl;
-
 
     // adapt the position
     double eps = 0.01;
@@ -318,9 +311,6 @@ void splitVertex(Node** head, int & listLength, int  whichTear, MatrixXd& Vg, Ma
 
     right_noed-> stretchLeft = newLength/origLength;// assuming the new one is stretched it is certainly longer
 
-//    int nextToTear = printList((*head), listLength);
-// cout<<nextToTear<<" fin split function "<<endl;
-
 }
 
 class cutVertEntry{
@@ -328,11 +318,18 @@ public:
     int vert;
     int seamType;
     int seamIdInList;
+    int patch;
 
     cutVertEntry( int vert, int seamType, int seamIdInList ){
        this-> vert = vert;
        this -> seamType = seamType;
        this -> seamIdInList = seamIdInList;
+    }
+    cutVertEntry ( int vert, int seamType, int seamIdInList, int patch){
+        this -> vert = vert;
+        this -> seamType = seamType;
+        this -> seamIdInList = seamIdInList;
+        this -> patch = patch;
     }
 };
 int addoncount=0;
@@ -345,8 +342,6 @@ void addVarToModel (int vert, int nextVert, vector<vector<int>> & vfAdj, bool is
     double w_init = lengthsCurr(faceIdx, whichEdge)/lengthsOrig(faceIdx, whichEdge);
 
     if(isConstrained){
-
-        // we add it with coefficient 0, it should be ignored
         try {
             cutVar[varCount].set(GRB_DoubleAttr_Obj, 0);
         }catch(GRBException e){
@@ -380,21 +375,11 @@ void addVarToModel (int vert, int nextVert, vector<vector<int>> & vfAdj, bool is
         seamIdToCompare = (seamIdInList+1 )*(-1);
     }
     int thisVar = varCount;
-    if(seamIdInList== -1){
-        cout<<seamIdToCompare<<" to compare ID ";
-    }
-
     if(mapVertAndSeamToVar.find(make_pair(counterpart, seamIdToCompare))!= mapVertAndSeamToVar.end()){
-//        if(seamIdInList== -7){
-//            cout<< vert <<" and counterpart "<<counterpart<<" "<<thisVar<<" "<<mapVertAndSeamToVar[make_pair(counterpart, seamIdToCompare)]<<endl;
-//        }
-
-//        cout<<vert<< " counterpart "<<counterpart<< endl;
-
         // if the counterpart exists already, we use another variable for the XNOR constraint
         //https://yetanothermathprogrammingconsultant.blogspot.com/2022/06/xnor-as-linear-inequalities.html
         int otherVar = mapVertAndSeamToVar[make_pair(counterpart, seamIdToCompare)];
-        // the helper, appear in the objective with higher weight since we prefer consistency over perfect cuts
+        // the helper, appear in the objective with higher weight since we need consistency over perfect cuts
         cutVar[varCount+1].set(GRB_DoubleAttr_Obj, 10);
 
         model.addConstr(1- cutVar[varCount+1] <=  cutVar[ varCount] + cutVar[ otherVar] );
@@ -405,13 +390,8 @@ void addVarToModel (int vert, int nextVert, vector<vector<int>> & vfAdj, bool is
         addoncount++;
 
     }
-// overwritten if it was in already
-
-
-// todo figurre out why none in the middle cut and only the ones without the matching constraints
     else{
         mapVertAndSeamToVar[make_pair(vert, seamIdToCompare)] = thisVar;
-//        cout<<"mapped "<<vert<<", "<<seamIdToCompare<<" to "<<thisVar<<endl;
     }
     varCount++;
 
@@ -421,7 +401,7 @@ void addVarToModel (int vert, int nextVert, vector<vector<int>> & vfAdj, bool is
 void setLP(std::vector<std::vector<int> >& boundaryL , vector<vector<int>> & vfAdj, MatrixXi& Fg_pattern,
 MatrixXd& lengthsOrig, MatrixXd& lengthsCurr,const std::vector<std::vector<std::pair<int, int>>>& edgesPerBoundary, map<int, vector<pair<int, int>>>& seamIdPerCorner,
            vector<seam*>& seamsList, const vector<minusOneSeam*> & minusOneSeams,
-            int tearPatch, int tearVert, int tearVertInBoundaryIndex, double tailor_lazyness, double minConstrained ){
+            int tearPatch, int tearVert, int tearVertInBoundaryIndex, double tailor_lazyness, double minConstrained, vector <cutVertEntry*>& cutPositions ){
 
     // Create an environment
     GRBEnv env = GRBEnv(true);
@@ -429,7 +409,6 @@ MatrixXd& lengthsOrig, MatrixXd& lengthsCurr,const std::vector<std::vector<std::
     env.start();
     // Create an empty model
     GRBModel model = GRBModel(env);
-    //double minConstrained = 0.25;
     int varCount =0;
     int numVar=0; // whole boundary and all corners duplicate
     for(int i=0; i<edgesPerBoundary.size(); i++){
@@ -438,20 +417,17 @@ MatrixXd& lengthsOrig, MatrixXd& lengthsCurr,const std::vector<std::vector<std::
     }
     // with the constraints we have for each counterpart another variable
     if(numVar%2 != 0 )cout<<"----------------------------------not divisible by 2, the number of constraints is wrong------------------"<<endl<<endl<<endl;
-    numVar += (numVar/2);// 574 without mapping -> 287 added ones ? we dont need them all bc there are no common ones for th -1s
-    cout<<numVar<<" num Var"<<endl;
+    numVar += (numVar/2);// 574 without mapping -> 287 added ones ? we don't need them all bc there are no common ones for th -1s
     map<int, int> trackCornerIds;
     map <int, cutVertEntry*>  mapVarIdToVertId;
     map <pair<int, int>, int> mapVertAndSeamToVar;
 
     // a map to track the gurobi id of a corner.  whenever we set a corner we add the corner id, so we know once we set the second and connect them
-
     GRBVar* cutVar = model.addVars(numVar, GRB_BINARY);
     //edgesPerBoundary.size();
     for(int i = 0; i < edgesPerBoundary.size(); i++) {
         int boundSize = boundaryL[i].size();
         int startVarPatch = varCount;
-        cout<<endl<<varCount<<" Processing patch "<<i<<endl ;
         for (int j = 0; j < edgesPerBoundary[i].size(); j++) {
             // first is the absolute index, second the index wrt the boundary loop
 
@@ -474,7 +450,6 @@ MatrixXd& lengthsOrig, MatrixXd& lengthsCurr,const std::vector<std::vector<std::
                 // first if it is a seam or a -1 seam
                 // second gives the direction, if less than 0 take i -1 in negative direction
                 if ((seamId[si].first >= 0 && seamId[si].second >= 0) || seamId[si].first < 0) {
-//                    cout<<"Var count "<<varCount<<endl ;
                     int idx;
                     int vert;// first corner
                     int end;// last corner
@@ -517,9 +492,7 @@ MatrixXd& lengthsOrig, MatrixXd& lengthsCurr,const std::vector<std::vector<std::
                     }else{
                         trackCornerIds[vert] = varCount;
                     }
-//                    cout<<" before while"<<endl;
                     while (vert != end) {
-//                        cout<<"Var count in while  "<<varCount<<endl ;
                         // might need a map for patch and vert id to seam adn first or Second
                         double relId = ((double) count) / length;
                         bool isConstrained = true;
@@ -536,7 +509,6 @@ MatrixXd& lengthsOrig, MatrixXd& lengthsCurr,const std::vector<std::vector<std::
                                       Fg_pattern, lengthsOrig, lengthsCurr, mapVarIdToVertId, seamId[si].first, seamId[si].second,
                                       tailor_lazyness,corner,mapVertAndSeamToVar, vertOther, model );
 
-//                        cout<<"after adding"<<endl;
                         if (!isConstrained) {
                             lSumConstr += cutVar[currVar];
                             if (relId != 0) {
@@ -544,7 +516,6 @@ MatrixXd& lengthsOrig, MatrixXd& lengthsCurr,const std::vector<std::vector<std::
                                 innerSumConstr += cutVar[currVar];
                             }
                         }
-//                        cout<<"after after adding"<<endl;
                         idx = (idx + 1) % boundSize;
                         vert = boundaryL[i][idx];
                         count++;
@@ -565,12 +536,10 @@ MatrixXd& lengthsOrig, MatrixXd& lengthsCurr,const std::vector<std::vector<std::
                     rSumConstr += cutVar[varCount];
                     addVarToModel(vert, boundaryL[i][(idx + 1) % boundSize], vfAdj, false, varCount, cutVar, Fg_pattern,
                                   lengthsOrig, lengthsCurr, mapVarIdToVertId, seamId[si].first, seamId[si].second, tailor_lazyness, true, mapVertAndSeamToVar, vertOther, model );
-                    cout<<length<<" length"<<endl;
                 } else {
                     // iterate in inverse direction
-//                    cout<<"Var count "<<varCount<<endl ;
                     seam *seam = seamsList[(seamId[si].second ) * -1 -1];
-                    cout<<" seam id "<<(seamId[si].second ) * -1 -1<<endl;
+//                    cout<<" seam id "<<(seamId[si].second ) * -1 -1<<endl;
                     auto startAndPatch = seam -> getStartAndPatch2ForCorres();
                     auto startAndPatchOther = seam -> getStartAndPatch1();
                     int idx = startAndPatch.first;
@@ -593,7 +562,6 @@ MatrixXd& lengthsOrig, MatrixXd& lengthsCurr,const std::vector<std::vector<std::
                     }
 
                     while (vert != end) {
-//                        cout<<"Var count in while  "<<varCount<<endl ;
 
                         double relId = ((double) count) / seam->seamLength();
                         bool isConstrained = true;
@@ -623,7 +591,7 @@ MatrixXd& lengthsOrig, MatrixXd& lengthsCurr,const std::vector<std::vector<std::
                         nextvert = boundaryL[startAndPatch.second][nextidx];
                         otherVert =  boundaryL[startAndPatchOther.second][(startAndPatchOther.first + count) %  boundaryL[startAndPatchOther.second].size() ];
 
-                    }// handle least element and set constraints
+                    }// handle the least element and set constraints
                     if(trackCornerIds.find(end) != trackCornerIds.end()){
                         model.addConstr(cutVar[ trackCornerIds[end]] + cutVar[varCount] <= 1);
                     }else{
@@ -633,7 +601,6 @@ MatrixXd& lengthsOrig, MatrixXd& lengthsCurr,const std::vector<std::vector<std::
                     addVarToModel(vert, boundaryL[startAndPatch.second][(idx + 1) % boundSize], vfAdj, false, varCount,
                                   cutVar, Fg_pattern, lengthsOrig, lengthsCurr, mapVarIdToVertId,
                                   seamId[si].first, seamId[si].second, tailor_lazyness, true, mapVertAndSeamToVar, otherVert, model);
-                    cout<<seam->seamLength()<<" length"<<endl;
 
                 }
 
@@ -642,32 +609,36 @@ MatrixXd& lengthsOrig, MatrixXd& lengthsCurr,const std::vector<std::vector<std::
                 model.addConstr(lSumConstr <= 1);
                 model.addConstr(rSumConstr <= 1);
             }
-//            cout<<"patch "<<i<<" seam "<<j<<" addon count "<<addoncount<<endl<<endl;
         }
 
     }
     model.set(GRB_IntAttr_ModelSense, GRB_MAXIMIZE);
     model.optimize();
-//cout<<numVar<<" computed and acutally "<<varCount<<endl;
     for(int i =0; i< varCount; i++){
         if( cutVar[i].get(GRB_DoubleAttr_X ) >0.99){
-         //   cout<<i<<endl;
             if(mapVarIdToVertId.find(i)== mapVarIdToVertId.end()){
-//                cout<<"not in map, it's one of the xnor variables. Skip it "<<endl;
-                continue;
+                continue;// it is one of the XNOR helper variables,noting associated with them
             }
-            cout<<"chosen Id  "<< mapVarIdToVertId[i]->vert<<" from which kind of seam "<<mapVarIdToVertId[i]->seamType<<" and id "<<mapVarIdToVertId[i]->seamIdInList <<endl;// ALRIGHT BUT NOW WE NEED A SEAM ID
+            int vert = mapVarIdToVertId[i]->vert;
+            int seamType = mapVarIdToVertId[i]->seamType;
+            int seamId = mapVarIdToVertId[i]->seamIdInList;
+            int patch ;
             if(mapVarIdToVertId[i]->seamType > 0 ){
                 if(mapVarIdToVertId[i]->seamIdInList>=0){
-                    cout<<seamsList[mapVarIdToVertId[i]->seamIdInList]->getStartAndPatch1().second<<" the patch"<<endl<<endl;
+                    patch = seamsList[mapVarIdToVertId[i]->seamIdInList]->getStartAndPatch1().second;
 
                 }else{
-                    cout<<seamsList[(mapVarIdToVertId[i]->seamIdInList +1)*(-1)]->getStartAndPatch2().second<<" the patch"<<endl<<endl;
+                    patch = seamsList[(mapVarIdToVertId[i]->seamIdInList +1)*(-1)]->getStartAndPatch2().second;
                 }
 
             }else{
-                cout<<minusOneSeams[mapVarIdToVertId[i]->seamIdInList]->getPatch()<<" the patch"<<endl<<endl;
+                patch = minusOneSeams[mapVarIdToVertId[i]->seamIdInList]->getPatch();
             }
+            cout<<patch<<" chosen Id  "<< mapVarIdToVertId[i]->vert<<" from which kind of seam "<<mapVarIdToVertId[i]->seamType<<" and id "<<mapVarIdToVertId[i]->seamIdInList <<endl;// ALRIGHT BUT NOW WE NEED A SEAM ID
+
+            cutVertEntry* cve = new cutVertEntry ( vert, seamType, seamId, patch);
+            cutPositions.push_back(cve);
+
         }
 
     }
@@ -678,7 +649,6 @@ void computeTear(Eigen::MatrixXd & fromPattern, MatrixXd&  currPattern, MatrixXi
                  vector<seam*>& seamsList,  const vector<minusOneSeam*> & minusOneSeams, std::vector<std::vector<int> >& boundaryL, bool & finished,
                  const std::vector<std::vector<std::pair<int, int>>>& edgesPerBoundary,  map<int, vector<pair<int, int>>>& seamIdPerCorner
                  ){
-    cout<<" in tear function"<<endl;
     vector<vector<int> > vfAdj;
     createVertexFaceAdjacencyList(Fg_pattern, vfAdj);
     MatrixXd lengthsOrig, lengthsCurr;
@@ -686,20 +656,19 @@ void computeTear(Eigen::MatrixXd & fromPattern, MatrixXd&  currPattern, MatrixXi
     igl::edge_lengths(fromPattern, Fg_pattern_orig, lengthsOrig);
 
     // first we need to know where to tear, set up LP for this
-    // information we need: stress. For stress we need lengths old and ned
-    // for lengths old an new we need which edge of face
+    // information we need: stress. For stress, we need lengths old and ned
+    // for lengths old and new we need which edge of face
     // for which edge of face we need face
     // for face we need vertices
     // for vertices we need boundary loop
+    vector<cutVertEntry*> cutPositions;
     int tearPatch, tearVert, tearVertInBoundaryIndex;
     double tailor_lazyness = 1;
     double minConstrained = 0.25;
-    setLP( boundaryL, vfAdj, Fg_pattern, lengthsOrig, lengthsCurr, edgesPerBoundary, seamIdPerCorner,seamsList, minusOneSeams,
-           tearPatch, tearVert, tearVertInBoundaryIndex, tailor_lazyness, minConstrained);
+    setLP( boundaryL, vfAdj, Fg_pattern, lengthsOrig, lengthsCurr, edgesPerBoundary, seamIdPerCorner,
+           seamsList, minusOneSeams, tearPatch, tearVert, tearVertInBoundaryIndex, tailor_lazyness, minConstrained, cutPositions);
 
 
-    // idea: we iterate over the first patch and see where it breaks apart
-// for practical reasons we start with a small patch instead of the first on e
 //    vector<int> boundary = boundaryL[4];
 //    cout<<boundary.size()<<" the size "<<endl;
 //    Node* head = NULL;
