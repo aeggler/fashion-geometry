@@ -139,6 +139,7 @@ Eigen::VectorXi componentIdPerFace,componentIdPerFaceNew, componentIdPerVert;
 //Eigen::SparseMatrix<double> L;
 MatrixXd perFaceD2, perFaceD1;
 VectorXd edgeVertices;
+vector<cutVertEntry*>& cutPositions;
 
 void preComputeAdaption();
 void computeBaryCoordsGarOnNewMannequin(igl::opengl::glfw::Viewer& viewer);
@@ -797,7 +798,7 @@ int main(int argc, char *argv[])
                 bool fin = false;
                 cout<<"at old boundary loop "<<boundaryL[4].size()<<endl;
                 computeTear(fromPattern, currPattern, Fg_pattern,Fg_pattern_orig, seamsList ,
-                            minusOneSeamsList,boundaryL,fin,  cornerPerBoundary, seamIdPerCorner);
+                            minusOneSeamsList,boundaryL,fin,  cornerPerBoundary, seamIdPerCorner,edgeVert, cutPositions);
 
 
                 viewer.selected_data_index = 0;

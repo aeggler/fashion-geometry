@@ -7,13 +7,41 @@
 #include <Eigen/Dense>
 #include "patternAdaption.h"
 #include "seam.h"
+
 using namespace std;
 using namespace Eigen;
 
+class cutVertEntry{
+public:
+    int vert;
+    int seamType;
+    int seamIdInList;
+    int patch;
+    bool startCorner;
+    bool endCorner;
+    bool continuedCorner;
+    Vector3d continuedDirection;
+    bool bridgeFlag;
+    bool finFlag;
+
+    cutVertEntry( int vert, int seamType, int seamIdInList ){
+        this-> vert = vert;
+        this -> seamType = seamType;
+        this -> seamIdInList = seamIdInList;
+    }
+    cutVertEntry ( int vert, int seamType, int seamIdInList, int patch){
+        this -> vert = vert;
+        this -> seamType = seamType;
+        this -> seamIdInList = seamIdInList;
+        this -> patch = patch;
+    }
+};
 
 void computeTear(MatrixXd& fromPatternFile, MatrixXd&  currPattern, MatrixXi& Fg_pattern, MatrixXi& Fg_pattern_orig, vector<seam*>& seamsList,
-                 const vector<minusOneSeam*> & minusOneSeams, std::vector<std::vector<int> >& boundaryL, bool& finished,
-                 const std::vector<std::vector<std::pair<int, int>>>& edgesPerBoundary, map<int, vector<pair<int, int>>>& seamIdPerCorner);
+                  vector<minusOneSeam*> & minusOneSeams, std::vector<std::vector<int> >& boundaryL, bool& finished,
+                 const std::vector<std::vector<std::pair<int, int>>>& edgesPerBoundary, map<int, vector<pair<int, int>>>& seamIdPerCorner,
+                 VectorXd& cornerVert,
+                 vector<cutVertEntry*>& cutPositions);
 
 
 int findWhichEdgeOfFace(int face, int v1, int v2, MatrixXi& Fg);
