@@ -41,14 +41,15 @@ void computeTear(MatrixXd& fromPatternFile, MatrixXd&  currPattern, MatrixXi& Fg
                   vector<minusOneSeam*> & minusOneSeams, std::vector<std::vector<int> >& boundaryL, bool& finished,
                  const std::vector<std::vector<std::pair<int, int>>>& edgesPerBoundary, map<int, vector<pair<int, int>>>& seamIdPerCorner,
                  VectorXd& cornerVert,
-                 vector<cutVertEntry*>& cutPositions);
+                 vector<cutVertEntry*>& cutPositions,  map<int, pair<int, int>>& releasedVert);
 
 
 int findWhichEdgeOfFace(int face, int v1, int v2, MatrixXi& Fg);
 
 void projectBackOnBoundary(const MatrixXd & Vg_to, MatrixXd& p, const vector<seam*>& seamsList,const vector<minusOneSeam*> & minusOneSeams,
                            const MatrixXi& Fg_pattern,
-                           const MatrixXi& Fg_pattern_orig, const std::vector<std::vector<int> >& boundaryL_toPattern, const std::vector<std::vector<int> >& boundaryL
+                           const MatrixXi& Fg_pattern_orig, const std::vector<std::vector<int> >& boundaryL_toPattern, const std::vector<std::vector<int> >& boundaryL,
+                           map<int, pair<int, int>>& releasedVert
                            );
 
 #endif //EXAMPLE_PATTERNADAPTION_H

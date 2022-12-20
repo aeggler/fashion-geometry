@@ -139,7 +139,7 @@ Eigen::VectorXi componentIdPerFace,componentIdPerFaceNew, componentIdPerVert;
 //Eigen::SparseMatrix<double> L;
 MatrixXd perFaceD2, perFaceD1;
 VectorXd edgeVertices;
-vector<cutVertEntry*>& cutPositions;
+vector<cutVertEntry*> cutPositions; map<int, pair<int, int>>  releasedVert;
 
 void preComputeAdaption();
 void computeBaryCoordsGarOnNewMannequin(igl::opengl::glfw::Viewer& viewer);
@@ -461,6 +461,7 @@ int main(int argc, char *argv[])
     computeAllSeams( boundaryL,vertexMapPattToGar, vertexMapGarAndIdToPatch, vfAdj, componentIdPerFace,
                      componentIdPerVert,edgeVertices, cornerPerBoundary, seamsList, minusOneSeamsList, seamIdPerCorner);
     cout<<seamIdPerCorner.size()<<" the size of the map final "<<endl;
+    cout<< seamsList[6]->getEndCornerIds().first<<" "<< seamsList[6]->getEndCornerIds().second<<" "<< seamsList[6]->getStartAndPatch1().first<<" " <<seamsList[6]->getStartAndPatch2ForCorres().first<<endl;
 
     gar_adapt = new garment_adaption(Vg, Fg,  Vg_pattern, Fg_pattern, seamsList, boundaryL); //none have been altered at this stage
     gar_adapt->computeJacobian();
@@ -494,8 +495,6 @@ int main(int argc, char *argv[])
 //    }
 
     /*------------- end testing the setup -------------------*/
-
-
 
     // copy the matrices to not mess with them
     string fromPatternFile = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/patternComputed.obj";
@@ -798,7 +797,7 @@ int main(int argc, char *argv[])
                 bool fin = false;
                 cout<<"at old boundary loop "<<boundaryL[4].size()<<endl;
                 computeTear(fromPattern, currPattern, Fg_pattern,Fg_pattern_orig, seamsList ,
-                            minusOneSeamsList,boundaryL,fin,  cornerPerBoundary, seamIdPerCorner,edgeVert, cutPositions);
+                            minusOneSeamsList,boundaryL,fin,  cornerPerBoundary, seamIdPerCorner,edgeVertices, cutPositions, releasedVert);
 
 
                 viewer.selected_data_index = 0;
@@ -807,9 +806,11 @@ int main(int argc, char *argv[])
                 std::vector<std::vector<int> > boundaryLnew;
                 igl::boundary_loop(Fg_pattern, boundaryLnew);
 
+                cout<<boundaryL[0][9]<<" arrived at old boundary loop "<<boundaryL[0].size()<<endl;
                 boundaryL.clear();
+
                 boundaryL= boundaryLnew;
-                cout<<boundaryL[4][2]<<" arrived at new boundary loop "<<boundaryL[4].size()<<endl;
+                cout<<boundaryL[0][9]<<" arrived at new boundary loop "<<boundaryL[0].size()<<endl;
 
                 preComputeAdaption();
                 cout<<"precomputed new adaption"<<endl;
@@ -1497,7 +1498,6 @@ void solveConstrainedVertices(){
 }
 void solveStretchAdaptionViaEdgeLength(){
 //    MatrixXd patternEdgeLengthsCurr;
-//    igl::edge_lengths(currPattern, Fg_pattern, patternEdgeLengthsCurr);
 
 //why does it not just go back to it's original position?
     for(int i=0; i<Fg_pattern.rows(); i++){
@@ -1511,9 +1511,6 @@ void solveStretchAdaptionViaEdgeLength(){
             PBD.solve_DistanceConstraint(p0, mass0, p1, 1, patternEdgeLengths_orig(i, (j+2) % 3),stretchStiffnessU, corr0, corr1);
             p_adaption.row(Fg_pattern(i,j)) += corr0;
             p_adaption.row(Fg_pattern(i,(j+1) % 3 )) += corr1;
-//            if(Fg_pattern(i,j) == 3036 || Fg_pattern(i,(j+1) % 3 )==3036){
-//                cout<<"updating with face "<<i<<" "<<corr0<<endl;
-//            }
 
         }
     }
@@ -1581,7 +1578,6 @@ void computePatternStress(MatrixXd& perFaceU_adapt,MatrixXd& perFaceV_adapt ){
         perFaceU_adapt.row(j) = (Gu - G).transpose();
 
         perFaceV_adapt.row(j) = (Gv - G).transpose();
-//        if(j==5328 && boundaryL[4].size()>=24) cout<< perFaceV_adapt.row(j)<<"  v jacobian  "<<endl ;
 
         double normU = perFaceU_adapt.row(j).norm();
         double normV = perFaceV_adapt.row(j).norm();
@@ -1601,6 +1597,7 @@ void solveCornerMappedVertices(){
     for(int i=0; i< cornerPerBoundary.size(); i++){
         for(int j=0; j< cornerPerBoundary[i].size(); j++){
             int vertIdx = get<0>(cornerPerBoundary[i][j]);
+            if(releasedVert.find(vertIdx)!= releasedVert.end())continue;
             Vector2d newSuggestedPos = toPattern.row(vertIdx).leftCols(2);
             Vector2d dir = newSuggestedPos - p_adaption.row(vertIdx).leftCols(2).transpose();
 // TODO PARAMETER
@@ -1635,11 +1632,14 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
 
         // now we treat the stretch
         computePatternStress(perFaceU_adapt, perFaceV_adapt);
+        t.printTime(" pattern stress ");
         solveStretchAdaptionViaEdgeLength();//perFaceU_adapt, perFaceV_adapt);
+        t.printTime(" solve stretch  ");
         solveCornerMappedVertices();
+        t.printTime(" corner mapped ");
         // before cutting the boundaries should be the same
-        projectBackOnBoundary( toPattern, p_adaption, seamsList,minusOneSeamsList,  Fg_pattern, Fg_pattern_orig, boundaryL_toPattern, boundaryL );
-
+        projectBackOnBoundary( toPattern, p_adaption, seamsList,minusOneSeamsList,  Fg_pattern, Fg_pattern_orig, boundaryL_toPattern, boundaryL, releasedVert );
+        t.printTime(" project back  ");
     }
     currPattern = p_adaption;
 
@@ -1679,8 +1679,6 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
             double newlength = (currPattern.row(idx)- currPattern.row(idx2)).norm();
             double oldlen = patternEdgeLengths_orig(faceIDx,whichE );
             double relStretch = (newlength- oldlen)/ oldlen;
-//            if(faceIDx == 5302)cout<<relStretch<<" relative, absolut its for 5302  "<< newlength - oldlen <<endl;
-//            if(faceIDx == 5319)cout<<relStretch<<" relative, absolut its for 5319 "<< newlength - oldlen <<endl;
             colPatternU(faceIDx, 0) += 15 * relStretch;
             colPatternU(faceIDx, 1) -= 15 * relStretch;
 
