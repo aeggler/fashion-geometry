@@ -29,6 +29,9 @@ private:
 
 
 public:
+    std::map<int, int> duplicates;
+    std::map<int, int> duplicates2;// other side of the seam
+
     seam(int patch1Id, int patch2Id,
          int patch1startCornerId, // boundary loop index [patch1id][patch1startCornerid] to end
          int patch2startCornerId,
@@ -78,8 +81,8 @@ private:
     int endIdInBoundaryLoop;
     int len;
 
-
 public:
+    std::map<int, int> duplicates;
     minusOneSeam(int patchId,
     int startVert,
     int endVert,

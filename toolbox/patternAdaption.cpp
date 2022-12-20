@@ -125,30 +125,15 @@ void updateWithNewId(MatrixXi& Fg, int vert,int rightFaceId, int newVertIdx ){
         Fg(rightFaceId , 2) = newVertIdx;
     }
 }
-void changeCorner(int which, cutVertEntry*& cve, vector<seam*>& seamsList,  vector<minusOneSeam*> & minusOneSeams, int newCornerIdx){
-    if(which>0){
-        if(cve->seamType<0){
-            minusOneSeams[cve->seamIdInList]->modifyStart(newCornerIdx);
-        }else{
-            if(cve->seamIdInList >= 0){
-                seamsList[cve-> seamIdInList]-> modifyStart(1, newCornerIdx);
-            }else{
-                cout<<"this case for -7"<<endl;
-                seamsList[(cve-> seamIdInList+1)*(-1)]-> modifyStart(-1, newCornerIdx);
-//                cout<<seamsList[(cve-> seamIdInList+1)*(-1)]-> get
-            }
+void addToDulicateList( cutVertEntry*& cve, vector<seam*>& seamsList,  vector<minusOneSeam*> & minusOneSeams, int newVertIdx){
 
-        }
+    if(cve->seamType<0){
+            minusOneSeams[cve->seamIdInList]->duplicates[cve->vert]= newVertIdx;
     }else{
-        if(cve->seamType<0){
-            minusOneSeams[cve->seamIdInList]->modifyEnd(newCornerIdx);
+        if(cve->seamIdInList >= 0){
+            seamsList[cve-> seamIdInList]-> duplicates[cve->vert]=newVertIdx;
         }else{
-            if(cve->seamIdInList >= 0){
-                seamsList[cve-> seamIdInList]-> modifyEnd(1, newCornerIdx);
-            }else{
-                seamsList[(cve-> seamIdInList+1)*(-1)]-> modifyEnd(-1, newCornerIdx);
-            }
-
+            seamsList[(cve-> seamIdInList+1)*(-1)]->duplicates2[cve->vert]= newVertIdx;
         }
     }
 }
@@ -199,9 +184,6 @@ void splitVertexFromCVE( cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<
             newVg.row(cve->vert) += (eps * toLeft).transpose();
             cve->continuedDirection = toLeft;
             cve-> vert = rightId;
-// TODO WE HAVE TO MAP THE OTHER ADJACENT SEAM AS WELL
-//            changeCorner(1, cve, seamsList, minusOneSeams, newVertIdx);
-//            cout<< seamsList[6]->getEndCornerIds().first<<" "<< seamsList[6]->getEndCornerIds().second<<" "<< seamsList[6]->getStartAndPatch1().first<<" " <<seamsList[6]->getStartAndPatch2ForCorres().first<<endl;
 
         }else{
             cout<<'e'<<endl;
@@ -231,14 +213,16 @@ void splitVertexFromCVE( cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<
     double angle = atan2(s, c);
 
     double deg = angle*180/M_PI;
-    double cosbeta = cos(deg/2);
-    double sinbeta = cos(deg/2);
-    cout<<angle<<" the angle and deg "<<deg<<endl;
+    double cosbeta = cos(angle/2);
+    double sinbeta = sin(angle /2);
+//    cout<<cosbeta<<" "<<sinbeta<<" and deg "<<deg<<endl;
     // we rotate midVec by half to get to the middle
     Vector3d leftRot = toLeft.normalized();
-    leftRot(0)= cosbeta * leftRot(0) - sinbeta * leftRot(1);
-    leftRot(1)=  sinbeta * leftRot(0) + cosbeta * leftRot(1);
-    cout<<leftRot<<" the mid vector "<<toLeft.transpose()<<endl;
+//    cout<<leftRot.norm()<<" norm before, ";
+    leftRot(0)= cosbeta * toLeft.normalized()(0) - sinbeta * toLeft.normalized()(1);
+    leftRot(1)=  sinbeta * toLeft.normalized()(0) + cosbeta * toLeft.normalized()(1);
+//    cout<<leftRot.norm()<<" size and "<<leftRot.transpose()<<" the mid vector, and left normalized would be "<<toLeft.normalized().transpose()<<endl;
+
     Vector3d midVec = leftRot;
 
 
@@ -304,7 +288,11 @@ void splitVertexFromCVE( cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<
             cve-> vert = insertIdx;
             cve -> bridgeFlag = true;
     }
+
+    // only the first level i.e. boundary duplicate has to be projected, hence only this one is to be added
+    if(cve->levelOne) addToDulicateList(cve,seamsList, minusOneSeams, newVertIdx );
     cve-> vert = insertIdx;
+    cve->levelOne = false;
 }
 void splitVertex(Node** head, int & listLength, int  whichTear, MatrixXd& Vg, MatrixXi& Fg, vector<vector<int> >& vfAdj, MatrixXd& lengthsOrig, MatrixXd& lengthsCurr){
     cout<<"splitting "<<endl;
@@ -955,13 +943,14 @@ void updatePositionToIntersection(MatrixXd& p,int next,  const MatrixXd& Vg_boun
 void projectBackOnBoundary(const MatrixXd & Vg_to, MatrixXd& p, const vector<seam*>& seamsList, const vector<minusOneSeam*> & minusOneSeams,  const MatrixXi& Fg_pattern,
                            const MatrixXi& Fg_pattern_orig, const std::vector<std::vector<int> >& boundaryL_toPattern, const std::vector<std::vector<int> >& boundaryL,
                            map<int, pair<int, int>> & releasedVert){
+    // add duplicates to the mapping
+
     // Idea:
     // iterate over every seam, create a triangle mesh of the original boundary of that seam
     // then for each boundary vertex, project it's current position to the boundary
     // update the current position towards the projected
     int numSeams = seamsList.size();
     for (int j = 0; j<numSeams; j++){
-//        cout<<" handling seam "<<j<<endl;
 
         seam* currSeam  = seamsList[j];
         auto stP1= currSeam-> getStartAndPatch1();
@@ -973,7 +962,6 @@ void projectBackOnBoundary(const MatrixXd & Vg_to, MatrixXd& p, const vector<sea
         // build the structure for closest search
         MatrixXd Vg_seam1to(len+1 , 3);
         MatrixXd Vg_seam2to(len+1 , 3);
-//        cout<<"start "<<stP1.first<<" patch "<<stP1.second<<" and other "<<stP2.first<<" "<<stP2.second<<endl;
 
 
         for(int i = 0; i<= len ; i++){
@@ -995,12 +983,12 @@ void projectBackOnBoundary(const MatrixXd & Vg_to, MatrixXd& p, const vector<sea
         int i1=0;
         int bsize = boundaryL_toPattern[stP1.second].size();
         int next = boundaryL_toPattern[stP1.second][(stP1.first+i1)% bsize];
-        cout<<next<<" searching for end "<<ends.first<<endl;
+//        cout<<next<<" searching for end "<<ends.first<<endl;
         pair<int, int> compPair = make_pair(1,j );
 
         while( next!= ends.first ){
             if(i1 == 0){
-                if(releasedVert.find(next) != releasedVert.end() && releasedVert[next]!= compPair){
+                if(releasedVert.find(next) != releasedVert.end() && releasedVert[next]== compPair){
                     // it is released for another side hence we have to pull it to our side
                     updatePositionToIntersection( p, next,Vg_seam1to);
                 }
@@ -1009,17 +997,16 @@ void projectBackOnBoundary(const MatrixXd & Vg_to, MatrixXd& p, const vector<sea
            else if(releasedVert.find(next) == releasedVert.end() ){
                // general case an interior vertex , if it is not constrained pull it to boundary
                 updatePositionToIntersection( p, next,Vg_seam1to);
-            }else if(releasedVert[next]!= compPair){
+            }else if(releasedVert[next]== compPair){
                // if it is constrained but from another side pull it to boundary
                 updatePositionToIntersection( p, next,Vg_seam1to);
             }
-//            REMOVE IT HERE IF ITT IS CONSTRAINED
 
             i1++;
             next = boundaryL_toPattern[stP1.second][(stP1.first+i1)% bsize];
         }
         // the last corner. Again if it is constrained from another side pull it to boundary, else ignore since handled by corner
-        if(releasedVert.find(next) != releasedVert.end() && releasedVert[next] != compPair ){
+        if(releasedVert.find(next) != releasedVert.end() && releasedVert[next] == compPair ){
             updatePositionToIntersection( p, next,Vg_seam1to);
         }
 
@@ -1030,21 +1017,20 @@ void projectBackOnBoundary(const MatrixXd & Vg_to, MatrixXd& p, const vector<sea
         int nextidx = (stP2.first- i2) % bsize;
         if(nextidx < 0) nextidx += bsize;
         next = boundaryL_toPattern[stP2.second][nextidx];
-        cout<<next<<"and now "<<ends.second<<endl;
+//        cout<<next<<"and now "<<ends.second<<endl;
         compPair = make_pair(1,-j-1 );
 
         while( next!= ends.second ){
 
             if(i2 == 0){
-                if(releasedVert.find(next) != releasedVert.end() && releasedVert[next]!= compPair){
+                if(releasedVert.find(next) != releasedVert.end() && releasedVert[next] == compPair){
                     // it is released for another side hence we have to pull it to our side
                     updatePositionToIntersection( p, next,Vg_seam2to);
                 }
             }
-
-            else if(releasedVert.find(next)== releasedVert.end()){
+            else if(releasedVert.find(next) == releasedVert.end()){
                 updatePositionToIntersection(p, next,Vg_seam2to);
-            }else if(releasedVert[next]!= compPair){
+            }else if(releasedVert[next] == compPair){
                 updatePositionToIntersection(p, next,Vg_seam2to);
 
             }
@@ -1057,14 +1043,21 @@ void projectBackOnBoundary(const MatrixXd & Vg_to, MatrixXd& p, const vector<sea
             next = boundaryL_toPattern[stP2.second][nextidx];
         }
 
-        if(releasedVert.find(next) != releasedVert.end() && releasedVert[next]!= compPair){
+        if(releasedVert.find(next) != releasedVert.end() && releasedVert[next] == compPair){
             // last is released for another side hence we have to pull it to our side
             updatePositionToIntersection( p, next,Vg_seam2to);
+        }
+        // also project all duplicates
+        for(const auto & addedVert : currSeam->duplicates){
+            updatePositionToIntersection(p, addedVert.second, Vg_seam1to);
+        }
+        for(const auto & addedVert : currSeam->duplicates2){
+            updatePositionToIntersection(p, addedVert.second, Vg_seam2to);
         }
 
     }
     for(int j=0; j<minusOneSeams.size(); j++){
-//        cout<<"minus one seam "<<j<<endl;
+//
         minusOneSeam* currSeam  = minusOneSeams[j];
         int patch = currSeam -> getPatch();
         int startidx = currSeam -> getStartIdx();
@@ -1078,7 +1071,6 @@ void projectBackOnBoundary(const MatrixXd & Vg_to, MatrixXd& p, const vector<sea
         for(int i = 0; i<= len ; i++){
             int v1 = boundaryL_toPattern[patch][(startidx+i)% boundLen];
             Vg_seamto.row(i) = Vg_to.row(v1);
-
         }
 
         int i1=1;
@@ -1086,25 +1078,29 @@ void projectBackOnBoundary(const MatrixXd & Vg_to, MatrixXd& p, const vector<sea
         pair<int, int> compPair = make_pair(-1,j );
         while(next != endVert){
             if(i1==0){
-                if(releasedVert.find(next) != releasedVert.end() && releasedVert[next]!= compPair){
+                if(releasedVert.find(next) != releasedVert.end() && releasedVert[next] == compPair){
                     // it is released for another side hence we have to pull it to our side
                     updatePositionToIntersection( p, next,Vg_seamto);
                 }
             }
-            
             else if(releasedVert.find(next)== releasedVert.end()){
                 updatePositionToIntersection( p, next,Vg_seamto);
-            }else if(releasedVert[next]!= compPair){
+            }else if(releasedVert[next] == compPair){
                 updatePositionToIntersection( p, next,Vg_seamto);
 
             }
             i1++;
             next = boundaryL_toPattern[patch][( startidx+i1 ) % boundLen];
-        } //updatePositionToIntersection( p, next,Vg_seamto);
+        }
 
-        if(releasedVert.find(next) != releasedVert.end() && releasedVert[next]!= compPair){
+        if(releasedVert.find(next) != releasedVert.end() && releasedVert[next] == compPair){
             // it is released for another side hence we have to pull it to our side
             updatePositionToIntersection( p, next,Vg_seamto);
+        }
+        // also map all projections
+        for(const auto & addedVert : currSeam->duplicates){
+            updatePositionToIntersection(p, addedVert.second, Vg_seamto);
+
         }
 
     }

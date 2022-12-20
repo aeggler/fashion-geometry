@@ -23,6 +23,7 @@ public:
     Vector3d continuedDirection;
     bool bridgeFlag;
     bool finFlag;
+    bool levelOne;
 
     cutVertEntry( int vert, int seamType, int seamIdInList ){
         this-> vert = vert;
@@ -34,6 +35,7 @@ public:
         this -> seamType = seamType;
         this -> seamIdInList = seamIdInList;
         this -> patch = patch;
+        levelOne = true;
     }
 };
 

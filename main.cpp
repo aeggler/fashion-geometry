@@ -1632,9 +1632,9 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
 
         // now we treat the stretch
         computePatternStress(perFaceU_adapt, perFaceV_adapt);
-        t.printTime(" pattern stress ");
+//        t.printTime(" pattern stress ");
         solveStretchAdaptionViaEdgeLength();//perFaceU_adapt, perFaceV_adapt);
-        t.printTime(" solve stretch  ");
+//        t.printTime(" solve stretch  ");
         solveCornerMappedVertices();
         t.printTime(" corner mapped ");
         // before cutting the boundaries should be the same
