@@ -142,11 +142,40 @@ bool isRight(Vector3d a,Vector3d b,Vector3d c ){
     return ((b(0) - a(0))*(c(1) - a(1)) - (b(1) - a(1))*(c(0) - a(0))) < 0;
 
 }
+bool isEnd(cutVertEntry*& cve,vector<seam*>& seamsList, vector<minusOneSeam*> & minusOneSeams ){
+    if(cve-> seamType < 0){
+       return (cve->vert == minusOneSeams[cve->seamIdInList]->getEndVert()) ;
+    }else{
+        if(cve->seamIdInList>=0){
+            return (cve->vert== seamsList[cve->seamIdInList]->getEndCornerIds().first);
+        }else{
+            return (cve->vert== seamsList[(cve->seamIdInList+1)*(-1)]->getEndCornerIds().second);
+        }
+    }
+}
+
+
+bool isStart(cutVertEntry*& cve,vector<seam*>& seamsList, vector<minusOneSeam*> & minusOneSeams ){
+    if(cve-> seamType < 0){
+        return (cve->vert == minusOneSeams[cve->seamIdInList]->getStartVert()) ;
+    }else{
+        if(cve->seamIdInList>=0){
+            return (cve->vert== seamsList[cve->seamIdInList]-> getStart1());
+        }else{
+            return (cve->vert== seamsList[(cve->seamIdInList+1)*(-1)]->getStart2());
+        }
+    }
+}
+
 void splitVertexFromCVE( cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<vector<int> >& vfAdj,
                          std::vector<std::vector<int> >& boundaryL,  vector<seam*>& seamsList, vector<minusOneSeam*> & minusOneSeams,
                          map<int, pair<int, int>> & releasedVert, set<int>& toPattern_boundaryVerticesSet,  MatrixXd& lengthsCurr, MatrixXi& Fg_pattern){
-    if(cve-> finFlag) {cout<<"done already "<<endl; return; }
+    if(cve-> finFlag) {
+        cout<<cve->vert<<" done already "<<endl;
+        return;
+    }
 
+    cout<<endl<<"handling vert: "<<cve->vert<<endl;
 
     double eps = 0.01;
     vector<vector<int>> vvAdj;
@@ -179,6 +208,7 @@ void splitVertexFromCVE( cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<
     double thereshold = 1.;
     if(w_init < thereshold){
         cve-> finFlag = true;
+        cout<<"stoppiing now "<<endl;
         return;
     }
 
@@ -193,23 +223,34 @@ void splitVertexFromCVE( cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<
         pair<int, int> valPair = make_pair(cve->seamType, cve ->seamIdInList);
         releasedVert[cve->vert]= valPair;
         newVg.row(newVertIdx)= Vg.row(cve->vert);
-//        for(int i=0; i < adjacentFaces.size(); i++){
-//            updateWithNewId(Fg, cve->vert, adjacentFaces[i], newVertIdx);
-//        }
 
         cve->continuedCorner = true;
-        if(cve->startCorner){
+        if(cve->startCorner){// does not matter if it is a starter or not
             cout<<"starter"<<endl;
-            newVg.row(cve->vert) += (eps * toLeft).transpose();
-            cve->continuedDirection = toLeft;
-            cve-> vert = rightId;
+//            newVg.row(cve->vert) += (eps * toLeft).transpose();
+//            cve->continuedDirection = toLeft;
+            if(cve-> seamIdInList>=0){
+                // we count pos hence the previous is negative
+                cve->vert = boundary[rightId];
+            }else{
+                cve->vert = boundary[leftId];
+            }
+            // if it\s the last one we stop here
+            cve->finFlag = isEnd(cve, seamsList, minusOneSeams);
 
         }else{
-            cout<<'e'<<endl;
-            newVg.row(cve->vert) += (eps * toRight).transpose();
-            cve->continuedDirection = toRight;
-            cve-> vert = leftId;
-//            changeCorner(-1, cve, seamsList, minusOneSeams, newVertIdx);
+            cout<<"ending"<<endl;
+//            newVg.row(cve->vert) += (eps * toRight).transpose();
+//            cve->continuedDirection = toRight;
+            if(cve-> seamIdInList>=0){
+                // we count pos hence the next +1
+                cve->vert = boundary[leftId];
+            }else{
+                cve->vert = boundary[rightId] ;
+            }
+//            if first stop here
+            cve->finFlag = isStart(cve, seamsList, minusOneSeams);
+
         }
         Vg.resize(Vg.rows()+1, 3);
         Vg= newVg;
@@ -227,20 +268,28 @@ void splitVertexFromCVE( cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<
     }
 
 //    https://github.com/libigl/libigl/blob/main/include/igl/internal_angles.cpp
-    auto s = toLeft.normalized().cross(toRight.normalized()).norm();
-    auto c = toLeft.normalized().dot(toRight.normalized());
-    double angle = atan2(s, c);
-    angle = 2*M_PI - angle;
-    double deg = angle*180/M_PI;
-    double cosbeta = cos(angle/2);
-    double sinbeta = sin(angle /2);
-    cout<<cosbeta<<" "<<sinbeta<<" and deg "<<deg<<endl;
-    // we rotate midVec by half to get to the middle
-    Vector3d leftRot = toLeft.normalized();
-    leftRot(0)= cosbeta * toLeft.normalized()(0) - sinbeta * toLeft.normalized()(1);
-    leftRot(1)=  sinbeta * toLeft.normalized()(0) + cosbeta * toLeft.normalized()(1);
+//    auto s = toLeft.normalized().cross(toRight.normalized()).norm();
+//    auto c = toLeft.normalized().dot(toRight.normalized());
+//    double angle = atan2(s, c);
+//    angle = 2*M_PI - angle;
+//    double deg = angle*180/M_PI;
+//    double cosbeta = cos(angle/2);
+//    double sinbeta = sin(angle /2);
+////    cout<<cosbeta<<" "<<sinbeta<<" and deg "<<deg<<endl;
+//    // we rotate midVec by half to get to the middle
+//    Vector3d leftRot = toLeft.normalized();
+//    leftRot(0)= cosbeta * toLeft.normalized()(0) - sinbeta * toLeft.normalized()(1);
+//    leftRot(1)=  sinbeta * toLeft.normalized()(0) + cosbeta * toLeft.normalized()(1);
 
-    Vector3d midVec = leftRot;
+    Vector3d midVec;// = leftRot;
+    Vector3d midVect = Vg.row(boundaryL[cve->patch][leftId])- Vg.row(boundaryL[cve->patch][rightId]);
+    if(!cve->levelOne){
+        midVect = cve->leftdirection - cve->rightdirection;
+    }
+    midVect= midVect.normalized();
+    midVec(0)= -midVect(1);
+    midVec(1) = midVect(0);
+
     cout<<" midvec "<<midVec.transpose()<<endl;
 
 
@@ -262,9 +311,8 @@ void splitVertexFromCVE( cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<
     // is the new to be inserted vertex
     int insertIdx =  vvAdj[cve -> vert][idxofClosest];
     cout<<insertIdx<<" the inserted index"<<endl;
+    bool compareRight = isRight(Vg.row(boundaryL[cve->patch][rightId]), Vg.row(cve-> vert)+midVec.transpose(), Vg.row(boundaryL[cve->patch][rightId]) );
 
-    bool compareRight = isRight(Vg.row(cve-> vert), Vg.row(cve-> vert)+midVec.transpose(), Vg.row(boundaryL[cve->patch][rightId]) );
-   
     updateWithNewId(Fg, cve->vert, rightFaceId, newVertIdx);
 
     // adapt the position
@@ -295,7 +343,7 @@ void splitVertexFromCVE( cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<
         }
         if(testVert == -1 )cout<<" no suitable test vert found, something is wrong "<<endl;
 
-        bool checkRight = isRight(Vg.row(cve-> vert), Vg.row(cve-> vert)+midVec.transpose(), Vg.row(testVert) );
+        bool checkRight = isRight(Vg.row(boundaryL[cve->patch][rightId]), Vg.row(cve-> vert)+midVec.transpose(), Vg.row(testVert) );
 
         if (checkRight == compareRight){
             updateWithNewId(Fg, cve->vert, adjacentFaces[i], newVertIdx);
@@ -318,9 +366,6 @@ void splitVertexFromCVE( cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<
     }
     cve-> vert = insertIdx;
     cve->levelOne = false;
-    cout<<Fg.row(leftFaceId)<<" left and right face updated "<<Fg.row(rightFaceId)<<endl;
-    cout<<Fg.row(186)<<" 186 face updated "<<endl;
-
 
 }
 void splitVertex(Node** head, int & listLength, int  whichTear, MatrixXd& Vg, MatrixXi& Fg, vector<vector<int> >& vfAdj, MatrixXd& lengthsOrig, MatrixXd& lengthsCurr){

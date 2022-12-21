@@ -52,6 +52,14 @@ public:
     int seamLength();
     bool inverted;
 
+    int getStart1(){
+        return patch1startCornerId;
+    }
+
+    int getStart2(){
+        return patch2startCornerId;
+    }
+
     std::pair<int, int> getStartAndPatch2ForCorres();
     std::pair<int, int> getEndCornerIds(){
         return std::make_pair(patch1endCornerId, patch2endCornerId);
@@ -63,13 +71,7 @@ public:
             patch2startCornerId= newVal;
         }
     }
-    void modifyEnd(int which, int newVal){
-        if(which > 0 ){
-            patch1endCornerId = newVal;
-        }else{
-            patch2endCornerId = newVal;
-        }
-    }
+
 };
 
 class minusOneSeam{

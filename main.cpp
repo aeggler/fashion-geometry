@@ -1642,7 +1642,7 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
 
     adaptioncount++;
 
-    std::cout<<"-------------- Time Step ------------"<<adaptioncount<<endl;
+ //   std::cout<<"-------------- Time Step ------------"<<adaptioncount<<endl;
     // we have no velocity or collision but we do have stretch, constrainedStretch and bending
     // for the stretch, the current pattern is the reference, then its corners are mapped to another position
 // the stretch as a simple solve stretch of the rest position and the stretched position?
@@ -1657,7 +1657,7 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
     MatrixXd perFaceU_adapt(Fg_pattern.rows(), 2);
     MatrixXd perFaceV_adapt(Fg_pattern.rows(), 2);
 
-    t.printTime(" init ");
+//    t.printTime(" init ");
     for(int i=0; i<5; i++){
 
         // now we treat the stretch
@@ -1666,10 +1666,10 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
         solveStretchAdaptionViaEdgeLength();//perFaceU_adapt, perFaceV_adapt);
 //        t.printTime(" solve stretch  ");
         solveCornerMappedVertices();
-        t.printTime(" corner mapped ");
+//        t.printTime(" corner mapped ");
         // before cutting the boundaries should be the same
         projectBackOnBoundary( toPattern, p_adaption, seamsList,minusOneSeamsList,  Fg_pattern, Fg_pattern_orig, boundaryL_toPattern, boundaryL, releasedVert );
-        t.printTime(" project back  ");
+//        t.printTime(" project back  ");
     }
     currPattern = p_adaption;
 
@@ -1684,8 +1684,8 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
     //remove wireframe
     viewer.data().show_lines = true;
 
-    cout<<(colPatternV(5324, 0)-1)/5 +1 <<" max norm v direction "<<endl;
-    cout<<(colPatternU(5324,0)-1)/5 +1<<" max norm in u direction"<<endl;
+//    cout<<(colPatternV(5324, 0)-1)/5 +1 <<" max norm v direction "<<endl;
+//    cout<<(colPatternU(5324,0)-1)/5 +1<<" max norm in u direction"<<endl;
     MatrixXd currLengths; igl::edge_lengths(currPattern, Fg_pattern, currLengths);
 
     currLengths = patternEdgeLengths_orig - currLengths;// TODO BETTER COLORING THIS CAN AVERAGE BADLY
