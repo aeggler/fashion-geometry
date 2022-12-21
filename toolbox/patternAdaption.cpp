@@ -169,13 +169,13 @@ bool isStart(cutVertEntry*& cve,vector<seam*>& seamsList, vector<minusOneSeam*> 
 
 void splitVertexFromCVE( cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<vector<int> >& vfAdj,
                          std::vector<std::vector<int> >& boundaryL,  vector<seam*>& seamsList, vector<minusOneSeam*> & minusOneSeams,
-                         map<int, pair<int, int>> & releasedVert, set<int>& toPattern_boundaryVerticesSet,  MatrixXd& lengthsCurr, MatrixXi& Fg_pattern){
+                         map<int, pair<int, int>> & releasedVert, set<int>& toPattern_boundaryVerticesSet,  MatrixXd& lengthsCurr, MatrixXi& Fg_pattern, set<int> & cornerSet){
     if(cve-> finFlag) {
         cout<<cve->vert<<" done already "<<endl;
         return;
     }
 
-    cout<<endl<<"handling vert: "<<cve->vert<<endl;
+    cout<<"handling vert: "<<cve->vert<<endl;
 
     double eps = 0.01;
     vector<vector<int>> vvAdj;
@@ -197,6 +197,11 @@ void splitVertexFromCVE( cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<
     if(rightId<0) rightId += boundary.size();
     int leftFaceId = adjacentFaceToEdge(boundaryL[cve->patch][leftId], cve-> vert, -1, vfAdj );
     int rightFaceId = adjacentFaceToEdge(boundaryL[cve->patch][rightId], cve-> vert, -1, vfAdj );
+    if(leftFaceId ==-1 || rightFaceId ==-1){
+        cve->finFlag=true;
+        cout<<" somehting went wrong, we have no neighbor faces. Maybe cut too fast for simulation"<<endl;
+        return;
+    }
 
     cout<<leftFaceId<<" left and right face index "<<rightFaceId<<endl;
     int whichEdgeLeft = findWhichEdgeOfFace(leftFaceId, cve->vert, boundaryL[cve->patch][leftId], Fg_pattern);
@@ -205,10 +210,10 @@ void splitVertexFromCVE( cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<
     double w_init = lengthsCurr(leftFaceId, whichEdgeLeft)/lengthsOrig(leftFaceId, whichEdgeLeft);
     w_init +=  lengthsCurr(rightFaceId, whichEdgeRight)/lengthsOrig(rightFaceId, whichEdgeRight);
     w_init /= 2;
-    double thereshold = 1.;
+    double thereshold = 1.005;
     if(w_init < thereshold){
         cve-> finFlag = true;
-        cout<<"stoppiing now "<<endl;
+        cout<<"stopping now "<<endl;
         return;
     }
 
@@ -228,20 +233,16 @@ void splitVertexFromCVE( cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<
         if(cve->startCorner){// does not matter if it is a starter or not
             cout<<"starter"<<endl;
 //            newVg.row(cve->vert) += (eps * toLeft).transpose();
-//            cve->continuedDirection = toLeft;
             if(cve-> seamIdInList>=0){
                 // we count pos hence the previous is negative
                 cve->vert = boundary[rightId];
             }else{
                 cve->vert = boundary[leftId];
             }
-            // if it\s the last one we stop here
-            cve->finFlag = isEnd(cve, seamsList, minusOneSeams);
+
 
         }else{
             cout<<"ending"<<endl;
-//            newVg.row(cve->vert) += (eps * toRight).transpose();
-//            cve->continuedDirection = toRight;
             if(cve-> seamIdInList>=0){
                 // we count pos hence the next +1
                 cve->vert = boundary[leftId];
@@ -249,9 +250,9 @@ void splitVertexFromCVE( cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<
                 cve->vert = boundary[rightId] ;
             }
 //            if first stop here
-            cve->finFlag = isStart(cve, seamsList, minusOneSeams);
 
         }
+        cve->finFlag = (cornerSet.find(cve->vert) != cornerSet.end()); //if it is a corner we are done
         Vg.resize(Vg.rows()+1, 3);
         Vg= newVg;
         cout<<" Vg.rows "<<Vg.rows()<<endl;
@@ -261,6 +262,7 @@ void splitVertexFromCVE( cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<
     // if it's a bridge there is no next and we set fin flag
     if(cve-> bridgeFlag){
         // this is the final cut, we are done after: should look like  ><
+        cout<<"cutting the bridge"<<endl;
         updateWithNewId(Fg, cve->vert, rightFaceId, newVertIdx);
 
         cve-> finFlag = true;
@@ -891,22 +893,24 @@ MatrixXd& lengthsOrig, MatrixXd& lengthsCurr,const std::vector<std::vector<std::
 }
 
 void tearFurther(vector<cutVertEntry*>& cutPositions, MatrixXd&  currPattern, MatrixXi& Fg_pattern,vector<seam*>& seamsList, vector<minusOneSeam*>& minusOneSeams,
-                 map<int, pair<int, int>> & releasedVert, set<int>& toPattern_boundaryVerticesSet,  std::vector<std::vector<int> >& boundaryL
+                 map<int, pair<int, int>> & releasedVert, set<int>& toPattern_boundaryVerticesSet,  std::vector<std::vector<int> >& boundaryL, set<int> & cornerSet
 ){
+    cout<<"-----------------------"<<endl<<endl;
     vector<vector<int> > vfAdj;
     createVertexFaceAdjacencyList(Fg_pattern, vfAdj);
     MatrixXd lengthsCurr;
     igl::edge_lengths(currPattern, Fg_pattern, lengthsCurr);
 
     for(int i = 0; i < 3; i++){// cutPositions.size(); i++){
-        cout<<cutPositions[i]->vert<<" vertex currently handling"<<endl;
-        splitVertexFromCVE(cutPositions[i], currPattern, Fg_pattern, vfAdj, boundaryL, seamsList, minusOneSeams, releasedVert, toPattern_boundaryVerticesSet,lengthsCurr, Fg_pattern );
+        cout<<endl<< cutPositions[i]->vert<<" vertex up next handling"<<endl;
+        splitVertexFromCVE(cutPositions[i], currPattern, Fg_pattern, vfAdj, boundaryL, seamsList, minusOneSeams, releasedVert,
+                           toPattern_boundaryVerticesSet,lengthsCurr, Fg_pattern, cornerSet );
     }
 }
 void computeTear(Eigen::MatrixXd & fromPattern, MatrixXd&  currPattern, MatrixXi& Fg_pattern, MatrixXi& Fg_pattern_orig,
                  vector<seam*>& seamsList, vector<minusOneSeam*>& minusOneSeams, std::vector<std::vector<int> >& boundaryL, bool & finished,
                  const std::vector<std::vector<std::pair<int, int>>>& edgesPerBoundary, map<int, vector<pair<int, int>>>& seamIdPerCorner,
-                 VectorXd& cornerVert, vector<cutVertEntry*>& cutPositions,  map<int, pair<int, int>> & releasedVert, set<int>& toPattern_boundaryVerticesSet )
+                 VectorXd& cornerVert, vector<cutVertEntry*>& cutPositions,  map<int, pair<int, int>> & releasedVert, set<int>& toPattern_boundaryVerticesSet, set<int> & cornerSet )
                  {
 
     vector<vector<int> > vfAdj;
@@ -925,12 +929,14 @@ void computeTear(Eigen::MatrixXd & fromPattern, MatrixXd&  currPattern, MatrixXi
     double tailor_lazyness = 1;
     double minConstrained = 0.25;
     setLP( boundaryL, vfAdj, Fg_pattern, lengthsOrig, lengthsCurr, edgesPerBoundary, seamIdPerCorner,
-           seamsList, minusOneSeams, tearPatch, tearVert, tearVertInBoundaryIndex, tailor_lazyness, minConstrained, cutPositions, cornerVert);
+           seamsList, minusOneSeams, tearPatch, tearVert, tearVertInBoundaryIndex, tailor_lazyness, minConstrained, cutPositions,
+           cornerVert);
 
 
     // we cut the first one
     for(int i = 0; i < 3; i++){// cutPositions.size(); i++){
-        splitVertexFromCVE(cutPositions[i], currPattern, Fg_pattern, vfAdj, boundaryL, seamsList, minusOneSeams, releasedVert, toPattern_boundaryVerticesSet,lengthsCurr, Fg_pattern );
+        splitVertexFromCVE(cutPositions[i], currPattern, Fg_pattern, vfAdj, boundaryL, seamsList,
+                           minusOneSeams, releasedVert, toPattern_boundaryVerticesSet,lengthsCurr, Fg_pattern, cornerSet);
     }
 
 cout<<"fin compute tear "<<endl ;
