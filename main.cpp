@@ -139,7 +139,9 @@ Eigen::VectorXi componentIdPerFace,componentIdPerFaceNew, componentIdPerVert;
 //Eigen::SparseMatrix<double> L;
 MatrixXd perFaceD2, perFaceD1;
 VectorXd edgeVertices;
-vector<cutVertEntry*> cutPositions; map<int, pair<int, int>>  releasedVert;
+vector<cutVertEntry*> cutPositions;
+map<int, pair<int, int>>  releasedVert;
+set<int> toPattern_boundaryVerticesSet;
 
 void preComputeAdaption();
 void computeBaryCoordsGarOnNewMannequin(igl::opengl::glfw::Viewer& viewer);
@@ -461,7 +463,7 @@ int main(int argc, char *argv[])
     computeAllSeams( boundaryL,vertexMapPattToGar, vertexMapGarAndIdToPatch, vfAdj, componentIdPerFace,
                      componentIdPerVert,edgeVertices, cornerPerBoundary, seamsList, minusOneSeamsList, seamIdPerCorner);
     cout<<seamIdPerCorner.size()<<" the size of the map final "<<endl;
-    cout<< seamsList[6]->getEndCornerIds().first<<" "<< seamsList[6]->getEndCornerIds().second<<" "<< seamsList[6]->getStartAndPatch1().first<<" " <<seamsList[6]->getStartAndPatch2ForCorres().first<<endl;
+
 
     gar_adapt = new garment_adaption(Vg, Fg,  Vg_pattern, Fg_pattern, seamsList, boundaryL); //none have been altered at this stage
     gar_adapt->computeJacobian();
@@ -508,6 +510,10 @@ int main(int argc, char *argv[])
     viewer.core().animation_max_fps = 200.;
     viewer.core().is_animating = false;
     int whichSeam = 0;
+
+
+    cout<<boundaryL[0].size()<<endl;
+
     //additional menu items
 
     int whichBound=0;
@@ -797,7 +803,7 @@ int main(int argc, char *argv[])
                 bool fin = false;
                 cout<<"at old boundary loop "<<boundaryL[4].size()<<endl;
                 computeTear(fromPattern, currPattern, Fg_pattern,Fg_pattern_orig, seamsList ,
-                            minusOneSeamsList,boundaryL,fin,  cornerPerBoundary, seamIdPerCorner,edgeVertices, cutPositions, releasedVert);
+                            minusOneSeamsList,boundaryL,fin,  cornerPerBoundary, seamIdPerCorner,edgeVertices, cutPositions, releasedVert, toPattern_boundaryVerticesSet);
 
 
                 viewer.selected_data_index = 0;
@@ -825,6 +831,20 @@ int main(int argc, char *argv[])
 
 // why is the mapped pattern often so much bent? this makes no sense. There has to be an issue with that
 
+            }
+
+            if(ImGui::Button("Compute further Tear", ImVec2(-1, 0))){
+                simulate = false;
+                adaptionFlag = false;
+                viewer.core().is_animating = false;
+                tearFurther(cutPositions, currPattern, Fg_pattern, seamsList, minusOneSeamsList, releasedVert, toPattern_boundaryVerticesSet, boundaryL);
+                std::vector<std::vector<int> > boundaryLnew;
+                igl::boundary_loop(Fg_pattern, boundaryLnew);
+
+                boundaryL.clear();
+                boundaryL= boundaryLnew;
+                viewer.core().is_animating = true;
+                adaptionFlag = true;
             }
 
         }
@@ -860,6 +880,11 @@ void preComputeAdaption(){
 //    patternEdgeLengths.resize(Fg_pattern.rows() ,3);
     igl::edge_lengths(fromPattern,Fg_pattern_orig, patternEdgeLengths_orig);
     igl::boundary_loop(Fg_pattern_orig, boundaryL_toPattern);
+    for(int i =0; i < boundaryL_toPattern.size(); i++){
+        for(int j = 0; j < boundaryL_toPattern[i].size(); j++){
+            toPattern_boundaryVerticesSet.insert(boundaryL_toPattern[i][j]);
+        }
+    }
     // use with PBD_adaption
     baryCoordsUPattern.resize(Fg_pattern.rows(), 3);
     baryCoordsVPattern.resize(Fg_pattern.rows(), 3);
@@ -1497,10 +1522,7 @@ void solveConstrainedVertices(){
     }
 }
 void solveStretchAdaptionViaEdgeLength(){
-//    MatrixXd patternEdgeLengthsCurr;
-
-//why does it not just go back to it's original position?
-    for(int i=0; i<Fg_pattern.rows(); i++){
+ for(int i=0; i<Fg_pattern.rows(); i++){
         for(int j=0; j<3; j++){
             Vector3r corr0, corr1;
 
@@ -1508,7 +1530,15 @@ void solveStretchAdaptionViaEdgeLength(){
             Vector3d p1 =  p_adaption.row(Fg_pattern(i,(j+1)%3));
             double mass0 = 1;
 
-            PBD.solve_DistanceConstraint(p0, mass0, p1, 1, patternEdgeLengths_orig(i, (j+2) % 3),stretchStiffnessU, corr0, corr1);
+            // idea: we should allow less stretch if it is on the original boundary, stronger edge length preservation force
+            double stiffnessUsed = stretchStiffnessU;
+            if(toPattern_boundaryVerticesSet.find(Fg_pattern(i, j)) != toPattern_boundaryVerticesSet.end() &&
+            toPattern_boundaryVerticesSet.find(Fg_pattern(i,(j+1)%3)) != toPattern_boundaryVerticesSet.end()){
+
+                stiffnessUsed *= 5;
+            }
+
+            PBD.solve_DistanceConstraint(p0, mass0, p1, 1, patternEdgeLengths_orig(i, (j+2) % 3),stiffnessUsed, corr0, corr1);
             p_adaption.row(Fg_pattern(i,j)) += corr0;
             p_adaption.row(Fg_pattern(i,(j+1) % 3 )) += corr1;
 
