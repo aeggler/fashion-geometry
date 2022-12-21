@@ -137,11 +137,14 @@ void addToDulicateList( cutVertEntry*& cve, vector<seam*>& seamsList,  vector<mi
         }
     }
 }
+bool isRight(Vector3d a,Vector3d b,Vector3d c ){
+    // right gets  newVertIdx
+    return ((b(0) - a(0))*(c(1) - a(1)) - (b(1) - a(1))*(c(0) - a(0))) < 0;
+
+}
 void splitVertexFromCVE( cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<vector<int> >& vfAdj,
                          std::vector<std::vector<int> >& boundaryL,  vector<seam*>& seamsList, vector<minusOneSeam*> & minusOneSeams,
                          map<int, pair<int, int>> & releasedVert, set<int>& toPattern_boundaryVerticesSet,  MatrixXd& lengthsCurr, MatrixXi& Fg_pattern){
-    cout<<"in CVE"<<endl;
-    cout<<boundaryL[0].size()<<endl;
     if(cve-> finFlag) {cout<<"done already "<<endl; return; }
 
 
@@ -156,14 +159,12 @@ void splitVertexFromCVE( cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<
     auto boundary = boundaryL[cve->patch];
     int idx = 0;
     int leftId, rightId;
-    cout<<"searching for index"<<endl;
     while (boundary[idx] != cve->vert){
         idx++;
     }
 
     leftId = (idx+1) % boundary.size();
     rightId = (idx -1 );
-    cout<<leftId<<" left and right "<<rightId<<endl;
     if(rightId<0) rightId += boundary.size();
     int leftFaceId = adjacentFaceToEdge(boundaryL[cve->patch][leftId], cve-> vert, -1, vfAdj );
     int rightFaceId = adjacentFaceToEdge(boundaryL[cve->patch][rightId], cve-> vert, -1, vfAdj );
@@ -262,14 +263,8 @@ void splitVertexFromCVE( cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<
     int insertIdx =  vvAdj[cve -> vert][idxofClosest];
     cout<<insertIdx<<" the inserted index"<<endl;
 
-    double x1 = Vg(cve-> vert, 0); double y1 = Vg(cve-> vert, 1);
-    double x2 = Vg(insertIdx, 0); double y2 = Vg(insertIdx, 1);
-
-    // right gets  newVertIdx
-    double dRight = (Vg(boundaryL[cve->patch][rightId], 0) - x1) * (y2-y1) - (Vg(boundaryL[cve->patch][rightId], 1) - y1) * (x2 - x1);
-
-    // defines the side of right, left is the opposite
-    bool rightDSmaller = (dRight<0);
+    bool compareRight = isRight(Vg.row(cve-> vert), Vg.row(cve-> vert)+midVec.transpose(), Vg.row(boundaryL[cve->patch][rightId]) );
+   
     updateWithNewId(Fg, cve->vert, rightFaceId, newVertIdx);
 
     // adapt the position
@@ -279,8 +274,6 @@ void splitVertexFromCVE( cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<
     }else{
         newVg.row(newVertIdx)= Vg.row(cve->vert) + (eps * cve -> rightdirection).transpose();
         newVg.row(cve->vert) = Vg.row(cve->vert) + (eps * cve -> leftdirection).transpose();
-        cout<<newVg.row(newVertIdx). transpose()<< " had dir "<< cve -> rightdirection<<endl;
-        cout<<newVg.row(cve->vert). transpose()<< " had dir "<< cve -> leftdirection<<endl;
 
     }
 
@@ -302,18 +295,11 @@ void splitVertexFromCVE( cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<
         }
         if(testVert == -1 )cout<<" no suitable test vert found, something is wrong "<<endl;
 
-        double d = (Vg(testVert, 0) - x1)*(y2-y1)-(Vg(testVert, 1) - y1)*(x2 - x1);
-        // if it is one of the same side as the one we call right
-        if (rightDSmaller == (d<0)){
+        bool checkRight = isRight(Vg.row(cve-> vert), Vg.row(cve-> vert)+midVec.transpose(), Vg.row(testVert) );
+
+        if (checkRight == compareRight){
             updateWithNewId(Fg, cve->vert, adjacentFaces[i], newVertIdx);
         }
-
-        Vector3d currDir = Vg.row(testVert)-Vg.row(cve->vert);
-
-        cout<<(rightDSmaller == (d<0));
-
-
-        cout<<" face "<<adjacentFaces[i]<<" updated to "<<Fg.row(adjacentFaces[i])<<endl;
 
     }
     if(toPattern_boundaryVerticesSet.find(insertIdx)!= toPattern_boundaryVerticesSet.end()){
