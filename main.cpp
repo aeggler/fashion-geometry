@@ -845,11 +845,20 @@ int main(int argc, char *argv[])
                 adaptionFlag = false;
                 viewer.core().is_animating = false;
                 tearFurther(cutPositions, currPattern, Fg_pattern, seamsList, minusOneSeamsList, releasedVert, toPattern_boundaryVerticesSet, boundaryL, cornerSet);
+                cout<<"back"<<endl;
                 std::vector<std::vector<int> > boundaryLnew;
                 igl::boundary_loop(Fg_pattern, boundaryLnew);
-
+                cout<<"back 2"<<endl;
+//                viewer.selected_data_index = 0;
+//                viewer.data().clear();
+//                viewer.data().set_mesh(currPattern, Fg_pattern);
+//cout<<currPattern.rows()<<" rows"<<endl;
+                for(int i=0; i<boundaryLnew[0].size(); i++){
+                    cout<<boundaryLnew[0][i]<<" ";
+                }
                 boundaryL.clear();
                 boundaryL= boundaryLnew;
+
                 viewer.core().is_animating = true;
                 adaptionFlag = true;
             }

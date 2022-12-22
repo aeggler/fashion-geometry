@@ -11,6 +11,7 @@
 //
 #include "/Library/gurobi1000/macos_universal2/include/gurobi_c++.h"
 #include "adjacency.h"
+#include <igl/HalfEdgeIterator.h>
 
 using namespace std;
 using namespace Eigen;
@@ -189,7 +190,7 @@ void splitVertexFromCVE( cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<
     int rightFaceId = adjacentFaceToEdge(boundaryL[cve->patch][rightId], cve-> vert, -1, vfAdj );
     if(leftFaceId ==-1 || rightFaceId ==-1){
         cve->finFlag=true;
-        cout<<" somehting went wrong, we have no neighbor faces. Maybe cut too fast for simulation"<<endl;
+        cout<<" something went wrong, we have no neighbor faces. Maybe cut too fast for simulation"<<endl;
         return;
     }
 
@@ -301,47 +302,117 @@ void splitVertexFromCVE( cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<
     }
     // is the new to be inserted vertex
     int insertIdx =  vvAdj[cve -> vert][idxofClosest];
-    cout<<insertIdx<<" the inserted index"<<endl;// TODO CASE IT IS NOT RIGHT NEITHER LEFT BUT ACTUALLY ON!!
-    bool compareRight =isRight(Vg.row(cve->vert), Vg.row(cve-> vert)+midVec.transpose(), Vg.row(boundaryL[cve->patch][rightId]) ); ;//isRight(Vg.row(boundaryL[cve->patch][rightId]), Vg.row(cve-> vert)+midVec.transpose(), Vg.row(boundaryL[cve->patch][rightId]) );
-
-    updateWithNewId(Fg, cve->vert, rightFaceId, newVertIdx);
-
-    // adapt the position
-    if(cve->levelOne){
-        newVg.row(newVertIdx)= Vg.row(cve->vert) + (eps * toRight).transpose();
-        newVg.row(cve->vert) = Vg.row(cve->vert) + (eps * toLeft).transpose();
+    MatrixXi TT, TTi;
+    igl::triangle_triangle_adjacency(Fg, TT, TTi);
+    std::pair<int, int>  faces;
+    adjacentFacesToEdge(cve->vert, insertIdx, vfAdj, faces );
+    cout<<insertIdx<<" the insert idx "<<faces.first<<" and second "<<faces.second<<endl;
+    int helperWhich = -1;
+    if(Fg(faces.first, 0)== cve-> vert){
+        helperWhich = 0;
+    }else if (Fg(faces.first, 1)== cve-> vert){
+        helperWhich = 1;
     }else{
-        newVg.row(newVertIdx)= Vg.row(cve->vert) + (eps * cve -> rightdirection).transpose();
-        newVg.row(cve->vert) = Vg.row(cve->vert) + (eps * cve -> leftdirection).transpose();
-
+        helperWhich = 2;
     }
+    cout<<Fg.row(faces.first)<<" found and identified index "<<helperWhich<<endl;
+//    igl::HalfEdgeIterator<MatrixXi, MatrixXi, MatrixXi>;
+    igl::HalfEdgeIterator <MatrixXi, MatrixXi, MatrixXi>hei (Fg, TT, TTi, faces.first, helperWhich, false);
+    igl::HalfEdgeIterator <MatrixXi, MatrixXi, MatrixXi>hei2 (Fg, TT, TTi, faces.second, helperWhich, false);
+    int lastF = hei.Fi();
+    int lastV= hei.Vi();
+    bool nextEnd = hei.NextFE();
+    if( hei.Fi()!= faces.second){
+        // then we skip the first and directly go from there
+        // we need to change the position
+        cout<<"change position of old "<<lastF<<" "<<lastV<<endl;
+        updateWithNewId(Fg, cve->vert, lastF, newVertIdx);
+    }
+    if(0!= nextEnd) {
+        cout << "change position of " << hei.Fi()<<" "<<hei.Vi() << endl;
+        updateWithNewId(Fg, cve->vert, hei.Fi(), newVertIdx);
+        while (hei.NextFE() != 0) {
+            cout << " while change position of " << hei.Fi() <<" "<<hei.Vi()<< endl;
+            updateWithNewId(Fg, cve->vert, hei.Fi(), newVertIdx);
+
+        }
+        cout << " vertex of hei " << hei.Vi() << endl;// whil ehei.next != 0
+//    cout<<hei.NextFE()<<hei.Fi()<<" the next, and after "<<hei.NextFE()<<hei.Fi()<<" "<<hei.NextFE()<<hei.Fi()<<endl;
+    }
+    cout<<Fg.row(156)<<", row 156"<<endl;
+    cout<<Fg.row(782)<<", row 782"<<endl;
+    cout<<Fg.row(417)<<", row 417"<<endl;
+    newVg.row(newVertIdx) = Vg.row(cve->vert);
+
+
+    cout<<insertIdx<<" the inserted index"<<endl;// TODO CASE IT IS NOT RIGHT NEITHER LEFT BUT ACTUALLY ON!!
+//    bool compareRight = isRight(Vg.row(cve->vert), Vg.row(cve-> vert)+midVec.transpose(), Vg.row(boundaryL[cve->patch][rightId]) ); ;//isRight(Vg.row(boundaryL[cve->patch][rightId]), Vg.row(cve-> vert)+midVec.transpose(), Vg.row(boundaryL[cve->patch][rightId]) );
+////
+////    updateWithNewId(Fg, cve->vert, rightFaceId, newVertIdx);
+////
+////    // adapt the position
+//    if(cve->levelOne){
+//        if(isRight(Vg.row(cve->vert), Vg.row(cve-> vert)+midVec.transpose(),  Vg.row(cve->vert) + (eps * toRight).transpose()))
+//        {
+//            newVg.row(newVertIdx) = Vg.row(cve->vert) + (eps* 10 * toRight).transpose();
+//            newVg.row(cve->vert) = Vg.row(cve->vert) + (eps* 10 * toLeft).transpose();
+//
+//        }else{
+//            newVg.row(cve->vert)= Vg.row(cve->vert) + (eps * 10* toRight).transpose();
+//            newVg.row(newVertIdx) = Vg.row(cve->vert) + (eps * 10* toLeft).transpose();
+//        }
+//
+//    }else{
+//        if(isRight(Vg.row(cve->vert), Vg.row(cve-> vert)+midVec.transpose(),  Vg.row(cve->vert) + (eps * toRight).transpose())){
+//            newVg.row(newVertIdx) = Vg.row(cve->vert) + (eps * 10* cve -> rightdirection).transpose();
+//            newVg.row(cve->vert) = Vg.row(cve->vert) + (eps * 10* cve -> leftdirection).transpose();
+//        }else{
+//            newVg.row( cve->vert)= Vg.row(cve->vert) + (eps * 10* cve -> rightdirection).transpose();
+//            newVg.row(newVertIdx) = Vg.row(cve->vert) + (eps* 10 * cve -> leftdirection).transpose();
+//        }
+//
+//
+//
+//    }
+//cout<< newVg.row(newVertIdx).transpose()<<" and "<< newVg.row(cve->vert).transpose()<<endl;
+
+
 
     Vg.resize(Vg.rows()+1, 3);
     Vg= newVg;
 
     // for each adjacent face we update it to the original or new vertex
-    for(int i=0; i< adjacentFaces.size(); i++){
-        if(adjacentFaces[i] == leftFaceId || adjacentFaces[i] == rightFaceId ) continue; // they are handled separately
-        int testVert =-1;
-        // we take one edge and check it's side
-        if(Fg(adjacentFaces[i], 0)!= cve-> vert && Fg(adjacentFaces[i], 0)!= insertIdx ){
-            testVert = Fg(adjacentFaces[i], 0);
-        }else if( Fg(adjacentFaces[i], 1)!= cve-> vert && Fg(adjacentFaces[i], 1)!= insertIdx ){
-            testVert = Fg(adjacentFaces[i], 1);
-        }
-        else {
-            testVert = Fg(adjacentFaces[i], 2);
-        }
-        if(testVert == -1 )cout<<" no suitable test vert found, something is wrong "<<endl;
-        cout<<testVert<<" vert from face "<<adjacentFaces[i]<<endl;
-        bool checkRight = isRight(Vg.row(cve->vert), Vg.row(cve-> vert)+midVec.transpose(), Vg.row(testVert) );
+//    for(int i=0; i< adjacentFaces.size(); i++){
+////        if(adjacentFaces[i] == leftFaceId || adjacentFaces[i] == rightFaceId ) continue; // they are handled separately
+//        int testVert =-1;
+//        // we take one edge and check it's side
+//        if(Fg(adjacentFaces[i], 0)!= cve-> vert && Fg(adjacentFaces[i], 0)!= insertIdx ){
+//            testVert = Fg(adjacentFaces[i], 0);
+//        }else if( Fg(adjacentFaces[i], 1)!= cve-> vert && Fg(adjacentFaces[i], 1)!= insertIdx ){
+//            testVert = Fg(adjacentFaces[i], 1);
+//        }
+//        else {
+//            testVert = Fg(adjacentFaces[i], 2);
+//        }
+//        if(testVert == -1 )cout<<" no suitable test vert found, something is wrong "<<endl;
+//        cout<<testVert<<" vert from face "<<adjacentFaces[i]<<endl;
+////        bool checkRight = isRight(Vg.row(cve->vert), Vg.row(cve-> vert)+midVec.transpose(), Vg.row(testVert) );
+//        bool checkRight = isRight(Vg.row(cve->vert), Vg.row(cve-> vert)+midVec.transpose(), Vg.row(testVert) );
+//
+//
+////        if (checkRight == compareRight){
+//        if(checkRight){
+//            cout<<"is updated"<<endl;
+//            updateWithNewId(Fg, cve->vert, adjacentFaces[i], newVertIdx);
+//        }
+//        if(adjacentFaces[i] == 62|| adjacentFaces[i] == 776 || adjacentFaces[i] ==781){
+//            cout<<" face "<<adjacentFaces[i] <<" : "<<Fg.row(adjacentFaces[i])<<endl;
+//        }
+//    }
+    cout<<" right "<< Fg.row(rightFaceId)<<endl;
+    cout<<"left "<<Fg.row(leftFaceId)<<endl;
 
-        if (checkRight == compareRight){
-            cout<<"is updated"<<endl;
-            updateWithNewId(Fg, cve->vert, adjacentFaces[i], newVertIdx);
-        }
 
-    }
     if(toPattern_boundaryVerticesSet.find(insertIdx)!= toPattern_boundaryVerticesSet.end()){
             cout<<"we are nearly done here, it's cut through! "<<endl;
             cve-> vert = insertIdx;
@@ -357,8 +428,10 @@ void splitVertexFromCVE( cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<
         cout<<" inserted"<<endl;
     }
     cve-> vert = insertIdx;
-    cout<<"fin"<<endl<<endl; 
     cve->levelOne = false;
+    cout<<"fin"<<endl<<endl;
+
+
 
 }
 void splitVertex(Node** head, int & listLength, int  whichTear, MatrixXd& Vg, MatrixXi& Fg, vector<vector<int> >& vfAdj, MatrixXd& lengthsOrig, MatrixXd& lengthsCurr){
@@ -896,7 +969,11 @@ void tearFurther(vector<cutVertEntry*>& cutPositions, MatrixXd&  currPattern, Ma
         cout<<endl<< cutPositions[i]->vert<<" vertex up next handling"<<endl;
         splitVertexFromCVE(cutPositions[i], currPattern, Fg_pattern, vfAdj, boundaryL, seamsList, minusOneSeams, releasedVert,
                            toPattern_boundaryVerticesSet,lengthsCurr, Fg_pattern, cornerSet );
+        cout<<"back in loop "<<cutPositions.size()<<endl;
+        cout<< cutPositions[4]->vert<<" vertex up next handling end"<<endl;
+
     }
+    cout<<"--------------------"<<endl;
 }
 void computeTear(Eigen::MatrixXd & fromPattern, MatrixXd&  currPattern, MatrixXi& Fg_pattern, MatrixXi& Fg_pattern_orig,
                  vector<seam*>& seamsList, vector<minusOneSeam*>& minusOneSeams, std::vector<std::vector<int> >& boundaryL, bool & finished,
