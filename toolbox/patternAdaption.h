@@ -18,6 +18,8 @@ public:
     int seamType;
     int seamIdInList;
     int patch;
+    int leftCorner;
+    int rightCorner;
     bool startCorner;
     bool endCorner;
     bool continuedCorner;

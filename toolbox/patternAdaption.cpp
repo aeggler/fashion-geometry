@@ -284,7 +284,6 @@ void splitVertexFromCVE( cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<
 // todo sketchy, for whatever reason it breaks without this. does it do the transposing?
     cout<<" midvec "<<midVec.transpose()<<endl;
 
-
     // all other normal cases
     double dist = std::numeric_limits<double>::max();
     int idxofClosest = -1;
@@ -341,15 +340,10 @@ void splitVertexFromCVE( cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<
 
     newVg.row(newVertIdx) = Vg.row(cve->vert);
 
-
     cout<<insertIdx<<" the inserted index"<<endl;// TODO CASE IT IS NOT RIGHT NEITHER LEFT BUT ACTUALLY ON!!
 
     Vg.resize(Vg.rows()+1, 3);
     Vg= newVg;
-
-//    cout<<" right "<< Fg.row(rightFaceId)<<endl;
-//    cout<<"left "<<Fg.row(leftFaceId)<<endl;
-
 
     if(toPattern_boundaryVerticesSet.find(insertIdx)!= toPattern_boundaryVerticesSet.end()){
             cout<<"we are nearly done here, it's cut through! "<<endl;
@@ -363,6 +357,8 @@ void splitVertexFromCVE( cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<
         toPattern_boundaryVerticesSet.insert(newVertIdx);// the duplicate is also on the boundary, hence insert it
         cve->leftdirection = toLeft;
         cve->rightdirection = toRight;
+        cve-> leftCorner = boundaryL[cve->patch][leftId];
+        cve-> rightCorner = boundaryL[cve->patch][rightId];
         cout<<" inserted"<<endl;
     }
     cve-> vert = insertIdx;
