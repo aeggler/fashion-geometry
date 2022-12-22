@@ -155,7 +155,7 @@ void splitVertexFromCVE( cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<
         return;
     }
 
-    cout<<"handling vert: "<<cve->vert<<endl;
+//    cout<<"handling vert: "<<cve->vert<<endl;
     auto boundary = boundaryL[cve->patch];
 
     if(cve->vert == 449){
@@ -171,17 +171,17 @@ void splitVertexFromCVE( cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<
     int newVertIdx = Vg.rows();
     MatrixXd newVg (newVertIdx+1, 3);
     newVg.block(0,0, newVertIdx, 3)= Vg;
-    cout<<"searching index "<<endl;
+//    cout<<"searching index "<<endl;
 
     int idx = 0;
     int leftId, rightId;
     while (boundary[idx] != cve->vert){
         idx++;
     }
-    cout<<"found index "<<idx<<endl;
+//    cout<<"found index "<<idx<<endl;
     leftId = (idx+1) % boundary.size();
     rightId = (idx -1 );
-    cout<<leftId<<" left and right idx "<<rightId<<endl;
+//    cout<<leftId<<" left and right idx "<<rightId<<endl;
 
 
     cout<<boundary[leftId]<<" left and right "<<boundary[rightId]<<endl;
@@ -194,7 +194,7 @@ void splitVertexFromCVE( cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<
         return;
     }
 
-    cout<<leftFaceId<<" left and right face index "<<rightFaceId<<endl;
+//    cout<<leftFaceId<<" left and right face index "<<rightFaceId<<endl;
     int whichEdgeLeft = findWhichEdgeOfFace(leftFaceId, cve->vert, boundaryL[cve->patch][leftId], Fg_pattern);
     int whichEdgeRight= findWhichEdgeOfFace(rightFaceId, cve->vert, boundaryL[cve->patch][rightId], Fg_pattern);
 
@@ -246,7 +246,7 @@ void splitVertexFromCVE( cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<
         cve->finFlag = (cornerSet.find(cve->vert) != cornerSet.end()); //if it is a corner we are done
         Vg.resize(Vg.rows()+1, 3);
         Vg= newVg;
-        cout<<" Vg.rows "<<Vg.rows()<<endl;
+//        cout<<" Vg.rows "<<Vg.rows()<<endl;
         return;
 
     }
@@ -281,7 +281,7 @@ void splitVertexFromCVE( cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<
     midVect= midVect.normalized();
     midVec(0)= -midVect(1);
     midVec(1) = midVect(0);
-
+// todo sketchy, for whatever reason it breaks without this. does it do the transposing?
     cout<<" midvec "<<midVec.transpose()<<endl;
 
 
@@ -325,92 +325,30 @@ void splitVertexFromCVE( cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<
     if( hei.Fi()!= faces.second){
         // then we skip the first and directly go from there
         // we need to change the position
-        cout<<"change position of old "<<lastF<<" "<<lastV<<endl;
+//        cout<<"change position of old "<<lastF<<" "<<lastV<<endl;
         updateWithNewId(Fg, cve->vert, lastF, newVertIdx);
     }
     if(0!= nextEnd) {
-        cout << "change position of " << hei.Fi()<<" "<<hei.Vi() << endl;
+//        cout << "change position of " << hei.Fi()<<" "<<hei.Vi() << endl;
         updateWithNewId(Fg, cve->vert, hei.Fi(), newVertIdx);
         while (hei.NextFE() != 0) {
-            cout << " while change position of " << hei.Fi() <<" "<<hei.Vi()<< endl;
+//            cout << " while change position of " << hei.Fi() <<" "<<hei.Vi()<< endl;
             updateWithNewId(Fg, cve->vert, hei.Fi(), newVertIdx);
 
         }
-        cout << " vertex of hei " << hei.Vi() << endl;// whil ehei.next != 0
 //    cout<<hei.NextFE()<<hei.Fi()<<" the next, and after "<<hei.NextFE()<<hei.Fi()<<" "<<hei.NextFE()<<hei.Fi()<<endl;
     }
-    cout<<Fg.row(156)<<", row 156"<<endl;
-    cout<<Fg.row(782)<<", row 782"<<endl;
-    cout<<Fg.row(417)<<", row 417"<<endl;
+
     newVg.row(newVertIdx) = Vg.row(cve->vert);
 
 
     cout<<insertIdx<<" the inserted index"<<endl;// TODO CASE IT IS NOT RIGHT NEITHER LEFT BUT ACTUALLY ON!!
-//    bool compareRight = isRight(Vg.row(cve->vert), Vg.row(cve-> vert)+midVec.transpose(), Vg.row(boundaryL[cve->patch][rightId]) ); ;//isRight(Vg.row(boundaryL[cve->patch][rightId]), Vg.row(cve-> vert)+midVec.transpose(), Vg.row(boundaryL[cve->patch][rightId]) );
-////
-////    updateWithNewId(Fg, cve->vert, rightFaceId, newVertIdx);
-////
-////    // adapt the position
-//    if(cve->levelOne){
-//        if(isRight(Vg.row(cve->vert), Vg.row(cve-> vert)+midVec.transpose(),  Vg.row(cve->vert) + (eps * toRight).transpose()))
-//        {
-//            newVg.row(newVertIdx) = Vg.row(cve->vert) + (eps* 10 * toRight).transpose();
-//            newVg.row(cve->vert) = Vg.row(cve->vert) + (eps* 10 * toLeft).transpose();
-//
-//        }else{
-//            newVg.row(cve->vert)= Vg.row(cve->vert) + (eps * 10* toRight).transpose();
-//            newVg.row(newVertIdx) = Vg.row(cve->vert) + (eps * 10* toLeft).transpose();
-//        }
-//
-//    }else{
-//        if(isRight(Vg.row(cve->vert), Vg.row(cve-> vert)+midVec.transpose(),  Vg.row(cve->vert) + (eps * toRight).transpose())){
-//            newVg.row(newVertIdx) = Vg.row(cve->vert) + (eps * 10* cve -> rightdirection).transpose();
-//            newVg.row(cve->vert) = Vg.row(cve->vert) + (eps * 10* cve -> leftdirection).transpose();
-//        }else{
-//            newVg.row( cve->vert)= Vg.row(cve->vert) + (eps * 10* cve -> rightdirection).transpose();
-//            newVg.row(newVertIdx) = Vg.row(cve->vert) + (eps* 10 * cve -> leftdirection).transpose();
-//        }
-//
-//
-//
-//    }
-//cout<< newVg.row(newVertIdx).transpose()<<" and "<< newVg.row(cve->vert).transpose()<<endl;
-
-
 
     Vg.resize(Vg.rows()+1, 3);
     Vg= newVg;
 
-    // for each adjacent face we update it to the original or new vertex
-//    for(int i=0; i< adjacentFaces.size(); i++){
-////        if(adjacentFaces[i] == leftFaceId || adjacentFaces[i] == rightFaceId ) continue; // they are handled separately
-//        int testVert =-1;
-//        // we take one edge and check it's side
-//        if(Fg(adjacentFaces[i], 0)!= cve-> vert && Fg(adjacentFaces[i], 0)!= insertIdx ){
-//            testVert = Fg(adjacentFaces[i], 0);
-//        }else if( Fg(adjacentFaces[i], 1)!= cve-> vert && Fg(adjacentFaces[i], 1)!= insertIdx ){
-//            testVert = Fg(adjacentFaces[i], 1);
-//        }
-//        else {
-//            testVert = Fg(adjacentFaces[i], 2);
-//        }
-//        if(testVert == -1 )cout<<" no suitable test vert found, something is wrong "<<endl;
-//        cout<<testVert<<" vert from face "<<adjacentFaces[i]<<endl;
-////        bool checkRight = isRight(Vg.row(cve->vert), Vg.row(cve-> vert)+midVec.transpose(), Vg.row(testVert) );
-//        bool checkRight = isRight(Vg.row(cve->vert), Vg.row(cve-> vert)+midVec.transpose(), Vg.row(testVert) );
-//
-//
-////        if (checkRight == compareRight){
-//        if(checkRight){
-//            cout<<"is updated"<<endl;
-//            updateWithNewId(Fg, cve->vert, adjacentFaces[i], newVertIdx);
-//        }
-//        if(adjacentFaces[i] == 62|| adjacentFaces[i] == 776 || adjacentFaces[i] ==781){
-//            cout<<" face "<<adjacentFaces[i] <<" : "<<Fg.row(adjacentFaces[i])<<endl;
-//        }
-//    }
-    cout<<" right "<< Fg.row(rightFaceId)<<endl;
-    cout<<"left "<<Fg.row(leftFaceId)<<endl;
+//    cout<<" right "<< Fg.row(rightFaceId)<<endl;
+//    cout<<"left "<<Fg.row(leftFaceId)<<endl;
 
 
     if(toPattern_boundaryVerticesSet.find(insertIdx)!= toPattern_boundaryVerticesSet.end()){
@@ -965,12 +903,10 @@ void tearFurther(vector<cutVertEntry*>& cutPositions, MatrixXd&  currPattern, Ma
     MatrixXd lengthsCurr;
     igl::edge_lengths(currPattern, Fg_pattern, lengthsCurr);
 
-    for(int i = 0; i < 5; i++){// cutPositions.size(); i++){
+    for(int i = 0; i < 8; i++){// cutPositions.size(); i++){
         cout<<endl<< cutPositions[i]->vert<<" vertex up next handling"<<endl;
         splitVertexFromCVE(cutPositions[i], currPattern, Fg_pattern, vfAdj, boundaryL, seamsList, minusOneSeams, releasedVert,
                            toPattern_boundaryVerticesSet,lengthsCurr, Fg_pattern, cornerSet );
-        cout<<"back in loop "<<cutPositions.size()<<endl;
-        cout<< cutPositions[4]->vert<<" vertex up next handling end"<<endl;
 
     }
     cout<<"--------------------"<<endl;
@@ -1002,7 +938,7 @@ void computeTear(Eigen::MatrixXd & fromPattern, MatrixXd&  currPattern, MatrixXi
 
 
     // we cut the first one
-    for(int i = 0; i < 5; i++){// cutPositions.size(); i++){
+    for(int i = 0; i < 8; i++){// cutPositions.size(); i++){
         splitVertexFromCVE(cutPositions[i], currPattern, Fg_pattern, vfAdj, boundaryL, seamsList,
                            minusOneSeams, releasedVert, toPattern_boundaryVerticesSet,lengthsCurr, Fg_pattern, cornerSet);
     }
