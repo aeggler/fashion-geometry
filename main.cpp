@@ -24,6 +24,7 @@
 #include "toolbox/patternAdaption.h"
 #include <igl/signed_distance.h>
 #include <map>
+#include <set>
 #include <string>
 #include "toolbox/seam.h"
 #include <fstream>
@@ -463,7 +464,12 @@ int main(int argc, char *argv[])
     computeAllSeams( boundaryL,vertexMapPattToGar, vertexMapGarAndIdToPatch, vfAdj, componentIdPerFace,
                      componentIdPerVert,edgeVertices, cornerPerBoundary, seamsList, minusOneSeamsList, seamIdPerCorner);
     cout<<seamIdPerCorner.size()<<" the size of the map final "<<endl;
-
+    set<int> cornerSet;
+    for(int i=0; i < cornerPerBoundary.size(); i++){
+        for(int j=0; j < cornerPerBoundary[i].size(); j++){
+            cornerSet.insert(cornerPerBoundary[i][j].first);
+        }
+    }
 
     gar_adapt = new garment_adaption(Vg, Fg,  Vg_pattern, Fg_pattern, seamsList, boundaryL); //none have been altered at this stage
     gar_adapt->computeJacobian();
@@ -803,7 +809,8 @@ int main(int argc, char *argv[])
                 bool fin = false;
                 cout<<"at old boundary loop "<<boundaryL[4].size()<<endl;
                 computeTear(fromPattern, currPattern, Fg_pattern,Fg_pattern_orig, seamsList ,
-                            minusOneSeamsList,boundaryL,fin,  cornerPerBoundary, seamIdPerCorner,edgeVertices, cutPositions, releasedVert, toPattern_boundaryVerticesSet);
+                            minusOneSeamsList,boundaryL,fin,  cornerPerBoundary, seamIdPerCorner,
+                            edgeVertices, cutPositions, releasedVert, toPattern_boundaryVerticesSet, cornerSet);
 
 
                 viewer.selected_data_index = 0;
@@ -837,7 +844,7 @@ int main(int argc, char *argv[])
                 simulate = false;
                 adaptionFlag = false;
                 viewer.core().is_animating = false;
-                tearFurther(cutPositions, currPattern, Fg_pattern, seamsList, minusOneSeamsList, releasedVert, toPattern_boundaryVerticesSet, boundaryL);
+                tearFurther(cutPositions, currPattern, Fg_pattern, seamsList, minusOneSeamsList, releasedVert, toPattern_boundaryVerticesSet, boundaryL, cornerSet);
                 std::vector<std::vector<int> > boundaryLnew;
                 igl::boundary_loop(Fg_pattern, boundaryLnew);
 
