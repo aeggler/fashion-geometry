@@ -525,6 +525,7 @@ int main(int argc, char *argv[])
     int whichBound=0;
     float movePatternX=0; float movePatternY=0;
     bool showPattern= false;
+    set<int> handledVerticesSet;
     menu.callback_draw_viewer_menu = [&]() {
         if (ImGui::CollapsingHeader("Garment", ImGuiTreeNodeFlags_OpenOnArrow)) {
 
@@ -810,7 +811,7 @@ int main(int argc, char *argv[])
                 cout<<"at old boundary loop "<<boundaryL[4].size()<<endl;
                 computeTear(fromPattern, currPattern, Fg_pattern,Fg_pattern_orig, seamsList ,
                             minusOneSeamsList,boundaryL,fin,  cornerPerBoundary, seamIdPerCorner,
-                            edgeVertices, cutPositions, releasedVert, toPattern_boundaryVerticesSet, cornerSet);
+                            edgeVertices, cutPositions, releasedVert, toPattern_boundaryVerticesSet, cornerSet, handledVerticesSet);
 
 
                 viewer.selected_data_index = 0;
@@ -835,7 +836,7 @@ int main(int argc, char *argv[])
                 simulate = false;
                 adaptionFlag = false;
                 viewer.core().is_animating = false;
-                tearFurther(cutPositions, currPattern, Fg_pattern, seamsList, minusOneSeamsList, releasedVert, toPattern_boundaryVerticesSet, boundaryL, cornerSet);
+                tearFurther(cutPositions, currPattern, Fg_pattern, seamsList, minusOneSeamsList, releasedVert, toPattern_boundaryVerticesSet, boundaryL, cornerSet, handledVerticesSet);
                 cout<<"back"<<endl;
                 std::vector<std::vector<int> > boundaryLnew;
                 igl::boundary_loop(Fg_pattern, boundaryLnew);
