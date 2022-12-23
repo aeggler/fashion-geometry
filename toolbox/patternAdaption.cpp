@@ -158,11 +158,6 @@ void splitVertexFromCVE( cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<
 //    cout<<"handling vert: "<<cve->vert<<endl;
     auto boundary = boundaryL[cve->patch];
 
-    if(cve->vert == 449){
-        for(int j=0; j<boundary.size(); j++){
-            cout<<boundary[j]<<" ";
-        }
-    }
     double eps = 0.01;
     vector<vector<int>> vvAdj;
     igl::adjacency_list(Fg,vvAdj);
@@ -235,7 +230,7 @@ void splitVertexFromCVE( cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<
         }else{
             cout<<"ending"<<endl;
             if(cve-> seamIdInList>=0){
-                // we count pos hence the next +1
+                // we count neg hence the next +1
                 cve->vert = boundary[leftId];
             }else{
                 cve->vert = boundary[rightId] ;
@@ -357,8 +352,8 @@ void splitVertexFromCVE( cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<
         toPattern_boundaryVerticesSet.insert(newVertIdx);// the duplicate is also on the boundary, hence insert it
         cve->leftdirection = toLeft;
         cve->rightdirection = toRight;
-        cve-> leftCorner = boundaryL[cve->patch][leftId];
-        cve-> rightCorner = boundaryL[cve->patch][rightId];
+        cve-> leftCorner =  cve-> vert;
+        cve-> rightCorner = newVertIdx;
         cout<<" inserted"<<endl;
     }
     cve-> vert = insertIdx;
@@ -622,8 +617,8 @@ void addVarToModel (int vert, int nextVert, vector<vector<int>> & vfAdj, bool is
 }
 
 void setLP(std::vector<std::vector<int> >& boundaryL , vector<vector<int>> & vfAdj, MatrixXi& Fg_pattern,
-MatrixXd& lengthsOrig, MatrixXd& lengthsCurr,const std::vector<std::vector<std::pair<int, int>>>& edgesPerBoundary, map<int, vector<pair<int, int>>>& seamIdPerCorner,
-           vector<seam*>& seamsList, const vector<minusOneSeam*> & minusOneSeams,
+        MatrixXd& lengthsOrig, MatrixXd& lengthsCurr,const std::vector<std::vector<std::pair<int, int>>>& edgesPerBoundary, map<int,
+        vector<pair<int, int>>>& seamIdPerCorner, vector<seam*>& seamsList, const vector<minusOneSeam*> & minusOneSeams,
             int tearPatch, int tearVert, int tearVertInBoundaryIndex, double tailor_lazyness, double minConstrained, vector <cutVertEntry*>& cutPositions,
             VectorXd& cornerVert){
 
@@ -863,8 +858,11 @@ MatrixXd& lengthsOrig, MatrixXd& lengthsCurr,const std::vector<std::vector<std::
             cout<<patch<<" chosen Id  "<< mapVarIdToVertId[i]->vert<<" from which kind of seam "<<mapVarIdToVertId[i]->seamType<<" and id "<<mapVarIdToVertId[i]->seamIdInList <<endl;// ALRIGHT BUT NOW WE NEED A SEAM ID
 
             cutVertEntry* cve = new cutVertEntry ( vert, seamType, seamId, patch);
+            cve-> leftCorner =  -1;
+            cve-> rightCorner = -1;
             if(cornerVert[vert]==1){
                 cout<<"corner"<<endl;
+                cve->cornerInitial = vert;
 //                // left or right corner?
                 int firstInSeam;
                 if(seamType == -1 ){
@@ -880,6 +878,7 @@ MatrixXd& lengthsOrig, MatrixXd& lengthsCurr,const std::vector<std::vector<std::
                 }else{
                     cve-> endCorner = true;
                 }
+
             }
             cutPositions.push_back(cve);
 
@@ -906,6 +905,71 @@ void tearFurther(vector<cutVertEntry*>& cutPositions, MatrixXd&  currPattern, Ma
 
     }
     cout<<"--------------------"<<endl;
+}
+void smoothSingleCut( cutVertEntry*& cve, MatrixXd& Vg, std::vector<std::vector<int> >& boundaryL){
+
+    if(cve->startCorner || cve->endCorner){
+        cout<<" can't handle this case yet"<<endl;
+        return;
+    }// we have a normal cut
+    if(cve->leftCorner==-1 || cve->rightCorner ==-1){
+        cout<< "there is nothing to smooth" <<endl;
+        return;
+    }
+    cout<<endl<<"starting search with endpoints "<< cve -> rightCorner<<" and "<< cve -> leftCorner<<" and vertex "<<cve->vert<<endl;
+    auto boundary = boundaryL[cve->patch];
+    int startCut;
+
+    int idx = 0;
+
+    while(boundary[idx] != cve-> leftCorner && boundary[idx]!= cve->rightCorner ){
+        idx++;
+    }
+    int endCut;
+    if(boundary[idx]== cve-> rightCorner){
+        startCut = cve -> rightCorner;
+        endCut = cve -> leftCorner;
+    }else{
+        startCut = cve -> leftCorner;
+        endCut = cve -> rightCorner;
+    }
+    cout<<startCut<<" this is where we start the search from "<<endl;
+    cout<<endCut<<" this is where we end the search "<<endl;
+
+    Vector3d R = Vg.row(startCut);
+    Vector3d Q =Vg.row(cve->vert);
+
+    while(boundary[idx] != cve->vert){
+        cout<<boundary[idx]<<" one intermediate l ";
+//        updatePositionToIntersection(Vg, boundary[idx], line);
+        double t = (R-Q).dot(Q-Vg.row(boundary[idx]).transpose())/((R-Q).dot(R-Q));
+        cout<<t<<" the dist"<<endl;
+        Vg.row(boundary[idx])= Q-t*(R-Q);
+
+        idx++;
+    }
+    cout<<"middle"<<boundary[idx]<<endl;
+    idx++;
+
+    R = Vg.row(endCut);
+    while(boundary[idx] != endCut){
+        cout<<boundary[idx]<<" one intermediate r ";
+        double t = (R-Q).dot(Q-Vg.row(boundary[idx]).transpose())/((R-Q).dot(R-Q));
+        cout<<t<<" the dist"<<endl;
+        Vg.row(boundary[idx])= Q-t*(R-Q);
+        
+        idx++;
+    }
+    cout<<boundary[idx]<<" one intermediate r"<<endl;
+
+}
+void smoothCuts(vector<cutVertEntry*>& cutPositions, MatrixXd&  currPattern, MatrixXi& Fg_pattern,vector<seam*>& seamsList, vector<minusOneSeam*>& minusOneSeams,
+            map<int, pair<int, int>> & releasedVert, set<int>& toPattern_boundaryVerticesSet,  std::vector<std::vector<int> >& boundaryL, set<int> & cornerSet ){
+
+    for(int i=0; i<8; i++){
+        // increment from right to vert and then vert to left
+        smoothSingleCut(cutPositions[i] , currPattern, boundaryL);
+    }
 }
 void computeTear(Eigen::MatrixXd & fromPattern, MatrixXd&  currPattern, MatrixXi& Fg_pattern, MatrixXi& Fg_pattern_orig,
                  vector<seam*>& seamsList, vector<minusOneSeam*>& minusOneSeams, std::vector<std::vector<int> >& boundaryL, bool & finished,
@@ -942,7 +1006,7 @@ void computeTear(Eigen::MatrixXd & fromPattern, MatrixXd&  currPattern, MatrixXi
 cout<<"fin compute tear "<<endl ;
 }
 
-void updatePositionToIntersection(MatrixXd& p,int next,  const MatrixXd& Vg_bound){
+void updatePositionToIntersection(MatrixXd& p,int next, const MatrixXd& Vg_bound){
 
     // we know that the first two indices of the face define the edge we want to intersect with
     // derive where QR and P meet = t, https://math.stackexchange.com/questions/1521128/given-a-line-and-a-point-in-3d-how-to-find-the-closest-point-on-the-line

@@ -20,6 +20,7 @@ public:
     int patch;
     int leftCorner;
     int rightCorner;
+    int cornerInitial;
     bool startCorner;
     bool endCorner;
     bool continuedCorner;
@@ -52,7 +53,7 @@ void computeTear(MatrixXd& fromPatternFile, MatrixXd&  currPattern, MatrixXi& Fg
 
 
 int findWhichEdgeOfFace(int face, int v1, int v2, MatrixXi& Fg);
-
+void updatePositionToIntersection(MatrixXd& p,int next,  const MatrixXd& Vg_bound);
 void projectBackOnBoundary(const MatrixXd & Vg_to, MatrixXd& p, const vector<seam*>& seamsList,const vector<minusOneSeam*> & minusOneSeams,
                            const MatrixXi& Fg_pattern,
                            const MatrixXi& Fg_pattern_orig, const std::vector<std::vector<int> >& boundaryL_toPattern, const std::vector<std::vector<int> >& boundaryL,
@@ -62,5 +63,7 @@ void projectBackOnBoundary(const MatrixXd & Vg_to, MatrixXd& p, const vector<sea
 void tearFurther(vector<cutVertEntry*>& cutPositions, MatrixXd&  currPattern, MatrixXi& Fg_pattern,vector<seam*>& seamsList, vector<minusOneSeam*>& minusOneSeams,
                  map<int, pair<int, int>> & releasedVert, set<int>& toPattern_boundaryVerticesSet,  std::vector<std::vector<int> >& boundaryL, set<int> & cornerSet
 );
+void smoothCuts(vector<cutVertEntry*>& cutPositions, MatrixXd&  currPattern, MatrixXi& Fg_pattern,vector<seam*>& seamsList, vector<minusOneSeam*>& minusOneSeams,
+                map<int, pair<int, int>> & releasedVert, set<int>& toPattern_boundaryVerticesSet,  std::vector<std::vector<int> >& boundaryL, set<int> & cornerSet );
 
 #endif //EXAMPLE_PATTERNADAPTION_H

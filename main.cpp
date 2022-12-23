@@ -819,23 +819,14 @@ int main(int argc, char *argv[])
                 std::vector<std::vector<int> > boundaryLnew;
                 igl::boundary_loop(Fg_pattern, boundaryLnew);
 
-                cout<<boundaryL[0][9]<<" arrived at old boundary loop "<<boundaryL[0].size()<<endl;
                 boundaryL.clear();
 
                 boundaryL= boundaryLnew;
-                cout<<boundaryL[0][9]<<" arrived at new boundary loop "<<boundaryL[0].size()<<endl;
 
                 preComputeAdaption();
                 cout<<"precomputed new adaption"<<endl;
                     viewer.core().is_animating = true;
                     adaptionFlag = true;
-// it does support multiple cuts, but they are not in the same area. also , what we see is stress in vu direction, but what we use in the cut is edge length
-// it does not automatically cut further
-// no thereshold on when to stop cutting
-// cutting only for a single patch (5)
-// not auto generated from mapping but precomputed and loaded
-// maybe memory issues
-
 // why is the mapped pattern often so much bent? this makes no sense. There has to be an issue with that
 
             }
@@ -848,19 +839,33 @@ int main(int argc, char *argv[])
                 cout<<"back"<<endl;
                 std::vector<std::vector<int> > boundaryLnew;
                 igl::boundary_loop(Fg_pattern, boundaryLnew);
-                cout<<"back 2"<<endl;
 //                viewer.selected_data_index = 0;
 //                viewer.data().clear();
 //                viewer.data().set_mesh(currPattern, Fg_pattern);
-//cout<<currPattern.rows()<<" rows"<<endl;
-                for(int i=0; i<boundaryLnew[0].size(); i++){
-                    cout<<boundaryLnew[0][i]<<" ";
-                }
+
                 boundaryL.clear();
                 boundaryL= boundaryLnew;
 
                 viewer.core().is_animating = true;
                 adaptionFlag = true;
+            }
+            if(ImGui::Button("Smooth cuts", ImVec2(-1, 0))){
+                simulate = false;
+                adaptionFlag = false;
+                viewer.core().is_animating = false;
+                smoothCuts(cutPositions, currPattern, Fg_pattern, seamsList, minusOneSeamsList, releasedVert, toPattern_boundaryVerticesSet, boundaryL, cornerSet);
+                cout<<"back"<<endl;
+                std::vector<std::vector<int> > boundaryLnew;
+                igl::boundary_loop(Fg_pattern, boundaryLnew);
+                viewer.selected_data_index = 0;
+                viewer.data().clear();
+                viewer.data().set_mesh(currPattern, Fg_pattern);
+
+                boundaryL.clear();
+                boundaryL= boundaryLnew;
+
+//                viewer.core().is_animating = true;
+//                adaptionFlag = true;
             }
 
         }
