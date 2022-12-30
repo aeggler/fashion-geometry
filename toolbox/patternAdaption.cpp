@@ -154,7 +154,8 @@ void splitVertexFromCVE( cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<
         cout<<cve->vert<<" done already "<<endl;
         return;
     }
-// todo this prohibits any kind of cross cutting! maybe not always desirable ! 
+    cve->handled = true;
+// todo this prohibits any kind of cross cutting! maybe not always desirable !
     if(handledVerticesSet.find(cve->vert) != handledVerticesSet.end()){
         cout<<"handled by other seams already. Stop here"<<endl;
         cve->finFlag=true;
@@ -185,7 +186,8 @@ void splitVertexFromCVE( cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<
 //    cout<<"found index "<<idx<<endl;
     leftId = (idx+1) % boundary.size();
     rightId = (idx -1 );
-//    cout<<leftId<<" left and right idx "<<rightId<<endl;
+    if(rightId<0) rightId+= boundary.size();
+    cout<<leftId<<" left and right idx "<<rightId<<endl;
 
 
     cout<<boundary[leftId]<<" left and right "<<boundary[rightId]<<endl;
@@ -205,10 +207,10 @@ void splitVertexFromCVE( cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<
     double w_init = lengthsCurr(leftFaceId, whichEdgeLeft)/lengthsOrig(leftFaceId, whichEdgeLeft);
     w_init +=  lengthsCurr(rightFaceId, whichEdgeRight)/lengthsOrig(rightFaceId, whichEdgeRight);
     w_init /= 2;
-    double thereshold = 1.005;
+    double thereshold = 1.0005;
     if(w_init < thereshold){
         cve-> finFlag = true;
-        cout<<"stopping now "<<endl;
+        cout<<"stopping now with "<<w_init<<endl;
         return;
     }
 
@@ -569,7 +571,8 @@ void addVarToModel (int vert, int nextVert, vector<vector<int>> & vfAdj, bool is
 
     int faceIdx = adjacentFaceToEdge(vert, nextVert, -1, vfAdj );
     int whichEdge = findWhichEdgeOfFace(faceIdx, vert, nextVert, Fg_pattern);
-    double w_init = lengthsCurr(faceIdx, whichEdge)/lengthsOrig(faceIdx, whichEdge);
+    // in case we stretch this is lower 1, the greater it is the smaller it gets, hence 1/w
+    double w_init = lengthsCurr(faceIdx, whichEdge) / lengthsOrig(faceIdx, whichEdge);
 
     if(isConstrained){
         try {
@@ -872,6 +875,42 @@ void setLP(std::vector<std::vector<int> >& boundaryL , vector<vector<int>> & vfA
             cutVertEntry* cve = new cutVertEntry ( vert, seamType, seamId, patch);
             cve-> leftCorner =  -1;
             cve-> rightCorner = -1;
+            int nextVert;
+            if(seamType == -1 ){
+
+                nextVert = minusOneSeams[seamId]->getNextVert(vert, boundaryL[minusOneSeams[seamId]->getPatch()]);
+                int faceIdx = adjacentFaceToEdge(vert, nextVert, -1, vfAdj );
+                int whichEdge = findWhichEdgeOfFace(faceIdx, vert, nextVert, Fg_pattern);
+                // in case we stretch this is lower 1, the greater it is the smaller it gets, hence 1/w
+                double w_init = lengthsCurr(faceIdx, whichEdge) / lengthsOrig(faceIdx, whichEdge);
+                cve->stress = w_init;
+
+            }else if(seamId>=0){
+                int patch  = seamsList[mapVarIdToVertId[i]->seamIdInList]->getStartAndPatch1().second;
+                int patchsize =  boundaryL[patch].size();
+                nextVert = seamsList[mapVarIdToVertId[i]->seamIdInList]->getNextVert1(vert, boundaryL[patch]);
+                int faceIdx = adjacentFaceToEdge(vert, nextVert, -1, vfAdj );
+                int whichEdge = findWhichEdgeOfFace(faceIdx, vert, nextVert, Fg_pattern);
+                // in case we stretch this is lower 1, the greater it is the smaller it gets, hence 1/w
+                double w_init = lengthsCurr(faceIdx, whichEdge) / lengthsOrig(faceIdx, whichEdge);
+                cve->stress = w_init;
+
+
+            }else{
+                int patch = seamsList[(mapVarIdToVertId[i]->seamIdInList+1)*(-1)]->getStartAndPatch2ForCorres().second;
+                int patchsize =  boundaryL[patch].size();
+                int count=0;
+                int nextVert = seamsList[(mapVarIdToVertId[i]->seamIdInList+1)*(-1)]->getNextVert2(vert, boundaryL[patch]);
+                cout<<nextVert<<" next of "<<vert<<endl<<endl<<endl<<endl<<endl;
+                int faceIdx = adjacentFaceToEdge(vert, nextVert, -1, vfAdj );
+                int whichEdge = findWhichEdgeOfFace(faceIdx, vert, nextVert, Fg_pattern);
+                // in case we stretch this is lower 1, the greater it is the smaller it gets, hence 1/w
+                double w_init = lengthsCurr(faceIdx, whichEdge) / lengthsOrig(faceIdx, whichEdge);
+                cve->stress = w_init;
+
+            }
+            cout<<cve->stress<<" the stress at this vertex "<<endl;
+
             if(cornerVert[vert]==1){
                 cout<<"corner"<<endl;
                 cve->cornerInitial = vert;
@@ -909,10 +948,13 @@ void tearFurther(vector<cutVertEntry*>& cutPositions, MatrixXd&  currPattern, Ma
     createVertexFaceAdjacencyList(Fg_pattern, vfAdj);
     MatrixXd lengthsCurr;
     igl::edge_lengths(currPattern, Fg_pattern, lengthsCurr);
-
-    for(int i = 0; i < 8; i++){// cutPositions.size(); i++){
-        cout<<endl<< cutPositions[i]->vert<<" vertex up next handling"<<endl;
-        splitVertexFromCVE(cutPositions[i], currPattern, Fg_pattern, vfAdj, boundaryL, seamsList, minusOneSeams, releasedVert,
+int  count = 0 ;
+    for(int i = 0; i < 1; i++){// cutPositions.size(); i++){
+        if(cutPositions[count]->finFlag){
+            i--; count ++;continue;
+        }
+        cout<<endl<< cutPositions[count]->vert<<" vertex up next handling with i="<<count<<endl;
+        splitVertexFromCVE(cutPositions[count], currPattern, Fg_pattern, vfAdj, boundaryL, seamsList, minusOneSeams, releasedVert,
                            toPattern_boundaryVerticesSet,lengthsCurr, Fg_pattern, cornerSet, handledVerticesSet );
 
     }
@@ -1022,7 +1064,8 @@ void smoothCuts(vector<cutVertEntry*>& cutPositions, MatrixXd&  currPattern, Mat
 void computeTear(Eigen::MatrixXd & fromPattern, MatrixXd&  currPattern, MatrixXi& Fg_pattern, MatrixXi& Fg_pattern_orig,
                  vector<seam*>& seamsList, vector<minusOneSeam*>& minusOneSeams, std::vector<std::vector<int> >& boundaryL, bool & finished,
                  const std::vector<std::vector<std::pair<int, int>>>& edgesPerBoundary, map<int, vector<pair<int, int>>>& seamIdPerCorner,
-                 VectorXd& cornerVert, vector<cutVertEntry*>& cutPositions,  map<int, pair<int, int>> & releasedVert, set<int>& toPattern_boundaryVerticesSet, set<int> & cornerSet, set<int>& handledVerticesSet )
+                 VectorXd& cornerVert, vector<cutVertEntry*>& cutPositions,  map<int, pair<int, int>> & releasedVert,
+                 set<int>& toPattern_boundaryVerticesSet, set<int> & cornerSet, set<int>& handledVerticesSet )
                  {
 
     vector<vector<int> > vfAdj;
@@ -1044,10 +1087,22 @@ void computeTear(Eigen::MatrixXd & fromPattern, MatrixXd&  currPattern, MatrixXi
            seamsList, minusOneSeams, tearPatch, tearVert, tearVertInBoundaryIndex, tailor_lazyness, minConstrained, cutPositions,
            cornerVert);
 
-
+// todo here we need to sort and check if handled already
+    cout<<"starting sorting"<<endl;
+    sort(cutPositions.begin(), cutPositions.end(), []( cutVertEntry* &a,  cutVertEntry* &b) { return a->stress > b-> stress; });
+    cout<<" end sorting"<<endl;
+    for(int i = 0; i < cutPositions.size(); i++){// cutPositions.size(); i++){
+        cout<<cutPositions[i]->stress<<" stress "<<endl;
+    }
+    int count=0;
     // we cut the first one
-    for(int i = 0; i < 8; i++){// cutPositions.size(); i++){
-        splitVertexFromCVE(cutPositions[i], currPattern, Fg_pattern, vfAdj, boundaryL, seamsList,
+    for(int i = 0; i < 1; i++){// cutPositions.size(); i++){
+        if(cutPositions[count]->handled){
+            cout<<"handled case, go to next"<<endl;
+            i--; count ++;continue;
+        }
+        cout<<cutPositions[count]->stress<<" curr stress "<<endl;
+        splitVertexFromCVE(cutPositions[count], currPattern, Fg_pattern, vfAdj, boundaryL, seamsList,
                            minusOneSeams, releasedVert, toPattern_boundaryVerticesSet,lengthsCurr, Fg_pattern, cornerSet, handledVerticesSet);
     }
 

@@ -30,11 +30,14 @@ public:
     bool bridgeFlag;
     bool finFlag;
     bool levelOne;
+    double stress;
+    bool handled;
 
     cutVertEntry( int vert, int seamType, int seamIdInList ){
         this-> vert = vert;
         this -> seamType = seamType;
         this -> seamIdInList = seamIdInList;
+        handled = false;
     }
     cutVertEntry ( int vert, int seamType, int seamIdInList, int patch){
         this -> vert = vert;
@@ -42,7 +45,14 @@ public:
         this -> seamIdInList = seamIdInList;
         this -> patch = patch;
         levelOne = true;
+        handled = false;
+
     }
+
+    bool operator < (cutVertEntry* const & b){
+        return stress < b->stress;
+    }
+
 };
 
 void computeTear(MatrixXd& fromPatternFile, MatrixXd&  currPattern, MatrixXi& Fg_pattern, MatrixXi& Fg_pattern_orig, vector<seam*>& seamsList,

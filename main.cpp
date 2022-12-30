@@ -1556,8 +1556,8 @@ void solveStretchAdaptionViaEdgeLength(){
             double stiffnessUsed = stretchStiffnessU;
             if(toPattern_boundaryVerticesSet.find(Fg_pattern(i, j)) != toPattern_boundaryVerticesSet.end() &&
             toPattern_boundaryVerticesSet.find(Fg_pattern(i,(j+1)%3)) != toPattern_boundaryVerticesSet.end()){
-
-                stiffnessUsed *= 5;
+//todo
+                stiffnessUsed *= 3;
             }
 
             PBD.solve_DistanceConstraint(p0, mass0, p1, 1, patternEdgeLengths_orig(i, (j+2) % 3),stiffnessUsed, corr0, corr1);

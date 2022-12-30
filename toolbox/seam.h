@@ -71,6 +71,8 @@ public:
             patch2startCornerId= newVal;
         }
     }
+    int getNextVert1(int currVert, std::vector<int>& boundaryL);
+    int getNextVert2(int currVert, std::vector<int>& boundaryL);
 
 };
 
@@ -91,6 +93,10 @@ public:
     int startIdInBoundaryLoop,
     int endIdInBoundaryLoop,
     int len);
+
+    int getNextVert(int currVert, std::vector<int>& boundaryL);
+    int getPrevVert(int currVert, std::vector<int>& boundaryL);
+
 
     int getPatch(){
         return patchId;

@@ -55,6 +55,39 @@ std::pair<int, int> seam::getStartAndPatch2ForCorres() {
 int seam::seamLength(){
     return length;
 }
+int seam::getNextVert1(int currVert, std::vector<int>& boundaryL){
+    int count=0;
+    while (boundaryL[count]!= currVert && count<boundaryL.size()){
+        count++;
+        count %= boundaryL.size();
+    }
+    if(boundaryL[count]!=currVert){
+        std::cout<<" vertex not found. please stop here"<<std::endl; return -1;
+    }
+    count++;
+    return boundaryL[count % boundaryL.size()];
+
+}
+
+int seam::getNextVert2(int currVert, std::vector<int>& boundaryL){
+    int count=0;
+    int nextidx=0;
+    while(boundaryL[nextidx]!= currVert && count<boundaryL.size()){
+        count++; count %= boundaryL.size();
+        nextidx = ( - count);
+        if (nextidx < 0) nextidx += boundaryL.size();
+        if (this->inverted) nextidx =  count % boundaryL.size();
+    }if(boundaryL[nextidx]!= currVert)cout<<" stop here we dont find it!!!"<<endl;
+    cout<<boundaryL[nextidx]<<" found"<<endl;
+    count++;
+    count %= boundaryL.size();
+    nextidx = (-count);
+    if (nextidx < 0) nextidx += boundaryL.size();
+    if (this->inverted) nextidx =  count % boundaryL.size();
+    cout<<boundaryL[nextidx]<<" returning "<<endl;
+    return boundaryL[nextidx];
+
+}
 void push_to_Map(int whichKindOfSeam, int& idx, int& startId,int& startIdOther, map<int, vector<pair<int, int>>>& seamIdPerCorner){
     pair<int, int> whatSeamAndIdFirst = make_pair(whichKindOfSeam, idx);
     if(seamIdPerCorner.find(startId) == seamIdPerCorner.end()){
@@ -428,5 +461,32 @@ minusOneSeam::minusOneSeam(int patchId, int startVert, int endVert, int startIdI
     this -> startIdInBoundaryLoop = startIdInBoundaryLoop;
     this -> endIdInBoundaryLoop = endIdInBoundaryLoop;
     this -> len = len;
+
+}
+int minusOneSeam::getNextVert(int currVert, std::vector<int>& boundaryL){
+    int count=0;
+    while (boundaryL[count]!= currVert && count<boundaryL.size()){
+        count++;
+        count %= boundaryL.size();
+    }
+    if(boundaryL[count]!=currVert){
+        std::cout<<" vertex not found. please stop here"<<std::endl; return -1;
+    }
+    count++;
+    return boundaryL[count % boundaryL.size()];
+
+}
+int minusOneSeam::getPrevVert(int currVert, std::vector<int>& boundaryL){
+    int count=0;
+    while (boundaryL[count]!= currVert && count<boundaryL.size()){
+        count++;
+        count %= boundaryL.size();
+    }
+    if(boundaryL[count]!=currVert){
+        std::cout<<" vertex not found. please stop here"<<std::endl; return -1;
+    }
+    count--;
+    if (count<0) count+=  boundaryL.size();
+    return boundaryL[count];
 
 }
