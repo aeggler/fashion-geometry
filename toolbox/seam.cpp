@@ -68,6 +68,20 @@ int seam::getNextVert1(int currVert, std::vector<int>& boundaryL){
     return boundaryL[count % boundaryL.size()];
 
 }
+int seam::getPrevVert1(int currVert, std::vector<int>& boundaryL){
+    int count=0;
+    while (boundaryL[count]!= currVert && count<boundaryL.size()){
+        count++;
+        count %= boundaryL.size();
+    }
+    if(boundaryL[count]!=currVert){
+        std::cout<<" vertex not found. please stop here"<<std::endl; return -1;
+    }
+    count--;
+    if(count<0) count+= boundaryL.size();
+    return boundaryL[count];
+
+}
 
 int seam::getNextVert2(int currVert, std::vector<int>& boundaryL){
     int count=0;
@@ -78,13 +92,32 @@ int seam::getNextVert2(int currVert, std::vector<int>& boundaryL){
         if (nextidx < 0) nextidx += boundaryL.size();
         if (this->inverted) nextidx =  count % boundaryL.size();
     }if(boundaryL[nextidx]!= currVert)cout<<" stop here we dont find it!!!"<<endl;
-    cout<<boundaryL[nextidx]<<" found"<<endl;
+//    cout<<boundaryL[nextidx]<<" found"<<endl;
     count++;
     count %= boundaryL.size();
     nextidx = (-count);
     if (nextidx < 0) nextidx += boundaryL.size();
     if (this->inverted) nextidx =  count % boundaryL.size();
-    cout<<boundaryL[nextidx]<<" returning "<<endl;
+//    cout<<boundaryL[nextidx]<<" returning "<<endl;
+    return boundaryL[nextidx];
+
+}
+int seam::getPrevVert2(int currVert, std::vector<int>& boundaryL){
+    int count=0;
+    int nextidx=0;
+    while(boundaryL[nextidx]!= currVert && count<boundaryL.size()){
+        count++; count %= boundaryL.size();
+        nextidx = ( - count);
+        if (nextidx < 0) nextidx += boundaryL.size();
+        if (this->inverted) nextidx =  count % boundaryL.size();
+    }if(boundaryL[nextidx]!= currVert)cout<<" stop here we dont find it!!!"<<endl;
+//    cout<<boundaryL[nextidx]<<" found"<<endl;
+    count--;
+//    count %= boundaryL.size();
+    nextidx = (-count);
+    if (nextidx < 0) nextidx += boundaryL.size();
+    if (this->inverted) nextidx =  count % boundaryL.size();
+//    cout<<boundaryL[nextidx]<<" returning "<<endl;
     return boundaryL[nextidx];
 
 }

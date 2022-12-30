@@ -72,7 +72,10 @@ public:
         }
     }
     int getNextVert1(int currVert, std::vector<int>& boundaryL);
+    int getPrevVert1(int currVert, std::vector<int>& boundaryL);
     int getNextVert2(int currVert, std::vector<int>& boundaryL);
+    int getPrevVert2(int currVert, std::vector<int>& boundaryL);
+
 
 };
 

@@ -207,7 +207,7 @@ void splitVertexFromCVE( cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<
     double w_init = lengthsCurr(leftFaceId, whichEdgeLeft)/lengthsOrig(leftFaceId, whichEdgeLeft);
     w_init +=  lengthsCurr(rightFaceId, whichEdgeRight)/lengthsOrig(rightFaceId, whichEdgeRight);
     w_init /= 2;
-    double thereshold = 1.0005;
+    double thereshold = 1.05;
     if(w_init < thereshold){
         cve-> finFlag = true;
         cout<<"stopping now with "<<w_init<<endl;
@@ -565,15 +565,30 @@ void splitVertex(Node** head, int & listLength, int  whichTear, MatrixXd& Vg, Ma
 }
 
 int addoncount=0;
-void addVarToModel (int vert, int nextVert, vector<vector<int>> & vfAdj, bool isConstrained, int& varCount, GRBVar* & cutVar,
+void addVarToModel (int vert, int prevVert, int nextVert, vector<vector<int>> & vfAdj, bool isConstrained, int& varCount, GRBVar* & cutVar,
                       MatrixXi& Fg_pattern,MatrixXd& lengthsOrig, MatrixXd& lengthsCurr, map <int, cutVertEntry*> & mapVarIdToVertId,
                       int seamType, int seamIdInList, double tailor_lazyness, bool corner, map<pair<int,int>, int>& mapVertAndSeamToVar, int counterpart, GRBModel& model ){
 
-    int faceIdx = adjacentFaceToEdge(vert, nextVert, -1, vfAdj );
-    int whichEdge = findWhichEdgeOfFace(faceIdx, vert, nextVert, Fg_pattern);
-    // in case we stretch this is lower 1, the greater it is the smaller it gets, hence 1/w
-    double w_init = lengthsCurr(faceIdx, whichEdge) / lengthsOrig(faceIdx, whichEdge);
-
+    double w_init=0;
+    int count=0;
+    if(nextVert!=-1){
+        count++;
+        int faceIdx = adjacentFaceToEdge(vert, nextVert, -1, vfAdj );
+        int whichEdge = findWhichEdgeOfFace(faceIdx, vert, nextVert, Fg_pattern);
+        // in case we stretch this is lower 1, the greater it is the smaller it gets, hence 1/w
+        w_init += lengthsCurr(faceIdx, whichEdge) / lengthsOrig(faceIdx, whichEdge);
+    }
+    if(prevVert!= -1){
+        count++;
+        int faceIdx = adjacentFaceToEdge(vert, prevVert, -1, vfAdj );
+        int whichEdge = findWhichEdgeOfFace(faceIdx, vert, prevVert, Fg_pattern);
+        // in case we stretch this is lower 1, the greater it is the smaller it gets, hence 1/w
+        w_init += lengthsCurr(faceIdx, whichEdge) / lengthsOrig(faceIdx, whichEdge);
+    }
+//TODO SPECIAL CASE IF PREV -1
+//
+    if(count>1) w_init/=count;// <<" or "<< w_init<<" in special case "<<endl<<endl<<endl<<endl; // for averaging
+    if(vert==9){cout<<" weight for referrrence  "<<w_init<<" "<<count<<endl; }
     if(isConstrained){
         try {
             cutVar[varCount].set(GRB_DoubleAttr_Obj, 0);
@@ -665,7 +680,6 @@ void setLP(std::vector<std::vector<int> >& boundaryL , vector<vector<int>> & vfA
         for (int j = 0; j < edgesPerBoundary[i].size(); j++) {
             // first is the absolute index, second the index wrt the boundary loop
 
-
             auto cornerPair = edgesPerBoundary[i][j];
             if(seamIdPerCorner.find(cornerPair.first)== seamIdPerCorner.end()) continue;
 
@@ -726,6 +740,7 @@ void setLP(std::vector<std::vector<int> >& boundaryL , vector<vector<int>> & vfA
                     }else{
                         trackCornerIds[vert] = varCount;
                     }
+                    int prevVert = -1;
                     while (vert != end) {
                         // might need a map for patch and vert id to seam adn first or Second
                         double relId = ((double) count) / length;
@@ -739,7 +754,7 @@ void setLP(std::vector<std::vector<int> >& boundaryL , vector<vector<int>> & vfA
                         }
                         int currVar = varCount;
 
-                        addVarToModel(vert, boundaryL[i][(idx + 1) % boundSize], vfAdj, isConstrained, varCount, cutVar,
+                        addVarToModel(vert, prevVert, boundaryL[i][(idx + 1) % boundSize], vfAdj, isConstrained, varCount, cutVar,
                                       Fg_pattern, lengthsOrig, lengthsCurr, mapVarIdToVertId, seamId[si].first, seamId[si].second,
                                       tailor_lazyness,corner,mapVertAndSeamToVar, vertOther, model );
 
@@ -751,6 +766,7 @@ void setLP(std::vector<std::vector<int> >& boundaryL , vector<vector<int>> & vfA
                             }
                         }
                         idx = (idx + 1) % boundSize;
+                        prevVert = vert;
                         vert = boundaryL[i][idx];
                         count++;
                         if(seamId[si].first >= 0){
@@ -768,7 +784,7 @@ void setLP(std::vector<std::vector<int> >& boundaryL , vector<vector<int>> & vfA
                         trackCornerIds[end] = varCount;
                     }
                     rSumConstr += cutVar[varCount];
-                    addVarToModel(vert, boundaryL[i][(idx + 1) % boundSize], vfAdj, false, varCount, cutVar, Fg_pattern,
+                    addVarToModel(vert, prevVert , -1, vfAdj, false, varCount, cutVar, Fg_pattern,
                                   lengthsOrig, lengthsCurr, mapVarIdToVertId, seamId[si].first, seamId[si].second, tailor_lazyness, true, mapVertAndSeamToVar, vertOther, model );
                 } else {
                     // iterate in inverse direction
@@ -794,7 +810,7 @@ void setLP(std::vector<std::vector<int> >& boundaryL , vector<vector<int>> & vfA
                     }else{
                         trackCornerIds[vert] = varCount;
                     }
-
+                    int prevVert=-1;
                     while (vert != end) {
 
                         double relId = ((double) count) / seam->seamLength();
@@ -807,7 +823,7 @@ void setLP(std::vector<std::vector<int> >& boundaryL , vector<vector<int>> & vfA
                         }else{
                             model.addConstr(cutVar[varCount] == 0);
                         }
-                        addVarToModel(vert, nextvert, vfAdj, isConstrained, varCount, cutVar, Fg_pattern, lengthsOrig,
+                        addVarToModel(vert, prevVert, nextvert, vfAdj, isConstrained, varCount, cutVar, Fg_pattern, lengthsOrig,
                                       lengthsCurr, mapVarIdToVertId, seamId[si].first, seamId[si].second, tailor_lazyness, corner, mapVertAndSeamToVar, otherVert, model );
                         if (!isConstrained) {
                             lSumConstr += cutVar[currVar];
@@ -816,7 +832,7 @@ void setLP(std::vector<std::vector<int> >& boundaryL , vector<vector<int>> & vfA
                                 innerSumConstr += cutVar[currVar];
                             }
                         }
-
+                        prevVert = vert;
                         vert = nextvert;
                         count++;
                         nextidx = (startAndPatch.first - (1 + count)) % boundSize;
@@ -832,7 +848,9 @@ void setLP(std::vector<std::vector<int> >& boundaryL , vector<vector<int>> & vfA
                         trackCornerIds[end] = varCount;
                     }
                     rSumConstr += cutVar[varCount];
-                    addVarToModel(vert, boundaryL[startAndPatch.second][(idx + 1) % boundSize], vfAdj, false, varCount,
+
+
+                    addVarToModel(vert, prevVert, -1, vfAdj, false, varCount,
                                   cutVar, Fg_pattern, lengthsOrig, lengthsCurr, mapVarIdToVertId,
                                   seamId[si].first, seamId[si].second, tailor_lazyness, true, mapVertAndSeamToVar, otherVert, model);
 
@@ -875,41 +893,56 @@ void setLP(std::vector<std::vector<int> >& boundaryL , vector<vector<int>> & vfA
             cutVertEntry* cve = new cutVertEntry ( vert, seamType, seamId, patch);
             cve-> leftCorner =  -1;
             cve-> rightCorner = -1;
-            int nextVert;
+            int nextVert, prevVert;
+            double nextStress, prevStress ;
             if(seamType == -1 ){
 
                 nextVert = minusOneSeams[seamId]->getNextVert(vert, boundaryL[minusOneSeams[seamId]->getPatch()]);
+                prevVert= minusOneSeams[seamId]->getPrevVert(vert, boundaryL[minusOneSeams[seamId]->getPatch()]);
                 int faceIdx = adjacentFaceToEdge(vert, nextVert, -1, vfAdj );
                 int whichEdge = findWhichEdgeOfFace(faceIdx, vert, nextVert, Fg_pattern);
                 // in case we stretch this is lower 1, the greater it is the smaller it gets, hence 1/w
-                double w_init = lengthsCurr(faceIdx, whichEdge) / lengthsOrig(faceIdx, whichEdge);
-                cve->stress = w_init;
+                nextStress = lengthsCurr(faceIdx, whichEdge) / lengthsOrig(faceIdx, whichEdge);
+
+                faceIdx = adjacentFaceToEdge(vert, prevVert, -1, vfAdj );
+                whichEdge = findWhichEdgeOfFace(faceIdx, vert, prevVert, Fg_pattern);
+                // in case we stretch this is lower 1, the greater it is the smaller it gets, hence 1/w
+                prevStress = lengthsCurr(faceIdx, whichEdge) / lengthsOrig(faceIdx, whichEdge);
+//
 
             }else if(seamId>=0){
                 int patch  = seamsList[mapVarIdToVertId[i]->seamIdInList]->getStartAndPatch1().second;
                 int patchsize =  boundaryL[patch].size();
                 nextVert = seamsList[mapVarIdToVertId[i]->seamIdInList]->getNextVert1(vert, boundaryL[patch]);
+                prevVert = seamsList[mapVarIdToVertId[i]->seamIdInList]->getPrevVert1(vert, boundaryL[patch]);
+
                 int faceIdx = adjacentFaceToEdge(vert, nextVert, -1, vfAdj );
                 int whichEdge = findWhichEdgeOfFace(faceIdx, vert, nextVert, Fg_pattern);
                 // in case we stretch this is lower 1, the greater it is the smaller it gets, hence 1/w
-                double w_init = lengthsCurr(faceIdx, whichEdge) / lengthsOrig(faceIdx, whichEdge);
-                cve->stress = w_init;
-
+                 nextStress = lengthsCurr(faceIdx, whichEdge) / lengthsOrig(faceIdx, whichEdge);
+                faceIdx = adjacentFaceToEdge(vert, prevVert, -1, vfAdj );
+                whichEdge = findWhichEdgeOfFace(faceIdx, vert, prevVert, Fg_pattern);
+                // in case we stretch this is lower 1, the greater it is the smaller it gets, hence 1/w
+                prevStress = lengthsCurr(faceIdx, whichEdge) / lengthsOrig(faceIdx, whichEdge);
 
             }else{
                 int patch = seamsList[(mapVarIdToVertId[i]->seamIdInList+1)*(-1)]->getStartAndPatch2ForCorres().second;
                 int patchsize =  boundaryL[patch].size();
                 int count=0;
-                int nextVert = seamsList[(mapVarIdToVertId[i]->seamIdInList+1)*(-1)]->getNextVert2(vert, boundaryL[patch]);
-                cout<<nextVert<<" next of "<<vert<<endl<<endl<<endl<<endl<<endl;
+                nextVert = seamsList[(mapVarIdToVertId[i]->seamIdInList+1)*(-1)]->getNextVert2(vert, boundaryL[patch]);
+                prevVert = seamsList[(mapVarIdToVertId[i]->seamIdInList+1)*(-1)]->getPrevVert2(vert, boundaryL[patch]);
                 int faceIdx = adjacentFaceToEdge(vert, nextVert, -1, vfAdj );
                 int whichEdge = findWhichEdgeOfFace(faceIdx, vert, nextVert, Fg_pattern);
                 // in case we stretch this is lower 1, the greater it is the smaller it gets, hence 1/w
-                double w_init = lengthsCurr(faceIdx, whichEdge) / lengthsOrig(faceIdx, whichEdge);
-                cve->stress = w_init;
+                 nextStress = lengthsCurr(faceIdx, whichEdge) / lengthsOrig(faceIdx, whichEdge);
+                faceIdx = adjacentFaceToEdge(vert, prevVert, -1, vfAdj );
+                whichEdge = findWhichEdgeOfFace(faceIdx, vert, prevVert, Fg_pattern);
+                // in case we stretch this is lower 1, the greater it is the smaller it gets, hence 1/w
+                prevStress = lengthsCurr(faceIdx, whichEdge) / lengthsOrig(faceIdx, whichEdge);
 
             }
-            cout<<cve->stress<<" the stress at this vertex "<<endl;
+
+
 
             if(cornerVert[vert]==1){
                 cout<<"corner"<<endl;
@@ -926,11 +959,18 @@ void setLP(std::vector<std::vector<int> >& boundaryL , vector<vector<int>> & vfA
                 }
                 if(firstInSeam==vert){
                     cve -> startCorner = true;
+                    cve->stress = nextStress;
+
                 }else{
                     cve-> endCorner = true;
+                    cve->stress = prevStress;
                 }
 
+            }else{
+                cve->stress = (nextStress + prevStress)/2;
             }
+
+            cout<<cve->stress<<" the stress at this vertex "<<endl;
             cutPositions.push_back(cve);
 
         }
