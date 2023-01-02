@@ -146,10 +146,26 @@ bool isRight(Vector3d a,Vector3d b,Vector3d c ){
     return ((b(0) - a(0))*(c(1) - a(1)) - (b(1) - a(1))*(c(0) - a(0))) < 0;
 
 }
+bool checkIfTearIsUseful(int vert, Vector3d& cutDirection,  vector<vector<int>>& vvAdj, MatrixXd& Vg){
+    //todo 2.1.
+    // check if it makes sense, i.e. releases stress cutting in the direction
+    // if the dot product for at least one adjacent vertex of the one we are going to cut is large enough we allow to cut further
+    double thereshold = 0.3;
+    for(int i=0; i<vvAdj[vert].size(); i++){
+        int otherVert = vvAdj[vert][i];
+        Vector3d vecDir = Vg.row(otherVert);
+        vecDir -= Vg.row(vert);
+        if(vecDir.dot(cutDirection)>thereshold){
+            return true;
+        }
 
+    }
+    return false;
+}
 void splitVertexFromCVE( cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<vector<int> >& vfAdj,
                          std::vector<std::vector<int> >& boundaryL,  vector<seam*>& seamsList, vector<minusOneSeam*> & minusOneSeams,
-                         map<int, pair<int, int>> & releasedVert, set<int>& toPattern_boundaryVerticesSet,  MatrixXd& lengthsCurr, MatrixXi& Fg_pattern, set<int> & cornerSet,  set<int>& handledVerticesSet){
+                         map<int, pair<int, int>> & releasedVert, set<int>& toPattern_boundaryVerticesSet,  MatrixXd& lengthsCurr,
+                         MatrixXi& Fg_pattern, set<int> & cornerSet,  set<int>& handledVerticesSet){
     if(cve-> finFlag) {
         cout<<cve->vert<<" done already "<<endl;
         return;
@@ -187,10 +203,10 @@ void splitVertexFromCVE( cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<
     leftId = (idx+1) % boundary.size();
     rightId = (idx -1 );
     if(rightId<0) rightId+= boundary.size();
-    cout<<leftId<<" left and right idx "<<rightId<<endl;
+//    cout<<leftId<<" left and right idx "<<rightId<<endl;
 
 
-    cout<<boundary[leftId]<<" left and right "<<boundary[rightId]<<endl;
+//    cout<<boundary[leftId]<<" left and right "<<boundary[rightId]<<endl;
     if(rightId<0) rightId += boundary.size();
     int leftFaceId = adjacentFaceToEdge(boundaryL[cve->patch][leftId], cve-> vert, -1, vfAdj );
     int rightFaceId = adjacentFaceToEdge(boundaryL[cve->patch][rightId], cve-> vert, -1, vfAdj );
@@ -217,7 +233,7 @@ void splitVertexFromCVE( cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<
 
     Vector3d toLeft = Vg.row(boundaryL[cve->patch][leftId])- Vg.row(cve->vert);
     Vector3d toRight = Vg.row(boundaryL[cve->patch][rightId])- Vg.row(cve->vert);
-
+//todo set fin flag if we reachd the end of a boundary cut!
     // if it's a corner all get the new index
     if(cve->startCorner|| cve-> endCorner ){
         cout<<" extra case"<<endl;
@@ -562,6 +578,76 @@ void splitVertex(Node** head, int & listLength, int  whichTear, MatrixXd& Vg, Ma
 
     right_noed-> stretchLeft = newLength/origLength;// assuming the new one is stretched it is certainly longer
 
+}
+void splitCounterPart(vector<cutVertEntry*>& cutPositions,int idxOfCVE,  cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<vector<int> >& vfAdj,
+                      std::vector<std::vector<int> >& boundaryL,  vector<seam*>& seamsList, vector<minusOneSeam*> & minusOneSeams,
+                      map<int, pair<int, int>> & releasedVert, set<int>& toPattern_boundaryVerticesSet,  MatrixXd& lengthsCurr,
+                      MatrixXi& Fg_pattern, set<int> & cornerSet,  set<int>& handledVerticesSet){
+    //idx of cve has higher stress, hence we have searched before alread, just need tto increment
+    //if not found we have handled it already
+    if(cve->seamType == -1 ) {
+        // there is no counterpart
+        cout<<"NO counterpart"<<endl; return ;
+
+    }
+    int counterID  = (cve->seamIdInList+1)*(-1);
+    if(!cve->startCorner && !cve->endCorner){
+        // then there is only one other of this seam -> search it
+        int idx = -1;
+        for(int i=idxOfCVE; i<cutPositions.size(); i++){
+            if(cutPositions[i]->seamType==1 &&cutPositions[i]->seamIdInList == counterID){
+                idx= i;
+            }
+        }
+        if(idx == -1) return;
+        splitVertexFromCVE( cutPositions[idx], Vg, Fg, vfAdj,
+                            boundaryL, seamsList, minusOneSeams, releasedVert, toPattern_boundaryVerticesSet, lengthsCurr,
+                            Fg_pattern, cornerSet, handledVerticesSet);
+        return;
+    }
+
+    int lookFor = -1;
+    seam* currSeam;
+    if(counterID<0){
+        // then we are > 0
+        currSeam = seamsList[cve->seamIdInList];
+
+    }else{
+        // we are < 0
+        currSeam = seamsList[(cve->seamIdInList+1)*(-1)];
+    }
+    if(cve->startCorner){
+        // we need to find another startcorner
+        if(cve->vert == currSeam-> getStart1()){
+            lookFor = currSeam-> getStart2();
+        }else if (cve->vert == currSeam-> getStart2()) {
+            lookFor = currSeam->getStart1();
+        }else{
+            cout<<"we have a problem, should find cve as corner but seems like its not "<<cve-> vert<<endl; return;
+        }
+    }
+      // find the mapped vertex of this one
+    else {
+        if (cve->vert == currSeam->getEndCornerIds().first) {
+            lookFor = currSeam->getEndCornerIds().second;
+        } else if (cve->vert == currSeam->getEndCornerIds().second) {
+            lookFor = currSeam->getEndCornerIds().first;
+        } else {
+            cout << "we have a problem, should find cve as corner but seems like its not " << cve->vert << endl;return;
+        }
+    }
+
+    int idx = -1;
+    for(int i = idxOfCVE; i<cutPositions.size(); i++){
+        if(cutPositions[i]->seamType == 1 && cutPositions[i]->vert == lookFor){
+            idx= i;
+        }
+    }
+    if(idx == -1) return;
+    splitVertexFromCVE( cutPositions[idx], Vg, Fg, vfAdj,
+                        boundaryL, seamsList, minusOneSeams, releasedVert, toPattern_boundaryVerticesSet, lengthsCurr,
+                        Fg_pattern, cornerSet, handledVerticesSet);
+    return;
 }
 
 int addoncount=0;
@@ -988,7 +1074,7 @@ void tearFurther(vector<cutVertEntry*>& cutPositions, MatrixXd&  currPattern, Ma
     createVertexFaceAdjacencyList(Fg_pattern, vfAdj);
     MatrixXd lengthsCurr;
     igl::edge_lengths(currPattern, Fg_pattern, lengthsCurr);
-int  count = 0 ;
+    int  count = 0 ;
     for(int i = 0; i < 1; i++){// cutPositions.size(); i++){
         if(cutPositions[count]->finFlag){
             i--; count ++;continue;
@@ -996,6 +1082,12 @@ int  count = 0 ;
         cout<<endl<< cutPositions[count]->vert<<" vertex up next handling with i="<<count<<endl;
         splitVertexFromCVE(cutPositions[count], currPattern, Fg_pattern, vfAdj, boundaryL, seamsList, minusOneSeams, releasedVert,
                            toPattern_boundaryVerticesSet,lengthsCurr, Fg_pattern, cornerSet, handledVerticesSet );
+        // we can also split it's counterpart
+
+//        splitCounterPart(cutPositions, count, cutPositions[count], currPattern, Fg_pattern, vfAdj, boundaryL, seamsList, minusOneSeams, releasedVert,
+//                         toPattern_boundaryVerticesSet,lengthsCurr, Fg_pattern, cornerSet, handledVerticesSet );
+
+
 
     }
     cout<<"--------------------"<<endl;
@@ -1144,6 +1236,10 @@ void computeTear(Eigen::MatrixXd & fromPattern, MatrixXd&  currPattern, MatrixXi
         cout<<cutPositions[count]->stress<<" curr stress "<<endl;
         splitVertexFromCVE(cutPositions[count], currPattern, Fg_pattern, vfAdj, boundaryL, seamsList,
                            minusOneSeams, releasedVert, toPattern_boundaryVerticesSet,lengthsCurr, Fg_pattern, cornerSet, handledVerticesSet);
+//todo but here we have set cve-> vert to the next one and hence dont find it if it is a vertex. we need another datastructure
+//        splitCounterPart(cutPositions, count, cutPositions[count], currPattern, Fg_pattern, vfAdj, boundaryL, seamsList, minusOneSeams, releasedVert,
+//                         toPattern_boundaryVerticesSet,lengthsCurr, Fg_pattern, cornerSet, handledVerticesSet );
+
     }
 
 cout<<"fin compute tear "<<endl ;
@@ -1240,7 +1336,7 @@ void projectBackOnBoundary(const MatrixXd & Vg_to, MatrixXd& p, const vector<sea
            else if(releasedVert.find(next) == releasedVert.end() ){
                // general case an interior vertex , if it is not constrained pull it to boundary
                 updatePositionToIntersection( p, next,Vg_seam1to);
-            }else if(releasedVert[next]== compPair){
+            }else if(releasedVert[next] == compPair){
                // if it is constrained but from another side pull it to boundary
                 updatePositionToIntersection( p, next,Vg_seam1to);
             }
@@ -1303,8 +1399,10 @@ void projectBackOnBoundary(const MatrixXd & Vg_to, MatrixXd& p, const vector<sea
 //
         minusOneSeam* currSeam  = minusOneSeams[j];
         int patch = currSeam -> getPatch();
+        int startVert = currSeam -> getStartVert();
         int startidx = currSeam -> getStartIdx();
         int endVert = currSeam -> getEndVert();
+
         int len = currSeam -> getLength();
         int boundLen = boundaryL_toPattern[patch].size();
 
@@ -1316,7 +1414,7 @@ void projectBackOnBoundary(const MatrixXd & Vg_to, MatrixXd& p, const vector<sea
             Vg_seamto.row(i) = Vg_to.row(v1);
         }
 
-        int i1=1;
+        int i1=0;
         int next = boundaryL_toPattern[patch][(startidx+i1) % boundLen];
         pair<int, int> compPair = make_pair(-1,j );
         while(next != endVert){
@@ -1326,19 +1424,19 @@ void projectBackOnBoundary(const MatrixXd & Vg_to, MatrixXd& p, const vector<sea
                     updatePositionToIntersection( p, next,Vg_seamto);
                 }
             }
-            else if(releasedVert.find(next)== releasedVert.end()){
+            else if(releasedVert.find(next) == releasedVert.end()){// general case, it is not released hence pull it to the boundary
                 updatePositionToIntersection( p, next,Vg_seamto);
-            }else if(releasedVert[next] == compPair){
+            }else if(releasedVert[next] == compPair){// iit is released but by my own seam,thus it has to stay on the projection
                 updatePositionToIntersection( p, next,Vg_seamto);
 
             }
             i1++;
             next = boundaryL_toPattern[patch][( startidx+i1 ) % boundLen];
         }
-
         if(releasedVert.find(next) != releasedVert.end() && releasedVert[next] == compPair){
             // it is released for another side hence we have to pull it to our side
             updatePositionToIntersection( p, next,Vg_seamto);
+
         }
         // also map all projections
         for(const auto & addedVert : currSeam->duplicates){
