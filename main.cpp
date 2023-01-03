@@ -811,7 +811,7 @@ int main(int argc, char *argv[])
                 cout<<"at old boundary loop "<<boundaryL[4].size()<<endl;
                 computeTear(fromPattern, currPattern, Fg_pattern,Fg_pattern_orig, seamsList ,
                             minusOneSeamsList,boundaryL,fin,  cornerPerBoundary, seamIdPerCorner,
-                            edgeVertices, cutPositions, releasedVert, toPattern_boundaryVerticesSet, cornerSet, handledVerticesSet);
+                            edgeVertices, cutPositions, releasedVert, toPattern_boundaryVerticesSet, cornerSet, handledVerticesSet,Vg_pattern);
 
 
                 viewer.selected_data_index = 0;

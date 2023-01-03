@@ -59,7 +59,8 @@ void computeTear(MatrixXd& fromPatternFile, MatrixXd&  currPattern, MatrixXi& Fg
                   vector<minusOneSeam*> & minusOneSeams, std::vector<std::vector<int> >& boundaryL, bool& finished,
                  const std::vector<std::vector<std::pair<int, int>>>& edgesPerBoundary, map<int, vector<pair<int, int>>>& seamIdPerCorner,
                  VectorXd& cornerVert,
-                 vector<cutVertEntry*>& cutPositions,  map<int, pair<int, int>>& releasedVert, std::set<int>& toPattern_boundaryVerticesSet, set<int> & cornerSet, set<int>& handledVerticesSet);
+                 vector<cutVertEntry*>& cutPositions,  map<int, pair<int, int>>& releasedVert, std::set<int>& toPattern_boundaryVerticesSet,
+                 set<int> & cornerSet, set<int>& handledVerticesSet, MatrixXd& Vg);
 
 
 int findWhichEdgeOfFace(int face, int v1, int v2, MatrixXi& Fg);
