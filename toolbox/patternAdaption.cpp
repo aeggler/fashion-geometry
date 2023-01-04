@@ -197,7 +197,7 @@ void splitVertexFromCVE( cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<
         return;
     }
     cve->handled = true;
-// todo this prohibits any kind of cross cutting! maybe not always desirable !
+// todo this prohibits any kind of cross cutting! maybe not always desirable ! removing? 
     if(handledVerticesSet.find(cve->vert) != handledVerticesSet.end()){
         cout<<"handled by other seams already. Stop here"<<endl;
         cve->finFlag=true;
@@ -281,22 +281,23 @@ void splitVertexFromCVE( cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<
         if(cve->startCorner){// does not matter if it is a starter or not
             cout<<"starter"<<endl;
 //            newVg.row(cve->vert) += (eps * toLeft).transpose();
-            if(cve-> seamIdInList>=0){
+//            if(cve-> seamType>=0){
                 // we count pos hence the previous is negative
                 cve->vert = boundary[rightId];
-            }else{
-                cve->vert = boundary[leftId];
-            }
+//            }else{
+//                cve->vert = boundary[leftId];
+//            }
 
 
         }else{
-            cout<<"ending "<<boundary[leftId]<<" TODO FIGURE OUT WHICH ONE ATM ITS WRONG FOR 848 "<<boundary[rightId]<<endl;
-            if(cve-> seamIdInList>=0){
+            cout<<"ending "<<boundary[leftId]<<" TODO FIGURE OUT WHICH ONE ATM ITS WRONG FOR 848 "<<boundary[rightId]<<" "<<endl;
+//            if(cve-> seamType>=0){
                 // we count neg hence the next +1
                 cve->vert = boundary[leftId];
-            }else{
-                cve->vert = boundary[rightId] ;
-            }
+//            }else{
+//                cve->vert = boundary[rightId] ;
+//
+//            }
 
         }
 
@@ -1374,7 +1375,7 @@ void projectBackOnBoundary(const MatrixXd & Vg_to, MatrixXd& p, const vector<sea
 
         while( next!= ends.first ){
             if(i1 == 0){
-                if(next == 3007) cout<<" its a first "<<endl;
+//                if(next == 3007) cout<<" its a first "<<endl;
                 if(releasedVert.find(next) != releasedVert.end() && releasedVert[next]== compPair){
                     //todo this happense becuase when cutting on top, die übernächste wird auch gelöst am ende. Das sollte
                     // aber nicht sein denn sie sollte eigentlich nuur von der nachfolgenden gelöst werden !
@@ -1397,7 +1398,7 @@ void projectBackOnBoundary(const MatrixXd & Vg_to, MatrixXd& p, const vector<sea
             next = boundaryL_toPattern[stP1.second][(stP1.first+i1)% bsize];
         }
         // the last corner. Again if it is constrained from another side pull it to boundary, else ignore since handled by corner
-        if(next == 3007) cout<<" its a last "<<endl;
+//        if(next == 3007) cout<<" its a last "<<endl;
 
         if(releasedVert.find(next) != releasedVert.end() && releasedVert[next] == compPair ){
             updatePositionToIntersection( p, next,Vg_seam1to);
