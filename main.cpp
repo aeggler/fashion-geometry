@@ -397,7 +397,7 @@ int main(int argc, char *argv[])
 
     igl::readOBJ(garment_file_name, Vg, Fg);
     igl::readOBJ(garment_file_name, Vg_orig, Fg_orig);
-    cout<<"loaded garment "<<endl;
+//    cout<<"loaded garment "<<endl;
     Timer t("Setup");
     garmentPreInterpol = Vg;
     Vg_orig = Vg; Fg_orig= Fg;
@@ -456,15 +456,18 @@ int main(int argc, char *argv[])
     createVertexFaceAdjacencyList(Fg, vfAdj);
     edgeVertices = VectorXd::Zero(Vg_pattern.rows());// 1 for each corner
 
-    t.printTime( " before seams list  ");
+//    t.printTime( " before seams list  ");
 //    Eigen::VectorXd seamIdPerCorner(Vg_pattern.rows());
 //    Eigen::VectorXd directionPerCorner(Vg_pattern.rows());
     // contains corner id and a list of which seams start here (max 2), each vector element  is a pair where first is if it's a -1 seam, and second is which index in corresponding List. If negative it's a backside ,i.e. part 2 of the seam
     map<int, vector<pair<int, int>>> seamIdPerCorner;
     computeAllSeams( boundaryL,vertexMapPattToGar, vertexMapGarAndIdToPatch, vfAdj, componentIdPerFace,
                      componentIdPerVert,edgeVertices, cornerPerBoundary, seamsList, minusOneSeamsList, seamIdPerCorner);
-    cout<<seamIdPerCorner.size()<<" the size of the map final "<<endl;
     set<int> cornerSet;
+
+
+
+
     for(int i=0; i < cornerPerBoundary.size(); i++){
         for(int j=0; j < cornerPerBoundary[i].size(); j++){
             cornerSet.insert(cornerPerBoundary[i][j].first);
@@ -507,6 +510,7 @@ int main(int argc, char *argv[])
     // copy the matrices to not mess with them
     string fromPatternFile = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/patternComputed.obj";
     // quick
+//    cout<<"read pattern computed"<<endl;
     //TODO LATER NO MORE
     igl::readOBJ(fromPatternFile, fromPattern, Fg_pattern);
 //    string mappedPatternFile = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/mappedPattern.obj";
@@ -516,9 +520,6 @@ int main(int argc, char *argv[])
     viewer.core().animation_max_fps = 200.;
     viewer.core().is_animating = false;
     int whichSeam = 0;
-
-
-    cout<<boundaryL[0].size()<<endl;
 
     //additional menu items
 
@@ -795,9 +796,8 @@ int main(int argc, char *argv[])
         }
         if (ImGui::CollapsingHeader("Pattern adaption", ImGuiTreeNodeFlags_DefaultOpen)){
             if(ImGui::Button("Compute adaptation", ImVec2(-1, 0))){
-                preComputeAdaption();
-
                 currPattern = fromPattern;
+                preComputeAdaption();
                 viewer.core().is_animating = true;
                 adaptionFlag = true;
             }
@@ -808,7 +808,6 @@ int main(int argc, char *argv[])
                 viewer.core().is_animating = false;
 
                 bool fin = false;
-                cout<<"at old boundary loop "<<boundaryL[4].size()<<endl;
                 computeTear(fromPattern, currPattern, Fg_pattern,Fg_pattern_orig, seamsList ,
                             minusOneSeamsList,boundaryL,fin,  cornerPerBoundary, seamIdPerCorner,
                             edgeVertices, cutPositions, releasedVert, toPattern_boundaryVerticesSet, cornerSet, handledVerticesSet,Vg_pattern);
@@ -897,7 +896,7 @@ void preComputeAdaption(){
         cout<<" there are no corners to map"<<endl;
     }
     if(currPattern.rows()!= toPattern.rows()){
-        cout<<" the number of vertices does not match ! We inserted vertices already "<<endl;
+        cout<<currPattern.rows()<<" the number of vertices does not match ! We inserted vertices already "<< toPattern.rows()<<endl;
     }
 //    patternEdgeLengths.resize(Fg_pattern.rows() ,3);
     igl::edge_lengths(fromPattern,Fg_pattern_orig, patternEdgeLengths_orig);
@@ -1591,13 +1590,7 @@ void solveStretchAdaption(MatrixXd& perFaceU_adapt,MatrixXd& perFaceV_adapt){
 // in the third iteration some strange artifacts arise form here
         PBD_adaption.init_UVStretchPattern( perFaceU_adapt.row(i),  perFaceV_adapt.row(i), patternCoords,targetPositions,
                                                 tarUV0, tarUV1,tarUV2, uOrv,  stretchStiffnessD);
-//        if( boundaryL[4].size()==27) tarUV0 =  targetPositions.col(0);
-//        if( boundaryL[4].size()==27) tarUV1 =  targetPositions.col(1);
-//        if( boundaryL[4].size()==27) tarUV2 =  targetPositions.col(2);
-//        if( boundaryL[4].size()==27 && i== 5328) cout<< p_adaption.row(Fg_pattern(i, 0)).leftCols(2)<<endl;
-//        if( boundaryL[4].size()==27 && i== 5328) cout<< p_adaption.row(Fg_pattern(i, 1)).leftCols(2)<<endl;
-//        if( boundaryL[4].size()==27 && i== 5328) cout<< p_adaption.row(Fg_pattern(i, 2)).leftCols(2)<<endl;
-
+//
         Vector2d dir0 = tarUV0 - p_adaption.row(Fg_pattern(i, 0)).leftCols(2).transpose() ;
         Vector2d dir1 = tarUV1 - p_adaption.row(Fg_pattern(i, 1)).leftCols(2).transpose() ;
         Vector2d dir2 = tarUV2 - p_adaption.row(Fg_pattern(i, 2)).leftCols(2).transpose() ;
@@ -1645,17 +1638,20 @@ void computePatternStress(MatrixXd& perFaceU_adapt,MatrixXd& perFaceV_adapt ){
 
 }
 void solveCornerMappedVertices(){
-
+//int count=0;
     for(int i=0; i< cornerPerBoundary.size(); i++){
         for(int j=0; j< cornerPerBoundary[i].size(); j++){
+
             int vertIdx = get<0>(cornerPerBoundary[i][j]);
             if(releasedVert.find(vertIdx)!= releasedVert.end())continue;
+//            count ++;
             Vector2d newSuggestedPos = toPattern.row(vertIdx).leftCols(2);
             Vector2d dir = newSuggestedPos - p_adaption.row(vertIdx).leftCols(2).transpose();
 // TODO PARAMETER
             p_adaption.row(vertIdx).leftCols(2) += boundaryStiffness * dir;
         }
     }
+//    cout<< count<<" cornerr count "<<endl;
 
 }
 int adaptioncount = 0 ;
@@ -1687,16 +1683,42 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
 //        t.printTime(" pattern stress ");
         solveStretchAdaptionViaEdgeLength();//perFaceU_adapt, perFaceV_adapt);
 //        t.printTime(" solve stretch  ");
-        solveCornerMappedVertices();
+
 //        t.printTime(" corner mapped ");
         // before cutting the boundaries should be the same
         projectBackOnBoundary( toPattern, p_adaption, seamsList,minusOneSeamsList,  Fg_pattern, Fg_pattern_orig, boundaryL_toPattern, boundaryL, releasedVert );
+      solveCornerMappedVertices();
 //        t.printTime(" project back  ");
     }
     currPattern = p_adaption;
 
     viewer.selected_data_index = 1;
     viewer.data().clear();
+    VectorXd radius(fromPattern.rows());
+    radius.setConstant(30.);
+    viewer.data().point_size= 10.f;
+
+    // need not be here, could be prrecomputed 
+    vector<vector<int>> fromPatternBound;
+    igl::boundary_loop(Fg_pattern_orig, fromPatternBound);
+    int boundVert = 0; int curr = 0;
+    for (int i=0; i< fromPatternBound.size(); i++){
+        boundVert += fromPatternBound[i].size();
+    }
+    MatrixXi EVisOld(boundVert, 2);
+
+    for (int i=0; i< fromPatternBound.size(); i++){
+        for(int j=0; j<fromPatternBound[i].size(); j++){
+            EVisOld(curr, 0) = fromPatternBound[i][j];
+            EVisOld(curr, 1) = fromPatternBound[i][(j+1)%(fromPatternBound[i].size())];
+            curr++;
+        }
+    }
+
+
+    MatrixXd visFromPattern = fromPattern; visFromPattern.col(2) *= 1.02;
+    viewer.data().set_edges(visFromPattern, EVisOld, Eigen::RowVector3d(0, 0, 1));
+
     viewer.selected_data_index = 0;
     viewer.data().clear();
     viewer.data().set_mesh(currPattern, Fg_pattern);
@@ -1706,8 +1728,6 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
     //remove wireframe
     viewer.data().show_lines = true;
 
-//    cout<<(colPatternV(5324, 0)-1)/5 +1 <<" max norm v direction "<<endl;
-//    cout<<(colPatternU(5324,0)-1)/5 +1<<" max norm in u direction"<<endl;
     MatrixXd currLengths; igl::edge_lengths(currPattern, Fg_pattern, currLengths);
 
     currLengths = patternEdgeLengths_orig - currLengths;// TODO BETTER COLORING THIS CAN AVERAGE BADLY

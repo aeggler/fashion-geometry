@@ -188,6 +188,7 @@ bool checkIfTearIsUseful(int vert, Vector3d& cutDirection,  vector<vector<int>>&
     cout<<cutDirection.transpose()<<" would be the cut direction"<<endl;
     return flag;
 }
+map<int, int> releasedVertNew;
 void splitVertexFromCVE( cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<vector<int> >& vfAdj,
                          std::vector<std::vector<int> >& boundaryL,  vector<seam*>& seamsList, vector<minusOneSeam*> & minusOneSeams,
                          map<int, pair<int, int>> & releasedVert, set<int>& toPattern_boundaryVerticesSet,  MatrixXd& lengthsCurr,
@@ -197,7 +198,7 @@ void splitVertexFromCVE( cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<
         return;
     }
     cve->handled = true;
-// todo this prohibits any kind of cross cutting! maybe not always desirable ! removing? 
+// todo this prohibits any kind of cross cutting! maybe not always desirable ! removing?
     if(handledVerticesSet.find(cve->vert) != handledVerticesSet.end()){
         cout<<"handled by other seams already. Stop here"<<endl;
         cve->finFlag=true;
@@ -254,6 +255,64 @@ void splitVertexFromCVE( cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<
     Vector3d toLeft = Vg.row(boundaryL[cve->patch][leftId])- Vg.row(cve->vert);
     Vector3d toRight = Vg.row(boundaryL[cve->patch][rightId])- Vg.row(cve->vert);
 //todo set fin flag if we reachd the end of a boundary cut!
+
+
+    map<int, vector<int>> cornerToSeams;
+    for(int i =0; i<seamsList.size(); i++){
+        seam* currSeam = seamsList[i];
+        int start1 = currSeam -> getStart1();
+        int start2 = currSeam ->getStart2();
+        int end1 = currSeam-> getEndCornerIds().first;
+        int end2 = currSeam-> getEndCornerIds().second;
+
+        if(cornerToSeams.find(start1) != cornerToSeams.end()){
+            cornerToSeams[start1].push_back(i);
+        }else{
+            vector<int> key; key.push_back(i);
+            cornerToSeams[start1] = key;
+        }
+        if(cornerToSeams.find(start2) != cornerToSeams.end()){
+            cornerToSeams[start2].push_back(i);
+        }else{
+            vector<int> key; key.push_back(i);
+            cornerToSeams[start2] = key;
+        }
+
+        if(cornerToSeams.find(end1) != cornerToSeams.end()){
+            cornerToSeams[end1].push_back(i);
+        }else{
+            vector<int> key; key.push_back(i);
+            cornerToSeams[end1] = key;
+        }
+        if(cornerToSeams.find(end2) != cornerToSeams.end()){
+            cornerToSeams[end2].push_back(i);
+        }else{
+            vector<int> key; key.push_back(i);
+            cornerToSeams[end2] = key;
+        }
+
+    }
+    for(int i =0; i<minusOneSeams.size(); i++){
+        minusOneSeam* currSeam = minusOneSeams[i];
+        int start = currSeam-> getStartVert();
+        int end = currSeam -> getEndVert();
+        if(cornerToSeams.find(start) != cornerToSeams.end()){
+            cornerToSeams[start].push_back(-i);
+        }else{
+            vector<int> key; key.push_back(-i);
+            cornerToSeams[start] = key;
+        }
+
+        if(cornerToSeams.find(end) != cornerToSeams.end()){
+            cornerToSeams[end].push_back(-i);
+        }else{
+            vector<int> key; key.push_back(-i);
+            cornerToSeams[end] = key;
+        }
+
+    }
+
+
     // if it's a corner all get the new index
     if(cve->startCorner|| cve-> endCorner ){
         cout<<" extra case"<<endl;
@@ -271,12 +330,41 @@ void splitVertexFromCVE( cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<
 
         // set of extra cases
         pair<int, int> valPair = make_pair(cve->seamType, cve ->seamIdInList);
-        releasedVert[cve->vert]= valPair;
+        int seamComp;
+        if(cve->seamType>0){ seamComp = cve ->seamIdInList; }else{ seamComp = -cve ->seamIdInList;}
+        releasedVert[cve->vert]= valPair;// each corner is adjacent to two seams. hence the other one is which it is released from , then if we reach another corner and we know
+        // in the projection which one it is released from and whcih not
+        if(cornerToSeams[cve->cornerInitial][0] == seamComp){
+            releasedVertNew[cve->vert]= cornerToSeams[cve->cornerInitial][1];
+        }else if (cornerToSeams[cve->cornerInitial][1] == seamComp){
+            releasedVertNew[cve->vert]= cornerToSeams[cve->cornerInitial][0];
+        }else{
+            cout<<cornerToSeams[cve->cornerInitial][0]<<" we have a problem, it is not found "<<cornerToSeams[cve->cornerInitial][1]<<" but what we have is "
+            <<cve->seamType<<" "<< cve ->seamIdInList<<endl;
+        }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        //todo 4.1.
+
+
+
         newVg.row(newVertIdx)= Vg.row(cve->vert);
 
         cve->continuedCorner = true;
         cve->finFlag = (cornerSet.find(cve->vert) != cornerSet.end()&& cve->vert != cve-> cornerInitial); //if it is a corner we are done
-        if(cve->vert == 3007) cout<<valPair.first<<" type and sema Id In List "<<valPair.second<<endl;
+        if(cve->vert == 3007) cout<<valPair.first<<" type and seam Id In List "<<valPair.second<<endl;
 
         if(cve->startCorner){// does not matter if it is a starter or not
             cout<<"starter"<<endl;
@@ -1370,64 +1458,51 @@ void projectBackOnBoundary(const MatrixXd & Vg_to, MatrixXd& p, const vector<sea
         int i1=0;
         int bsize = boundaryL_toPattern[stP1.second].size();
         int next = boundaryL_toPattern[stP1.second][(stP1.first+i1)% bsize];
-//        cout<<next<<" searching for end "<<ends.first<<endl;
         pair<int, int> compPair = make_pair(1,j );
 
         while( next!= ends.first ){
-            if(i1 == 0){
-//                if(next == 3007) cout<<" its a first "<<endl;
-                if(releasedVert.find(next) != releasedVert.end() && releasedVert[next]== compPair){
-                    //todo this happense becuase when cutting on top, die übernächste wird auch gelöst am ende. Das sollte
-                    // aber nicht sein denn sie sollte eigentlich nuur von der nachfolgenden gelöst werden !
-                    // it is released for another side hence we have to pull it to our side
-                    updatePositionToIntersection( p, next,Vg_seam1to);
-                    if(next == 3007) cout<<" its in "<<compPair.first<<" "<<compPair.second <<endl;
+//                    //todo this happense becuase when cutting on top, die übernächste wird auch gelöst am ende. Das sollte
+//                    // aber nicht sein denn sie sollte eigentlich nuur von der nachfolgenden gelöst werden !
+//                    // it is released for another side hence we have to pull it to our side
 
-                }
-            }
-
-           else if(releasedVert.find(next) == releasedVert.end() ){
-               // general case an interior vertex , if it is not constrained pull it to boundary
-                updatePositionToIntersection( p, next,Vg_seam1to);
-            }else if(releasedVert[next] == compPair){
-               // if it is constrained but from another side pull it to boundary
+            if(releasedVert.find(next) == releasedVert.end()  ){
+                // general case an interior vertex , if it is not constrained pull it to boundary
                 updatePositionToIntersection( p, next,Vg_seam1to);
             }
+            else if( releasedVertNew[next] != j){
+//                if(next==3007) cout<<" in new case, it should be mapped to "<<j<<endl;
+               updatePositionToIntersection( p, next,Vg_seam1to);
+                    // todo this case for -1 seams
 
+            }
             i1++;
             next = boundaryL_toPattern[stP1.second][(stP1.first+i1)% bsize];
         }
         // the last corner. Again if it is constrained from another side pull it to boundary, else ignore since handled by corner
-//        if(next == 3007) cout<<" its a last "<<endl;
 
-        if(releasedVert.find(next) != releasedVert.end() && releasedVert[next] == compPair ){
+        if(releasedVert.find(next) != releasedVert.end() && releasedVertNew[next] != j){
+//            cout<<releasedVertNew[next]<<" released, it should be mapped to "<<j<<endl;
             updatePositionToIntersection( p, next,Vg_seam1to);
-            if(next == 3007) cout<<" its in "<<compPair.first<<" "<<compPair.second <<endl;
-
         }
-
-        int sizeOneSide = i1+1; // account for  0and last
 
         int i2 = 0;
         bsize = boundaryL_toPattern[stP2.second].size();
         int nextidx = (stP2.first- i2) % bsize;
         if(nextidx < 0) nextidx += bsize;
         next = boundaryL_toPattern[stP2.second][nextidx];
-//        cout<<next<<"and now "<<ends.second<<endl;
         compPair = make_pair(1,-j-1 );
 
         while( next!= ends.second ){
 
-            if(i2 == 0){
-                if(releasedVert.find(next) != releasedVert.end() && releasedVert[next] == compPair){
-                    // it is released for another side hence we have to pull it to our side
-                    updatePositionToIntersection( p, next,Vg_seam2to);
-                }
+            if(releasedVert.find(next) == releasedVert.end() ){// && i2!=0
+                // general case an interior vertex , if it is not constrained pull it to boundary
+                updatePositionToIntersection( p, next,Vg_seam2to);
             }
-            else if(releasedVert.find(next) == releasedVert.end()){
-                updatePositionToIntersection(p, next,Vg_seam2to);
-            }else if(releasedVert[next] == compPair){
-                updatePositionToIntersection(p, next,Vg_seam2to);
+
+            else if( releasedVertNew[next] != j){
+               if(next==3007) cout<<" in new case, it should be mapped to "<<j<<endl;
+                updatePositionToIntersection( p, next,Vg_seam2to);
+                // todo this case for -1 seams
 
             }
 
@@ -1439,10 +1514,18 @@ void projectBackOnBoundary(const MatrixXd & Vg_to, MatrixXd& p, const vector<sea
             next = boundaryL_toPattern[stP2.second][nextidx];
         }
 
-        if(releasedVert.find(next) != releasedVert.end() && releasedVert[next] == compPair){
-            // last is released for another side hence we have to pull it to our side
+//        if(releasedVert.find(next) != releasedVert.end() && releasedVert[next] == compPair){
+//            // last is released for another side hence we have to pull it to our side
+//            updatePositionToIntersection( p, next,Vg_seam2to);
+//        }
+        if(releasedVert.find(next) != releasedVert.end() && releasedVertNew[next] != j){
+            cout<<releasedVertNew[next]<<" released, it should be mapped to "<<j<<endl;
             updatePositionToIntersection( p, next,Vg_seam2to);
         }
+
+
+
+
         // also project all duplicates
         for(const auto & addedVert : currSeam->duplicates){
             updatePositionToIntersection(p, addedVert.second, Vg_seam1to);
