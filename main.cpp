@@ -1721,7 +1721,6 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
         }
     }
 
-
     MatrixXd visFromPattern = fromPattern; visFromPattern.col(2) *= 1.02;
     viewer.data().set_edges(visFromPattern, EVisOld, Eigen::RowVector3d(0, 0, 1));
 
@@ -1736,17 +1735,13 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
 
     MatrixXd currLengths; igl::edge_lengths(currPattern, Fg_pattern, currLengths);
 
-    currLengths = patternEdgeLengths_orig - currLengths;// TODO BETTER COLORING THIS CAN AVERAGE BADLY
-    VectorXd stressCurr = currLengths.col(0);// todo .rowwise().sum();
-    for(int i=0; i<stressCurr.size(); i++){
-        stressCurr(i)/= patternEdgeLengths_orig(i,0);//.sum() ;
-    }
-    colPatternU.col(0)=VectorXd::Ones(stressCurr.size())+15* stressCurr; colPatternU.col(1) = VectorXd::Ones(stressCurr.size()) - 15*stressCurr;
+    VectorXd stressCurr = currLengths.col(0);
 
     vector<vector<int> > vfAdj;
     createVertexFaceAdjacencyList(Fg_pattern, vfAdj);
     // new idea, ,colour just the boundary
-    colPatternU.col(0)=VectorXd::Ones(stressCurr.size())+0* stressCurr; colPatternU.col(1) = VectorXd::Ones(stressCurr.size()) - 0*stressCurr;
+    colPatternU.col(0)=VectorXd::Ones(stressCurr.size());//+0* stressCurr;
+    colPatternU.col(1) = VectorXd::Ones(stressCurr.size());// - 0*stressCurr;
     for(int i=0; i<boundaryL.size(); i++){
         for(int j=0; j<boundaryL[i].size(); j++){
             int idx = boundaryL[i][j];
@@ -1760,11 +1755,55 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
             colPatternU(faceIDx, 0) += 15 * relStretch;
             colPatternU(faceIDx, 1) -= 15 * relStretch;
 
+
         }
     }
+//    MatrixXd startPerEdge(Fg_pattern.rows(), 3);
+//    MatrixXd uPerEdge(Fg_pattern.rows(), 3);
+    MatrixXd startPerEdge(Fg_pattern.rows(), 3);
+    MatrixXd uPerEdge(Fg_pattern.rows(), 3);
+    MatrixXd vPerEdge(Fg_pattern.rows(), 3);
+    MatrixXd colvPerEdge(Fg_pattern.rows(), 3);
+    MatrixXd coluPerEdge(Fg_pattern.rows(), 3);
+    for(int i=0; i<Fg_pattern.rows(); i++){
+        // we use bary to left and bary to top +1 of the old and compue in bary coords
+        // get the same of the new, check the new length
+        //start form from pattern, that is the rest shape of the shape we have
+        Vector3d v0 = fromPattern.row(Fg_pattern(i, 0)).transpose();
+        Vector3d v1 = fromPattern.row(Fg_pattern(i, 1)).transpose();
+        Vector3d v2 = fromPattern.row(Fg_pattern(i, 2)).transpose();
+
+        Vector3d bary = (v0 + v1 + v2)/3;
+        Vector3d u = bary; u(0)+= 1;
+        Vector3d v = bary; v(1)+= 1;
+        Vector3d ubary, vbary;
+
+        MathFunctions mathfun;
+        mathfun.Barycentric3D( u, v0, v1, v2, ubary);
+        mathfun.Barycentric3D( v, v0, v1, v2, vbary);
+
+        Vector3d v0new = currPattern.row(Fg_pattern(i, 0)).transpose();
+        Vector3d v1new = currPattern.row(Fg_pattern(i, 1)).transpose();
+        Vector3d v2new = currPattern.row(Fg_pattern(i, 2)).transpose();
+        startPerEdge.row(i) = ( (v0new + v1new + v2new)/3).transpose();
+
+        uPerEdge.row(i) = (ubary(0) * v0new + ubary(1) * v1new + ubary(2) * v2new).transpose() -  startPerEdge.row(i);
+        vPerEdge.row(i) = (vbary(0) * v0new + vbary(1) * v1new + vbary(2) * v2new).transpose() -  startPerEdge.row(i);
+        double ulen = uPerEdge.row(i).norm();
+        double y = 3*abs(1-ulen);
+        coluPerEdge.row(i) = Vector3d(1.0 + y, 1. - y, 0.0);
+        double vlen = vPerEdge.row(i).norm(); y = 3* abs(1-vlen);
+        colvPerEdge.row(i) = Vector3d(1.0 + y, 1. - y, 0.0);
 
 
-    viewer.data().set_colors(colPatternU);
+    }
+    viewer.data().add_edges(startPerEdge, startPerEdge + 3 * uPerEdge, coluPerEdge);
+    viewer.data().add_edges(startPerEdge, startPerEdge - 3 * uPerEdge, coluPerEdge);
+
+    viewer.data().add_edges(startPerEdge, startPerEdge + 3 * vPerEdge, colvPerEdge);
+    viewer.data().add_edges(startPerEdge, startPerEdge - 3 * vPerEdge, colvPerEdge);
+
+//    viewer.data().set_colors(colPatternU);
 
 }
 void dotimeStep(igl::opengl::glfw::Viewer& viewer){

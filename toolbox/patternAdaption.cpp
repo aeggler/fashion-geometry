@@ -1522,17 +1522,12 @@ void projectBackOnBoundary(const MatrixXd & Vg_to, MatrixXd& p, const vector<sea
         int next = boundaryL_toPattern[patch][(startidx+i1) % boundLen];
         pair<int, int> compPair = make_pair(-1,j );
         while(next != endVert){
-           // if(next==62)cout<<j<<" for 62"<<endl;
             if(releasedVert.find(next) == releasedVert.end()){
                 // general case, it is not released hence pull it to the boundary
                 updatePositionToIntersection( p, next,Vg_seamto);
-                if(next==62)cout<<j<<" general case for 62"<<endl;
             }else if(releasedVertNew[next] != (-1)*(j+1)){
                 // it is released but not from this seam,thus it has to stay on the projection
                 updatePositionToIntersection( p, next,Vg_seamto);
-                if(next==62)cout<<j<<"update to for 62"<<endl;
-            }else{
-                if(next==62) cout<<releasedVertNew[next]<<" entry"<<endl;
             }
             i1++;
             next = boundaryL_toPattern[patch][( startidx+i1 ) % boundLen];
