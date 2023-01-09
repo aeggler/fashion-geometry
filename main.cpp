@@ -797,6 +797,7 @@ int main(int argc, char *argv[])
         if (ImGui::CollapsingHeader("Pattern adaption", ImGuiTreeNodeFlags_DefaultOpen)){
             if(ImGui::Button("Compute adaptation", ImVec2(-1, 0))){
                 currPattern = fromPattern;
+                cout<<endl<<currPattern.rows()<<" curr pattern rows "<<endl;
                 preComputeAdaption();
                 viewer.core().is_animating = true;
                 adaptionFlag = true;
@@ -1643,7 +1644,12 @@ void solveCornerMappedVertices(){
         for(int j=0; j< cornerPerBoundary[i].size(); j++){
 
             int vertIdx = get<0>(cornerPerBoundary[i][j]);
-            if(releasedVert.find(vertIdx)!= releasedVert.end())continue;
+
+            if(releasedVert.find(vertIdx)!= releasedVert.end()){
+
+//                if(vertIdx == 3007) cout<<(releasedVert.find(vertIdx)!= releasedVert.end())<<" found?"<<endl;
+                continue;
+            }
 //            count ++;
             Vector2d newSuggestedPos = toPattern.row(vertIdx).leftCols(2);
             Vector2d dir = newSuggestedPos - p_adaption.row(vertIdx).leftCols(2).transpose();
@@ -1687,7 +1693,7 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
 //        t.printTime(" corner mapped ");
         // before cutting the boundaries should be the same
         projectBackOnBoundary( toPattern, p_adaption, seamsList,minusOneSeamsList,  Fg_pattern, Fg_pattern_orig, boundaryL_toPattern, boundaryL, releasedVert );
-      solveCornerMappedVertices();
+        solveCornerMappedVertices();
 //        t.printTime(" project back  ");
     }
     currPattern = p_adaption;
@@ -1696,9 +1702,9 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
     viewer.data().clear();
     VectorXd radius(fromPattern.rows());
     radius.setConstant(30.);
-    viewer.data().point_size= 10.f;
+    viewer.data().line_width= 30.f;
 
-    // need not be here, could be prrecomputed 
+    // need not be here, could be prrecomputed
     vector<vector<int>> fromPatternBound;
     igl::boundary_loop(Fg_pattern_orig, fromPatternBound);
     int boundVert = 0; int curr = 0;
