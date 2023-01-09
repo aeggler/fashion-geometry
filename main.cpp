@@ -1731,7 +1731,7 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
     viewer.data().show_texture = false;
     viewer.data().set_face_based(false);
     //remove wireframe
-    viewer.data().show_lines = true;
+//    viewer.data().show_lines = true;
 
     MatrixXd currLengths; igl::edge_lengths(currPattern, Fg_pattern, currLengths);
 
@@ -1790,9 +1790,14 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
         uPerEdge.row(i) = (ubary(0) * v0new + ubary(1) * v1new + ubary(2) * v2new).transpose() -  startPerEdge.row(i);
         vPerEdge.row(i) = (vbary(0) * v0new + vbary(1) * v1new + vbary(2) * v2new).transpose() -  startPerEdge.row(i);
         double ulen = uPerEdge.row(i).norm();
-        double y = 3*abs(1-ulen);
+        int incrFact = 5;
+        double y = incrFact * abs(1-ulen);
+        uPerEdge.row(i) = uPerEdge.row(i).normalized()*(ulen+(ulen-1)*4);
         coluPerEdge.row(i) = Vector3d(1.0 + y, 1. - y, 0.0);
-        double vlen = vPerEdge.row(i).norm(); y = 3* abs(1-vlen);
+
+        double vlen = vPerEdge.row(i).norm();
+        y = incrFact * abs(1-vlen);
+        vPerEdge.row(i) = vPerEdge.row(i).normalized()*(vlen+(vlen-1)*4);
         colvPerEdge.row(i) = Vector3d(1.0 + y, 1. - y, 0.0);
 
 
@@ -1802,6 +1807,9 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
 
     viewer.data().add_edges(startPerEdge, startPerEdge + 3 * vPerEdge, colvPerEdge);
     viewer.data().add_edges(startPerEdge, startPerEdge - 3 * vPerEdge, colvPerEdge);
+    const RowVector3d red(0.8,0.2,0.2),blue(0.2,0.2,0.8);
+    viewer.data().point_size = 7.f;
+    viewer.data().add_points(currPattern, blue);
 
 //    viewer.data().set_colors(colPatternU);
 

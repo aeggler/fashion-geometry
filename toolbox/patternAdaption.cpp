@@ -230,17 +230,16 @@ void splitVertexFromCVE( cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<
     handledVerticesSet.insert(cve-> vert);
 
     int idx = 0;
-    int leftId, rightId;
+    int plusOneId, minusOneId;
     while (boundary[idx] != cve->vert){
         idx++;
     }
-    leftId = (idx+1) % boundary.size();
-    rightId = (idx -1 );
-    if(rightId<0) rightId+= boundary.size();
+    plusOneId = (idx + 1) % boundary.size();
+    minusOneId = (idx -1 );
+    if(minusOneId<0) minusOneId+= boundary.size();
 
-    if(rightId<0) rightId += boundary.size();
-    int leftFaceId = adjacentFaceToEdge(boundaryL[cve->patch][leftId], cve-> vert, -1, vfAdj );
-    int rightFaceId = adjacentFaceToEdge(boundaryL[cve->patch][rightId], cve-> vert, -1, vfAdj );
+    int leftFaceId = adjacentFaceToEdge(boundaryL[cve->patch][plusOneId], cve-> vert, -1, vfAdj );
+    int rightFaceId = adjacentFaceToEdge(boundaryL[cve->patch][minusOneId], cve-> vert, -1, vfAdj );
     if(leftFaceId ==-1 || rightFaceId ==-1){
         cve->finFlag=true;
         cout<<" something went wrong, we have no neighbor faces. Maybe cut too fast for simulation"<<endl;
@@ -262,8 +261,8 @@ void splitVertexFromCVE( cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<
 //    }
 
 
-    Vector3d toLeft = Vg.row(boundaryL[cve->patch][leftId])- Vg.row(cve->vert);
-    Vector3d toRight = Vg.row(boundaryL[cve->patch][rightId])- Vg.row(cve->vert);
+    Vector3d toLeft = Vg.row(boundaryL[cve->patch][plusOneId]) - Vg.row(cve->vert);
+    Vector3d toRight = Vg.row(boundaryL[cve->patch][minusOneId])- Vg.row(cve->vert);
 //todo set fin flag if we reachd the end of a boundary cut!
 
 
@@ -345,24 +344,34 @@ void splitVertexFromCVE( cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<
 
         if(cve->startCorner){// does not matter if it is a starter or not
             cout<<"starter"<<endl;
-//            newVg.row(cve->vert) += (eps * toLeft).transpose();
-//            if(cve-> seamType>=0){
-                // we count pos hence the previous is negative
-                cve->vert = boundary[rightId];
-//            }else{
-//                cve->vert = boundary[leftId];
-//            }
 
+            if(cve->seamType>0){
+                if(cve->seamIdInList>=0){
+                    cve->vert = boundary[minusOneId];
+                }else{
+                    cve->vert = boundary[plusOneId];
+                }
+            }else{
+                cve->vert = boundary[minusOneId];
+            }
 
         }else{
-            cout<<"ending "<<boundary[leftId]<<" TODO FIGURE OUT WHICH ONE ATM ITS WRONG FOR 848 "<<boundary[rightId]<<" "<<endl;
+            cout << cve->vert <<" ending " << boundary[plusOneId] << " TODO FIGURE OUT WHICH ONE ATM ITS WRONG " << boundary[minusOneId] << " " << endl;
+            cout << "for seam type " << cve->seamType <<" "<< cve-> seamIdInList << endl;
+            seam* helper= seamsList[8];
+            cout<<helper->getStart1()<<" "<< helper->getEndCornerIds().first <<endl;
 //            if(cve-> seamType>=0){
                 // we count neg hence the next +1
-                cve->vert = boundary[leftId];
-//            }else{
-//                cve->vert = boundary[rightId] ;
-//
-//            }
+//                cve->vert = boundary[plusOneId];
+           if(cve->seamType>0){
+                if(cve->seamIdInList>=0){
+                    cve->vert = boundary[plusOneId];
+                }else{
+                    cve->vert = boundary[minusOneId];
+                }
+            }else{
+                cve->vert = boundary[plusOneId];
+            }
 
         }
 
@@ -396,7 +405,7 @@ void splitVertexFromCVE( cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<
 //    leftRot(1)=  sinbeta * toLeft.normalized()(0) + cosbeta * toLeft.normalized()(1);
 
     Vector3d midVec;// = leftRot;
-    Vector3d midVect = Vg.row(boundaryL[cve->patch][leftId])- Vg.row(boundaryL[cve->patch][rightId]);
+    Vector3d midVect = Vg.row(boundaryL[cve->patch][plusOneId]) - Vg.row(boundaryL[cve->patch][minusOneId]);
     if(!cve->levelOne){
         midVect = cve->leftdirection - cve->rightdirection;
     }
@@ -422,7 +431,7 @@ void splitVertexFromCVE( cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<
     int idxofClosest = -1;
     for(int i=0; i<vvAdj[cve -> vert ].size(); i++){
         int adjVert = vvAdj[cve -> vert][i];
-        if(adjVert== rightId || adjVert == leftId) continue; // we want a middle one
+        if(adjVert== minusOneId || adjVert == plusOneId) continue; // we want a middle one
 
         Vector3d edgeVec = Vg.row(adjVert)- Vg.row(cve -> vert);
         edgeVec= edgeVec.normalized();
@@ -1138,21 +1147,21 @@ void setLP(std::vector<std::vector<int> >& boundaryL , vector<vector<int>> & vfA
 
             }
 
-
-
             if(cornerVert[vert]==1){
-                cout<<"corner"<<endl;
+                cout<<"corner ";
                 cve->cornerInitial = vert;
 //                // left or right corner?
                 int firstInSeam;
                 if(seamType == -1 ){
                     firstInSeam = minusOneSeams[seamId]->getStartVert() ;
                 }else if(seamId>=0){
-                    firstInSeam = seamsList[mapVarIdToVertId[i]->seamIdInList]->getStartAndPatch1().first;
+                    firstInSeam = seamsList[mapVarIdToVertId[i]->seamIdInList]->getStart1();
+
                 }else{
-                    firstInSeam = seamsList[(mapVarIdToVertId[i]->seamIdInList+1)*(-1)]->getStartAndPatch2ForCorres().first;
+                    firstInSeam = seamsList[(mapVarIdToVertId[i]->seamIdInList+1)*(-1)]->getStart2();
 
                 }
+//                cout<<vert<<" comp to  "<<firstInSeam<<endl;
                 if(firstInSeam==vert){
                     cve -> startCorner = true;
                     cve->stress = nextStress;
@@ -1331,9 +1340,9 @@ void computeTear(Eigen::MatrixXd & fromPattern, MatrixXd&  currPattern, MatrixXi
     cout<<"starting sorting"<<endl;
     sort(cutPositions.begin(), cutPositions.end(), []( cutVertEntry* &a,  cutVertEntry* &b) { return a->stress > b-> stress; });
     cout<<" end sorting"<<endl;
-    for(int i = 0; i < cutPositions.size(); i++){// cutPositions.size(); i++){
-        cout<<cutPositions[i]->stress<<" stress "<<endl;
-    }
+//    for(int i = 0; i < cutPositions.size(); i++){// cutPositions.size(); i++){
+//        cout<<cutPositions[i]->stress<<" stress "<<endl;
+//    }
     int count=0;
     // we cut the first one
     for(int i = 0; i < 1; i++){// cutPositions.size(); i++){
@@ -1359,23 +1368,33 @@ void updatePositionToIntersection(MatrixXd& p,int next, const MatrixXd& Vg_bound
     // derive where QR and P meet = t, https://math.stackexchange.com/questions/1521128/given-a-line-and-a-point-in-3d-how-to-find-the-closest-point-on-the-line
     double minDist = std::numeric_limits<double>::max();
     Vector3d minDistTarget;
-    for(int i=1; i< Vg_bound.rows(); i++){
-        Vector3d R = Vg_bound.row(i-1);
-        Vector3d Q =  Vg_bound.row(i);
+    int mini=-1;double mint;
+    for(int i=0; i< Vg_bound.rows()-1; i++){
+        Vector3d R = Vg_bound.row(i);
+        Vector3d Q =  Vg_bound.row(i+1);
 
-        double t = (R-Q).dot(Q-p.row(next).transpose())/((R-Q).dot(R-Q));
-        t = min(1., t);
+        double t = (R-Q).dot(p.row(next).transpose()-Q)/((R-Q).dot(R-Q));
+        double tbefore = t;
+
         t = max(0., t);
-        Vector3d targetPos = Q-t*(R-Q);
+        t = min(1., t);
+        Vector3d targetPos = Q+t*(R-Q);
 
         double dist = (targetPos - p.row(next).transpose()).norm();
         if( dist < minDist){
+            mint = tbefore;
             minDist = dist;
             minDistTarget = targetPos;
+            mini = i;
         }
     }
     double stiffness = 0.8; //todo
+//    if(next==62|| next == 63){
+//        cout<<next<<": "<<Vg_bound.row(0)<<"    , "<<Vg_bound.row(1)<<"    ,"<<Vg_bound.row(2)<<endl;
+//        cout<<mint<<" [pos] "<<p.row(next)<<" , i="<<mini<<endl<<" min dist target"<<minDistTarget.transpose() <<endl;
+//    }
     p.row(next) += stiffness * (minDistTarget.transpose()-p.row(next));
+//    if(next==62){cout<<"updated to "<<p.row(next)<<endl<<endl; }
 
 }
 
