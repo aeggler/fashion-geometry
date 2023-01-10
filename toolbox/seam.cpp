@@ -145,8 +145,8 @@ void push_to_Map(int whichKindOfSeam, int& idx, int& startId,int& startIdOther, 
     }
 }
 void computeAllSeams(const std::vector<std::vector<int> >& boundaryL, std::map<int,int>& vertexMapPattToGar, std::map<std::pair<int, int>,int>& vertexMapGarAndIdToPatch,
-                      std::vector<std::vector<int> >& vfAdj, Eigen::VectorXi& componentIdPerFace, Eigen::VectorXi& componentIdPerVert,
-                      Eigen::VectorXd& edgeVertices, std::vector<std::vector<std::pair<int, int>>>& edgesPerBoundary, std::vector<seam*>& seamsList, std::vector<minusOneSeam*>& minusSeams,
+                     std::vector<std::vector<int> >& vfAdj, Eigen::VectorXi& componentIdPerFace, Eigen::VectorXi& componentIdPerVert,
+                     Eigen::VectorXd& cornerVertices, std::vector<std::vector<std::pair<int, int>>>& vertAndLoopIdxPerCornerPerBoundary, std::vector<seam*>& seamsList, std::vector<minusOneSeam*>& minusSeams,
                      map<int, vector<pair<int, int>>>& seamIdPerCorner
                      ){
 
@@ -183,13 +183,13 @@ void computeAllSeams(const std::vector<std::vector<int> >& boundaryL, std::map<i
 
             if(!(samePatch || samePatchCrossover)) {
                 // two consecutive edges are not the same patch. We have found a corner
-                edgeVertices(v1) = 1;
+                cornerVertices(v1) = 1;
                 edgesForThisBoundary.push_back(make_pair(v1, (j + 1) % boundary.size())); //pattern id
                 // so far this worked...
             }
 
         }
-        edgesPerBoundary.push_back(edgesForThisBoundary);
+        vertAndLoopIdxPerCornerPerBoundary.push_back(edgesForThisBoundary);
     }
 
     for(int i=0; i < boundaryL.size();  i++){//
@@ -261,14 +261,14 @@ void computeAllSeams(const std::vector<std::vector<int> >& boundaryL, std::map<i
                         if(vertexMapPattToGar[endIdOther] != vertexMapPattToGar[v1]){
                             cout<<"--------------------------- the ends of a same patch pair do not match ------------------"<<endl;
                         }
-                        while (edgesPerBoundary[i][counter].first != endIdOther && counter < edgesPerBoundary[i].size()){
+                        while (vertAndLoopIdxPerCornerPerBoundary[i][counter].first != endIdOther && counter < vertAndLoopIdxPerCornerPerBoundary[i].size()){
                              counter++;
                         }
-                        if(edgesPerBoundary[i][counter].first != endIdOther){
+                        if(vertAndLoopIdxPerCornerPerBoundary[i][counter].first != endIdOther){
                              cout<<" something is fishy, drop it "<<endl; continue;
                         }
 
-                        endIdOtherInBoundaryIdx = edgesPerBoundary[i][counter].second;
+                        endIdOtherInBoundaryIdx = vertAndLoopIdxPerCornerPerBoundary[i][counter].second;
 
                         int endIdx = (j+1) ;
 
@@ -430,16 +430,16 @@ void computeAllSeams(const std::vector<std::vector<int> >& boundaryL, std::map<i
                 int startIdInBoundaryIdx = edgesForThisBoundary[edgesForThisBoundary.size()-1].second;
                 int startIdOther = vertexMapGarAndIdToPatch[make_pair(vertexMapPattToGar[startId], otherpatch)];
                 int counter=0;
-                while(edgesPerBoundary[otherpatch][counter].first != startIdOther){
+                while(vertAndLoopIdxPerCornerPerBoundary[otherpatch][counter].first != startIdOther){
                     counter++;
                 }
-                int startIdOtherInBoundaryIdx = edgesPerBoundary[otherpatch][counter].second;
+                int startIdOtherInBoundaryIdx = vertAndLoopIdxPerCornerPerBoundary[otherpatch][counter].second;
                 counter=0;
                 int endIdOther = vertexMapGarAndIdToPatch[std::make_pair(v0g, otherpatch)];
-                while (edgesPerBoundary[otherpatch][counter].first != endIdOther){
+                while (vertAndLoopIdxPerCornerPerBoundary[otherpatch][counter].first != endIdOther){
                     counter++;
                 }
-                int endIdOtherInBoundaryIdx = edgesPerBoundary[otherpatch][counter].second;
+                int endIdOtherInBoundaryIdx = vertAndLoopIdxPerCornerPerBoundary[otherpatch][counter].second;
                 int theirDist = firstcorner.second + (boundary.size()-startIdInBoundaryIdx);
                 theirDist = theirDist % boundary.size();
 

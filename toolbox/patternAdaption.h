@@ -55,12 +55,24 @@ public:
 
 };
 
-void computeTear(MatrixXd& fromPatternFile, MatrixXd&  currPattern, MatrixXi& Fg_pattern, MatrixXi& Fg_pattern_orig, vector<seam*>& seamsList,
-                  vector<minusOneSeam*> & minusOneSeams, std::vector<std::vector<int> >& boundaryL, bool& finished,
-                 const std::vector<std::vector<std::pair<int, int>>>& edgesPerBoundary, map<int, vector<pair<int, int>>>& seamIdPerCorner,
+void computeTear(MatrixXd& fromPatternFile,
+                 MatrixXd& currPattern, // the current vertex positions
+                 MatrixXi& Fg_pattern, // faces, can change as we insert new vertices
+                 MatrixXi& Fg_pattern_orig, // not to be changed, original faces, matches with Vg and fromPatternFile
+                 vector<seam*>& seamsList, // all seams with partner
+                 vector<minusOneSeam*> & minusOneSeams, // all boudary seams (seam type -1)
+                 std::vector<std::vector<int> >& boundaryL, // the boundary loop, updated after each tear iteration so should be fresh when usig it
+                 bool& finished,
+                 const std::vector<std::vector<std::pair<int, int>>>& cornersPerBoundary, // for each patch the corners on this boudnary loop, saved as vertex id and id in boundary loop (not updated!)
+                 map<int, vector<pair<int, int>>>& seamIdPerCorner,// for each corner a map to a pair seamtype and seamid, if type >0 but id<0 its the second side of the seam, access by using (index +1)*(-1)
                  VectorXd& cornerVert,
-                 vector<cutVertEntry*>& cutPositions,  map<int, pair<int, int>>& releasedVert, std::set<int>& toPattern_boundaryVerticesSet,
-                 set<int> & cornerSet, set<int>& handledVerticesSet, MatrixXd& Vg);
+                 vector<cutVertEntry*>& cutPositions,
+                 map<int, pair<int, int>>& releasedVert,
+                 std::set<int>& toPattern_boundaryVerticesSet,
+                 set<int> & cornerSet,
+                 set<int>& handledVerticesSet,
+                 MatrixXd& Vg
+                 );
 
 
 int findWhichEdgeOfFace(int face, int v1, int v2, MatrixXi& Fg);

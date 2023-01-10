@@ -902,10 +902,10 @@ void addVarToModel (int vert, int prevVert, int nextVert, vector<vector<int>> & 
 }
 
 void setLP(std::vector<std::vector<int> >& boundaryL , vector<vector<int>> & vfAdj, MatrixXi& Fg_pattern,
-        MatrixXd& lengthsOrig, MatrixXd& lengthsCurr,const std::vector<std::vector<std::pair<int, int>>>& edgesPerBoundary, map<int,
+        MatrixXd& lengthsOrig, MatrixXd& lengthsCurr,const std::vector<std::vector<std::pair<int, int>>>& edgesPerBoundary,
+        map<int,
         vector<pair<int, int>>>& seamIdPerCorner, vector<seam*>& seamsList, const vector<minusOneSeam*> & minusOneSeams,
-            int tearPatch, int tearVert, int tearVertInBoundaryIndex, double tailor_lazyness, double minConstrained, vector <cutVertEntry*>& cutPositions,
-            VectorXd& cornerVert, MatrixXd& Vg){
+        double tailor_lazyness, double minConstrained, vector <cutVertEntry*>& cutPositions, VectorXd& cornerVert, MatrixXd& Vg){
 
     // Create an environment
     GRBEnv env = GRBEnv(true);
@@ -928,19 +928,20 @@ void setLP(std::vector<std::vector<int> >& boundaryL , vector<vector<int>> & vfA
 
     // a map to track the gurobi id of a corner.  whenever we set a corner we add the corner id, so we know once we set the second and connect them
     GRBVar* cutVar = model.addVars(numVar, GRB_BINARY);
-    //edgesPerBoundary.size();
+
     for(int i = 0; i < edgesPerBoundary.size(); i++) {
         int boundSize = boundaryL[i].size();
         int startVarPatch = varCount;
         for (int j = 0; j < edgesPerBoundary[i].size(); j++) {
-            // first is the absolute index, second the index wrt the boundary loop
 
+            // first is the absolute index, second the index wrt the boundary loop
             auto cornerPair = edgesPerBoundary[i][j];
-            if(seamIdPerCorner.find(cornerPair.first)== seamIdPerCorner.end()) continue;
+            if(seamIdPerCorner.find(cornerPair.first) == seamIdPerCorner.end()) continue;
 
             vector<pair<int, int>> seamId = seamIdPerCorner[cornerPair.first];
-            cout<<seamId.size()<<" the size ";
+
             if(seamId.size()>2) cout<<" something is veryy odd!! we have more than two seams for a corner. impossible."<<endl;
+
             for(int si = 0; si<seamId.size(); si++) {
                 cout<<" info "<<seamId[si].first<<" "<<seamId[si].second<<endl;
 
@@ -1372,9 +1373,9 @@ void smoothCuts(vector<cutVertEntry*>& cutPositions, MatrixXd&  currPattern, Mat
 }
 void computeTear(Eigen::MatrixXd & fromPattern, MatrixXd&  currPattern, MatrixXi& Fg_pattern, MatrixXi& Fg_pattern_orig,
                  vector<seam*>& seamsList, vector<minusOneSeam*>& minusOneSeams, std::vector<std::vector<int> >& boundaryL, bool & finished,
-                 const std::vector<std::vector<std::pair<int, int>>>& edgesPerBoundary, map<int, vector<pair<int, int>>>& seamIdPerCorner,
-                 VectorXd& cornerVert, vector<cutVertEntry*>& cutPositions,  map<int, pair<int, int>> & releasedVert,
-                 set<int>& toPattern_boundaryVerticesSet, set<int> & cornerSet, set<int>& handledVerticesSet ,MatrixXd& Vg )
+                 const std::vector<std::vector<std::pair<int, int>>>& cornersPerBoundary, map<int, vector<pair<int, int>>>& seamIdPerCorner,
+                 VectorXd& cornerVert, vector<cutVertEntry*>& cutPositions, map<int, pair<int, int>> & releasedVert,
+                 set<int>& toPattern_boundaryVerticesSet, set<int> & cornerSet, set<int>& handledVerticesSet , MatrixXd& Vg )
                  {
 
     vector<vector<int> > vfAdj;
@@ -1389,12 +1390,11 @@ void computeTear(Eigen::MatrixXd & fromPattern, MatrixXd&  currPattern, MatrixXi
     // for which edge of face we need face
     // for face we need vertices
     // for vertices we need boundary loop
-    int tearPatch, tearVert, tearVertInBoundaryIndex;
     double tailor_lazyness = 1;
     double minConstrained = 0.25;
-    setLP( boundaryL, vfAdj, Fg_pattern, lengthsOrig, lengthsCurr, edgesPerBoundary, seamIdPerCorner,
-           seamsList, minusOneSeams, tearPatch, tearVert, tearVertInBoundaryIndex, tailor_lazyness, minConstrained, cutPositions,
-           cornerVert, Vg);
+    setLP(boundaryL, vfAdj, Fg_pattern, lengthsOrig, lengthsCurr, cornersPerBoundary, seamIdPerCorner,
+          seamsList, minusOneSeams, tailor_lazyness, minConstrained, cutPositions,
+          cornerVert, Vg);
 
     //  here we need to sort and check if handled already
     sort(cutPositions.begin(), cutPositions.end(), []( cutVertEntry* &a,  cutVertEntry* &b) { return a->stress > b-> stress; });

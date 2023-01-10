@@ -138,8 +138,8 @@ void computeAllSeams(const std::vector<std::vector<int> >& boundaryL, std::map<i
                      std::map<std::pair<int, int>,int>& vertexMapGarAndIdToPatch,
                      std::vector<std::vector<int> >& vfAdj, Eigen::VectorXi& componentIdPerFace,
                      Eigen::VectorXi& componentIdPerVert,
-                     Eigen::VectorXd& edgeVertices, std::vector<std::vector<std::pair<int, int>>>& edgesPerBoundary,
-                     std::vector<seam*>& seamsList ,std::vector<minusOneSeam*>& minusSeams,
+                     Eigen::VectorXd& cornerVertices, std::vector<std::vector<std::pair<int, int>>>& vertAndLoopIdxPerCornerPerBoundary,
+                     std::vector<seam*>& seamsList , std::vector<minusOneSeam*>& minusSeams,
                      std::map<int, std::vector<std::pair<int, int>>>& seamIdPerCorner
 
 );

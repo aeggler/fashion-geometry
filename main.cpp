@@ -128,7 +128,7 @@ MatrixXd fromPattern, currPattern;
 MatrixXd toPattern;
 Eigen::MatrixXd p_adaption; // the proposed new positions
 MatrixXd baryCoordsUPattern, baryCoordsVPattern;
-vector<vector<pair<int, int>>> cornerPerBoundary;
+vector<vector<pair<int, int>>> cornerPerBoundary;// for each patch, for each corner it contains the vertex id and the loop id of the vertex
 
 
 MatrixXd patternPreInterpol,patternPreInterpol_temp ;
@@ -139,10 +139,10 @@ Eigen::VectorXi componentIdPerFace,componentIdPerFaceNew, componentIdPerVert;
 //test
 //Eigen::SparseMatrix<double> L;
 MatrixXd perFaceD2, perFaceD1;
-VectorXd edgeVertices;
+VectorXd cornerVertices;
 vector<cutVertEntry*> cutPositions;
-map<int, pair<int, int>>  releasedVert;
-set<int> toPattern_boundaryVerticesSet;
+map<int, pair<int, int>>  releasedVert; // all positions that need not be mapped to the boundary anymore from at least one side. keep track which side is released
+set<int> toPattern_boundaryVerticesSet; // the boudary vertices of the toPattern, for visualization purposes
 
 void preComputeAdaption();
 void computeBaryCoordsGarOnNewMannequin(igl::opengl::glfw::Viewer& viewer);
@@ -409,7 +409,7 @@ int main(int argc, char *argv[])
     Vg_pattern_orig= Vg_pattern;
     Fg_pattern_orig = Fg_pattern;
     patternPreInterpol= Vg_pattern;
-    edgeVertices = VectorXd::Zero(Vg_pattern.rows());
+    cornerVertices = VectorXd::Zero(Vg_pattern.rows());
     t.printTime(" init");
     preComputeConstraintsForRestshape();
     t.printTime(" preComputeConstraintsForRestshape");
@@ -454,19 +454,16 @@ int main(int argc, char *argv[])
     // use adjacentFacesToEdge of the 3D
     vector<vector<int> > vfAdj;
     createVertexFaceAdjacencyList(Fg, vfAdj);
-    edgeVertices = VectorXd::Zero(Vg_pattern.rows());// 1 for each corner
+    cornerVertices = VectorXd::Zero(Vg_pattern.rows());// 1 for each corner, 0 for all other vertices
 
 //    t.printTime( " before seams list  ");
-//    Eigen::VectorXd seamIdPerCorner(Vg_pattern.rows());
-//    Eigen::VectorXd directionPerCorner(Vg_pattern.rows());
-    // contains corner id and a list of which seams start here (max 2), each vector element  is a pair where first is if it's a -1 seam, and second is which index in corresponding List. If negative it's a backside ,i.e. part 2 of the seam
-    map<int, vector<pair<int, int>>> seamIdPerCorner;
-    computeAllSeams( boundaryL,vertexMapPattToGar, vertexMapGarAndIdToPatch, vfAdj, componentIdPerFace,
-                     componentIdPerVert,edgeVertices, cornerPerBoundary, seamsList, minusOneSeamsList, seamIdPerCorner);
-    set<int> cornerSet;
+    map<int, vector<pair<int, int>>> seamIdPerCorner;    // contains corner id and a list of which seams start here (max 2),
+    // each vector element  is a pair where first is if it's a -1 seam, and second is which index in corresponding List. If negative it's a backside ,i.e. part 2 of the seam
 
+    computeAllSeams(boundaryL, vertexMapPattToGar, vertexMapGarAndIdToPatch, vfAdj, componentIdPerFace,
+                    componentIdPerVert, cornerVertices, cornerPerBoundary, seamsList, minusOneSeamsList, seamIdPerCorner);
 
-
+    set<int> cornerSet;// a set containing all corner vertices
 
     for(int i=0; i < cornerPerBoundary.size(); i++){
         for(int j=0; j < cornerPerBoundary[i].size(); j++){
@@ -586,7 +583,7 @@ int main(int argc, char *argv[])
             if(ImGui::Button("Visualize Corner", ImVec2(-1, 0))){
                 MatrixXd testCol= MatrixXd::Zero(Vg_pattern.rows(), 3);
                 for(int i=0; i<Vg_pattern.rows(); i++){
-                    if(edgeVertices(i)){
+                    if(cornerVertices(i)){
                         testCol(i,0)=1;
                     }
                 }
@@ -809,9 +806,9 @@ int main(int argc, char *argv[])
                 viewer.core().is_animating = false;
 
                 bool fin = false;
-                computeTear(fromPattern, currPattern, Fg_pattern,Fg_pattern_orig, seamsList ,
-                            minusOneSeamsList,boundaryL,fin,  cornerPerBoundary, seamIdPerCorner,
-                            edgeVertices, cutPositions, releasedVert, toPattern_boundaryVerticesSet, cornerSet, handledVerticesSet,Vg_pattern);
+                computeTear(fromPattern, currPattern, Fg_pattern, Fg_pattern_orig, seamsList ,
+                            minusOneSeamsList, boundaryL, fin, cornerPerBoundary, seamIdPerCorner,
+                            cornerVertices, cutPositions, releasedVert, toPattern_boundaryVerticesSet, cornerSet, handledVerticesSet, Vg_pattern);
 
 
                 viewer.selected_data_index = 0;
