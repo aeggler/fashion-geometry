@@ -1731,7 +1731,7 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
     viewer.data().show_texture = false;
     viewer.data().set_face_based(false);
     //remove wireframe
-//    viewer.data().show_lines = true;
+    viewer.data().show_lines = true;
 
     MatrixXd currLengths; igl::edge_lengths(currPattern, Fg_pattern, currLengths);
 
@@ -1769,9 +1769,9 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
         // we use bary to left and bary to top +1 of the old and compue in bary coords
         // get the same of the new, check the new length
         //start form from pattern, that is the rest shape of the shape we have
-        Vector3d v0 = fromPattern.row(Fg_pattern(i, 0)).transpose();
-        Vector3d v1 = fromPattern.row(Fg_pattern(i, 1)).transpose();
-        Vector3d v2 = fromPattern.row(Fg_pattern(i, 2)).transpose();
+        Vector3d v0 = fromPattern.row(Fg_pattern_orig(i, 0)).transpose();
+        Vector3d v1 = fromPattern.row(Fg_pattern_orig(i, 1)).transpose();
+        Vector3d v2 = fromPattern.row(Fg_pattern_orig(i, 2)).transpose();
 
         Vector3d bary = (v0 + v1 + v2)/3;
         Vector3d u = bary; u(0)+= 1;
@@ -1809,7 +1809,7 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
     viewer.data().add_edges(startPerEdge, startPerEdge - 3 * vPerEdge, colvPerEdge);
     const RowVector3d red(0.8,0.2,0.2),blue(0.2,0.2,0.8);
     viewer.data().point_size = 7.f;
-    viewer.data().add_points(currPattern, blue);
+//    viewer.data().add_points(currPattern, blue);
 
 //    viewer.data().set_colors(colPatternU);
 

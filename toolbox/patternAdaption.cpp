@@ -235,7 +235,7 @@ void splitVertexFromCVE( cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<
         idx++;
     }
     plusOneId = (idx + 1) % boundary.size();
-    minusOneId = (idx -1 );
+    minusOneId = (idx -1);
     if(minusOneId<0) minusOneId+= boundary.size();
 
     int leftFaceId = adjacentFaceToEdge(boundaryL[cve->patch][plusOneId], cve-> vert, -1, vfAdj );
@@ -352,6 +352,8 @@ void splitVertexFromCVE( cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<
                     cve->vert = boundary[plusOneId];
                 }
             }else{
+                cout<<"the next one is "<<boundary[minusOneId];
+
                 cve->vert = boundary[minusOneId];
             }
 
@@ -1201,7 +1203,7 @@ void tearFurther(vector<cutVertEntry*>& cutPositions, MatrixXd&  currPattern, Ma
         if(cutPositions[count]->finFlag){
             i--; count ++;continue;
         }
-        cout<<endl<< cutPositions[count]->vert<<" vertex up next handling with i="<<count<<endl;
+        cout<<endl<< cutPositions[count]->vert<<" vertex up next handling with i= "<<count<<" /"<<cutPositions.size()<<endl;
         splitVertexFromCVE(cutPositions[count], currPattern, Fg_pattern, vfAdj, boundaryL, seamsList, minusOneSeams, releasedVert,
                            toPattern_boundaryVerticesSet,lengthsCurr, Fg_pattern, cornerSet, handledVerticesSet );
         // we can also split it's counterpart
