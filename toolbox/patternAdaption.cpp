@@ -8,7 +8,7 @@
 #include <igl/edge_lengths.h>
 #include <igl/adjacency_list.h>
 #include "igl/boundary_loop.h"
-//
+#include "igl/is_vertex_manifold.h"
 #include "/Library/gurobi1000/macos_universal2/include/gurobi_c++.h"
 #include "adjacency.h"
 #include <igl/HalfEdgeIterator.h>
@@ -148,12 +148,11 @@ bool isRight(Vector3d a,Vector3d b,Vector3d c ){
 }
 bool checkIfTearIsUseful(int vert, Vector3d& cutDirection,  vector<vector<int>>& vvAdj,  vector<vector<int>>& vfAdj, MatrixXd& Vg ,
                          MatrixXd& lengthsCurr,  MatrixXd& lengthsOrig, MatrixXi& Fg_pattern){
-    //todo 2.1.
     // check if it makes sense, i.e. releases stress cutting in the direction
     // if the dot product for at least one adjacent vertex of the one we are going to cut is large enough we allow to cut further
     // todo 3.1. maybe a better option is not to ignore ones with wrong direction but to actually clamp the stess
 
-    double thereshold = 1.1;
+    double thereshold = 1.051;
     bool flag = false;
     std::pair<int, int>  faces;
     for(int i=0; i<vvAdj[vert].size(); i++){
@@ -174,7 +173,7 @@ bool checkIfTearIsUseful(int vert, Vector3d& cutDirection,  vector<vector<int>>&
         vecDir -= Vg.row(vert);
         vecDir = vecDir.normalized();
 
-//        cout<<otherVert<<" RESULT thereshold "<< vecDir.dot(cutDirection.normalized())<<" "<< w <<" = "<<abs(vecDir.dot(cutDirection.normalized())) * w <<endl;
+      if(vert==3019)  cout<<otherVert<<" RESULT thereshold "<< vecDir.dot(cutDirection.normalized())<<" "<< w <<" = "<<abs(vecDir.dot(cutDirection.normalized())) * w <<endl;
 //        if(abs(vecDir.dot(cutDirection.normalized()))< 0.5){continue; }
 
         if(w > 2){
@@ -183,9 +182,8 @@ bool checkIfTearIsUseful(int vert, Vector3d& cutDirection,  vector<vector<int>>&
         if(abs(vecDir.dot(cutDirection.normalized())) * w > thereshold){
             flag= true;
         }
-
     }
-    cout<<cutDirection.transpose()<<" would be the cut direction"<<endl;
+//    cout<<cutDirection.transpose()<<" would be the cut direction"<<endl;
     return flag;
 }
 map<int, int> releasedVertNew;
@@ -204,6 +202,9 @@ void splitVertexFromCVE( cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<
                          std::vector<std::vector<int> >& boundaryL,  vector<seam*>& seamsList, vector<minusOneSeam*> & minusOneSeams,
                          map<int, pair<int, int>> & releasedVert, set<int>& toPattern_boundaryVerticesSet,  MatrixXd& lengthsCurr,
                          MatrixXi& Fg_pattern, set<int> & cornerSet,  set<int>& handledVerticesSet){
+
+    cout<<" patch "<<cve->patch<<" of "<<boundaryL.size() <<endl;
+
     if(cve-> finFlag) {
         cout<<cve->vert<<" done already "<<endl;
         return;
@@ -231,40 +232,59 @@ void splitVertexFromCVE( cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<
 
     int idx = 0;
     int plusOneId, minusOneId;
-    while (boundary[idx] != cve->vert){
+    while (boundary[idx] != cve->vert&& idx <boundary.size()){
         idx++;
     }
+    if(boundary[idx] != cve->vert){
+        cout<<"ERROR VERTEX NOT FOUND "<<boundary.size()<<" patch "<<cve->patch<<" of "<<boundaryL.size() <<endl;
+        cout<<cve->vert<<" the vert "<<endl;
+        for (int j = 0; j<boundary.size(); j++){
+            cout<<boundary[j]<<" ";
+        }
+    }
+
+
     plusOneId = (idx + 1) % boundary.size();
     minusOneId = (idx -1);
     if(minusOneId<0) minusOneId+= boundary.size();
 
-    int leftFaceId = adjacentFaceToEdge(boundaryL[cve->patch][plusOneId], cve-> vert, -1, vfAdj );
-    int rightFaceId = adjacentFaceToEdge(boundaryL[cve->patch][minusOneId], cve-> vert, -1, vfAdj );
+    int leftFaceId = adjacentFaceToEdge(boundaryL[cve->patch][plusOneId], cve-> vert, -1, vfAdj);
+    int rightFaceId = adjacentFaceToEdge(boundaryL[cve->patch][minusOneId], cve-> vert, -1, vfAdj);
+
     if(leftFaceId ==-1 || rightFaceId ==-1){
+        cout<<endl<<boundaryL[cve->patch][plusOneId]<<" something went wrong, we have no neighbor faces. "<<idx<<" "<<boundaryL[cve->patch][minusOneId]<<endl;
+
+        if(cve->seamType>0){
+            seam *helper;
+            if(cve->seamIdInList>=0){
+                helper = seamsList[cve->seamIdInList];
+                if(leftFaceId == -1) plusOneId = helper->duplicates[plusOneId];
+                if(rightFaceId == -1) minusOneId = helper->duplicates[minusOneId];
+            }else{
+                helper = seamsList[(-1)*cve->seamIdInList+1];
+                if(leftFaceId == -1) plusOneId = helper->duplicates2[plusOneId];
+                if(rightFaceId == -1) minusOneId = helper->duplicates2[minusOneId];
+            }
+
+        }else{
+            minusOneSeam*helper = minusOneSeams[cve->seamIdInList];
+            if(leftFaceId == -1) plusOneId = helper->duplicates[plusOneId];
+            if(rightFaceId == -1) minusOneId = helper->duplicates[minusOneId];
+        }
+//       leftFaceId =  adjacentFaceToEdge(boundaryL[cve->patch][plusOneId], cve-> vert, -1, vfAdj );
+        leftFaceId = adjacentFaceToEdge(boundaryL[cve->patch][plusOneId], cve-> vert, -1, vfAdj);
+        rightFaceId = adjacentFaceToEdge(boundaryL[cve->patch][minusOneId], cve-> vert, -1, vfAdj);
+        if(leftFaceId ==-1 || rightFaceId ==-1){cout<<"still no success with "<<plusOneId<<" "<<minusOneId<<endl;   }
         cve->finFlag=true;
-        cout<<" something went wrong, we have no neighbor faces. Maybe cut too fast for simulation"<<endl;
         return;
     }
 
-//    int whichEdgeLeft = findWhichEdgeOfFace(leftFaceId, cve->vert, boundaryL[cve->patch][leftId], Fg_pattern);
-//    int whichEdgeRight= findWhichEdgeOfFace(rightFaceId, cve->vert, boundaryL[cve->patch][rightId], Fg_pattern);
-
-//    double w_init = lengthsCurr(leftFaceId, whichEdgeLeft)/lengthsOrig(leftFaceId, whichEdgeLeft);
-//    w_init +=  lengthsCurr(rightFaceId, whichEdgeRight)/lengthsOrig(rightFaceId, whichEdgeRight);
-//    w_init /= 2;
-
     double thereshold = 1.05;
-//    if(w_init < thereshold){
-//        cve-> finFlag = true;
-//        cout<<"stopping now with "<<w_init<<endl;
-//        return;
-//    }
 
 
     Vector3d toLeft = Vg.row(boundaryL[cve->patch][plusOneId]) - Vg.row(cve->vert);
     Vector3d toRight = Vg.row(boundaryL[cve->patch][minusOneId])- Vg.row(cve->vert);
-//todo set fin flag if we reachd the end of a boundary cut!
-
+    //todo set fin flag if we reachd the end of a boundary cut!
 
     map<int, vector<int>> cornerToSeams;
     for(int i =0; i<seamsList.size(); i++){
@@ -362,9 +382,7 @@ void splitVertexFromCVE( cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<
             cout << "for seam type " << cve->seamType <<" "<< cve-> seamIdInList << endl;
             seam* helper= seamsList[8];
             cout<<helper->getStart1()<<" "<< helper->getEndCornerIds().first <<endl;
-//            if(cve-> seamType>=0){
-                // we count neg hence the next +1
-//                cve->vert = boundary[plusOneId];
+
            if(cve->seamType>0){
                 if(cve->seamIdInList>=0){
                     cve->vert = boundary[plusOneId];
@@ -374,9 +392,7 @@ void splitVertexFromCVE( cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<
             }else{
                 cve->vert = boundary[plusOneId];
             }
-
         }
-
 
         Vg.resize(Vg.rows()+1, 3);
         Vg= newVg;
@@ -393,19 +409,6 @@ void splitVertexFromCVE( cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<
         return;
     }
 
-//    https://github.com/libigl/libigl/blob/main/include/igl/internal_angles.cpp
-//    auto s = toLeft.normalized().cross(toRight.normalized()).norm();
-//    auto c = toLeft.normalized().dot(toRight.normalized());
-//    double angle = atan2(s, c);
-//    angle = 2*M_PI - angle;
-//    double deg = angle*180/M_PI;
-//    double cosbeta = cos(angle/2);
-//    double sinbeta = sin(angle /2);
-//    // we rotate midVec by half to get to the middle
-//    Vector3d leftRot = toLeft.normalized();
-//    leftRot(0)= cosbeta * toLeft.normalized()(0) - sinbeta * toLeft.normalized()(1);
-//    leftRot(1)=  sinbeta * toLeft.normalized()(0) + cosbeta * toLeft.normalized()(1);
-
     Vector3d midVec;// = leftRot;
     Vector3d midVect = Vg.row(boundaryL[cve->patch][plusOneId]) - Vg.row(boundaryL[cve->patch][minusOneId]);
     if(!cve->levelOne){
@@ -414,8 +417,8 @@ void splitVertexFromCVE( cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<
     midVect= midVect.normalized();
     midVec(0)= -midVect(1);
     midVec(1) = midVect(0);
-// todo sketchy, for whatever reason it breaks without this. does it do the transposing?
-    cout<<" midvec "<<midVec.transpose()<<endl;
+    // todo sketchy, for whatever reason it breaks without this. does it do the transposing?
+//    cout<<" midvec "<<midVec.transpose()<<endl;
 
     cout<<" checking new condition for non boundary "<<endl;
     Vector3d cutDirection = midVec;
@@ -451,15 +454,15 @@ void splitVertexFromCVE( cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<
     adjacentFacesToEdge(cve->vert, insertIdx, vfAdj, faces );
     cout<<insertIdx<<" the insert idx "<<faces.first<<" and second "<<faces.second<<endl;
     int helperWhich = -1;
-    if(Fg(faces.first, 0)== cve-> vert){
+    if(Fg(faces.first, 0) == cve-> vert){
         helperWhich = 0;
-    }else if (Fg(faces.first, 1)== cve-> vert){
+    }else if (Fg(faces.first, 1) == cve-> vert){
         helperWhich = 1;
     }else{
         helperWhich = 2;
     }
-    cout<<Fg.row(faces.first)<<" found and identified index "<<helperWhich<<endl;
-//    igl::HalfEdgeIterator<MatrixXi, MatrixXi, MatrixXi>;
+//    cout<<Fg.row(faces.first)<<" found and identified index "<<helperWhich<<endl;
+
     igl::HalfEdgeIterator <MatrixXi, MatrixXi, MatrixXi>hei (Fg, TT, TTi, faces.first, helperWhich, false);
     igl::HalfEdgeIterator <MatrixXi, MatrixXi, MatrixXi>hei2 (Fg, TT, TTi, faces.second, helperWhich, false);
     int lastF = hei.Fi();
@@ -468,25 +471,70 @@ void splitVertexFromCVE( cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<
     if( hei.Fi()!= faces.second){
         // then we skip the first and directly go from there
         // we need to change the position
-//        cout<<"change position of old "<<lastF<<" "<<lastV<<endl;
         updateWithNewId(Fg, cve->vert, lastF, newVertIdx);
     }
     if(0!= nextEnd) {
-//        cout << "change position of " << hei.Fi()<<" "<<hei.Vi() << endl;
         updateWithNewId(Fg, cve->vert, hei.Fi(), newVertIdx);
         while (hei.NextFE() != 0) {
-//            cout << " while change position of " << hei.Fi() <<" "<<hei.Vi()<< endl;
             updateWithNewId(Fg, cve->vert, hei.Fi(), newVertIdx);
 
         }
-//    cout<<hei.NextFE()<<hei.Fi()<<" the next, and after "<<hei.NextFE()<<hei.Fi()<<" "<<hei.NextFE()<<hei.Fi()<<endl;
     }
 
     newVg.row(newVertIdx) = Vg.row(cve->vert);
 
     cout<<insertIdx<<" the inserted index"<<endl;// TODO CASE IT IS NOT RIGHT NEITHER LEFT BUT ACTUALLY ON!!
+    //todo handle the case where this becomes a non manifold vertex and cut through immediately. but it destroys all patch ids
+    Eigen::MatrixXi B;
+    bool isManifold = igl::is_vertex_manifold( Fg_pattern, B);
+    if(B(insertIdx, 0)!= 1){
+        cout<<" ATTENTION WE ARE CREATING A NON MANIFOLD MESH! CUT THROUGH IMMEDIATELY"<<endl;
+        int newnewVertIdx = newVertIdx+1;
+        if(Fg(faces.first, 0) == insertIdx){
+            helperWhich = 0;
+        }else if (Fg(faces.first, 1) == insertIdx){
+            helperWhich = 1;
+        }else{
+            helperWhich = 2;
+        }
+        igl::HalfEdgeIterator <MatrixXi, MatrixXi, MatrixXi>hei (Fg, TT, TTi, faces.first, helperWhich, false);
 
-    Vg.resize(Vg.rows()+1, 3);
+        int lastF = hei.Fi();
+        int lastV= hei.Vi();
+        bool nextEnd = hei.NextFE();
+        if( hei.Fi()!= faces.second){
+            // then we skip the first and directly go from there
+            // we need to change the position
+            cout<<"updating face last F  "<<lastF<<endl;
+            updateWithNewId(Fg, insertIdx, lastF, newnewVertIdx);
+        }
+        if(0!= nextEnd) {
+            cout<<"updating face  0 neq next end "<<hei.Fi()<<endl;
+            updateWithNewId(Fg, insertIdx, hei.Fi(), newnewVertIdx);
+            while (hei.NextFE() != 0) {
+
+                cout<<"updating face "<<hei.Fi()<<endl;
+                updateWithNewId(Fg, insertIdx, hei.Fi(), newnewVertIdx);
+
+            }
+        }
+        MatrixXd newnewVg(newVg.rows()+1, 3);
+        newnewVg.block(0,0, newVertIdx, 3)= newVg;
+        handledVerticesSet.insert(newnewVertIdx);
+        newnewVg.row(newnewVertIdx)= newVg.row(insertIdx);//+ (eps * toRight).transpose();
+        cout<<newnewVg.row(insertIdx)<<" old insert idx"<<endl;
+        cout<<newnewVg.row(newnewVertIdx)<<" new insert idx duplicate "<<endl;
+
+        newVg.resize(newnewVg.rows(), 3);
+        newVg = newnewVg;
+        cout<<" fin operation"<<endl;
+        //TODO THE IDEA IS CORRECT BUT THE HANDLING DOES NOT WORK THAT WAY. THERE IS A CONSTRIANT PROBLEM COMMING UP, ALSO HOW ARE DULPLICATES HANDLED AND HOW DO WE KNOW WHICH PATCH IS WHICH AFTER?
+
+
+
+    }
+
+    Vg.resize(newVg.rows(), 3);
     Vg= newVg;
 
     if(toPattern_boundaryVerticesSet.find(insertIdx)!= toPattern_boundaryVerticesSet.end()){
@@ -795,7 +843,7 @@ void addVarToModel (int vert, int prevVert, int nextVert, vector<vector<int>> & 
 //TODO SPECIAL CASE IF PREV -1
 //
     if(count>1) w_init/=count;// <<" or "<< w_init<<" in special case "<<endl<<endl<<endl<<endl; // for averaging
-    if(vert==9){cout<<" weight for referrrence  "<<w_init<<" "<<count<<endl; }
+//    if(vert==9){cout<<" weight for referrrence  "<<w_init<<" "<<count<<endl; }
     if(isConstrained){
         try {
             cutVar[varCount].set(GRB_DoubleAttr_Obj, 0);
@@ -1194,6 +1242,18 @@ void tearFurther(vector<cutVertEntry*>& cutPositions, MatrixXd&  currPattern, Ma
                  set<int> & cornerSet, set<int>& handledVerticesSet
 ){
     cout<<"-----------------------"<<endl<<endl;
+    //when releasing the boundary it can turn into a non manifold mesh. not sure if this causes further problems
+    Eigen::MatrixXi B;
+    bool isManifold = igl::is_vertex_manifold( Fg_pattern, B);
+    cout<<isManifold<<endl;
+    if(!isManifold){
+        for(int j=0; j<B.rows(); j++){
+            if(B(j, 0)!=1){
+                cout<<j<<" is not manifold "<<endl;
+            }
+        }
+    }
+
     vector<vector<int> > vfAdj;
     createVertexFaceAdjacencyList(Fg_pattern, vfAdj);
     MatrixXd lengthsCurr;
@@ -1204,15 +1264,13 @@ void tearFurther(vector<cutVertEntry*>& cutPositions, MatrixXd&  currPattern, Ma
             i--; count ++;continue;
         }
         cout<<endl<< cutPositions[count]->vert<<" vertex up next handling with i= "<<count<<" /"<<cutPositions.size()<<endl;
+
         splitVertexFromCVE(cutPositions[count], currPattern, Fg_pattern, vfAdj, boundaryL, seamsList, minusOneSeams, releasedVert,
                            toPattern_boundaryVerticesSet,lengthsCurr, Fg_pattern, cornerSet, handledVerticesSet );
         // we can also split it's counterpart
 
 //        splitCounterPart(cutPositions, count, cutPositions[count], currPattern, Fg_pattern, vfAdj, boundaryL, seamsList, minusOneSeams, releasedVert,
 //                         toPattern_boundaryVerticesSet,lengthsCurr, Fg_pattern, cornerSet, handledVerticesSet );
-
-
-
     }
     cout<<"--------------------"<<endl;
 }
@@ -1338,13 +1396,8 @@ void computeTear(Eigen::MatrixXd & fromPattern, MatrixXd&  currPattern, MatrixXi
            seamsList, minusOneSeams, tearPatch, tearVert, tearVertInBoundaryIndex, tailor_lazyness, minConstrained, cutPositions,
            cornerVert, Vg);
 
-// todo here we need to sort and check if handled already
-    cout<<"starting sorting"<<endl;
+    //  here we need to sort and check if handled already
     sort(cutPositions.begin(), cutPositions.end(), []( cutVertEntry* &a,  cutVertEntry* &b) { return a->stress > b-> stress; });
-    cout<<" end sorting"<<endl;
-//    for(int i = 0; i < cutPositions.size(); i++){// cutPositions.size(); i++){
-//        cout<<cutPositions[i]->stress<<" stress "<<endl;
-//    }
     int count=0;
     // we cut the first one
     for(int i = 0; i < 1; i++){// cutPositions.size(); i++){
@@ -1355,9 +1408,6 @@ void computeTear(Eigen::MatrixXd & fromPattern, MatrixXd&  currPattern, MatrixXi
         cout<<cutPositions[count]->stress<<" curr stress "<<endl;
         splitVertexFromCVE(cutPositions[count], currPattern, Fg_pattern, vfAdj, boundaryL, seamsList,
                            minusOneSeams, releasedVert, toPattern_boundaryVerticesSet,lengthsCurr, Fg_pattern, cornerSet, handledVerticesSet);
-//todo but here we have set cve-> vert to the next one and hence dont find it if it is a vertex. we need another datastructure
-//        splitCounterPart(cutPositions, count, cutPositions[count], currPattern, Fg_pattern, vfAdj, boundaryL, seamsList, minusOneSeams, releasedVert,
-//                         toPattern_boundaryVerticesSet,lengthsCurr, Fg_pattern, cornerSet, handledVerticesSet );
 
     }
 

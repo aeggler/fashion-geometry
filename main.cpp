@@ -837,13 +837,10 @@ int main(int argc, char *argv[])
                 adaptionFlag = false;
                 viewer.core().is_animating = false;
                 tearFurther(cutPositions, currPattern, Fg_pattern, seamsList, minusOneSeamsList, releasedVert, toPattern_boundaryVerticesSet, boundaryL, cornerSet, handledVerticesSet);
-                cout<<"back"<<endl;
+
                 std::vector<std::vector<int> > boundaryLnew;
                 igl::boundary_loop(Fg_pattern, boundaryLnew);
-//                viewer.selected_data_index = 0;
-//                viewer.data().clear();
-//                viewer.data().set_mesh(currPattern, Fg_pattern);
-
+                cout<<"back, number of patches "<<boundaryLnew.size()<<endl;
                 boundaryL.clear();
                 boundaryL= boundaryLnew;
 
