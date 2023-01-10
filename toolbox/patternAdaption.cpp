@@ -72,6 +72,18 @@ void push(Node** tail_ref, int vert_Id, int dupl, int face_id ,int whichEdge,  d
     }
     listLength++;
 }
+void findIndxInBoundaryloop(vector<int> & boundary, int& target,int& idx){
+    idx = 0;
+    while (boundary[idx] != target && idx < boundary.size()){
+        idx++;
+    }
+    if(boundary[idx] != target){
+        cout<<idx<<" ERROR IN LP WE HAVE NOT FOUND THE INDEX of "<<target<<" "<<boundary.size()<<endl;
+        for(int i=0; i< boundary.size(); i++){
+            cout<<boundary[i]<<" ";
+        }
+    }
+}
 bool canBeSplit(int vertId,  vector<vector<int> >& vfAdj){
     return vfAdj[vertId].size()>1;
 
@@ -418,7 +430,7 @@ void splitVertexFromCVE( cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<
     midVec(0)= -midVect(1);
     midVec(1) = midVect(0);
     // todo sketchy, for whatever reason it breaks without this. does it do the transposing?
-//    cout<<" midvec "<<midVec.transpose()<<endl;
+    cout<<" midvec "<<midVec.transpose()<<endl;
 
     cout<<" checking new condition for non boundary "<<endl;
     Vector3d cutDirection = midVec;
@@ -440,8 +452,8 @@ void splitVertexFromCVE( cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<
 
         Vector3d edgeVec = Vg.row(adjVert)- Vg.row(cve -> vert);
         edgeVec= edgeVec.normalized();
-        // both have unit distance, so as a measure we can take the distance form another
-        if((midVec - edgeVec).norm()<dist){
+        // both have unit distance, so as a measure we can take the distance from another
+        if((midVec - edgeVec).norm() < dist){
             idxofClosest= i;
             dist = (midVec - edgeVec).norm();
         }
@@ -922,7 +934,7 @@ void setLP(std::vector<std::vector<int> >& boundaryL , vector<vector<int>> & vfA
     // with the constraints we have for each counterpart another variable
     if(numVar%2 != 0 )cout<<"----------------------------------not divisible by 2, the number of constraints is wrong------------------"<<endl<<endl<<endl;
     numVar += (numVar/2);// 574 without mapping -> 287 added ones ? we don't need them all bc there are no common ones for th -1s
-    map<int, int> trackCornerIds;
+    map<int, int> trackCornerIds; // keeps track of the var Id per corner - to understand if it exists already or not
     map <int, cutVertEntry*>  mapVarIdToVertId;
     map <pair<int, int>, int> mapVertAndSeamToVar;
 
@@ -938,11 +950,11 @@ void setLP(std::vector<std::vector<int> >& boundaryL , vector<vector<int>> & vfA
             auto cornerPair = edgesPerBoundary[i][j];
             if(seamIdPerCorner.find(cornerPair.first) == seamIdPerCorner.end()) continue;
 
-            vector<pair<int, int>> seamId = seamIdPerCorner[cornerPair.first];
+            vector<pair<int, int>> seamId = seamIdPerCorner[cornerPair.first];// all seams that start at this corner, this can be max 2
 
             if(seamId.size()>2) cout<<" something is veryy odd!! we have more than two seams for a corner. impossible."<<endl;
 
-            for(int si = 0; si<seamId.size(); si++) {
+            for(int si = 0; si < seamId.size(); si++) {
                 cout<<" info "<<seamId[si].first<<" "<<seamId[si].second<<endl;
 
                 GRBLinExpr innerSumConstr = 0; // interior sum
@@ -971,8 +983,12 @@ void setLP(std::vector<std::vector<int> >& boundaryL , vector<vector<int>> & vfA
                         startAndPatchOther = seam-> getStartAndPatch2ForCorres();
                         if (startAndPatch.second != i)
                             cout << " now in th e+1 seams the patch does not match where we are in the loop "<< startAndPatch.second << endl;
-                        idx = startAndPatch.first;
-                        idxOther = startAndPatchOther.first;
+                        int startVal = seam->getStart1();
+                        findIndxInBoundaryloop(boundaryL[i], startVal, idx);
+                        startVal = seam->getStart2();
+                        findIndxInBoundaryloop(boundaryL[startAndPatchOther.second], startVal, idxOther);
+//                        idx = startAndPatch.first;
+//                        idxOther = startAndPatchOther.first;
                         vert = boundaryL[startAndPatch.second][idx];
                         vertOther =  boundaryL[startAndPatchOther.second][idxOther];
                         boundSizeOther = boundaryL[startAndPatchOther.second].size();
@@ -985,24 +1001,78 @@ void setLP(std::vector<std::vector<int> >& boundaryL , vector<vector<int>> & vfA
 
                         if (patch != i)
                             cout << " now in th e-1 seams the patch does not match where we are in the loop , would be patch "<<patch << endl;
-                        idx = currSeam->getStartIdx();
+                        int startVal = currSeam->getStartVert();
+                        findIndxInBoundaryloop(boundaryL[patch], startVal, idx);
+//                        idx = currSeam->getStartIdx();
                         vert = boundaryL[i][idx];
                         end = currSeam->getEndVert();
                         length = currSeam->getLength();
                     }
+
                     // check if the corners exist already. If so then connect with corner, else add the indices
+                    // todo for L cutting allowance
                     if(trackCornerIds.find(vert) != trackCornerIds.end()){
                         model.addConstr(cutVar[ trackCornerIds[vert]] + cutVar[varCount] <= 1);
                     }else{
                         trackCornerIds[vert] = varCount;
                     }
+
                     int prevVert = -1;
                     while (vert != end) {
                         // might need a map for patch and vert id to seam adn first or Second
                         double relId = ((double) count) / length;
                         bool isConstrained = true;
-                        bool corner = false;
-                        if(count ==0) corner = true;
+                        bool corner = (count == 0);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
                         if (relId == 0 || relId > minConstrained && relId < (1 - minConstrained)) {
                             isConstrained = false;
                         }else{
