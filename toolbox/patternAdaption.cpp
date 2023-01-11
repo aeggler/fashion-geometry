@@ -863,16 +863,16 @@ void addVarToModel (int vert, int prevVert, int nextVert, vector<vector<int>> & 
                       MatrixXi& Fg_pattern,MatrixXd& lengthsOrig, MatrixXd& lengthsCurr, map <int, cutVertEntry*> & mapVarIdToVertId,
                       int seamType, int seamIdInList, double tailor_lazyness, bool corner, map<pair<int,int>, int>& mapVertAndSeamToVar, int counterpart, GRBModel& model ){
 
-    double w_init=0;
-    int count=0;
-    if(nextVert!=-1){
+    double w_init = 0;
+    int count = 0;
+    if(nextVert != -1){
         count++;
         int faceIdx = adjacentFaceToEdge(vert, nextVert, -1, vfAdj );
         int whichEdge = findWhichEdgeOfFace(faceIdx, vert, nextVert, Fg_pattern);
         // in case we stretch this is lower 1, the greater it is the smaller it gets, hence 1/w
         w_init += lengthsCurr(faceIdx, whichEdge) / lengthsOrig(faceIdx, whichEdge);
     }
-    if(prevVert!= -1){
+    if(prevVert != -1){
         count++;
         int faceIdx = adjacentFaceToEdge(vert, prevVert, -1, vfAdj );
         int whichEdge = findWhichEdgeOfFace(faceIdx, vert, prevVert, Fg_pattern);
@@ -881,8 +881,8 @@ void addVarToModel (int vert, int prevVert, int nextVert, vector<vector<int>> & 
     }
 //TODO SPECIAL CASE IF PREV -1
 //
-    if(count>1) w_init/=count;// <<" or "<< w_init<<" in special case "<<endl<<endl<<endl<<endl; // for averaging
-//    if(vert==9){cout<<" weight for referrrence  "<<w_init<<" "<<count<<endl; }
+    if(count>1) w_init/=count;
+
     if(isConstrained){
         try {
             cutVar[varCount].set(GRB_DoubleAttr_Obj, 0);
@@ -1053,7 +1053,6 @@ void setLP(std::vector<std::vector<int> >& boundaryL , vector<vector<int>> & vfA
                 double distStartToEnd = computeSeamLength(seamId[si], seamsList, minusOneSeams, boundaryL, Vg);
                 //todo
                 double widthThereshold = 50;
-//                cout<<"seam "<<seamId[si].first<<" "<<seamId[si].second<<" has length "<<distStartToEnd<<endl;
                 // check for direction
                 // first if it is a seam or a -1 seam
                 // second gives the direction, if less than 0 take i -1 in negative direction
