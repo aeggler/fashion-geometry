@@ -185,7 +185,7 @@ bool checkIfTearIsUseful(int vert, Vector3d& cutDirection,  vector<vector<int>>&
         vecDir -= Vg.row(vert);
         vecDir = vecDir.normalized();
 
-      if(vert==3019)  cout<<otherVert<<" RESULT thereshold "<< vecDir.dot(cutDirection.normalized())<<" "<< w <<" = "<<abs(vecDir.dot(cutDirection.normalized())) * w <<endl;
+//      if(vert==3019)  cout<<otherVert<<" RESULT thereshold "<< vecDir.dot(cutDirection.normalized())<<" "<< w <<" = "<<abs(vecDir.dot(cutDirection.normalized())) * w <<endl;
 //        if(abs(vecDir.dot(cutDirection.normalized()))< 0.5){continue; }
 
         if(w > 2){
@@ -195,7 +195,39 @@ bool checkIfTearIsUseful(int vert, Vector3d& cutDirection,  vector<vector<int>>&
             flag= true;
         }
     }
-//    cout<<cutDirection.transpose()<<" would be the cut direction"<<endl;
+    if(!flag){
+        // do everythiing again but now print
+        for(int i=0; i<vvAdj[vert].size(); i++){
+            int otherVert = vvAdj[vert][i];
+            adjacentFacesToEdge(vert, otherVert, vfAdj, faces );
+
+            double w=0;
+            if(faces.first!= -1){
+                int whichEdgeLeft = findWhichEdgeOfFace(faces.first, vert, otherVert, Fg_pattern);
+                w += lengthsCurr(faces.first, whichEdgeLeft)/lengthsOrig(faces.first, whichEdgeLeft);
+            }
+            else if(faces.second!= -1){
+                int whichEdgeRight = findWhichEdgeOfFace(faces.second, vert, otherVert, Fg_pattern);
+                w += lengthsCurr(faces.second, whichEdgeRight)/lengthsOrig(faces.second, whichEdgeRight);
+            }
+
+            Vector3d vecDir = Vg.row(otherVert);
+            vecDir -= Vg.row(vert);
+            vecDir = vecDir.normalized();
+
+          cout<<otherVert<<" RESULT thereshold "<< vecDir.dot(cutDirection.normalized())<<" "<< w <<" = "<<abs(vecDir.dot(cutDirection.normalized())) * w <<endl;
+//        if(abs(vecDir.dot(cutDirection.normalized()))< 0.5){continue; }
+
+            if(w > 2){
+                w = 2;
+            }
+            if(abs(vecDir.dot(cutDirection.normalized())) * w > thereshold){
+                flag= true;
+            }
+        }
+
+
+    }
     return flag;
 }
 map<int, int> releasedVertNew;
@@ -329,6 +361,7 @@ void splitVertexFromCVE( cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<
         if(! checkIfTearIsUseful(cve-> vert, cutDirection, vvAdj, vfAdj, Vg, lengthsCurr, lengthsOrig, Fg_pattern)){
             cve-> finFlag = true;
             cout<<"stopping now bc tearing is not useful anymore "<<endl;
+
             return;
         }
 
@@ -367,12 +400,6 @@ void splitVertexFromCVE( cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<
 
         cve->continuedCorner = true;
         cve->finFlag = (cornerSet.find(cve->vert) != cornerSet.end()&& cve->vert != cve-> cornerInitial); //if it is a corner we are done
-        if(cve->vert == 3007) {
-            cout << valPair.first << " type and seam Id In List " << valPair.second << endl;
-            cout<<releasedVertNew[3007]<<" new is where it should be released"<<endl;
-            cout<<"release old "<<releasedVert[3007].first<<" "<< releasedVert[3007].second<<endl;
-
-        }
 
         if(cve->startCorner){// does not matter if it is a starter or not
             cout<<"starter"<<endl;

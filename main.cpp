@@ -39,7 +39,7 @@ using Matrix4r = Eigen::Matrix<Real, 4, 4, Eigen::DontAlign>;
 Eigen::MatrixXd Vg, Vm, testMorph_V1; // mesh for the garment and mannequin
 Eigen::MatrixXi Fg, Fm, Fg_pattern,Fg_pattern_orig, testMorph_F1;
 Eigen::MatrixXd Vg_orig, Vm_orig; // original mesh for the garment and mannequin, restore for translation
-Eigen::MatrixXd Vg_pattern, Vg_pattern_orig; // the pattern for the restshape, we might change this
+Eigen::MatrixXd Vg_pattern, Vg_pattern_orig; // the pattern for the rest shape, we might change this
 Eigen::MatrixXi Fg_orig, Fm_orig;
 Eigen::MatrixXi Eg; // garment edges
 Eigen::Vector3d ambient, ambient_grey, diffuse, diffuse_grey, specular;
@@ -67,6 +67,8 @@ double gravityfact =.0;
 int localGlobalIterations= 2000;
 int convergeIterations = 450;
 int timestepCounter;
+bool LShapeAllowed;
+
 
 enum MouseMode { SELECTPATCH, SELECTBOUNDARY, NONE };
 MouseMode mouse_mode = NONE;
@@ -862,6 +864,7 @@ int main(int argc, char *argv[])
 //                viewer.core().is_animating = true;
 //                adaptionFlag = true;
             }
+            if(ImGui::Checkbox("Allow L-shaped fabric insertion", &LShapeAllowed)){}
 
         }
         menu.draw_viewer_menu();
@@ -877,6 +880,7 @@ int main(int argc, char *argv[])
     t.printTime( " fin ");
     viewer.launch();
 }
+MatrixXi EdgesVisFromPattern;
 void preComputeAdaption(){
     simulate = false;
     stretchStiffnessU = 0.08;
@@ -928,6 +932,25 @@ void preComputeAdaption(){
         baryCoordsVPattern.row(i) = vInBary;
 
     }
+
+    // need not be here, could be precomputed
+    vector<vector<int>> fromPatternBound;
+    igl::boundary_loop(Fg_pattern_orig, fromPatternBound);
+    int boundVert = 0;
+    int curr = 0;
+    for (int i=0; i< fromPatternBound.size(); i++){
+        boundVert += fromPatternBound[i].size();
+    }
+    EdgesVisFromPattern.resize(boundVert, 2);
+
+    for (int i=0; i< fromPatternBound.size(); i++){
+        for(int j=0; j<fromPatternBound[i].size(); j++){
+            EdgesVisFromPattern(curr, 0) = fromPatternBound[i][j];
+            EdgesVisFromPattern(curr, 1) = fromPatternBound[i][(j + 1) % (fromPatternBound[i].size())];
+            curr++;
+        }
+    }
+
 }
 bool computePointOnMesh(igl::opengl::glfw::Viewer& viewer, MatrixXd& V, MatrixXi& F, Vector3d& b, int& fid) {
     double x = viewer.current_mouse_x;
@@ -1633,25 +1656,20 @@ void computePatternStress(MatrixXd& perFaceU_adapt,MatrixXd& perFaceV_adapt ){
 
 }
 void solveCornerMappedVertices(){
-//int count=0;
     for(int i=0; i< cornerPerBoundary.size(); i++){
         for(int j=0; j< cornerPerBoundary[i].size(); j++){
 
             int vertIdx = get<0>(cornerPerBoundary[i][j]);
 
             if(releasedVert.find(vertIdx)!= releasedVert.end()){
-
-//                if(vertIdx == 3007) cout<<(releasedVert.find(vertIdx)!= releasedVert.end())<<" found?"<<endl;
                 continue;
             }
-//            count ++;
             Vector2d newSuggestedPos = toPattern.row(vertIdx).leftCols(2);
             Vector2d dir = newSuggestedPos - p_adaption.row(vertIdx).leftCols(2).transpose();
 // TODO PARAMETER
             p_adaption.row(vertIdx).leftCols(2) += boundaryStiffness * dir;
         }
     }
-//    cout<< count<<" cornerr count "<<endl;
 
 }
 int adaptioncount = 0 ;
@@ -1661,7 +1679,7 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
     adaptioncount++;
 
  //   std::cout<<"-------------- Time Step ------------"<<adaptioncount<<endl;
-    // we have no velocity or collision but we do have stretch, constrainedStretch and bending
+    // we have no velocity or collision, but we do have stretch, constrainedStretch and bending
     // for the stretch, the current pattern is the reference, then its corners are mapped to another position
 // the stretch as a simple solve stretch of the rest position and the stretched position?
 // constrained corners as constrained condition: new suggested position= mapped position, then the direction is added to p
@@ -1698,25 +1716,17 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
     radius.setConstant(30.);
     viewer.data().line_width= 30.f;
 
-    // need not be here, could be prrecomputed
-    vector<vector<int>> fromPatternBound;
-    igl::boundary_loop(Fg_pattern_orig, fromPatternBound);
-    int boundVert = 0; int curr = 0;
-    for (int i=0; i< fromPatternBound.size(); i++){
-        boundVert += fromPatternBound[i].size();
-    }
-    MatrixXi EVisOld(boundVert, 2);
 
-    for (int i=0; i< fromPatternBound.size(); i++){
-        for(int j=0; j<fromPatternBound[i].size(); j++){
-            EVisOld(curr, 0) = fromPatternBound[i][j];
-            EVisOld(curr, 1) = fromPatternBound[i][(j+1)%(fromPatternBound[i].size())];
-            curr++;
-        }
-    }
+    MatrixXd visFromPattern = fromPattern;
+    visFromPattern.col(2) *= 1.02;
+//    viewer.data().set_edges(visFromPattern, EdgesVisFromPattern, Eigen::RowVector3d(0, 0, 1));
 
-    MatrixXd visFromPattern = fromPattern; visFromPattern.col(2) *= 1.02;
-    viewer.data().set_edges(visFromPattern, EVisOld, Eigen::RowVector3d(0, 0, 1));
+    MatrixXd visToPattern = toPattern;
+    visToPattern.col(2) *= 1.01;
+//    viewer.data().meshgl.glLineWidth(10);
+    viewer.data().set_edges(visToPattern, EdgesVisFromPattern, Eigen::RowVector3d(0, 1, 1));
+//    viewer.data().meshgl.glLineWidth(1);
+
 
     viewer.selected_data_index = 0;
     viewer.data().clear();
@@ -1733,7 +1743,7 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
 
     vector<vector<int> > vfAdj;
     createVertexFaceAdjacencyList(Fg_pattern, vfAdj);
-    // new idea, ,colour just the boundary
+    // new idea,colour just the boundary
     colPatternU.col(0)=VectorXd::Ones(stressCurr.size());//+0* stressCurr;
     colPatternU.col(1) = VectorXd::Ones(stressCurr.size());// - 0*stressCurr;
     for(int i=0; i<boundaryL.size(); i++){
@@ -1752,8 +1762,6 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
 
         }
     }
-//    MatrixXd startPerEdge(Fg_pattern.rows(), 3);
-//    MatrixXd uPerEdge(Fg_pattern.rows(), 3);
     MatrixXd startPerEdge(Fg_pattern.rows(), 3);
     MatrixXd uPerEdge(Fg_pattern.rows(), 3);
     MatrixXd vPerEdge(Fg_pattern.rows(), 3);
@@ -1802,8 +1810,7 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
     viewer.data().add_edges(startPerEdge, startPerEdge + 3 * vPerEdge, colvPerEdge);
     viewer.data().add_edges(startPerEdge, startPerEdge - 3 * vPerEdge, colvPerEdge);
     const RowVector3d red(0.8,0.2,0.2),blue(0.2,0.2,0.8);
-    viewer.data().point_size = 7.f;
-//    viewer.data().add_points(currPattern, blue);
+
 
 //    viewer.data().set_colors(colPatternU);
 
