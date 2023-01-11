@@ -913,6 +913,67 @@ void addVarToModel (int vert, int prevVert, int nextVert, vector<vector<int>> & 
 
 }
 
+double computeSeamLength(pair<int, int>& seamId, vector<seam*>& seamsList, const vector<minusOneSeam*> & minusOneSeams, std::vector<std::vector<int> >& boundaryL, MatrixXd& Vg ){
+    double len=0;
+    int type = seamId.first;
+    int seamIdx = seamId.second;
+    if (type<0){
+        minusOneSeam* currSeam = minusOneSeams[seamIdx];
+        int vertStart = currSeam->getStartVert();
+        int vertEnd = currSeam->getEndVert();
+        vector<int> boundary = boundaryL[currSeam->getPatch()];
+        int startIdx;
+        findIndxInBoundaryloop( boundary, vertStart , startIdx);
+
+        while(boundary[startIdx] != vertEnd){
+            int next = (startIdx+1)% boundary.size();
+
+            len += (Vg.row(startIdx)-Vg.row(next)).norm();
+            startIdx = next;
+        }
+
+    }else{
+        if(seamIdx >=0){
+            seam* currSeam = seamsList[seamIdx];
+            int vertStart = currSeam->getStart1();
+            int vertEnd = currSeam->getEndCornerIds().first;
+            vector<int> boundary = boundaryL[currSeam->getPatch1()];
+            int startIdx;
+            findIndxInBoundaryloop( boundary, vertStart , startIdx);
+
+            while(boundary[startIdx] != vertEnd){
+                int next = (startIdx+1)% boundary.size();
+
+                len += (Vg.row(startIdx)-Vg.row(next)).norm();
+                startIdx = next;
+            }
+
+        }else{
+            seam* currSeam = seamsList[(seamIdx+1)*(-1)];
+            int vertStart = currSeam->getStart2();
+            int vertEnd = currSeam->getEndCornerIds().second;
+            vector<int> boundary = boundaryL[currSeam->getPatch2()];
+            int startIdx;
+            findIndxInBoundaryloop( boundary, vertStart , startIdx);
+            int count=0;
+            while(boundary[startIdx] != vertEnd){
+                count++;
+                int next = (startIdx-1);
+                if(next<0) next+= boundary.size();
+                if(currSeam->inverted) next = (startIdx + count) % boundary.size();
+
+                len += (Vg.row(startIdx)-Vg.row(next)).norm();
+                startIdx = next;
+            }
+
+        }
+
+    }
+
+
+    return len;
+}
+
 void setLP(std::vector<std::vector<int> >& boundaryL , vector<vector<int>> & vfAdj, MatrixXi& Fg_pattern,
         MatrixXd& lengthsOrig, MatrixXd& lengthsCurr,const std::vector<std::vector<std::pair<int, int>>>& edgesPerBoundary,
         map<int,
@@ -962,6 +1023,10 @@ void setLP(std::vector<std::vector<int> >& boundaryL , vector<vector<int>> & vfA
                 GRBLinExpr rSumConstr = 0; // right sum
                 int startVarOfThis = varCount;
                 int count = 0;
+                double distStartToEnd = computeSeamLength(seamId[si], seamsList, minusOneSeams, boundaryL, Vg);
+                //todo
+                double widthThereshold = 50;
+//                cout<<"seam "<<seamId[si].first<<" "<<seamId[si].second<<" has length "<<distStartToEnd<<endl;
                 // check for direction
                 // first if it is a seam or a -1 seam
                 // second gives the direction, if less than 0 take i -1 in negative direction
@@ -976,6 +1041,7 @@ void setLP(std::vector<std::vector<int> >& boundaryL , vector<vector<int>> & vfA
                     int vertOther;
                     int counterPart = -1;
                     int boundSizeOther;
+
 
                     if (seamId[si].first >= 0) {
                         seam *seam = seamsList[seamId[si].second];
@@ -1009,6 +1075,7 @@ void setLP(std::vector<std::vector<int> >& boundaryL , vector<vector<int>> & vfA
                         length = currSeam->getLength();
                     }
 
+
                     // check if the corners exist already. If so then connect with corner, else add the indices
                     // todo for L cutting allowance
                     if(trackCornerIds.find(vert) != trackCornerIds.end()){
@@ -1025,55 +1092,9 @@ void setLP(std::vector<std::vector<int> >& boundaryL , vector<vector<int>> & vfA
                         bool corner = (count == 0);
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-                        if (relId == 0 || relId > minConstrained && relId < (1 - minConstrained)) {
+                        if (relId == 0 ||
+                        (relId > minConstrained && relId < (1 - minConstrained)  && distStartToEnd > widthThereshold)
+                        ) {
                             isConstrained = false;
                         }else{
                             model.addConstr(cutVar[varCount] == 0);
@@ -1144,7 +1165,10 @@ void setLP(std::vector<std::vector<int> >& boundaryL , vector<vector<int>> & vfA
                         bool corner = false;
                         if(count ==0) corner = true;
                         int currVar = varCount;
-                        if (relId == 0 || relId > minConstrained && relId < (1 - minConstrained)) {
+                        if (relId == 0 ||
+                            (relId > minConstrained && relId < (1 - minConstrained)  && distStartToEnd > widthThereshold)
+
+                        ) {
                             isConstrained = false;
                         }else{
                             model.addConstr(cutVar[varCount] == 0);

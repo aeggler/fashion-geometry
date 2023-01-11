@@ -51,6 +51,12 @@ public:
 
     int seamLength();
     bool inverted;
+    int getPatch1(){
+        return patch1Id;
+    }
+    int getPatch2(){
+        return patch2Id;
+    }
 
     int getStart1(){
         return patch1startCornerId;
