@@ -825,8 +825,6 @@ int main(int argc, char *argv[])
                 boundaryL.clear();
                 boundaryL= boundaryLnew;
 
-//                preComputeAdaption();
-//                cout<<"precomputed new adaption"<<endl;
                 viewer.core().is_animating = true;
                 adaptionFlag = true;
 
@@ -1557,6 +1555,7 @@ void solveConstrainedVertices(){
     }
 }
 void solveStretchAdaptionViaEdgeLength(){
+
  for(int i=0; i<Fg_pattern.rows(); i++){
         for(int j=0; j<3; j++){
             Vector3r corr0, corr1;
@@ -1569,7 +1568,7 @@ void solveStretchAdaptionViaEdgeLength(){
             double stiffnessUsed = stretchStiffnessU;
             if(toPattern_boundaryVerticesSet.find(Fg_pattern(i, j)) != toPattern_boundaryVerticesSet.end() &&
             toPattern_boundaryVerticesSet.find(Fg_pattern(i,(j+1)%3)) != toPattern_boundaryVerticesSet.end()){
-//todo
+                //todo
                 stiffnessUsed *= 3;
             }
 
@@ -1686,21 +1685,23 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
     p_adaption.col(2)= Eigen::VectorXd::Ones(currPattern.rows());
     p_adaption.col(2)*= 200;
 
-    MatrixXd perFaceU_adapt(Fg_pattern.rows(), 2);
-    MatrixXd perFaceV_adapt(Fg_pattern.rows(), 2);
+//    MatrixXd perFaceU_adapt(Fg_pattern.rows(), 2);
+//    MatrixXd perFaceV_adapt(Fg_pattern.rows(), 2);
+//    colPatternU.resize(Fg_pattern.rows(), 3);
+//    colPatternV.resize(Fg_pattern.rows(), 3);
 
 //    t.printTime(" init ");
     for(int i=0; i<5; i++){
 
         // now we treat the stretch
-        computePatternStress(perFaceU_adapt, perFaceV_adapt);
+//        computePatternStress(perFaceU_adapt, perFaceV_adapt);
 //        t.printTime(" pattern stress ");
         solveStretchAdaptionViaEdgeLength();//perFaceU_adapt, perFaceV_adapt);
 //        t.printTime(" solve stretch  ");
 
 //        t.printTime(" corner mapped ");
         // before cutting the boundaries should be the same
-        projectBackOnBoundary( toPattern, p_adaption, seamsList,minusOneSeamsList,  Fg_pattern, Fg_pattern_orig, boundaryL_toPattern, boundaryL, releasedVert );
+        projectBackOnBoundary( toPattern, p_adaption, seamsList,minusOneSeamsList,  Fg_pattern, Fg_pattern_orig, boundaryL_toPattern, releasedVert );
         solveCornerMappedVertices();
 //        t.printTime(" project back  ");
     }
@@ -1740,29 +1741,28 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
     vector<vector<int> > vfAdj;
     createVertexFaceAdjacencyList(Fg_pattern, vfAdj);
     // new idea,colour just the boundary
-    colPatternU.col(0)=VectorXd::Ones(stressCurr.size());//+0* stressCurr;
-    colPatternU.col(1) = VectorXd::Ones(stressCurr.size());// - 0*stressCurr;
-    for(int i=0; i<boundaryL.size(); i++){
-        for(int j=0; j<boundaryL[i].size(); j++){
-            int idx = boundaryL[i][j];
-            int idx2 = boundaryL[i][(j+1)% boundaryL[i].size()];
-            int faceIDx = adjacentFaceToEdge(idx, idx2, -1, vfAdj);
-            // needed since wtih that index we cannot access the original old pattern
-            int whichE = findWhichEdgeOfFace( faceIDx, idx, idx2, Fg_pattern);
-            double newlength = (currPattern.row(idx)- currPattern.row(idx2)).norm();
-            double oldlen = patternEdgeLengths_orig(faceIDx,whichE );
-            double relStretch = (newlength- oldlen)/ oldlen;
-            colPatternU(faceIDx, 0) += 15 * relStretch;
-            colPatternU(faceIDx, 1) -= 15 * relStretch;
-
-
-        }
-    }
+//    colPatternU.col(0)=VectorXd::Ones(stressCurr.size());//+0* stressCurr;
+//    colPatternU.col(1) = VectorXd::Ones(stressCurr.size());// - 0*stressCurr;
+//    for(int i=0; i<boundaryL.size(); i++){
+//        for(int j=0; j<boundaryL[i].size(); j++){
+//            int idx = boundaryL[i][j];
+//            int idx2 = boundaryL[i][(j+1)% boundaryL[i].size()];
+//            int faceIDx = adjacentFaceToEdge(idx, idx2, -1, vfAdj);
+//            // needed since wtih that index we cannot access the original old pattern
+//            int whichE = findWhichEdgeOfFace( faceIDx, idx, idx2, Fg_pattern);
+//            double newlength = (currPattern.row(idx)- currPattern.row(idx2)).norm();
+//            double oldlen = patternEdgeLengths_orig(faceIDx,whichE );
+//            double relStretch = (newlength- oldlen)/ oldlen;
+//            colPatternU(faceIDx, 0) += 15 * relStretch;
+//            colPatternU(faceIDx, 1) -= 15 * relStretch;
+//        }
+//    }
     MatrixXd startPerEdge(Fg_pattern.rows(), 3);
     MatrixXd uPerEdge(Fg_pattern.rows(), 3);
     MatrixXd vPerEdge(Fg_pattern.rows(), 3);
     MatrixXd colvPerEdge(Fg_pattern.rows(), 3);
     MatrixXd coluPerEdge(Fg_pattern.rows(), 3);
+
     for(int i=0; i<Fg_pattern.rows(); i++){
         // we use bary to left and bary to top +1 of the old and compue in bary coords
         // get the same of the new, check the new length
@@ -1800,12 +1800,13 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
 
 
     }
+
     viewer.data().add_edges(startPerEdge, startPerEdge + 3 * uPerEdge, coluPerEdge);
     viewer.data().add_edges(startPerEdge, startPerEdge - 3 * uPerEdge, coluPerEdge);
 
     viewer.data().add_edges(startPerEdge, startPerEdge + 3 * vPerEdge, colvPerEdge);
     viewer.data().add_edges(startPerEdge, startPerEdge - 3 * vPerEdge, colvPerEdge);
-    const RowVector3d red(0.8,0.2,0.2),blue(0.2,0.2,0.8);
+//    const RowVector3d red(0.8,0.2,0.2),blue(0.2,0.2,0.8);
 
 
 //    viewer.data().set_colors(colPatternU);
