@@ -242,6 +242,7 @@ void addToMapIfNotExisting(map<int, vector<int>>& cornerToSeams, int key, int i)
     }
 
 }
+map<int, vector<int>> cornerToSeams;
 void splitVertexFromCVE( cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<vector<int> >& vfAdj,
                          std::vector<std::vector<int> >& boundaryL,  vector<seam*>& seamsList, vector<minusOneSeam*> & minusOneSeams,
                          map<int, pair<int, int>> & releasedVert, set<int>& toPattern_boundaryVerticesSet,  MatrixXd& lengthsCurr,
@@ -330,7 +331,7 @@ void splitVertexFromCVE( cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<
     Vector3d toRight = Vg.row(boundaryL[cve->patch][minusOneId])- Vg.row(cve->vert);
     //todo set fin flag if we reachd the end of a boundary cut!
 
-    map<int, vector<int>> cornerToSeams;
+
     for(int i =0; i<seamsList.size(); i++){
         seam* currSeam = seamsList[i];
         int start1 = currSeam -> getStart1();
@@ -367,8 +368,7 @@ void splitVertexFromCVE( cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<
 
         // set of extra cases
         pair<int, int> valPair = make_pair(cve->seamType, cve ->seamIdInList);
-        int seamComp;
-        // we just need to differentiate between minusoneseams and normal seams, not on which side of the seam it is
+        int seamComp;// get the seam id, m -1 seams are stored negatively
         if(cve->seamType>0){
             if(cve->seamIdInList>=0){
                 seamComp = cve ->seamIdInList;
@@ -385,6 +385,7 @@ void splitVertexFromCVE( cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<
         // each corner is adjacent to two seams. If one is the one we make the decision from, then the other is the one from which it is released
         if(cornerToSeams[cve->cornerInitial][0] == seamComp ){
             releasedVertNew[cve->vert]= cornerToSeams[cve->cornerInitial][1];
+
         }else if (cornerToSeams[cve->cornerInitial][1] == seamComp ){
             releasedVertNew[cve->vert]= cornerToSeams[cve->cornerInitial][0];
         }else{
@@ -861,6 +862,62 @@ void splitCounterPart(vector<cutVertEntry*>& cutPositions, int idxOfCVE,  cutVer
     return;
 }
 
+
+/*
+|
+.___b
+
+.___a
+|
+ if we open the cut horizontally at a, we want to open at b as well since the two together form a seam (though the common seam has it's cut in the middle)
+ */
+ int openParallelPosition(int& cornerInitial, int& seamType, vector<seam*>& seamsList, vector <cutVertEntry*>& cutPositions){
+    if(seamType<0){
+        return -1; // no parallel to open
+    }
+    seam* currSeam = seamsList[seamType];
+    // figure out if the initial was pos or neg side, the one we are searching is the other side
+    int searchedVert;
+    if(currSeam->getStart1() == cornerInitial){
+        searchedVert = currSeam->getStart2();
+    }else if(currSeam->getStart2() == cornerInitial) {
+        searchedVert = currSeam->getStart1();
+    }else if(currSeam->getEndCornerIds().first == cornerInitial) {
+        searchedVert = currSeam-> getEndCornerIds().second;
+    }else if(currSeam->getEndCornerIds().second == cornerInitial) {
+        searchedVert = currSeam-> getEndCornerIds().first;
+    }else{
+        cout<<" partner not found, we have a huge problem in opening the parallel positions"<<endl;
+    }
+
+    int size =  cornerToSeams[searchedVert].size();
+    if( size != 2) {
+        cout<<" the size is not 2, it;s "<<size<<endl;
+    }
+    int otherSeamId;
+    if(cornerToSeams[searchedVert][0] == seamType){
+
+        otherSeamId = cornerToSeams[searchedVert][1];
+        cout<<" other seam id is "<<otherSeamId<<endl;
+
+    }else{
+        otherSeamId = cornerToSeams[searchedVert][0];
+        cout<<" other seam id is "<<otherSeamId<<endl;
+    }
+
+    for(int i=0; i<cutPositions.size(); i++){
+        if(cutPositions[i]->vert == searchedVert || cutPositions[i]->cornerInitial == searchedVert){
+            // then we should split herre!!
+
+
+            cout<<"we should split cut position "<<cutPositions[i]->vert<<" next, even if it has stress "<<cutPositions[i]->stress<<endl;
+            return i;
+
+        }
+    }
+    return -1;
+
+}
 void findCorrespondingCounterCutPosition(vector<cutVertEntry*>& cutPositions, int idxOfCVE, cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<vector<int> >& vfAdj,
                       std::vector<std::vector<int> >& boundaryL,  vector<seam*>& seamsList, vector<minusOneSeam*> & minusOneSeams,
                       map<int, pair<int, int>> & releasedVert, set<int>& toPattern_boundaryVerticesSet,  MatrixXd& lengthsCurr,
@@ -893,7 +950,7 @@ void findCorrespondingCounterCutPosition(vector<cutVertEntry*>& cutPositions, in
         }
         cve-> counterPartIdx = idx;
         cutPositions[idx]-> counterPartIdx = idxOfCVE;
-        cout<<cve->vert<<" "<< cutPositions[idx]->vert<<" matched"<<endl;
+//        cout<<cve->vert<<" "<< cutPositions[idx]->vert<<" matched"<<endl;
 
 //        cout<<"found counter of middle, it's "<< cve-> vert <<" and "<< cutPositions[cve->counterPartIdx]->vert<<endl;
         return;
@@ -937,7 +994,7 @@ void findCorrespondingCounterCutPosition(vector<cutVertEntry*>& cutPositions, in
     cve-> counterPartIdx = idx;
     cutPositions[idx]-> counterPartIdx = idxOfCVE;
 
-    cout<<cve->vert<<" "<< cutPositions[idx]->vert<<" matched"<<endl;
+//    cout<<cve->vert<<" "<< cutPositions[idx]->vert<<" matched"<<endl;
     double stressSum = cve->stress + cutPositions[idx]->stress;
     cve-> stressWithCounter = stressSum;
     cutPositions[idx]->stressWithCounter = stressSum;
@@ -1627,18 +1684,30 @@ void computeTear(Eigen::MatrixXd & fromPattern, MatrixXd&  currPattern, MatrixXi
             continue;
         }
         cout<<cutPositions[count]->stress<<" curr stress "<<cutPositions[count]->stressWithCounter<<endl;
+        int currVert = cutPositions[count]->vert;
         splitVertexFromCVE(cutPositions[count], currPattern, Fg_pattern, vfAdj, boundaryL, seamsList,
                            minusOneSeams, releasedVert, toPattern_boundaryVerticesSet,lengthsCurr, Fg_pattern, cornerSet, handledVerticesSet);
 
-        int counterPart = cutPositions[count]->counterPartIdx;
-        if(counterPart >0){
-            cout<<endl<<" and corresponding "<<cutPositions[count]->counterPartIdx<<" "<<cutPositions[cutPositions[count]->counterPartIdx]->vert<<" with stress "<<cutPositions[cutPositions[count]->counterPartIdx]->stress<<endl;
-            splitVertexFromCVE(cutPositions[counterPart], currPattern, Fg_pattern, vfAdj, boundaryL, seamsList,
-                             minusOneSeams, releasedVert, toPattern_boundaryVerticesSet,lengthsCurr, Fg_pattern, cornerSet, handledVerticesSet);
+        if( releasedVertNew.find(currVert) != releasedVertNew.end()){
+            // dann können müssen wir ja auch die passende andere seite des cuts öffnen
+            // achtung, das ist nicht die corresponding seam
+            int parallel = openParallelPosition(cutPositions[count]-> cornerInitial, releasedVertNew[currVert], seamsList, cutPositions);
+            if(parallel<0) cout<<"no proper parallel found"<<endl;
+            splitVertexFromCVE(cutPositions[parallel], currPattern, Fg_pattern, vfAdj, boundaryL, seamsList,
+                               minusOneSeams, releasedVert, toPattern_boundaryVerticesSet,lengthsCurr, Fg_pattern, cornerSet, handledVerticesSet);
 
-        }else {
-            cout<<"-1 seam, no counter to split"<<endl;
+
         }
+
+//        int counterPart = cutPositions[count]->counterPartIdx;
+//        if(counterPart >0){
+//            cout<<endl<<" and corresponding "<<cutPositions[count]->counterPartIdx<<" "<<cutPositions[cutPositions[count]->counterPartIdx]->vert<<" with stress "<<cutPositions[cutPositions[count]->counterPartIdx]->stress<<endl;
+//            splitVertexFromCVE(cutPositions[counterPart], currPattern, Fg_pattern, vfAdj, boundaryL, seamsList,
+//                             minusOneSeams, releasedVert, toPattern_boundaryVerticesSet,lengthsCurr, Fg_pattern, cornerSet, handledVerticesSet);
+//
+//        }else {
+//            cout<<"-1 seam, no counter to split"<<endl;
+//        }
 
     }
 
