@@ -823,14 +823,12 @@ int main(int argc, char *argv[])
                 igl::boundary_loop(Fg_pattern, boundaryLnew);
 
                 boundaryL.clear();
-
                 boundaryL= boundaryLnew;
 
                 preComputeAdaption();
                 cout<<"precomputed new adaption"<<endl;
-                    viewer.core().is_animating = true;
-                    adaptionFlag = true;
-// why is the mapped pattern often so much bent? this makes no sense. There has to be an issue with that
+                viewer.core().is_animating = true;
+                adaptionFlag = true;
 
             }
 
@@ -902,12 +900,25 @@ void preComputeAdaption(){
     }
 //    patternEdgeLengths.resize(Fg_pattern.rows() ,3);
     igl::edge_lengths(fromPattern,Fg_pattern_orig, patternEdgeLengths_orig);
+
     igl::boundary_loop(Fg_pattern_orig, boundaryL_toPattern);
-    for(int i =0; i < boundaryL_toPattern.size(); i++){
+    int boundVert = 0;
+    for(int i = 0; i < boundaryL_toPattern.size(); i++){
+        boundVert += boundaryL_toPattern[i].size();
         for(int j = 0; j < boundaryL_toPattern[i].size(); j++){
             toPattern_boundaryVerticesSet.insert(boundaryL_toPattern[i][j]);
         }
     }
+    EdgesVisFromPattern.resize(boundVert, 2);
+    int curr = 0;
+    for (int i=0; i< boundaryL_toPattern.size(); i++){
+        for(int j=0; j<boundaryL_toPattern[i].size(); j++){
+            EdgesVisFromPattern(curr, 0) = boundaryL_toPattern[i][j];
+            EdgesVisFromPattern(curr, 1) = boundaryL_toPattern[i][(j + 1) % (boundaryL_toPattern[i].size())];
+            curr++;
+        }
+    }
+
     // use with PBD_adaption
     baryCoordsUPattern.resize(Fg_pattern.rows(), 3);
     baryCoordsVPattern.resize(Fg_pattern.rows(), 3);
@@ -934,24 +945,6 @@ void preComputeAdaption(){
         baryCoordsUPattern.row(i) = uInBary;
         baryCoordsVPattern.row(i) = vInBary;
 
-    }
-
-    // need not be here, could be precomputed
-    vector<vector<int>> fromPatternBound;
-    igl::boundary_loop(Fg_pattern_orig, fromPatternBound);
-    int boundVert = 0;
-    int curr = 0;
-    for (int i=0; i< fromPatternBound.size(); i++){
-        boundVert += fromPatternBound[i].size();
-    }
-    EdgesVisFromPattern.resize(boundVert, 2);
-
-    for (int i=0; i< fromPatternBound.size(); i++){
-        for(int j=0; j<fromPatternBound[i].size(); j++){
-            EdgesVisFromPattern(curr, 0) = fromPatternBound[i][j];
-            EdgesVisFromPattern(curr, 1) = fromPatternBound[i][(j + 1) % (fromPatternBound[i].size())];
-            curr++;
-        }
     }
 
 }

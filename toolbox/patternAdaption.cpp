@@ -869,6 +869,7 @@ void splitCounterPart(vector<cutVertEntry*>& cutPositions, int idxOfCVE,  cutVer
         searchedVert = currSeam-> getEndCornerIds().first;
     }else{
         cout<<" partner not found, we have a huge problem in opening the parallel positions "<<seamType<<endl;
+        return -1;
     }
     cout<<searchedVert<<" the searched vert "<<endl;
 
@@ -890,7 +891,6 @@ void splitCounterPart(vector<cutVertEntry*>& cutPositions, int idxOfCVE,  cutVer
     for(int i=0; i<cutPositions.size(); i++){
         if(cutPositions[i]->vert == searchedVert || cutPositions[i]->cornerInitial == searchedVert){
             // then we should split herre!!
-
 
             cout<<"we should split cut position "<<cutPositions[i]->vert<<" next, even if it has stress "<<cutPositions[i]->stress<<endl;
             return i;
@@ -1516,28 +1516,37 @@ void tearFurther(vector<cutVertEntry*>& cutPositions, MatrixXd&  currPattern, Ma
         bool parallelFinFlag = true;
         int parallel;
         //it cannot find the first one if it has not been released yet. need tto rewrite it
-        
-        if( releasedVertNew.find( cutPositions[count]->cornerInitial) != releasedVertNew.end()){
-            cout<<count<<" cornerInitial "<<cutPositions[count]-> cornerInitial<<endl;
-             parallel = openParallelPosition(cutPositions[count]-> cornerInitial, releasedVertNew[cutPositions[count]->cornerInitial], seamsList, cutPositions);
-             cout<<"parallel idx is "<<parallel<<endl;
-            if(parallel >= 0) parallelFinFlag = cutPositions[parallel]->finFlag;
-        }
-        if(cutPositions[count]->finFlag && parallelFinFlag){
-            i--;
-            count ++;
+
+        if(cutPositions[count]->finFlag ){
+
+            cout<<"fin initial fin flag, check other "<<endl;
+            // if it is a corner and it has been released
+            if((cutPositions[count]->startCorner || cutPositions[count]->endCorner) &&
+            releasedVertNew.find( cutPositions[count]->cornerInitial) != releasedVertNew.end()){
+                cout<<count<<" it was released, other exists  cornerInitial "<<cutPositions[count]-> cornerInitial<<endl;
+                parallel = openParallelPosition(cutPositions[count]-> cornerInitial, releasedVertNew[cutPositions[count]->cornerInitial], seamsList, cutPositions);
+                cout<<"parallel idx is "<<parallel<<endl;
+                if(parallel >= 0) parallelFinFlag = cutPositions[parallel]->finFlag;
+                if(parallelFinFlag){
+                    i--;
+                    count ++;
+                    cout<<"other finished too"<<endl;
+                }else{
+                    cout<<"the other is not finished yet. Continue cutting there"<<endl;
+
+                    splitVertexFromCVE(cutPositions[parallel], currPattern, Fg_pattern, vfAdj, boundaryL, seamsList,
+                                       minusOneSeams, releasedVert, toPattern_boundaryVerticesSet,lengthsCurr, Fg_pattern, cornerSet, handledVerticesSet);
+                    cout<<"finished  p ? "<<cutPositions[parallel]->finFlag<<endl;
+                }
+            }else{
+                cout<<"it has not been released, thus no parallel"<<endl;
+                i--;
+                count ++;
+            }
 
         }else{
-//            currVert = cutPositions[count]->vert;
-//            parallelFinFlag = true;
-//            if( releasedVertNew.find( cutPositions[count]->cornerInitial) != releasedVertNew.end()){
-//                cout<<count<<" cornerInitial "<<cutPositions[count]-> cornerInitial<<endl;
-//                parallel = openParallelPosition(cutPositions[count]-> cornerInitial, releasedVertNew[cutPositions[count]->cornerInitial], seamsList, cutPositions);
-//                cout<<"parallel idx is "<<parallel<<endl;
-//                if(parallel >= 0) parallelFinFlag = cutPositions[parallel]->finFlag;
-//            }
 
-            cout<<endl<< cutPositions[count]->vert<<" vertex up next handling with i= "<<count<<" /"<<cutPositions.size()<<" and parallel "<<cutPositions[parallel]->vert<<endl;
+            cout<<endl<< cutPositions[count]->vert<<" vertex up next handling with i= "<<count<<" /"<<cutPositions.size()<<endl;
             if(!cutPositions[count]->finFlag){
                 cout<<"split origninal "<<endl;
                 splitVertexFromCVE(cutPositions[count], currPattern, Fg_pattern, vfAdj, boundaryL, seamsList, minusOneSeams, releasedVert,
@@ -1554,21 +1563,28 @@ void tearFurther(vector<cutVertEntry*>& cutPositions, MatrixXd&  currPattern, Ma
 //        }else {
 //            cout<<"-1 seam, no counter to split"<<endl;
 //        }
-            if(!parallelFinFlag && releasedVertNew.find(cutPositions[count]->cornerInitial) != releasedVertNew.end() ){
+            parallel = -1;
+            if(cutPositions[count]->startCorner || cutPositions[count]->endCorner){
+                // once we finished cutting one side, check if it was a side opening. If so we can go on with the other side
+                parallel = openParallelPosition(cutPositions[count]-> cornerInitial, releasedVertNew[cutPositions[count]-> cornerInitial], seamsList, cutPositions);
                 // open the other side of a released seam .
                 // attention this is not the other side of the seam but the same 3D corner of a different patch.
                 // note that there is no guarantee there is a cut position. If not, we do not enforce it.
-                if(parallel<0) {
-                    cout<<"no proper parallel found"<<endl;
-                    continue;
-                }
+            }
+
+            if(parallel<0) {
+                cout<<"no proper parallel found"<<endl;
+                continue;
+            }else if(!cutPositions[parallel]->finFlag){
                 cout<<"split parallel "<<endl;
 
                 splitVertexFromCVE(cutPositions[parallel], currPattern, Fg_pattern, vfAdj, boundaryL, seamsList,
                                    minusOneSeams, releasedVert, toPattern_boundaryVerticesSet,lengthsCurr, Fg_pattern, cornerSet, handledVerticesSet);
                 cout<<"finished  p ? "<<cutPositions[parallel]->finFlag<<endl;
-
+            }else{
+                cout<<"parallel already finished"<<endl;
             }
+
         }
 
     }
