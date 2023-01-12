@@ -84,7 +84,7 @@ void updatePositionToIntersection(MatrixXd& p,int next,  const MatrixXd& Vg_boun
 void projectBackOnBoundary(const MatrixXd & Vg_to, MatrixXd& p, const vector<seam*>& seamsList,const vector<minusOneSeam*> & minusOneSeams,
                            const MatrixXi& Fg_pattern,
                            const MatrixXi& Fg_pattern_orig, const std::vector<std::vector<int> >& boundaryL_toPattern,
-                           map<int, pair<int, int>>& releasedVert
+                           map<int, pair<int, int>>& releasedVert, bool visFlag
                            );
 
 void tearFurther(vector<cutVertEntry*>& cutPositions, MatrixXd&  currPattern, MatrixXi& Fg_pattern,vector<seam*>& seamsList, vector<minusOneSeam*>& minusOneSeams,

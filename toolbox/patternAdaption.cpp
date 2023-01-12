@@ -330,9 +330,6 @@ void splitVertexFromCVE( cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<
     //todo set fin flag if we reachd the end of a boundary cut!
 
 
-
-
-
     // if it's a corner all get the new index
     if(cve->startCorner|| cve-> endCorner ){
         cout<<" start or end corner case"<<endl;
@@ -479,7 +476,6 @@ void splitVertexFromCVE( cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<
     }else{
         helperWhich = 2;
     }
-//    cout<<Fg.row(faces.first)<<" found and identified index "<<helperWhich<<endl;
 
     igl::HalfEdgeIterator <MatrixXi, MatrixXi, MatrixXi>hei (Fg, TT, TTi, faces.first, helperWhich, false);
     igl::HalfEdgeIterator <MatrixXi, MatrixXi, MatrixXi>hei2 (Fg, TT, TTi, faces.second, helperWhich, false);
@@ -536,19 +532,28 @@ void splitVertexFromCVE( cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<
 
             }
         }
+
+        cout<<newnewVertIdx<<" newnew and new "<<newVertIdx<<", check with matrix sizes "<< newVg.rows()<<endl;
         MatrixXd newnewVg(newVg.rows()+1, 3);
-        newnewVg.block(0,0, newVertIdx, 3)= newVg;
-        handledVerticesSet.insert(newnewVertIdx);
+        newnewVg.block(0,0, newVg.rows(), 3)= newVg;
         newnewVg.row(newnewVertIdx)= newVg.row(insertIdx);//+ (eps * toRight).transpose();
+
+        handledVerticesSet.insert(newnewVertIdx);
         cout<<newnewVg.row(insertIdx)<<" old insert idx"<<endl;
         cout<<newnewVg.row(newnewVertIdx)<<" new insert idx duplicate "<<endl;
 
         newVg.resize(newnewVg.rows(), 3);
         newVg = newnewVg;
         cout<<" fin operation"<<endl;
-        //TODO THE IDEA IS CORRECT BUT THE HANDLING DOES NOT WORK THAT WAY. THERE IS A CONSTRIANT PROBLEM COMMING UP, ALSO HOW ARE DULPLICATES HANDLED AND HOW DO WE KNOW WHICH PATCH IS WHICH AFTER?
+        cout<<newVg.row(newnewVertIdx)<<" newnew"<<endl;
+        cout<<newVg.row(insertIdx)<<" insert"<<endl;
+        cout<<newVg.row(newVertIdx)<<" new"<<endl;
+        cout<<newVg.row(cve->vert)<<" vert"<<endl;
 
 
+
+        cve->finFlag= true;
+        //TODO THE IDEA IS CORRECT BUT THE HANDLING DOES NOT WORK THAT WAY. THERE IS A CONSTRAINT PROBLEM COMING UP, ALSO HOW ARE DULPLICATES HANDLED AND HOW DO WE KNOW WHICH PATCH IS WHICH AFTER?
 
     }
 
@@ -1834,13 +1839,12 @@ void updatePositionToIntersection(MatrixXd& p,int next, const MatrixXd& Vg_bound
      update the current position towards the projected
      */
 void projectBackOnBoundary(const MatrixXd & Vg_to, MatrixXd& p, const vector<seam*>& seamsList, const vector<minusOneSeam*> & minusOneSeams,  const MatrixXi& Fg_pattern,
-                           const MatrixXi& Fg_pattern_orig, const std::vector<std::vector<int> >& boundaryL_toPattern,
-                           map<int, pair<int, int>> & releasedVert){
+                           const MatrixXi& Fg_pattern_orig, const std::vector<std::vector<int> >& boundaryL_toPattern, map<int, pair<int, int>> & releasedVert ,bool visFlag){
 
     int numSeams = seamsList.size();
 
     for (int j = 0; j<numSeams; j++){
-
+        if((j==1 || j==0) && visFlag) cout<<j<<": ";
         seam* currSeam  = seamsList[j];
         auto stP1= currSeam-> getStartAndPatch1();
         auto stP2 =  currSeam -> getStartAndPatch2ForCorres(); // attention this is with respect to the original pattern

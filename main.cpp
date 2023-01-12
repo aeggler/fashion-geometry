@@ -842,8 +842,14 @@ int main(int argc, char *argv[])
                 boundaryL.clear();
                 boundaryL= boundaryLnew;
 
-                viewer.core().is_animating = true;
-                adaptionFlag = true;
+                if(boundaryL.size()== 8) {
+                    viewer.core().is_animating = true;
+                    adaptionFlag = true;
+                }else{
+                    viewer.selected_data_index = 0;
+                    viewer.data().clear();
+                    viewer.data().set_mesh(currPattern, Fg_pattern);
+                }
             }
             if(ImGui::Button("Smooth cuts", ImVec2(-1, 0))){
                 simulate = false;
@@ -1661,7 +1667,7 @@ void solveCornerMappedVertices(){
             }
             Vector2d newSuggestedPos = toPattern.row(vertIdx).leftCols(2);
             Vector2d dir = newSuggestedPos - p_adaption.row(vertIdx).leftCols(2).transpose();
-// TODO PARAMETER
+            // TODO PARAMETER
             p_adaption.row(vertIdx).leftCols(2) += boundaryStiffness * dir;
         }
     }
@@ -1701,7 +1707,13 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
 
 //        t.printTime(" corner mapped ");
         // before cutting the boundaries should be the same
-        projectBackOnBoundary( toPattern, p_adaption, seamsList,minusOneSeamsList,  Fg_pattern, Fg_pattern_orig, boundaryL_toPattern, releasedVert );
+        if(boundaryL.size() == 8){
+            projectBackOnBoundary( toPattern, p_adaption, seamsList,minusOneSeamsList,  Fg_pattern, Fg_pattern_orig, boundaryL_toPattern, releasedVert ,false );
+
+        }else{
+            projectBackOnBoundary( toPattern, p_adaption, seamsList,minusOneSeamsList,  Fg_pattern, Fg_pattern_orig, boundaryL_toPattern, releasedVert, true );
+
+        }
         solveCornerMappedVertices();
 //        t.printTime(" project back  ");
     }
