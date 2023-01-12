@@ -825,8 +825,8 @@ int main(int argc, char *argv[])
                 boundaryL.clear();
                 boundaryL= boundaryLnew;
 
-                preComputeAdaption();
-                cout<<"precomputed new adaption"<<endl;
+//                preComputeAdaption();
+//                cout<<"precomputed new adaption"<<endl;
                 viewer.core().is_animating = true;
                 adaptionFlag = true;
 
