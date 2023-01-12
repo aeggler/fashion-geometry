@@ -411,6 +411,7 @@ int main(int argc, char *argv[])
     Vg_pattern_orig= Vg_pattern;
     Fg_pattern_orig = Fg_pattern;
     patternPreInterpol= Vg_pattern;
+
     cornerVertices = VectorXd::Zero(Vg_pattern.rows());
     t.printTime(" init");
     preComputeConstraintsForRestshape();
@@ -458,6 +459,7 @@ int main(int argc, char *argv[])
     createVertexFaceAdjacencyList(Fg, vfAdj);
     cornerVertices = VectorXd::Zero(Vg_pattern.rows());// 1 for each corner, 0 for all other vertices
 
+
 //    t.printTime( " before seams list  ");
     map<int, vector<pair<int, int>>> seamIdPerCorner;    // contains corner id and a list of which seams start here (max 2),
     // each vector element  is a pair where first is if it's a -1 seam, and second is which index in corresponding List. If negative it's a backside ,i.e. part 2 of the seam
@@ -470,6 +472,7 @@ int main(int argc, char *argv[])
     for(int i=0; i < cornerPerBoundary.size(); i++){
         for(int j=0; j < cornerPerBoundary[i].size(); j++){
             cornerSet.insert(cornerPerBoundary[i][j].first);
+            //cornerVertices
         }
     }
 
@@ -1724,7 +1727,7 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
     MatrixXd visToPattern = toPattern;
     visToPattern.col(2) *= 1.01;
 //    viewer.data().meshgl.glLineWidth(10);
-    viewer.data().set_edges(visToPattern, EdgesVisFromPattern, Eigen::RowVector3d(0, 1, 1));
+    viewer.data().set_edges(visToPattern, EdgesVisFromPattern, Eigen::RowVector3d(0, 0, 1));
 //    viewer.data().meshgl.glLineWidth(1);
 
 
