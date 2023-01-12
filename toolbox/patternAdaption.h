@@ -32,12 +32,15 @@ public:
     bool levelOne;
     double stress;
     bool handled;
+    int counterPartIdx;
+    double stressWithCounter;
 
     cutVertEntry( int vert, int seamType, int seamIdInList ){
         this-> vert = vert;
         this -> seamType = seamType;
         this -> seamIdInList = seamIdInList;
         handled = false;
+        counterPartIdx  = -1;
     }
     cutVertEntry ( int vert, int seamType, int seamIdInList, int patch){
         this -> vert = vert;
@@ -46,6 +49,7 @@ public:
         this -> patch = patch;
         levelOne = true;
         handled = false;
+        counterPartIdx = - 1;
 
     }
 

@@ -417,10 +417,10 @@ void splitVertexFromCVE( cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<
             }
 
         }else{
-            cout << cve->vert <<" ending " << boundary[plusOneId] << " TODO FIGURE OUT WHICH ONE ATM ITS WRONG " << boundary[minusOneId] << " " << endl;
-            cout << "for seam type " << cve->seamType <<" "<< cve-> seamIdInList << endl;
-            seam* helper= seamsList[8];
-            cout<<helper->getStart1()<<" "<< helper->getEndCornerIds().first <<endl;
+//            cout << cve->vert <<" ending " << boundary[plusOneId] << " TODO FIGURE OUT WHICH ONE ATM ITS WRONG " << boundary[minusOneId] << " " << endl;
+//            cout << "for seam type " << cve->seamType <<" "<< cve-> seamIdInList << endl;
+//            seam* helper= seamsList[8];
+//            cout<<helper->getStart1()<<" "<< helper->getEndCornerIds().first <<endl;
 
            if(cve->seamType>0){
                 if(cve->seamIdInList>=0){
@@ -787,11 +787,11 @@ void splitVertex(Node** head, int & listLength, int  whichTear, MatrixXd& Vg, Ma
     right_noed-> stretchLeft = newLength/origLength;// assuming the new one is stretched it is certainly longer
 
 }
-void splitCounterPart(vector<cutVertEntry*>& cutPositions,int idxOfCVE,  cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<vector<int> >& vfAdj,
+void splitCounterPart(vector<cutVertEntry*>& cutPositions, int idxOfCVE,  cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<vector<int> >& vfAdj,
                       std::vector<std::vector<int> >& boundaryL,  vector<seam*>& seamsList, vector<minusOneSeam*> & minusOneSeams,
                       map<int, pair<int, int>> & releasedVert, set<int>& toPattern_boundaryVerticesSet,  MatrixXd& lengthsCurr,
                       MatrixXi& Fg_pattern, set<int> & cornerSet,  set<int>& handledVerticesSet){
-    //idx of cve has higher stress, hence we have searched before alread, just need tto increment
+    //idx of cve has higher stress, hence we have searched before already, just need to increment
     //if not found we have handled it already
     if(cve->seamType == -1 ) {
         // there is no counterpart
@@ -803,7 +803,7 @@ void splitCounterPart(vector<cutVertEntry*>& cutPositions,int idxOfCVE,  cutVert
         // then there is only one other of this seam -> search it
         int idx = -1;
         for(int i=idxOfCVE; i<cutPositions.size(); i++){
-            if(cutPositions[i]->seamType==1 &&cutPositions[i]->seamIdInList == counterID){
+            if(cutPositions[i]->seamType == 1 &&cutPositions[i]->seamIdInList == counterID){
                 idx= i;
             }
         }
@@ -851,12 +851,101 @@ void splitCounterPart(vector<cutVertEntry*>& cutPositions,int idxOfCVE,  cutVert
             idx= i;
         }
     }
-    if(idx == -1) return;
+    if(idx == -1) {
+        cout<<"not found, problem with cutting the corresponding, did not find "<<lookFor<<endl;
+        return;
+    }
     splitVertexFromCVE( cutPositions[idx], Vg, Fg, vfAdj,
                         boundaryL, seamsList, minusOneSeams, releasedVert, toPattern_boundaryVerticesSet, lengthsCurr,
                         Fg_pattern, cornerSet, handledVerticesSet);
     return;
 }
+
+void findCorrespondingCounterCutPosition(vector<cutVertEntry*>& cutPositions, int idxOfCVE, cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<vector<int> >& vfAdj,
+                      std::vector<std::vector<int> >& boundaryL,  vector<seam*>& seamsList, vector<minusOneSeam*> & minusOneSeams,
+                      map<int, pair<int, int>> & releasedVert, set<int>& toPattern_boundaryVerticesSet,  MatrixXd& lengthsCurr,
+                      MatrixXi& Fg_pattern, set<int> & cornerSet,  set<int>& handledVerticesSet){
+    //idx of cve has higher stress, hence we have searched before already, just need to increment
+    //if not found we have handled it already
+    if(cve->seamType == -1 ) {
+        // there is no counterpart
+        cve->stressWithCounter = cve->stress;
+        return ;
+
+    }
+    if(cve-> counterPartIdx != -1){
+//        cout<<"found counter already, it's "<< cve-> vert <<" and "<< cutPositions[cve->counterPartIdx]->vert<<endl;
+        return;
+    }
+
+    int counterID  = (cve->seamIdInList+1)*(-1);
+    if(!cve->startCorner && !cve->endCorner){
+        // then there is only one other of this seam -> search it
+        int idx = -1;
+        for(int i = 0; i < cutPositions.size(); i++){
+            if(cutPositions[i]-> seamType == 1 && cutPositions[i]-> seamIdInList == counterID){
+                idx= i;
+            }
+        }
+        if(idx == -1) {
+            cout<<"Problem: found a middle vertex but no counterpart to it "<<cve->seamIdInList<<" with  vertex "<<cve->vert<<endl;
+            return;
+        }
+        cve-> counterPartIdx = idx;
+        cutPositions[idx]-> counterPartIdx = idxOfCVE;
+        cout<<cve->vert<<" "<< cutPositions[idx]->vert<<" matched"<<endl;
+
+//        cout<<"found counter of middle, it's "<< cve-> vert <<" and "<< cutPositions[cve->counterPartIdx]->vert<<endl;
+        return;
+    }
+
+    int lookFor = -1;
+    seam* currSeam;
+    currSeam = (counterID<0) ? seamsList[cve->seamIdInList] : seamsList[(cve->seamIdInList+1)*(-1)];
+
+    if(cve->startCorner){
+        // we need to find another startcorner
+        if(cve->vert == currSeam-> getStart1()){
+            lookFor = currSeam-> getStart2();
+        }else if (cve->vert == currSeam-> getStart2()) {
+            lookFor = currSeam->getStart1();
+        }else{
+            cout<<"we have a problem, should find cve as corner but seems like its not "<<cve-> vert<<endl; return;
+        }
+    }
+        // find the mapped vertex of this one
+    else {
+        if (cve->vert == currSeam->getEndCornerIds().first) {
+            lookFor = currSeam->getEndCornerIds().second;
+        } else if (cve->vert == currSeam->getEndCornerIds().second) {
+            lookFor = currSeam->getEndCornerIds().first;
+        } else {
+            cout << "we have a problem, should find cve as corner but seems like its not " << cve->vert << endl;return;
+        }
+    }
+
+    int idx = -1;
+    for(int i = 0; i<cutPositions.size(); i++){
+        if(cutPositions[i]->seamType == 1 && cutPositions[i]->vert == lookFor && cutPositions[i]-> seamIdInList == counterID){
+            idx= i;
+        }
+    }
+    if(idx == -1) {
+        cout<<cve->vert<<" not found, problem with cutting the corresponding, did not find "<<lookFor<<endl;
+        return;
+    }
+    cve-> counterPartIdx = idx;
+    cutPositions[idx]-> counterPartIdx = idxOfCVE;
+
+    cout<<cve->vert<<" "<< cutPositions[idx]->vert<<" matched"<<endl;
+    double stressSum = cve->stress + cutPositions[idx]->stress;
+    cve-> stressWithCounter = stressSum;
+    cutPositions[idx]->stressWithCounter = stressSum;
+
+    return;
+}
+
+
 
 int addoncount=0;
 void addVarToModel (int vert, int prevVert, int nextVert, vector<vector<int>> & vfAdj, bool isConstrained, int& varCount, GRBVar* & cutVar,
@@ -1264,7 +1353,7 @@ void setLP(std::vector<std::vector<int> >& boundaryL , vector<vector<int>> & vfA
             }else{
                 patch = minusOneSeams[mapVarIdToVertId[i]->seamIdInList]->getPatch();
             }
-            cout<<patch<<" chosen Id  "<< mapVarIdToVertId[i]->vert<<" from which kind of seam "<<mapVarIdToVertId[i]->seamType<<" and id "<<mapVarIdToVertId[i]->seamIdInList <<endl;// ALRIGHT BUT NOW WE NEED A SEAM ID
+            cout<<patch<<" patch, Id=  "<< mapVarIdToVertId[i]->vert<<" from seam "<<mapVarIdToVertId[i]->seamType<<" and id "<<mapVarIdToVertId[i]->seamIdInList <<" ";// ALRIGHT BUT NOW WE NEED A SEAM ID
 
             cutVertEntry* cve = new cutVertEntry ( vert, seamType, seamId, patch);
             cve-> leftCorner =  -1;
@@ -1348,12 +1437,13 @@ void setLP(std::vector<std::vector<int> >& boundaryL , vector<vector<int>> & vfA
                 cve->stress = (nextStress + prevStress)/2;
             }
 
-            cout<<cve->stress<<" the stress at this vertex "<<endl;
+            cout<<cve->stress<<" the stress there "<<endl;
             cutPositions.push_back(cve);
 
         }
 
     }
+    cout<<cutPositions.size()<<" size"<<endl<<endl;
 
 
 }
@@ -1366,11 +1456,11 @@ void tearFurther(vector<cutVertEntry*>& cutPositions, MatrixXd&  currPattern, Ma
     //when releasing the boundary it can turn into a non manifold mesh. not sure if this causes further problems
     Eigen::MatrixXi B;
     bool isManifold = igl::is_vertex_manifold( Fg_pattern, B);
-    cout<<isManifold<<endl;
+//    cout<<isManifold<<endl;
     if(!isManifold){
         for(int j=0; j<B.rows(); j++){
             if(B(j, 0)!=1){
-                cout<<j<<" is not manifold "<<endl;
+                cout<<j<<" is not manifold; ";
             }
         }
     }
@@ -1516,18 +1606,39 @@ void computeTear(Eigen::MatrixXd & fromPattern, MatrixXd&  currPattern, MatrixXi
           seamsList, minusOneSeams, tailor_lazyness, minConstrained, cutPositions,
           cornerVert, Vg);
 
+
+
     //  here we need to sort and check if handled already
     sort(cutPositions.begin(), cutPositions.end(), []( cutVertEntry* &a,  cutVertEntry* &b) { return a->stress > b-> stress; });
+    for(int i =0; i < cutPositions.size(); i++){
+        findCorrespondingCounterCutPosition(cutPositions, i, cutPositions[i], currPattern, Fg_pattern, vfAdj, boundaryL,
+                                            seamsList, minusOneSeams, releasedVert, toPattern_boundaryVerticesSet,lengthsCurr,
+                                            Fg_pattern, cornerSet, handledVerticesSet );
+
+    }
+
     int count=0;
     // we cut the first one
     for(int i = 0; i < 1; i++){// cutPositions.size(); i++){
         if(cutPositions[count]->handled){
             cout<<"handled case, go to next"<<endl;
-            i--; count ++;continue;
+            i--;
+            count ++;
+            continue;
         }
-        cout<<cutPositions[count]->stress<<" curr stress "<<endl;
+        cout<<cutPositions[count]->stress<<" curr stress "<<cutPositions[count]->stressWithCounter<<endl;
         splitVertexFromCVE(cutPositions[count], currPattern, Fg_pattern, vfAdj, boundaryL, seamsList,
                            minusOneSeams, releasedVert, toPattern_boundaryVerticesSet,lengthsCurr, Fg_pattern, cornerSet, handledVerticesSet);
+
+        int counterPart = cutPositions[count]->counterPartIdx;
+        if(counterPart >0){
+            cout<<endl<<" and corresponding "<<cutPositions[count]->counterPartIdx<<" "<<cutPositions[cutPositions[count]->counterPartIdx]->vert<<" with stress "<<cutPositions[cutPositions[count]->counterPartIdx]->stress<<endl;
+            splitVertexFromCVE(cutPositions[counterPart], currPattern, Fg_pattern, vfAdj, boundaryL, seamsList,
+                             minusOneSeams, releasedVert, toPattern_boundaryVerticesSet,lengthsCurr, Fg_pattern, cornerSet, handledVerticesSet);
+
+        }else {
+            cout<<"-1 seam, no counter to split"<<endl;
+        }
 
     }
 
