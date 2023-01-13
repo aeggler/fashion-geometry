@@ -816,12 +816,14 @@ int main(int argc, char *argv[])
                             cornerVertices, cutPositions, releasedVert, toPattern_boundaryVerticesSet, cornerSet, handledVerticesSet, Vg_pattern);
 
 
-                viewer.selected_data_index = 0;
-                viewer.data().clear();
-                viewer.data().set_mesh(currPattern, Fg_pattern);
+//                viewer.selected_data_index = 0;
+//                viewer.data().clear();
+//                viewer.data().set_mesh(currPattern, Fg_pattern);
                 std::vector<std::vector<int> > boundaryLnew;
                 igl::boundary_loop(Fg_pattern, boundaryLnew);
-
+                if(boundaryLnew.size() != boundaryL.size()){
+                    updatePatchId(cutPositions, boundaryLnew );
+                }
                 boundaryL.clear();
                 boundaryL= boundaryLnew;
 
@@ -834,14 +836,18 @@ int main(int argc, char *argv[])
                 simulate = false;
                 adaptionFlag = false;
                 viewer.core().is_animating = false;
-                tearFurther(cutPositions, currPattern, Fg_pattern, seamsList, minusOneSeamsList, releasedVert, toPattern_boundaryVerticesSet, boundaryL, cornerSet, handledVerticesSet);
+                tearFurther(cutPositions, currPattern, Fg_pattern, seamsList, minusOneSeamsList, releasedVert,
+                            toPattern_boundaryVerticesSet, boundaryL, cornerSet, handledVerticesSet);
 
                 std::vector<std::vector<int> > boundaryLnew;
                 igl::boundary_loop(Fg_pattern, boundaryLnew);
                 cout<<"back, number of patches "<<boundaryLnew.size()<<endl;
+
+                if(boundaryLnew.size() != boundaryL.size()){
+                    updatePatchId(cutPositions, boundaryLnew );
+                }
                 boundaryL.clear();
                 boundaryL= boundaryLnew;
-
                 if(boundaryL.size()== 8) {
                     viewer.core().is_animating = true;
                     adaptionFlag = true;

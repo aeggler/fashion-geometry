@@ -241,10 +241,18 @@ void addToMapIfNotExisting( int key, int i){
 
 }
 
-void splitVertexFromCVE( cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<vector<int> >& vfAdj,
-                         std::vector<std::vector<int> >& boundaryL,  vector<seam*>& seamsList, vector<minusOneSeam*> & minusOneSeams,
-                         map<int, pair<int, int>> & releasedVert, set<int>& toPattern_boundaryVerticesSet,  MatrixXd& lengthsCurr,
-                         MatrixXi& Fg_pattern, set<int> & cornerSet,  set<int>& handledVerticesSet){
+void splitVertexFromCVE( cutVertEntry*& cve,
+                         MatrixXd& Vg, // this is the current pattern we modify
+                         MatrixXi& Fg, // this will be modified and have entries that are not in the original pattern
+                         vector<vector<int> >& vfAdj,
+                         std::vector<std::vector<int> >& boundaryL,
+                         vector<seam*>& seamsList,
+                         vector<minusOneSeam*> & minusOneSeams,
+                         map<int, pair<int, int>> & releasedVert,
+                         set<int>& toPattern_boundaryVerticesSet,
+                         MatrixXd& lengthsCurr,
+                         set<int> & cornerSet,
+                         set<int>& handledVerticesSet){
 
     cout<<" patch "<<cve->patch<<" of "<<boundaryL.size() <<endl;
 
@@ -255,11 +263,13 @@ void splitVertexFromCVE( cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<
     cve->handled = true;
 // todo this prohibits any kind of cross cutting! maybe not always desirable ! removing?
     if(handledVerticesSet.find(cve->vert) != handledVerticesSet.end()){
-        cout<<"handled by other seams already. Stop here"<<endl;
-        cve->finFlag=true;
+        cout<<"Handled by other seams already. Stop here"<<endl;
+        cve->finFlag = true;
         return ;
     }
 
+    // has to be the original boundary Loop, else the patch id might not correspond with the new
+    // solution: mapBoundaryToPatch with new patches
     auto boundary = boundaryL[cve->patch];
 
     double eps = 0.01;
@@ -268,14 +278,16 @@ void splitVertexFromCVE( cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<
     vector<int> adjacentFaces = vfAdj[cve->vert];
 
     int newVertIdx = Vg.rows();
-    MatrixXd newVg (newVertIdx+1, 3);
+    MatrixXd newVg (newVertIdx + 1, 3);
     newVg.block(0,0, newVertIdx, 3)= Vg;
     handledVerticesSet.insert(newVertIdx);
     handledVerticesSet.insert(cve-> vert);
 
     int idx = 0;
     int plusOneId, minusOneId;
-    while (boundary[idx] != cve->vert&& idx <boundary.size()){
+
+    // this has to be on the new boundary
+    while (boundary[idx] != cve->vert && idx < boundary.size()){
         idx++;
     }
     if(boundary[idx] != cve->vert){
@@ -327,14 +339,12 @@ void splitVertexFromCVE( cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<
 
     Vector3d toLeft = Vg.row(boundaryL[cve->patch][plusOneId]) - Vg.row(cve->vert);
     Vector3d toRight = Vg.row(boundaryL[cve->patch][minusOneId])- Vg.row(cve->vert);
-    //todo set fin flag if we reachd the end of a boundary cut!
-
 
     // if it's a corner all get the new index
     if(cve->startCorner|| cve-> endCorner ){
         cout<<" start or end corner case"<<endl;
         Vector3d cutDirection = cve-> continuedDirection;
-        if(! checkIfTearIsUseful(cve-> vert, cutDirection, vvAdj, vfAdj, Vg, lengthsCurr, lengthsOrig, Fg_pattern)){
+        if(! checkIfTearIsUseful(cve-> vert, cutDirection, vvAdj, vfAdj, Vg, lengthsCurr, lengthsOrig, Fg)){
             cve-> finFlag = true;
             cout<<"stopping now bc tearing is not useful anymore "<<endl;
 
@@ -393,7 +403,7 @@ void splitVertexFromCVE( cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<
             }
 
         }else{
-//            cout << cve->vert <<" ending " << boundary[plusOneId] << " TODO FIGURE OUT WHICH ONE ATM ITS WRONG " << boundary[minusOneId] << " " << endl;
+//            cout << cve->vert <<" ending " << boundary[plusOneId] << "  FIGURE OUT WHICH ONE ATM ITS WRONG " << boundary[minusOneId] << " " << endl;
 //            cout << "for seam type " << cve->seamType <<" "<< cve-> seamIdInList << endl;
 //            seam* helper= seamsList[8];
 //            cout<<helper->getStart1()<<" "<< helper->getEndCornerIds().first <<endl;
@@ -439,7 +449,7 @@ void splitVertexFromCVE( cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<
     Vector3d cutDirection = midVec;
     cutDirection(0)= -cutDirection(1);
     cutDirection(1) = midVec(0);
-    if(!checkIfTearIsUseful(cve-> vert, cutDirection, vvAdj, vfAdj, Vg, lengthsCurr, lengthsOrig, Fg_pattern)){
+    if(!checkIfTearIsUseful(cve-> vert, cutDirection, vvAdj, vfAdj, Vg, lengthsCurr, lengthsOrig, Fg)){
         cve-> finFlag = true;
         cout<<"stopping now with new condition "<<endl;
         return;
@@ -500,7 +510,7 @@ void splitVertexFromCVE( cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<
     cout<<insertIdx<<" the inserted index"<<endl;// TODO CASE IT IS NOT RIGHT NEITHER LEFT BUT ACTUALLY ON!!
     //todo handle the case where this becomes a non manifold vertex and cut through immediately. but it destroys all patch ids
     Eigen::MatrixXi B;
-    bool isManifold = igl::is_vertex_manifold( Fg_pattern, B);
+    bool isManifold = igl::is_vertex_manifold( Fg, B);
     if(B(insertIdx, 0)!= 1){
         cout<<" ATTENTION WE ARE CREATING A NON MANIFOLD MESH! CUT THROUGH IMMEDIATELY"<<endl;
         int newnewVertIdx = newVertIdx+1;
@@ -793,8 +803,7 @@ void splitCounterPart(vector<cutVertEntry*>& cutPositions, int idxOfCVE,  cutVer
         }
         if(idx == -1) return;
         splitVertexFromCVE( cutPositions[idx], Vg, Fg, vfAdj,
-                            boundaryL, seamsList, minusOneSeams, releasedVert, toPattern_boundaryVerticesSet, lengthsCurr,
-                            Fg_pattern, cornerSet, handledVerticesSet);
+                            boundaryL, seamsList, minusOneSeams, releasedVert, toPattern_boundaryVerticesSet, lengthsCurr, cornerSet, handledVerticesSet);
         return;
     }
 
@@ -840,8 +849,7 @@ void splitCounterPart(vector<cutVertEntry*>& cutPositions, int idxOfCVE,  cutVer
         return;
     }
     splitVertexFromCVE( cutPositions[idx], Vg, Fg, vfAdj,
-                        boundaryL, seamsList, minusOneSeams, releasedVert, toPattern_boundaryVerticesSet, lengthsCurr,
-                        Fg_pattern, cornerSet, handledVerticesSet);
+                        boundaryL, seamsList, minusOneSeams, releasedVert, toPattern_boundaryVerticesSet, lengthsCurr, cornerSet, handledVerticesSet);
     return;
 }
 
@@ -1540,7 +1548,7 @@ void tearFurther(vector<cutVertEntry*>& cutPositions, MatrixXd&  currPattern, Ma
                     cout<<"the other is not finished yet. Continue cutting there"<<endl;
 
                     splitVertexFromCVE(cutPositions[parallel], currPattern, Fg_pattern, vfAdj, boundaryL, seamsList,
-                                       minusOneSeams, releasedVert, toPattern_boundaryVerticesSet,lengthsCurr, Fg_pattern, cornerSet, handledVerticesSet);
+                                       minusOneSeams, releasedVert, toPattern_boundaryVerticesSet,lengthsCurr, cornerSet, handledVerticesSet);
                     cout<<"finished  p ? "<<cutPositions[parallel]->finFlag<<endl;
                 }
             }else{
@@ -1555,7 +1563,7 @@ void tearFurther(vector<cutVertEntry*>& cutPositions, MatrixXd&  currPattern, Ma
             if(!cutPositions[count]->finFlag){
                 cout<<"split origninal "<<endl;
                 splitVertexFromCVE(cutPositions[count], currPattern, Fg_pattern, vfAdj, boundaryL, seamsList, minusOneSeams, releasedVert,
-                                   toPattern_boundaryVerticesSet,lengthsCurr, Fg_pattern, cornerSet, handledVerticesSet );
+                                   toPattern_boundaryVerticesSet,lengthsCurr, cornerSet, handledVerticesSet );
                 cout<<"finished ? "<<cutPositions[count]->finFlag<<endl;
             }
 
@@ -1584,7 +1592,7 @@ void tearFurther(vector<cutVertEntry*>& cutPositions, MatrixXd&  currPattern, Ma
                 cout<<"split parallel "<<endl;
 
                 splitVertexFromCVE(cutPositions[parallel], currPattern, Fg_pattern, vfAdj, boundaryL, seamsList,
-                                   minusOneSeams, releasedVert, toPattern_boundaryVerticesSet,lengthsCurr, Fg_pattern, cornerSet, handledVerticesSet);
+                                   minusOneSeams, releasedVert, toPattern_boundaryVerticesSet,lengthsCurr, cornerSet, handledVerticesSet);
                 cout<<"finished  p ? "<<cutPositions[parallel]->finFlag<<endl;
             }else{
                 cout<<"parallel already finished"<<endl;
@@ -1758,7 +1766,7 @@ void computeTear(Eigen::MatrixXd & fromPattern, MatrixXd&  currPattern, MatrixXi
         cout<<cutPositions[count]->stress<<" curr stress "<<cutPositions[count]->stressWithCounter<<endl;
         int currVert = cutPositions[count]->vert;
         splitVertexFromCVE(cutPositions[count], currPattern, Fg_pattern, vfAdj, boundaryL, seamsList,
-                           minusOneSeams, releasedVert, toPattern_boundaryVerticesSet,lengthsCurr, Fg_pattern, cornerSet, handledVerticesSet);
+                           minusOneSeams, releasedVert, toPattern_boundaryVerticesSet,lengthsCurr, cornerSet, handledVerticesSet);
 
 
         if( releasedVertNew.find(currVert) != releasedVertNew.end()){
@@ -1767,7 +1775,7 @@ void computeTear(Eigen::MatrixXd & fromPattern, MatrixXd&  currPattern, MatrixXi
             int parallel = openParallelPosition(cutPositions[count]-> cornerInitial, releasedVertNew[currVert], seamsList, cutPositions);
             if(parallel<0) {cout<<"no proper parallel found"<<endl;continue;}
             splitVertexFromCVE(cutPositions[parallel], currPattern, Fg_pattern, vfAdj, boundaryL, seamsList,
-                               minusOneSeams, releasedVert, toPattern_boundaryVerticesSet,lengthsCurr, Fg_pattern, cornerSet, handledVerticesSet);
+                               minusOneSeams, releasedVert, toPattern_boundaryVerticesSet,lengthsCurr, cornerSet, handledVerticesSet);
 
         }
 
@@ -1844,7 +1852,6 @@ void projectBackOnBoundary(const MatrixXd & Vg_to, MatrixXd& p, const vector<sea
     int numSeams = seamsList.size();
 
     for (int j = 0; j<numSeams; j++){
-        if((j==1 || j==0) && visFlag) cout<<j<<": ";
         seam* currSeam  = seamsList[j];
         auto stP1= currSeam-> getStartAndPatch1();
         auto stP2 =  currSeam -> getStartAndPatch2ForCorres(); // attention this is with respect to the original pattern
@@ -1980,4 +1987,17 @@ void projectBackOnBoundary(const MatrixXd & Vg_to, MatrixXd& p, const vector<sea
 
     }
 
+}
+
+void updatePatchId(vector<cutVertEntry*>& cutPositions, const std::vector<std::vector<int> >& boundaryLnew){
+    cout<<" The number of patches has changed. Create a mapping from one to the other and update all cve "<<endl;
+    map<int, int> mapVertToNewPatch;
+    for(int i = 0; i < boundaryLnew.size(); i++){
+        for(int j = 0; j < boundaryLnew[i].size(); j++){
+            mapVertToNewPatch[boundaryLnew[i][j]] = i;
+        }
+    }
+    for(int i = 0; i < cutPositions.size(); i++){
+        cutPositions[i] -> patch = mapVertToNewPatch[cutPositions[i] -> vert];
+    }
 }
