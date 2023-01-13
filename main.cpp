@@ -848,14 +848,9 @@ int main(int argc, char *argv[])
                 }
                 boundaryL.clear();
                 boundaryL= boundaryLnew;
-                if(boundaryL.size()== 8) {
-                    viewer.core().is_animating = true;
-                    adaptionFlag = true;
-                }else{
-                    viewer.selected_data_index = 0;
-                    viewer.data().clear();
-                    viewer.data().set_mesh(currPattern, Fg_pattern);
-                }
+                viewer.core().is_animating = true;
+                adaptionFlag = true;
+
             }
             if(ImGui::Button("Smooth cuts", ImVec2(-1, 0))){
                 simulate = false;
@@ -1713,13 +1708,7 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
 
 //        t.printTime(" corner mapped ");
         // before cutting the boundaries should be the same
-        if(boundaryL.size() == 8){
-            projectBackOnBoundary( toPattern, p_adaption, seamsList,minusOneSeamsList,  Fg_pattern, Fg_pattern_orig, boundaryL_toPattern, releasedVert ,false );
-
-        }else{
-            projectBackOnBoundary( toPattern, p_adaption, seamsList,minusOneSeamsList,  Fg_pattern, Fg_pattern_orig, boundaryL_toPattern, releasedVert, true );
-
-        }
+        projectBackOnBoundary( toPattern, p_adaption, seamsList,minusOneSeamsList,  Fg_pattern, Fg_pattern_orig, boundaryL_toPattern, releasedVert ,false );
         solveCornerMappedVertices();
 //        t.printTime(" project back  ");
     }

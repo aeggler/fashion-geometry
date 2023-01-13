@@ -864,9 +864,9 @@ void splitCounterPart(vector<cutVertEntry*>& cutPositions, int idxOfCVE,  cutVer
  */
  int openParallelPosition(int& cornerInitial, int& seamType, vector<seam*>& seamsList, vector <cutVertEntry*>& cutPositions){
      // if a paralell cut position exists we find and open it . But attention, it is not guaranteed the position exists. But we don't enforce it (might be worth a thought tough)
-     cout<<"searching for index to open parallel of "<<cornerInitial<<endl;
+//     cout<<"searching for index to open parallel of "<<cornerInitial<<endl;
     if(seamType<0){
-        cout<<" seam Type -1"<<endl;
+//        cout<<" seam Type -1"<<endl;
         return -1; // no parallel to open
     }
     seam* currSeam = seamsList[seamType];
@@ -881,10 +881,10 @@ void splitCounterPart(vector<cutVertEntry*>& cutPositions, int idxOfCVE,  cutVer
     }else if(currSeam->getEndCornerIds().second == cornerInitial) {
         searchedVert = currSeam-> getEndCornerIds().first;
     }else{
-        cout<<" partner not found, we have a huge problem in opening the parallel positions "<<seamType<<endl;
+//        cout<<" partner not found, we have a huge problem in opening the parallel positions "<<seamType<<endl;
         return -1;
     }
-    cout<<searchedVert<<" the searched vert "<<endl;
+//    cout<<searchedVert<<" the searched vert "<<endl;
 
     int size =  cornerToSeams[searchedVert].size();
     if( size != 2) {
@@ -894,18 +894,18 @@ void splitCounterPart(vector<cutVertEntry*>& cutPositions, int idxOfCVE,  cutVer
     if(cornerToSeams[searchedVert][0] == seamType){
 
         otherSeamId = cornerToSeams[searchedVert][1];
-        cout<<" other seam id is "<<otherSeamId<<endl;
+//        cout<<" other seam id is "<<otherSeamId<<endl;
 
     }else{
         otherSeamId = cornerToSeams[searchedVert][0];
-        cout<<" other seam id is "<<otherSeamId<<endl;
+//        cout<<" other seam id is "<<otherSeamId<<endl;
     }
 
     for(int i=0; i<cutPositions.size(); i++){
         if(cutPositions[i]->vert == searchedVert || cutPositions[i]->cornerInitial == searchedVert){
             // then we should split herre!!
 
-            cout<<"we should split cut position "<<cutPositions[i]->vert<<" next, even if it has stress "<<cutPositions[i]->stress<<endl;
+//            cout<<"we should split cut position "<<cutPositions[i]->vert<<" next, even if it has stress "<<cutPositions[i]->stress<<endl;
             return i;
 
         }
@@ -1510,13 +1510,13 @@ void tearFurther(vector<cutVertEntry*>& cutPositions, MatrixXd&  currPattern, Ma
     //when releasing the boundary it can turn into a non manifold mesh. not sure if this causes further problems
     Eigen::MatrixXi B;
     bool isManifold = igl::is_vertex_manifold( Fg_pattern, B);
-    if(!isManifold){
-        for(int j=0; j<B.rows(); j++){
-            if(B(j, 0)!=1){
-                cout<<j<<" is not manifold; ";
-            }
-        }
-    }
+//    if(!isManifold){
+//        for(int j=0; j<B.rows(); j++){
+//            if(B(j, 0)!=1){
+//                cout<<j<<" is not manifold; ";
+//            }
+//        }
+//    }
 
     vector<vector<int> > vfAdj;
     createVertexFaceAdjacencyList(Fg_pattern, vfAdj);
@@ -1524,7 +1524,7 @@ void tearFurther(vector<cutVertEntry*>& cutPositions, MatrixXd&  currPattern, Ma
     igl::edge_lengths(currPattern, Fg_pattern, lengthsCurr);
     int  count = 0 ;
     for(int i = 0; i < 1; i++){
-    cout<<"current count "<<count<<endl;
+//    cout<<"current count "<<count<<endl;
         int currVert = cutPositions[count]->vert;
         bool parallelFinFlag = true;
         int parallel;
@@ -1532,27 +1532,27 @@ void tearFurther(vector<cutVertEntry*>& cutPositions, MatrixXd&  currPattern, Ma
 
         if(cutPositions[count]->finFlag ){
 
-            cout<<"fin initial fin flag, check other "<<endl;
+//            cout<<"fin initial fin flag, check other "<<endl;
             // if it is a corner and it has been released
             if((cutPositions[count]->startCorner || cutPositions[count]->endCorner) &&
             releasedVertNew.find( cutPositions[count]->cornerInitial) != releasedVertNew.end()){
-                cout<<count<<" it was released, other exists  cornerInitial "<<cutPositions[count]-> cornerInitial<<endl;
+//                cout<<count<<" it was released, other exists  cornerInitial "<<cutPositions[count]-> cornerInitial<<endl;
                 parallel = openParallelPosition(cutPositions[count]-> cornerInitial, releasedVertNew[cutPositions[count]->cornerInitial], seamsList, cutPositions);
-                cout<<"parallel idx is "<<parallel<<endl;
+//                cout<<"parallel idx is "<<parallel<<endl;
                 if(parallel >= 0) parallelFinFlag = cutPositions[parallel]->finFlag;
                 if(parallelFinFlag){
                     i--;
                     count ++;
-                    cout<<"other finished too"<<endl;
+//                    cout<<"other finished too"<<endl;
                 }else{
-                    cout<<"the other is not finished yet. Continue cutting there"<<endl;
+//                    cout<<"the other is not finished yet. Continue cutting there"<<endl;
 
                     splitVertexFromCVE(cutPositions[parallel], currPattern, Fg_pattern, vfAdj, boundaryL, seamsList,
                                        minusOneSeams, releasedVert, toPattern_boundaryVerticesSet,lengthsCurr, cornerSet, handledVerticesSet);
-                    cout<<"finished  p ? "<<cutPositions[parallel]->finFlag<<endl;
+//                    cout<<"finished  p ? "<<cutPositions[parallel]->finFlag<<endl;
                 }
             }else{
-                cout<<"it has not been released, thus no parallel"<<endl;
+//                cout<<"it has not been released, thus no parallel"<<endl;
                 i--;
                 count ++;
             }
@@ -1993,11 +1993,16 @@ void updatePatchId(vector<cutVertEntry*>& cutPositions, const std::vector<std::v
     cout<<" The number of patches has changed. Create a mapping from one to the other and update all cve "<<endl;
     map<int, int> mapVertToNewPatch;
     for(int i = 0; i < boundaryLnew.size(); i++){
+//        cout<<"Patch "<<i<<endl;
         for(int j = 0; j < boundaryLnew[i].size(); j++){
+//            cout<<boundaryLnew[i][j]<<" ";
             mapVertToNewPatch[boundaryLnew[i][j]] = i;
         }
+        cout<<endl;
     }
     for(int i = 0; i < cutPositions.size(); i++){
+//        cout<<"Vert "<<cutPositions[i] -> vert<<" was on patch "<<cutPositions[i] -> patch;
         cutPositions[i] -> patch = mapVertToNewPatch[cutPositions[i] -> vert];
+//        cout<<" now it's on "<<cutPositions[i] -> patch<<endl;
     }
 }
