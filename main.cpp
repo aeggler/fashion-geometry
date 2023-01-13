@@ -822,7 +822,7 @@ int main(int argc, char *argv[])
                 std::vector<std::vector<int> > boundaryLnew;
                 igl::boundary_loop(Fg_pattern, boundaryLnew);
                 if(boundaryLnew.size() != boundaryL.size()){
-                    updatePatchId(cutPositions, boundaryLnew );
+                    updatePatchId(cutPositions, boundaryLnew , seamsList, minusOneSeamsList);
                 }
                 boundaryL.clear();
                 boundaryL= boundaryLnew;
@@ -844,7 +844,7 @@ int main(int argc, char *argv[])
                 cout<<"back, number of patches "<<boundaryLnew.size()<<endl;
 
                 if(boundaryLnew.size() != boundaryL.size()){
-                    updatePatchId(cutPositions, boundaryLnew );
+                    updatePatchId(cutPositions, boundaryLnew,seamsList, minusOneSeamsList );
                 }
                 boundaryL.clear();
                 boundaryL= boundaryLnew;

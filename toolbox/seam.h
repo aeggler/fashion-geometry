@@ -48,7 +48,12 @@ public:
     std::pair<int, int> getStartAndPatch1();
 
     std::pair<int, int> getStartAndPatch2();
-
+    void updatePatch1(int newPatchId){
+        patch1Id = newPatchId;
+    }
+    void updatePatch2(int newPatchId){
+        patch2Id = newPatchId;
+    }
     int seamLength();
     bool inverted;
     int getPatch1(){
@@ -106,6 +111,9 @@ public:
     int getNextVert(int currVert, std::vector<int>& boundaryL);
     int getPrevVert(int currVert, std::vector<int>& boundaryL);
 
+    void updatePatch(int newPatchId){
+        patchId = newPatchId;
+    }
 
     int getPatch(){
         return patchId;
