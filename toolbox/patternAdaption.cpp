@@ -560,10 +560,7 @@ void splitVertexFromCVE( cutVertEntry*& cve,
         cout<<newVg.row(newVertIdx)<<" new"<<endl;
         cout<<newVg.row(cve->vert)<<" vert"<<endl;
 
-
-
         cve->finFlag= true;
-        //TODO THE IDEA IS CORRECT BUT THE HANDLING DOES NOT WORK THAT WAY. THERE IS A CONSTRAINT PROBLEM COMING UP, ALSO HOW ARE DULPLICATES HANDLED AND HOW DO WE KNOW WHICH PATCH IS WHICH AFTER?
 
     }
 
@@ -1145,6 +1142,58 @@ double computeSeamLength(pair<int, int>& seamId, vector<seam*>& seamsList, const
     return len;
 }
 
+void getPrevAndNextVertAndStress(int seamType, int seamId, int vert, int & prevVert, int & nextVert, double & prevStress, double & nextStress,
+                                 vector<seam*>& seamsList, const vector<minusOneSeam*>& minusOneSeams, std::vector<std::vector<int> >& boundaryL, MatrixXi& Fg_pattern,
+                                 MatrixXd& lengthsOrig, MatrixXd& lengthsCurr, vector<vector<int>> & vfAdj, bool inverted ){
+    if(seamType == -1 ){
+
+        nextVert = minusOneSeams[seamId]->getNextVert(vert, boundaryL[minusOneSeams[seamId]->getPatch()]);
+        prevVert= minusOneSeams[seamId]->getPrevVert(vert, boundaryL[minusOneSeams[seamId]->getPatch()]);
+        int faceIdx = adjacentFaceToEdge(vert, nextVert, -1, vfAdj );
+        int whichEdge = findWhichEdgeOfFace(faceIdx, vert, nextVert, Fg_pattern);
+        // in case we stretch this is lower 1, the greater it is the smaller it gets, hence 1/w
+        nextStress = lengthsCurr(faceIdx, whichEdge) / lengthsOrig(faceIdx, whichEdge);
+
+        faceIdx = adjacentFaceToEdge(vert, prevVert, -1, vfAdj );
+        whichEdge = findWhichEdgeOfFace(faceIdx, vert, prevVert, Fg_pattern);
+        // in case we stretch this is lower 1, the greater it is the smaller it gets, hence 1/w
+        prevStress = lengthsCurr(faceIdx, whichEdge) / lengthsOrig(faceIdx, whichEdge);
+//
+
+    }else if(seamId>=0){
+        int patch  = seamsList[seamId]->getStartAndPatch1().second;
+        int patchsize =  boundaryL[patch].size();
+        nextVert = seamsList[seamId]->getNextVert1(vert, boundaryL[patch]);
+        prevVert = seamsList[seamId]->getPrevVert1(vert, boundaryL[patch]);
+
+        int faceIdx = adjacentFaceToEdge(vert, nextVert, -1, vfAdj );
+        int whichEdge = findWhichEdgeOfFace(faceIdx, vert, nextVert, Fg_pattern);
+        // in case we stretch this is lower 1, the greater it is the smaller it gets, hence 1/w
+        nextStress = lengthsCurr(faceIdx, whichEdge) / lengthsOrig(faceIdx, whichEdge);
+        faceIdx = adjacentFaceToEdge(vert, prevVert, -1, vfAdj );
+        whichEdge = findWhichEdgeOfFace(faceIdx, vert, prevVert, Fg_pattern);
+        // in case we stretch this is lower 1, the greater it is the smaller it gets, hence 1/w
+        prevStress = lengthsCurr(faceIdx, whichEdge) / lengthsOrig(faceIdx, whichEdge);
+
+    }else{
+        int patch = seamsList[(seamId+1)*(-1)] -> getStartAndPatch2ForCorres().second;
+        inverted =  seamsList[(seamId +1)*(-1)] -> inverted;
+        int patchsize =  boundaryL[patch].size();
+        int count=0;
+        nextVert = seamsList[(seamId +1)*(-1)]->getNextVert2(vert, boundaryL[patch]);
+        prevVert = seamsList[(seamId +1)*(-1)]->getPrevVert2(vert, boundaryL[patch]);
+        int faceIdx = adjacentFaceToEdge(vert, nextVert, -1, vfAdj );
+        int whichEdge = findWhichEdgeOfFace(faceIdx, vert, nextVert, Fg_pattern);
+        // in case we stretch this is lower 1, the greater it is the smaller it gets, hence 1/w
+        nextStress = lengthsCurr(faceIdx, whichEdge) / lengthsOrig(faceIdx, whichEdge);
+        faceIdx = adjacentFaceToEdge(vert, prevVert, -1, vfAdj );
+        whichEdge = findWhichEdgeOfFace(faceIdx, vert, prevVert, Fg_pattern);
+        // in case we stretch this is lower 1, the greater it is the smaller it gets, hence 1/w
+        prevStress = lengthsCurr(faceIdx, whichEdge) / lengthsOrig(faceIdx, whichEdge);
+
+    }
+}
+
 void setLP(std::vector<std::vector<int> >& boundaryL , vector<vector<int>> & vfAdj, MatrixXi& Fg_pattern,
         MatrixXd& lengthsOrig, MatrixXd& lengthsCurr,const std::vector<std::vector<std::pair<int, int>>>& edgesPerBoundary,
         map<int,
@@ -1414,7 +1463,16 @@ void setLP(std::vector<std::vector<int> >& boundaryL , vector<vector<int>> & vfA
             cve-> leftCorner =  -1;
             cve-> rightCorner = -1;
             int nextVert, prevVert;
+            int nextVertt, prevVertt;
+
             double nextStress, prevStress ;
+            double nextStresst, prevStresst ;
+
+            bool inverted = false;
+
+            if(seamId<0) inverted = seamsList[(-1)*(seamId+1)]->inverted;
+             getPrevAndNextVertAndStress( seamType, seamId, vert, prevVertt, nextVertt, prevStresst, nextStresst,
+                                              seamsList, minusOneSeams, boundaryL, Fg_pattern, lengthsOrig, lengthsCurr, vfAdj, inverted );
             if(seamType == -1 ){
 
                 nextVert = minusOneSeams[seamId]->getNextVert(vert, boundaryL[minusOneSeams[seamId]->getPatch()]);
@@ -1447,6 +1505,7 @@ void setLP(std::vector<std::vector<int> >& boundaryL , vector<vector<int>> & vfA
 
             }else{
                 int patch = seamsList[(mapVarIdToVertId[i]->seamIdInList+1)*(-1)]->getStartAndPatch2ForCorres().second;
+                inverted =  seamsList[(mapVarIdToVertId[i]->seamIdInList+1)*(-1)]-> inverted;
                 int patchsize =  boundaryL[patch].size();
                 int count=0;
                 nextVert = seamsList[(mapVarIdToVertId[i]->seamIdInList+1)*(-1)]->getNextVert2(vert, boundaryL[patch]);
@@ -1462,6 +1521,19 @@ void setLP(std::vector<std::vector<int> >& boundaryL , vector<vector<int>> & vfA
 
             }
 
+            if(nextVert != nextVertt){
+                cout<< nextVertt <<" NOT THE SAME next vert  "<<nextVert<<endl;
+            }
+            if(prevVertt != prevVert){
+                cout<< prevVert <<" NOT THE SAME prev vert  "<<prevVertt<<endl;
+            }
+            if(nextStress != nextStresst){
+                cout<< nextStress <<" NOT THE SAME stress next  "<<nextStresst<<endl;
+            }
+            if(prevStress != prevStresst){
+                cout<< prevStress <<" NOT THE SAME prev stress "<< prevStresst <<endl;
+            }
+
             if(cornerVert[vert]==1){
                 cout<<"corner "<<endl;
                 cve->cornerInitial = vert;
@@ -1471,36 +1543,61 @@ void setLP(std::vector<std::vector<int> >& boundaryL , vector<vector<int>> & vfA
                     firstInSeam = minusOneSeams[seamId]->getStartVert() ;
                 }else if(seamId>=0){
                     firstInSeam = seamsList[mapVarIdToVertId[i]->seamIdInList]->getStart1();
-
                 }else{
                     firstInSeam = seamsList[(mapVarIdToVertId[i]->seamIdInList+1)*(-1)]->getStart2();
-
                 }
-//                cout<<vert<<" comp to  "<<firstInSeam<<endl;
                 if(firstInSeam==vert){
                     cve -> startCorner = true;
                     cve->stress = nextStress;
+                    //experiment
+                    if(seamId<0 || inverted) cve->stress = prevStress;
                     cve->continuedDirection = Vg.row(nextVert)- Vg.row(vert);
-
                 }else{
                     cve-> endCorner = true;
                     cve->stress = prevStress;
+                    //experiment
+                    if(seamId<0 &&  !inverted) cve->stress = nextStress;
                     cve->continuedDirection = Vg.row(prevVert)- Vg.row(vert);
                 }
-
             }else{
                 cve->stress = (nextStress + prevStress)/2;
             }
-
             cout<<cve->stress<<" the stress there "<<endl;
             cutPositions.push_back(cve);
+        }
+    }
+    cout<<cutPositions.size()<<" size"<<endl<<endl;
+}
 
+
+void updateStress(vector<cutVertEntry*>& cutPositions, vector<seam*>& seamsList, vector<minusOneSeam*>& minusOneSeams,
+                  std::vector<std::vector<int> >& boundaryL, MatrixXi& Fg_pattern, vector<vector<int>> & vfAdj, MatrixXd& lengthsCurr
+                  ){
+
+    for(int i=0; i< cutPositions.size(); i++){
+        cutVertEntry* cve = cutPositions[i];
+        int nextVert, prevVert;
+        double nextStress, prevStress;
+        bool inverted = false;
+        if(cve->seamType ==-1){
+            inverted = seamsList[(cve->seamIdInList + 1)*(-1)]->inverted;
+        }
+        getPrevAndNextVertAndStress(cve -> seamType, cve -> seamIdInList, cve -> vert, prevVert, nextVert, prevStress, nextStress,
+                                     seamsList, minusOneSeams, boundaryL, Fg_pattern, lengthsOrig, lengthsCurr, vfAdj, inverted );
+
+        // it is a start corner and it still is!
+        if(cve->startCorner && (cve->vert == cve->cornerInitial)){
+            cve->stress = nextStress;
+            if(cve->seamIdInList <0 && !seamsList[(cve->seamIdInList+1)*(-1)]-> inverted ) cve->stress = prevStress;
+        }else if (cve->endCorner && (cve->vert == cve->cornerInitial)){
+            cve->stress = prevStress;
+            if(cve->seamIdInList <0 && !seamsList[(cve->seamIdInList+1)*(-1)]-> inverted ) cve->stress = nextStress;
+
+        }else{
+            cve -> stress = (prevStress + nextStress)/2;
         }
 
     }
-    cout<<cutPositions.size()<<" size"<<endl<<endl;
-
-
 }
 
 void tearFurther(vector<cutVertEntry*>& cutPositions, MatrixXd&  currPattern, MatrixXi& Fg_pattern,vector<seam*>& seamsList, vector<minusOneSeam*>& minusOneSeams,
@@ -1510,18 +1607,14 @@ void tearFurther(vector<cutVertEntry*>& cutPositions, MatrixXd&  currPattern, Ma
     //when releasing the boundary it can turn into a non manifold mesh. not sure if this causes further problems
     Eigen::MatrixXi B;
     bool isManifold = igl::is_vertex_manifold( Fg_pattern, B);
-//    if(!isManifold){
-//        for(int j=0; j<B.rows(); j++){
-//            if(B(j, 0)!=1){
-//                cout<<j<<" is not manifold; ";
-//            }
-//        }
-//    }
 
     vector<vector<int> > vfAdj;
     createVertexFaceAdjacencyList(Fg_pattern, vfAdj);
     MatrixXd lengthsCurr;
     igl::edge_lengths(currPattern, Fg_pattern, lengthsCurr);
+
+    updateStress( cutPositions, seamsList, minusOneSeams, boundaryL,  Fg_pattern, vfAdj, lengthsCurr);
+
     int  count = 0 ;
     for(int i = 0; i < 1; i++){
 //    cout<<"current count "<<count<<endl;
