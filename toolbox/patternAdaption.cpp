@@ -1145,10 +1145,22 @@ double computeSeamLength(pair<int, int>& seamId, vector<seam*>& seamsList, const
 void getPrevAndNextVertAndStress(int seamType, int seamId, int vert, int & prevVert, int & nextVert, double & prevStress, double & nextStress,
                                  vector<seam*>& seamsList, const vector<minusOneSeam*>& minusOneSeams, std::vector<std::vector<int> >& boundaryL, MatrixXi& Fg_pattern,
                                  MatrixXd& lengthsOrig, MatrixXd& lengthsCurr, vector<vector<int>> & vfAdj, bool inverted ){
+    int patch = -1;
+    for(int i=0; i<boundaryL.size(); i++){
+        for(int j=0; j<boundaryL[i].size(); j++){
+            if(boundaryL[i][j]==vert){
+                patch = i;
+                break;
+            }
+        }
+        if(patch != -1)break;
+    }
+    if(patch == -1) cout<< "no patch found ERROR"<<endl;
+
     if(seamType == -1 ){
 
-        nextVert = minusOneSeams[seamId]->getNextVert(vert, boundaryL[minusOneSeams[seamId]->getPatch()]);
-        prevVert= minusOneSeams[seamId]->getPrevVert(vert, boundaryL[minusOneSeams[seamId]->getPatch()]);
+        nextVert = minusOneSeams[seamId]->getNextVert(vert, boundaryL[patch]);
+        prevVert= minusOneSeams[seamId]->getPrevVert(vert, boundaryL[patch]);
         int faceIdx = adjacentFaceToEdge(vert, nextVert, -1, vfAdj );
         int whichEdge = findWhichEdgeOfFace(faceIdx, vert, nextVert, Fg_pattern);
         // in case we stretch this is lower 1, the greater it is the smaller it gets, hence 1/w
@@ -1160,8 +1172,10 @@ void getPrevAndNextVertAndStress(int seamType, int seamId, int vert, int & prevV
         prevStress = lengthsCurr(faceIdx, whichEdge) / lengthsOrig(faceIdx, whichEdge);
 //
 
-    }else if(seamId>=0){
-        int patch  = seamsList[seamId]->getStartAndPatch1().second;
+    }else if(seamId>=0|| inverted){
+        if(inverted){cout<<"inverted issue"<<endl;
+        seamId = (seamId+1)*(-1);}
+//        int patch  = seamsList[seamId]->getUpdatedPatch1();
         int patchsize =  boundaryL[patch].size();
         nextVert = seamsList[seamId]->getNextVert1(vert, boundaryL[patch]);
         prevVert = seamsList[seamId]->getPrevVert1(vert, boundaryL[patch]);
@@ -1176,12 +1190,11 @@ void getPrevAndNextVertAndStress(int seamType, int seamId, int vert, int & prevV
         prevStress = lengthsCurr(faceIdx, whichEdge) / lengthsOrig(faceIdx, whichEdge);
 
     }else{
-        int patch = seamsList[(seamId+1)*(-1)] -> getStartAndPatch2ForCorres().second;
-        inverted =  seamsList[(seamId +1)*(-1)] -> inverted;
+//        int patch = seamsList[(seamId+1)*(-1)] -> getUpdatedPatch2();
         int patchsize =  boundaryL[patch].size();
         int count=0;
-        nextVert = seamsList[(seamId +1)*(-1)]->getNextVert2(vert, boundaryL[patch]);
-        prevVert = seamsList[(seamId +1)*(-1)]->getPrevVert2(vert, boundaryL[patch]);
+        nextVert = seamsList[(seamId +1)*(-1)]->getPrevVert2(vert, boundaryL[patch]);
+        prevVert = seamsList[(seamId +1)*(-1)]->getNextVert2(vert, boundaryL[patch]);
         int faceIdx = adjacentFaceToEdge(vert, nextVert, -1, vfAdj );
         int whichEdge = findWhichEdgeOfFace(faceIdx, vert, nextVert, Fg_pattern);
         // in case we stretch this is lower 1, the greater it is the smaller it gets, hence 1/w
@@ -1478,16 +1491,17 @@ void setLP(std::vector<std::vector<int> >& boundaryL , vector<vector<int>> & vfA
                 int firstInSeam;
                 if(seamType == -1 ){
                     firstInSeam = minusOneSeams[seamId]->getStartVert() ;
-                }else if(seamId>=0){
+                }else if(seamId >= 0){
                     firstInSeam = seamsList[mapVarIdToVertId[i]->seamIdInList]->getStart1();
                 }else{
                     firstInSeam = seamsList[(mapVarIdToVertId[i]->seamIdInList+1)*(-1)]->getStart2();
                 }
-                if(firstInSeam==vert){
+                if(firstInSeam == vert){
                     cve -> startCorner = true;
                     cve->stress = nextStress;
                     //experiment
-                    if(seamId<0 || inverted) cve->stress = prevStress;
+                    if(seamId<0 && !inverted) cve->stress = prevStress;
+
                     cve->continuedDirection = Vg.row(nextVert)- Vg.row(vert);
                 }else{
                     cve-> endCorner = true;
@@ -1496,10 +1510,15 @@ void setLP(std::vector<std::vector<int> >& boundaryL , vector<vector<int>> & vfA
                     if(seamId<0 &&  !inverted) cve->stress = nextStress;
                     cve->continuedDirection = Vg.row(prevVert)- Vg.row(vert);
                 }
+
+                    cout<<endl<<(firstInSeam==vert) <<" first ? "<<inverted<<endl;
+                    cout<<nextStress<<" nextStress and Vert "<<nextVert<<endl;
+                    cout<<prevStress<<" prev stress and vert "<<prevVert<<endl;
+
             }else{
                 cve->stress = (nextStress + prevStress)/2;
             }
-            cout<<cve->stress<<" the stress there "<<endl;
+            cout<<cve->stress<<" the stress there "<<endl<<endl;
             cutPositions.push_back(cve);
         }
     }
@@ -1510,31 +1529,36 @@ void setLP(std::vector<std::vector<int> >& boundaryL , vector<vector<int>> & vfA
 void updateStress(vector<cutVertEntry*>& cutPositions, vector<seam*>& seamsList, vector<minusOneSeam*>& minusOneSeams,
                   std::vector<std::vector<int> >& boundaryL, MatrixXi& Fg_pattern, vector<vector<int>> & vfAdj, MatrixXd& lengthsCurr
                   ){
-
+    cout<<" update stress"<<endl;
     for(int i=0; i< cutPositions.size(); i++){
+        cout<<i<<" current"<<endl;
+
         cutVertEntry* cve = cutPositions[i];
         int nextVert, prevVert;
         double nextStress, prevStress;
         bool inverted = false;
-        if(cve->seamType ==-1){
+        if(cve->seamIdInList < 0){
             inverted = seamsList[(cve->seamIdInList + 1)*(-1)]->inverted;
         }
+        cout<<i<<" current even more"<<endl;
         getPrevAndNextVertAndStress(cve -> seamType, cve -> seamIdInList, cve -> vert, prevVert, nextVert, prevStress, nextStress,
                                      seamsList, minusOneSeams, boundaryL, Fg_pattern, lengthsOrig, lengthsCurr, vfAdj, inverted );
-
+        cout<<i<<" prev and stress set"<<endl;
         // it is a start corner and it still is!
         if(cve->startCorner && (cve->vert == cve->cornerInitial)){
             cve->stress = nextStress;
-            if(cve->seamIdInList <0 && !seamsList[(cve->seamIdInList+1)*(-1)]-> inverted ) cve->stress = prevStress;
+            if(cve->seamIdInList < 0 && ! inverted ) cve->stress = prevStress;
         }else if (cve->endCorner && (cve->vert == cve->cornerInitial)){
             cve->stress = prevStress;
-            if(cve->seamIdInList <0 && !seamsList[(cve->seamIdInList+1)*(-1)]-> inverted ) cve->stress = nextStress;
+            if(cve->seamIdInList < 0 && !inverted ) cve->stress = nextStress;
 
         }else{
             cve -> stress = (prevStress + nextStress)/2;
         }
 
     }
+    cout<<" end update stress"<<endl;
+
 }
 
 void tearFurther(vector<cutVertEntry*>& cutPositions, MatrixXd&  currPattern, MatrixXi& Fg_pattern,vector<seam*>& seamsList, vector<minusOneSeam*>& minusOneSeams,
@@ -2028,19 +2052,22 @@ void updatePatchId(vector<cutVertEntry*>& cutPositions, const std::vector<std::v
 //            cout<<boundaryLnew[i][j]<<" ";
             mapVertToNewPatch[boundaryLnew[i][j]] = i;
         }
-        cout<<endl;
     }
     for(int i = 0; i < cutPositions.size(); i++){
 //        cout<<"Vert "<<cutPositions[i] -> vert<<" was on patch "<<cutPositions[i] -> patch;
         cutPositions[i] -> patch = mapVertToNewPatch[cutPositions[i] -> vert];
 //        cout<<" now it's on "<<cutPositions[i] -> patch<<endl;
     }
+//  ATTENTTION THE SEAM ID OF THE PATCH IS NOT UPDATED !!!
     for(int i=0; i < seamsList.size(); i++){
         seamsList[i]-> updatePatch1(mapVertToNewPatch[seamsList[i]-> getStart1()] );
         seamsList[i]-> updatePatch2(mapVertToNewPatch[seamsList[i]-> getStart2()] );
 
-}
+    }
+
     for(int i=0; i < minusOneSeams.size(); i++){
         minusOneSeams[i]-> updatePatch(mapVertToNewPatch[minusOneSeams[i]-> getStartVert()]);
     }
+//    cout<<" -1 seams finished "<<endl;
+
 }

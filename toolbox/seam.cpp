@@ -26,6 +26,8 @@ int patch2endBoundaryLoopIdx, int theirDist, bool invertedFlag
 ) {
     this -> patch1Id = patch1Id;
     this -> patch2Id = patch2Id;
+    this -> updatedPatchId1 = patch1Id;
+    this -> updatedPatchId2 = patch2Id;
     this -> patch1startCornerId = patch1startCornerId;
     this -> patch2startCornerId = patch2startCornerId;
     this -> patch1endCornerId = patch1endCornerId;
@@ -489,6 +491,7 @@ void computeAllSeams(const std::vector<std::vector<int> >& boundaryL, std::map<i
 minusOneSeam::minusOneSeam(int patchId, int startVert, int endVert, int startIdInBoundaryLoop, int endIdInBoundaryLoop,
                            int len) {
     this-> patchId = patchId;
+    this-> updatedPatchId = patchId;
     this -> startVert = startVert;
     this -> endVert = endVert;
     this -> startIdInBoundaryLoop = startIdInBoundaryLoop;

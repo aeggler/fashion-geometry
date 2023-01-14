@@ -848,6 +848,7 @@ int main(int argc, char *argv[])
                 }
                 boundaryL.clear();
                 boundaryL= boundaryLnew;
+                cout<<" restart adaption "<<endl;
                 viewer.core().is_animating = true;
                 adaptionFlag = true;
 
@@ -1696,7 +1697,6 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
 //    MatrixXd perFaceV_adapt(Fg_pattern.rows(), 2);
 //    colPatternU.resize(Fg_pattern.rows(), 3);
 //    colPatternV.resize(Fg_pattern.rows(), 3);
-
 //    t.printTime(" init ");
     for(int i=0; i<5; i++){
 
@@ -1708,10 +1708,15 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
 
 //        t.printTime(" corner mapped ");
         // before cutting the boundaries should be the same
-        projectBackOnBoundary( toPattern, p_adaption, seamsList,minusOneSeamsList,  Fg_pattern, Fg_pattern_orig, boundaryL_toPattern, releasedVert ,false );
+        projectBackOnBoundary( toPattern, p_adaption, seamsList,minusOneSeamsList,  Fg_pattern,
+                               Fg_pattern_orig, boundaryL_toPattern, releasedVert ,false );
+
+
         solveCornerMappedVertices();
+
 //        t.printTime(" project back  ");
     }
+
     currPattern = p_adaption;
 
     viewer.selected_data_index = 1;
@@ -1735,6 +1740,7 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
     viewer.selected_data_index = 0;
     viewer.data().clear();
     viewer.data().set_mesh(currPattern, Fg_pattern);
+
     viewer.data().uniform_colors(ambient, diffuse, specular);
     viewer.data().show_texture = false;
     viewer.data().set_face_based(false);

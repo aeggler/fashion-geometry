@@ -14,6 +14,7 @@ class seam {
 private:
     int patch1Id;
     int patch2Id;
+    int updatedPatchId1; int updatedPatchId2;
 
     int patch1startCornerId;
     int patch2startCornerId;
@@ -48,11 +49,17 @@ public:
     std::pair<int, int> getStartAndPatch1();
 
     std::pair<int, int> getStartAndPatch2();
+    int getUpdatedPatch1(){
+        return updatedPatchId1;
+    };
+    int getUpdatedPatch2(){
+        return updatedPatchId2;
+    };
     void updatePatch1(int newPatchId){
-        patch1Id = newPatchId;
+        updatedPatchId1 = newPatchId;
     }
     void updatePatch2(int newPatchId){
-        patch2Id = newPatchId;
+        updatedPatchId2 = newPatchId;
     }
     int seamLength();
     bool inverted;
@@ -93,6 +100,7 @@ public:
 class minusOneSeam{
 private:
     int patchId;
+    int updatedPatchId;
     int startVert;
     int endVert;
     int startIdInBoundaryLoop;
@@ -112,9 +120,12 @@ public:
     int getPrevVert(int currVert, std::vector<int>& boundaryL);
 
     void updatePatch(int newPatchId){
-        patchId = newPatchId;
+        updatedPatchId = newPatchId;
     }
 
+    int getUpdatedPatch(){
+        return updatedPatchId;
+    };
     int getPatch(){
         return patchId;
     };
