@@ -1529,9 +1529,7 @@ void setLP(std::vector<std::vector<int> >& boundaryL , vector<vector<int>> & vfA
 void updateStress(vector<cutVertEntry*>& cutPositions, vector<seam*>& seamsList, vector<minusOneSeam*>& minusOneSeams,
                   std::vector<std::vector<int> >& boundaryL, MatrixXi& Fg_pattern, vector<vector<int>> & vfAdj, MatrixXd& lengthsCurr
                   ){
-    cout<<" update stress"<<endl;
     for(int i=0; i< cutPositions.size(); i++){
-        cout<<i<<" current"<<endl;
 
         cutVertEntry* cve = cutPositions[i];
         int nextVert, prevVert;
@@ -1540,10 +1538,8 @@ void updateStress(vector<cutVertEntry*>& cutPositions, vector<seam*>& seamsList,
         if(cve->seamIdInList < 0){
             inverted = seamsList[(cve->seamIdInList + 1)*(-1)]->inverted;
         }
-        cout<<i<<" current even more"<<endl;
         getPrevAndNextVertAndStress(cve -> seamType, cve -> seamIdInList, cve -> vert, prevVert, nextVert, prevStress, nextStress,
                                      seamsList, minusOneSeams, boundaryL, Fg_pattern, lengthsOrig, lengthsCurr, vfAdj, inverted );
-        cout<<i<<" prev and stress set"<<endl;
         // it is a start corner and it still is!
         if(cve->startCorner && (cve->vert == cve->cornerInitial)){
             cve->stress = nextStress;
@@ -1555,9 +1551,7 @@ void updateStress(vector<cutVertEntry*>& cutPositions, vector<seam*>& seamsList,
         }else{
             cve -> stress = (prevStress + nextStress)/2;
         }
-
     }
-    cout<<" end update stress"<<endl;
 
 }
 
@@ -2059,15 +2053,20 @@ void updatePatchId(vector<cutVertEntry*>& cutPositions, const std::vector<std::v
 //        cout<<" now it's on "<<cutPositions[i] -> patch<<endl;
     }
 //  ATTENTTION THE SEAM ID OF THE PATCH IS NOT UPDATED !!!
+//  some  SEAMS ARE SPLIT BETWEE TWO PATCHES (THE NEW PATCH) AND THUS THE SEAMID IS NOT THE SAME FOR START END END
     for(int i=0; i < seamsList.size(); i++){
         seamsList[i]-> updatePatch1(mapVertToNewPatch[seamsList[i]-> getStart1()] );
         seamsList[i]-> updatePatch2(mapVertToNewPatch[seamsList[i]-> getStart2()] );
+        seamsList[i]->seamSplit1 = (mapVertToNewPatch[seamsList[i]-> getStart1()] == mapVertToNewPatch[seamsList[i]-> getEndCornerIds().first]);
+        seamsList[i]->seamSplit2 = (mapVertToNewPatch[seamsList[i]-> getStart2()] == mapVertToNewPatch[seamsList[i]-> getEndCornerIds().second]);
+
 
     }
 
     for(int i=0; i < minusOneSeams.size(); i++){
         minusOneSeams[i]-> updatePatch(mapVertToNewPatch[minusOneSeams[i]-> getStartVert()]);
+        minusOneSeams[i]->seamSplit = (mapVertToNewPatch[minusOneSeams[i]-> getStartVert()] == mapVertToNewPatch[minusOneSeams[i]-> getEndVert()]);
+
     }
-//    cout<<" -1 seams finished "<<endl;
 
 }

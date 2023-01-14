@@ -29,9 +29,13 @@ private:
     int length; // to avoid annoying length computation modulo
 
 
+
+
 public:
     std::map<int, int> duplicates;
     std::map<int, int> duplicates2;// other side of the seam
+    bool seamSplit1;
+    bool seamSplit2;
 
     seam(int patch1Id, int patch2Id,
          int patch1startCornerId, // boundary loop index [patch1id][patch1startCornerid] to end
@@ -109,6 +113,9 @@ private:
 
 public:
     std::map<int, int> duplicates;
+    bool seamSplit;
+
+
     minusOneSeam(int patchId,
     int startVert,
     int endVert,
