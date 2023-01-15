@@ -1557,7 +1557,7 @@ void updateStress(vector<cutVertEntry*>& cutPositions, vector<seam*>& seamsList,
 
 void tearFurther(vector<cutVertEntry*>& cutPositions, MatrixXd&  currPattern, MatrixXi& Fg_pattern,vector<seam*>& seamsList, vector<minusOneSeam*>& minusOneSeams,
                  map<int, pair<int, int>> & releasedVert, set<int>& toPattern_boundaryVerticesSet,  std::vector<std::vector<int> >& boundaryL,
-                 set<int> & cornerSet, set<int>& handledVerticesSet,  bool& prevFinished ){
+                 set<int> & cornerSet, set<int>& handledVerticesSet,  bool& prevFinished, const bool & preferManySmallCuts ){
     cout<<endl<<endl<<"-----------------------"<<endl<<endl;
     //when releasing the boundary it can turn into a non manifold mesh. not sure if this causes further problems
     Eigen::MatrixXi B;
@@ -1570,8 +1570,11 @@ void tearFurther(vector<cutVertEntry*>& cutPositions, MatrixXd&  currPattern, Ma
 
     updateStress( cutPositions, seamsList, minusOneSeams, boundaryL,  Fg_pattern, vfAdj, lengthsCurr);
 
-    if(prevFinished){
+    if(prevFinished || preferManySmallCuts){
+        // if we want many small cuts we sort always and there is no need to finish a seam before handling the next one!
         cout<<"It's time to sort again"<<endl;
+        sort(cutPositions.begin(), cutPositions.end(), []( cutVertEntry* &a,  cutVertEntry* &b) { return a->stress > b-> stress; });
+
     }
 //
     int  count = 0 ;

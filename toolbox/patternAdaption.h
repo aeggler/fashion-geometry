@@ -92,7 +92,8 @@ void tearFurther(vector<cutVertEntry*>& cutPositions, MatrixXd&  currPattern, Ma
                  map<int, pair<int, int>> & releasedVert, set<int>& toPattern_boundaryVerticesSet,  std::vector<std::vector<int> >& boundaryL,
                  set<int> & cornerSet,
                  set<int>& handledVerticesSet,
-                 bool& prevFinished
+                 bool& prevFinished,
+                 const bool &preferManySmallCuts
 );
 void smoothCuts(vector<cutVertEntry*>& cutPositions, MatrixXd&  currPattern, MatrixXi& Fg_pattern,vector<seam*>& seamsList, vector<minusOneSeam*>& minusOneSeams,
                 map<int, pair<int, int>> & releasedVert, set<int>& toPattern_boundaryVerticesSet,  std::vector<std::vector<int> >& boundaryL, set<int> & cornerSet );

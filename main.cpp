@@ -121,7 +121,8 @@ static bool StressV = false;
 static bool StressDiffJac = false;
 static bool StressJac = false;
 int whichPatchMove=0;
-bool prevTearFinished;// indicating if a cut is finished or not to make sure we sort only after a completed cut 
+bool prevTearFinished;// indicating if a cut is finished or not to make sure we sort only after a completed cut
+bool preferManySmallCuts= false;
 
 std::vector<std::pair<double,double>> perFaceTargetNorm;
 bool jacFlag=false;// not used anymore
@@ -840,7 +841,7 @@ int main(int argc, char *argv[])
                 adaptionFlag = false;
                 viewer.core().is_animating = false;
                 tearFurther(cutPositions, currPattern, Fg_pattern, seamsList, minusOneSeamsList, releasedVert,
-                            toPattern_boundaryVerticesSet, boundaryL, cornerSet, handledVerticesSet, prevTearFinished);
+                            toPattern_boundaryVerticesSet, boundaryL, cornerSet, handledVerticesSet, prevTearFinished, preferManySmallCuts);
 
                 std::vector<std::vector<int> > boundaryLnew;
                 igl::boundary_loop(Fg_pattern, boundaryLnew);
@@ -875,6 +876,7 @@ int main(int argc, char *argv[])
 //                adaptionFlag = true;
             }
             if(ImGui::Checkbox("Allow L-shaped fabric insertion", &LShapeAllowed)){}
+            if(ImGui::Checkbox("Prefer many small cuts", &preferManySmallCuts));
 
         }
         menu.draw_viewer_menu();
