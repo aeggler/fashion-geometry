@@ -1557,7 +1557,7 @@ void updateStress(vector<cutVertEntry*>& cutPositions, vector<seam*>& seamsList,
 
 void tearFurther(vector<cutVertEntry*>& cutPositions, MatrixXd&  currPattern, MatrixXi& Fg_pattern,vector<seam*>& seamsList, vector<minusOneSeam*>& minusOneSeams,
                  map<int, pair<int, int>> & releasedVert, set<int>& toPattern_boundaryVerticesSet,  std::vector<std::vector<int> >& boundaryL,
-                 set<int> & cornerSet, set<int>& handledVerticesSet){
+                 set<int> & cornerSet, set<int>& handledVerticesSet,  bool& prevFinished ){
     cout<<endl<<endl<<"-----------------------"<<endl<<endl;
     //when releasing the boundary it can turn into a non manifold mesh. not sure if this causes further problems
     Eigen::MatrixXi B;
@@ -1569,6 +1569,10 @@ void tearFurther(vector<cutVertEntry*>& cutPositions, MatrixXd&  currPattern, Ma
     igl::edge_lengths(currPattern, Fg_pattern, lengthsCurr);
 
     updateStress( cutPositions, seamsList, minusOneSeams, boundaryL,  Fg_pattern, vfAdj, lengthsCurr);
+
+    if(prevFinished){
+        cout<<"It's time to sort again"<<endl;
+    }
 //
     int  count = 0 ;
     for(int i = 0; i < 1; i++){
@@ -1597,6 +1601,7 @@ void tearFurther(vector<cutVertEntry*>& cutPositions, MatrixXd&  currPattern, Ma
 
                     splitVertexFromCVE(cutPositions[parallel], currPattern, Fg_pattern, vfAdj, boundaryL, seamsList,
                                        minusOneSeams, releasedVert, toPattern_boundaryVerticesSet,lengthsCurr, cornerSet, handledVerticesSet);
+                    prevFinished = cutPositions[parallel]->finFlag;
 //                    cout<<"finished  p ? "<<cutPositions[parallel]->finFlag<<endl;
                 }
             }else{
@@ -1613,6 +1618,7 @@ void tearFurther(vector<cutVertEntry*>& cutPositions, MatrixXd&  currPattern, Ma
                 splitVertexFromCVE(cutPositions[count], currPattern, Fg_pattern, vfAdj, boundaryL, seamsList, minusOneSeams, releasedVert,
                                    toPattern_boundaryVerticesSet,lengthsCurr, cornerSet, handledVerticesSet );
                 cout<<"finished ? "<<cutPositions[count]->finFlag<<endl;
+                prevFinished = cutPositions[count] -> finFlag;
             }
 
 //         int counterPart = cutPositions[count]->counterPartIdx;
@@ -1642,6 +1648,8 @@ void tearFurther(vector<cutVertEntry*>& cutPositions, MatrixXd&  currPattern, Ma
                 splitVertexFromCVE(cutPositions[parallel], currPattern, Fg_pattern, vfAdj, boundaryL, seamsList,
                                    minusOneSeams, releasedVert, toPattern_boundaryVerticesSet,lengthsCurr, cornerSet, handledVerticesSet);
                 cout<<"finished  p ? "<<cutPositions[parallel]->finFlag<<endl;
+                prevFinished = (prevFinished && cutPositions[parallel] -> finFlag);
+
             }else{
                 cout<<"parallel already finished"<<endl;
             }
@@ -1649,7 +1657,7 @@ void tearFurther(vector<cutVertEntry*>& cutPositions, MatrixXd&  currPattern, Ma
         }
 
     }
-    cout<<"--------------------"<<endl;
+    cout<<prevFinished<<" --------------------"<<endl;
 }
 void smoothSingleCut( cutVertEntry*& cve, MatrixXd& Vg, std::vector<std::vector<int> >& boundaryL){
     auto boundary = boundaryL[cve->patch];
@@ -1751,7 +1759,7 @@ void computeTear(Eigen::MatrixXd & fromPattern, MatrixXd&  currPattern, MatrixXi
                  vector<seam*>& seamsList, vector<minusOneSeam*>& minusOneSeams, std::vector<std::vector<int> >& boundaryL, bool & finished,
                  const std::vector<std::vector<std::pair<int, int>>>& cornersPerBoundary, map<int, vector<pair<int, int>>>& seamIdPerCorner,
                  VectorXd& cornerVert, vector<cutVertEntry*>& cutPositions, map<int, pair<int, int>> & releasedVert,
-                 set<int>& toPattern_boundaryVerticesSet, set<int> & cornerSet, set<int>& handledVerticesSet , MatrixXd& Vg )
+                 set<int>& toPattern_boundaryVerticesSet, set<int> & cornerSet, set<int>& handledVerticesSet , MatrixXd& Vg, bool& prevFinished )
                  {
 
     vector<vector<int> > vfAdj;
@@ -1803,6 +1811,7 @@ void computeTear(Eigen::MatrixXd & fromPattern, MatrixXd&  currPattern, MatrixXi
     }
 
     int count=0;
+    prevFinished = false;
     // we cut the first one
     for(int i = 0; i < 1; i++){// cutPositions.size(); i++){
         if(cutPositions[count]->handled){
@@ -1815,7 +1824,7 @@ void computeTear(Eigen::MatrixXd & fromPattern, MatrixXd&  currPattern, MatrixXi
         int currVert = cutPositions[count]->vert;
         splitVertexFromCVE(cutPositions[count], currPattern, Fg_pattern, vfAdj, boundaryL, seamsList,
                            minusOneSeams, releasedVert, toPattern_boundaryVerticesSet,lengthsCurr, cornerSet, handledVerticesSet);
-
+        prevFinished = cutPositions[count] -> finFlag;
 
         if( releasedVertNew.find(currVert) != releasedVertNew.end()){
             // dann können müssen wir ja auch die passende andere seite des cuts öffnen
@@ -1824,8 +1833,11 @@ void computeTear(Eigen::MatrixXd & fromPattern, MatrixXd&  currPattern, MatrixXi
             if(parallel<0) {cout<<"no proper parallel found"<<endl;continue;}
             splitVertexFromCVE(cutPositions[parallel], currPattern, Fg_pattern, vfAdj, boundaryL, seamsList,
                                minusOneSeams, releasedVert, toPattern_boundaryVerticesSet,lengthsCurr, cornerSet, handledVerticesSet);
+            prevFinished = (prevFinished && cutPositions[parallel] -> finFlag);
 
         }
+
+
 
 //        int counterPart = cutPositions[count]->counterPartIdx;
 //        if(counterPart >0){
@@ -1838,9 +1850,9 @@ void computeTear(Eigen::MatrixXd & fromPattern, MatrixXd&  currPattern, MatrixXi
 //        }
 
     }
-    for(int i=0; i<cutPositions.size(); i++){
-        cout<<cutPositions[i]->cornerInitial<<endl;
-    }
+//    for(int i=0; i<cutPositions.size(); i++){
+//        cout<<cutPositions[i]->cornerInitial<<endl;
+//    }
 cout<<"fin compute tear "<<endl ;
 }
 

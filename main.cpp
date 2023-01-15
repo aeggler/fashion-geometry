@@ -121,6 +121,8 @@ static bool StressV = false;
 static bool StressDiffJac = false;
 static bool StressJac = false;
 int whichPatchMove=0;
+bool prevTearFinished;// indicating if a cut is finished or not to make sure we sort only after a completed cut 
+
 std::vector<std::pair<double,double>> perFaceTargetNorm;
 bool jacFlag=false;// not used anymore
 
@@ -804,7 +806,6 @@ int main(int argc, char *argv[])
                 viewer.core().is_animating = true;
                 adaptionFlag = true;
             }
-
             if(ImGui::Button("Compute first Tear", ImVec2(-1, 0))){
                 simulate = false;
                 adaptionFlag = false;
@@ -813,7 +814,9 @@ int main(int argc, char *argv[])
                 bool fin = false;
                 computeTear(fromPattern, currPattern, Fg_pattern, Fg_pattern_orig, seamsList ,
                             minusOneSeamsList, boundaryL, fin, cornerPerBoundary, seamIdPerCorner,
-                            cornerVertices, cutPositions, releasedVert, toPattern_boundaryVerticesSet, cornerSet, handledVerticesSet, Vg_pattern);
+                            cornerVertices, cutPositions, releasedVert, toPattern_boundaryVerticesSet, cornerSet,
+                            handledVerticesSet,
+                            Vg_pattern, prevTearFinished);
 
 
 //                viewer.selected_data_index = 0;
@@ -825,7 +828,7 @@ int main(int argc, char *argv[])
                     updatePatchId(cutPositions, boundaryLnew , seamsList, minusOneSeamsList);
                 }
                 boundaryL.clear();
-                boundaryL= boundaryLnew;
+                boundaryL = boundaryLnew;
 
                 viewer.core().is_animating = true;
                 adaptionFlag = true;
@@ -837,7 +840,7 @@ int main(int argc, char *argv[])
                 adaptionFlag = false;
                 viewer.core().is_animating = false;
                 tearFurther(cutPositions, currPattern, Fg_pattern, seamsList, minusOneSeamsList, releasedVert,
-                            toPattern_boundaryVerticesSet, boundaryL, cornerSet, handledVerticesSet);
+                            toPattern_boundaryVerticesSet, boundaryL, cornerSet, handledVerticesSet, prevTearFinished);
 
                 std::vector<std::vector<int> > boundaryLnew;
                 igl::boundary_loop(Fg_pattern, boundaryLnew);

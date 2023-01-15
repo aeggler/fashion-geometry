@@ -75,7 +75,8 @@ void computeTear(MatrixXd& fromPatternFile,
                  std::set<int>& toPattern_boundaryVerticesSet,
                  set<int> & cornerSet,
                  set<int>& handledVerticesSet,
-                 MatrixXd& Vg
+                 MatrixXd& Vg,
+                 bool& prevFinished
                  );
 
 
@@ -88,7 +89,10 @@ void projectBackOnBoundary(const MatrixXd & Vg_to, MatrixXd& p, const vector<sea
                            );
 
 void tearFurther(vector<cutVertEntry*>& cutPositions, MatrixXd&  currPattern, MatrixXi& Fg_pattern,vector<seam*>& seamsList, vector<minusOneSeam*>& minusOneSeams,
-                 map<int, pair<int, int>> & releasedVert, set<int>& toPattern_boundaryVerticesSet,  std::vector<std::vector<int> >& boundaryL, set<int> & cornerSet, set<int>& handledVerticesSet
+                 map<int, pair<int, int>> & releasedVert, set<int>& toPattern_boundaryVerticesSet,  std::vector<std::vector<int> >& boundaryL,
+                 set<int> & cornerSet,
+                 set<int>& handledVerticesSet,
+                 bool& prevFinished
 );
 void smoothCuts(vector<cutVertEntry*>& cutPositions, MatrixXd&  currPattern, MatrixXi& Fg_pattern,vector<seam*>& seamsList, vector<minusOneSeam*>& minusOneSeams,
                 map<int, pair<int, int>> & releasedVert, set<int>& toPattern_boundaryVerticesSet,  std::vector<std::vector<int> >& boundaryL, set<int> & cornerSet );
