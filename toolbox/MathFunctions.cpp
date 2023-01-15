@@ -6,6 +6,7 @@ const Real eps = static_cast<Real>(1e-6);
 
 typedef double Real;
 using namespace std;
+using namespace Eigen;
 using Vector3r = Eigen::Matrix<Real, 3, 1, Eigen::DontAlign>;
 using Matrix4r = Eigen::Matrix<Real, 4, 4, Eigen::DontAlign>;
 

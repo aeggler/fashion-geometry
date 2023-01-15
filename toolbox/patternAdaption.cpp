@@ -2085,3 +2085,42 @@ void updatePatchId(vector<cutVertEntry*>& cutPositions, const std::vector<std::v
     }
 
 }
+
+void computeCovarianceMatrix( MatrixXd& pointVec, VectorXd& barycenter, Matrix2d& m){
+    int n;
+    n = pointVec.rows();
+    // first compute the barycenter
+    barycenter = VectorXd::Zero(pointVec.cols());
+    for(int i = 0; i < n; i++){
+        barycenter += pointVec.row(i);
+
+    }
+    barycenter /= n;
+
+    // compute covariance matrix
+    m.resize(2, 2);
+    m = Matrix2d::Zero(2, 2);
+    MatrixXd p(2,1);
+    for(int i = 0; i < n; i++){
+        p= (pointVec.row(i)- barycenter.transpose());
+        m += p*p.transpose();
+
+    }
+}
+void fitVecToPointSet( MatrixXd& pointVec, VectorXd& vec ){
+    Eigen::Matrix2d covMat ;
+    VectorXd b;
+    computeCovarianceMatrix(pointVec, b, covMat);
+//
+    Eigen::SelfAdjointEigenSolver<Eigen::Matrix2d> eig(covMat);
+    Eigen::VectorXd eval = eig.eigenvalues();
+    Eigen::Matrix2d evec = eig.eigenvectors();
+    eval = eval.cwiseAbs();
+    int minInd;
+    eval.minCoeff(&minInd);
+
+    vec(0) = evec(0,minInd);
+    vec(1) = evec(1,minInd);
+    vec += b;
+//
+}
