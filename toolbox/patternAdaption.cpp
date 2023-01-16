@@ -184,7 +184,7 @@ void computeMidVecBasedOnPCA(VectorXd& midVec, vector<vector<int>>& vvAdj, vecto
     }
     fitVecToPointSet( dirs, midVec );
     midVec(2) = 0;// Vg(vert, 2); // just to get the 3rd constant dimension right
-    midVec= midVec.normalized();
+    midVec = midVec.normalized();
     cout<<" the newly computed midvec of "<<vert<<" is "<<midVec.transpose()<<endl;
 }
 
@@ -479,19 +479,72 @@ void splitVertexFromCVE( cutVertEntry*& cve,
 
     //  we have the midvec direction, but don't know for sure if adding or subtract. Take tthe direction that has longer distance to the existing boundary to not go backwards.
     // This is a heuristic.
+    Vector3d A, Btemp;
+    if(cve->levelOne){
+        A = Vg.row(boundary[plusOneId]);
+        Btemp = Vg.row(cve -> vert);
+    }else{
+        A = Vg.row(cve -> leftCorner);
+        Btemp = Vg.row(cve -> rightCorner);
+    }
+
+
+    Vector3d C = Vg.row(cve -> vert).transpose()+ midVec;
+    //(AB,AM), where M(X,Y) is the query point:
+    //https://stackoverflow.com/questions/1560492/how-to-tell-whether-a-point-is-to-the-right-or-left-side-of-a-line
+    auto sign1 = abs((Btemp(0)-A(0) )*(A(1)-C(1))-(Btemp(1)-A(1))*(A(0)-C(0)));
+    sign1 /= sqrt((Btemp(0)-A(0) )*(Btemp(0)-A(0) ) + (Btemp(1)-A(1))*(Btemp(1)-A(1)));
+    C = Vg.row(cve -> vert).transpose() + newMidVec;
+    auto sign2 = abs((Btemp(0)-A(0) )*(A(1)-C(1))-(Btemp(1)-A(1))*(A(0)-C(0)));
+    sign2 /= sqrt((Btemp(0)-A(0) )*(Btemp(0)-A(0) ) + (Btemp(1)-A(1))*(Btemp(1)-A(1)));
+
+
+
     for(int i=0; i<vvAdj[cve -> vert].size(); i++) {
         int adjVert = vvAdj[cve->vert][i];
         if(! (adjVert ==boundary[ minusOneId] || adjVert == boundary[plusOneId]) )continue; // we want a border
+        //todo if levelone take the side of the other interior vertices
         // the direction we want has a longer distance to the border
         Vector3d edgeVec = Vg.row(adjVert)- Vg.row(cve -> vert);
         edgeVec= edgeVec.normalized();
         // both have unit distance, so as a measure we can take the distance from another
         double posVec = (midVec - edgeVec).norm();
         double negVec = (newMidVec - edgeVec).norm();
-        if(negVec > posVec){
+        cout<<posVec<<" pos and neg "<<negVec<<endl;
+        cout<<sign1<<" sign 1 and 2 "<<sign2<<endl;
+        // take the longer sign. If they are the same (= initial), take the one on the same side as interior vertices
+        double eps = 0.0001;
+        if(sign2 > sign1){
             midVec = newMidVec;
             cout<<"WE CHANGED THE SIGN OF THE MIDVEC!"<<endl;
+        }else if ((sign1- sign2) < eps){
+            cout<<"initial!"<<endl;
+
+            Vector3d C = Vg.row(cve -> vert).transpose()+ midVec;
+            //(AB,AM), where M(X,Y) is the query point:
+            //https://stackoverflow.com/questions/1560492/how-to-tell-whether-a-point-is-to-the-right-or-left-side-of-a-line
+            auto sign1 =(((Btemp(0)-A(0) )*(A(1)-C(1))-(Btemp(1)-A(1))*(A(0)-C(0))) > 0);
+            cout<<"side of midvec "<<sign1<<endl;
+            // take the side of interior vertices
+            for(int j=0; j<vvAdj[cve -> vert].size(); j++) {
+                int testInt = vvAdj[cve->vert][j];
+                if ((testInt == boundary[minusOneId] || testInt == boundary[plusOneId]))continue;
+                // it is an interior
+                C = Vg.row(testInt);
+                auto sign2 = (((Btemp(0)-A(0) )*(A(1)-C(1))-(Btemp(1)-A(1))*(A(0)-C(0))) > 0);
+                cout<<"side of interior vert "<<sign2<<endl;
+                if(sign1!= sign2){
+                    midVec = newMidVec;
+                    cout<<"WE CHANGED THE SIGN OF THE MIDVEC!"<<endl;
+                }
+                break;
+            }
+
         }
+//        if(negVec > posVec){
+//            midVec = newMidVec;
+//            cout<<"WE CHANGED THE SIGN OF THE MIDVEC!"<<endl;
+//        }
         break;
 
     }
@@ -501,7 +554,7 @@ void splitVertexFromCVE( cutVertEntry*& cve,
     int idxofClosest = -1;
     for(int i=0; i<vvAdj[cve -> vert ].size(); i++){
         int adjVert = vvAdj[cve -> vert][i];
-        if(adjVert== minusOneId || adjVert == plusOneId) continue; // we want a middle one
+        if(adjVert== boundary[minusOneId ]|| adjVert == boundary[plusOneId]) continue; // we want a middle one
 
         Vector3d edgeVec = Vg.row(adjVert)- Vg.row(cve -> vert);
         edgeVec= edgeVec.normalized();
