@@ -184,12 +184,13 @@ void computeMidVecBasedOnPCA(VectorXd& midVec, vector<vector<int>>& vvAdj, vecto
     }
     cout<<"before fitting"<<endl;
     fitVecToPointSet( dirs, midVec );
-    midVec(2) = Vg(vert, 2); // just to get the 3rd constant dimension right
-    cout<<" the newly computed midvec of "<<vert<<" is "<<midVec<<endl;
+    midVec(2) =0;// Vg(vert, 2); // just to get the 3rd constant dimension right
+    midVec= midVec.normalized();
+    cout<<" the newly computed midvec of "<<vert<<" is "<<midVec.transpose()<<endl;
 }
 
     bool checkIfTearIsUseful(int vert, Vector3d& cutDirection,  vector<vector<int>>& vvAdj,  vector<vector<int>>& vfAdj, MatrixXd& Vg ,
-                         MatrixXd& lengthsCurr,  MatrixXd& lengthsOrig, MatrixXi& Fg_pattern){
+                         MatrixXd& lengthsCurr,  MatrixXd& lengthsOrig, MatrixXi& Fg_pattern, VectorXd& ws, bool preComputed ){
     // check if it makes sense, i.e. releases stress cutting in the direction
     // if the dot product for at least one adjacent vertex of the one we are going to cut is large enough we allow to cut further
     // todo 3.1. maybe a better option is not to ignore ones with wrong direction but to actually clamp the stess
@@ -197,19 +198,24 @@ void computeMidVecBasedOnPCA(VectorXd& midVec, vector<vector<int>>& vvAdj, vecto
     double thereshold = 1.051;
     double thW = 1.1; double thDot = 0.5;
     bool flag = false;
+    if(!preComputed) ws.resize(vvAdj[vert].size());
+
     std::pair<int, int>  faces;
     for(int i=0; i<vvAdj[vert].size(); i++){
         int otherVert = vvAdj[vert][i];
-        adjacentFacesToEdge(vert, otherVert, vfAdj, faces );
-
         double w=0;
-        if(faces.first!= -1){
-            int whichEdgeLeft = findWhichEdgeOfFace(faces.first, vert, otherVert, Fg_pattern);
-            w += lengthsCurr(faces.first, whichEdgeLeft)/lengthsOrig(faces.first, whichEdgeLeft);
-        }
-        else if(faces.second!= -1){
-            int whichEdgeRight = findWhichEdgeOfFace(faces.second, vert, otherVert, Fg_pattern);
-            w += lengthsCurr(faces.second, whichEdgeRight)/lengthsOrig(faces.second, whichEdgeRight);
+        if(!preComputed){
+            adjacentFacesToEdge(vert, otherVert, vfAdj, faces );
+            if(faces.first!= -1){
+                int whichEdgeLeft = findWhichEdgeOfFace(faces.first, vert, otherVert, Fg_pattern);
+                w += lengthsCurr(faces.first, whichEdgeLeft)/lengthsOrig(faces.first, whichEdgeLeft);
+            }else if(faces.second!= -1){
+                int whichEdgeRight = findWhichEdgeOfFace(faces.second, vert, otherVert, Fg_pattern);
+                w += lengthsCurr(faces.second, whichEdgeRight)/lengthsOrig(faces.second, whichEdgeRight);
+            }
+            ws(i) = w;
+        }else{
+            w=ws(i);
         }
 
         Vector3d vecDir = Vg.row(otherVert);
@@ -227,33 +233,14 @@ void computeMidVecBasedOnPCA(VectorXd& midVec, vector<vector<int>>& vvAdj, vecto
         // do everythiing again but now print
         for(int i=0; i<vvAdj[vert].size(); i++){
             int otherVert = vvAdj[vert][i];
-            adjacentFacesToEdge(vert, otherVert, vfAdj, faces );
-
-            double w=0;
-            if(faces.first!= -1){
-                int whichEdgeLeft = findWhichEdgeOfFace(faces.first, vert, otherVert, Fg_pattern);
-                w += lengthsCurr(faces.first, whichEdgeLeft)/lengthsOrig(faces.first, whichEdgeLeft);
-            }
-            else if(faces.second!= -1){
-                int whichEdgeRight = findWhichEdgeOfFace(faces.second, vert, otherVert, Fg_pattern);
-                w += lengthsCurr(faces.second, whichEdgeRight)/lengthsOrig(faces.second, whichEdgeRight);
-            }
+            double w = ws(i);
 
             Vector3d vecDir = Vg.row(otherVert);
             vecDir -= Vg.row(vert);
             vecDir = vecDir.normalized();
 
           cout<<otherVert<<" RESULT thereshold "<< vecDir.dot(cutDirection.normalized())<<" "<< w <<" = "<<abs(vecDir.dot(cutDirection.normalized())) * w <<endl;
-//        if(abs(vecDir.dot(cutDirection.normalized()))< 0.5){continue; }
-
-            if(w > 2){
-                w = 2;
-            }
-            if(abs(vecDir.dot(cutDirection.normalized())) * w > thereshold){
-                flag= true;
-            }
         }
-
 
     }
     return flag;
@@ -374,7 +361,8 @@ void splitVertexFromCVE( cutVertEntry*& cve,
     if(cve->startCorner|| cve-> endCorner ){
         cout<<" start or end corner case"<<endl;
         Vector3d cutDirection = cve-> continuedDirection;
-        if(! checkIfTearIsUseful(cve-> vert, cutDirection, vvAdj, vfAdj, Vg, lengthsCurr, lengthsOrig, Fg)){
+        VectorXd ws;
+        if(! checkIfTearIsUseful(cve-> vert, cutDirection, vvAdj, vfAdj, Vg, lengthsCurr, lengthsOrig, Fg, ws, false)){
             cve-> finFlag = true;
             cout<<"stopping now bc tearing is not useful anymore "<<endl;
 
@@ -473,19 +461,21 @@ void splitVertexFromCVE( cutVertEntry*& cve,
     midVec(0)= -midVect(1);
     midVec(1) = midVect(0);
 
-    VectorXd newMidVec(3);
+    VectorXd newMidVec;
     VectorXd ws; MatrixXd dirs;
     cout<<"starting midvec pca calculation"<<endl;
     computeMidVecBasedOnPCA(newMidVec, vvAdj, vfAdj, Vg, lengthsCurr, lengthsOrig, Fg, cve->vert, ws, dirs );
-
+    midVec = (-1) * newMidVec;
     // todo sketchy, for whatever reason it breaks without this. does it do the transposing?
     cout<<" midvec "<<midVec.transpose()<<endl;
+    //todo check which one is closer, pos or neg sign ?
+
 
     cout<<" checking new condition for non boundary "<<endl;
     Vector3d cutDirection = midVec;
     cutDirection(0)= -cutDirection(1);
     cutDirection(1) = midVec(0);
-    if(!checkIfTearIsUseful(cve-> vert, cutDirection, vvAdj, vfAdj, Vg, lengthsCurr, lengthsOrig, Fg)){
+    if(!checkIfTearIsUseful(cve-> vert, cutDirection, vvAdj, vfAdj, Vg, lengthsCurr, lengthsOrig, Fg, ws, true)){
         cve-> finFlag = true;
         cout<<"stopping now with new condition "<<endl;
         return;
@@ -495,6 +485,24 @@ void splitVertexFromCVE( cutVertEntry*& cve,
     // all other normal cases
     double dist = std::numeric_limits<double>::max();
     int idxofClosest = -1;
+
+    for(int i=0; i<vvAdj[cve -> vert].size(); i++) {
+        int adjVert = vvAdj[cve->vert][i];
+        if(! (adjVert ==boundary[ minusOneId] || adjVert == boundary[plusOneId]) )continue; // we want a border
+        // the direction we want has a longer distance to the border
+        Vector3d edgeVec = Vg.row(adjVert)- Vg.row(cve -> vert);
+        edgeVec= edgeVec.normalized();
+        // both have unit distance, so as a measure we can take the distance from another
+        double posVec = (midVec - edgeVec).norm();
+        double negVec = (newMidVec - edgeVec).norm();
+        if(negVec > posVec){
+            midVec = newMidVec;
+            cout<<"WE CHANGED THE SIGN OF THE MIDVEC!"<<endl;
+        }
+        break;
+
+    }
+
     for(int i=0; i<vvAdj[cve -> vert ].size(); i++){
         int adjVert = vvAdj[cve -> vert][i];
         if(adjVert== minusOneId || adjVert == plusOneId) continue; // we want a middle one
@@ -506,7 +514,9 @@ void splitVertexFromCVE( cutVertEntry*& cve,
             idxofClosest= i;
             dist = (midVec - edgeVec).norm();
         }
+
     }
+
     // is the new to be inserted vertex
     int insertIdx =  vvAdj[cve -> vert][idxofClosest];
     MatrixXi TT, TTi;
