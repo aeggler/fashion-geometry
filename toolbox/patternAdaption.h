@@ -99,4 +99,5 @@ void smoothCuts(vector<cutVertEntry*>& cutPositions, MatrixXd&  currPattern, Mat
                 map<int, pair<int, int>> & releasedVert, set<int>& toPattern_boundaryVerticesSet,  std::vector<std::vector<int> >& boundaryL, set<int> & cornerSet );
 
 void updatePatchId(vector<cutVertEntry*>& cutPositions, const std::vector<std::vector<int> >& boundaryLnew, vector<seam*>& seamsList, vector<minusOneSeam*> & minusOneSeams);
+void fitVecToPointSet( MatrixXd& pointVec, VectorXd& vec );
 #endif //EXAMPLE_PATTERNADAPTION_H

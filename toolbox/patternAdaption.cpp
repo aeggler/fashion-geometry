@@ -158,7 +158,37 @@ bool isRight(Vector3d a,Vector3d b,Vector3d c ){
     return ((b(0) - a(0))*(c(1) - a(1)) - (b(1) - a(1))*(c(0) - a(0))) < 0;
 
 }
-bool checkIfTearIsUseful(int vert, Vector3d& cutDirection,  vector<vector<int>>& vvAdj,  vector<vector<int>>& vfAdj, MatrixXd& Vg ,
+void computeMidVecBasedOnPCA(VectorXd& midVec, vector<vector<int>>& vvAdj, vector<vector<int>>& vfAdj, MatrixXd& Vg ,
+                             MatrixXd& lengthsCurr, MatrixXd& lengthsOrig, MatrixXi& Fg_pattern,int& vert, VectorXd& ws, MatrixXd& dirs){
+    int n = vvAdj[vert].size();
+    ws.resize(n);
+    midVec.resize(3);
+    dirs.resize(n, 3);
+    std::pair<int, int>  faces;
+
+    for(int i=0; i<vvAdj[vert].size(); i++) {
+        int otherVert = vvAdj[vert][i];
+        dirs.row(i) = (Vg.row(otherVert) - Vg.row(vert)).normalized();
+        adjacentFacesToEdge(vert, otherVert, vfAdj, faces );
+
+        if(faces.first!= -1){
+            int whichEdgeLeft = findWhichEdgeOfFace(faces.first, vert, otherVert, Fg_pattern);
+            ws(i) += lengthsCurr(faces.first, whichEdgeLeft)/lengthsOrig(faces.first, whichEdgeLeft);
+        }
+        else if(faces.second!= -1){
+            int whichEdgeRight = findWhichEdgeOfFace(faces.second, vert, otherVert, Fg_pattern);
+            ws(i) += lengthsCurr(faces.second, whichEdgeRight)/lengthsOrig(faces.second, whichEdgeRight);
+        }
+        dirs.row(i) *= ws(i);
+        dirs.row(i) += Vg.row(vert);
+    }
+    cout<<"before fitting"<<endl;
+    fitVecToPointSet( dirs, midVec );
+    midVec(2) = Vg(vert, 2); // just to get the 3rd constant dimension right
+    cout<<" the newly computed midvec of "<<vert<<" is "<<midVec<<endl;
+}
+
+    bool checkIfTearIsUseful(int vert, Vector3d& cutDirection,  vector<vector<int>>& vvAdj,  vector<vector<int>>& vfAdj, MatrixXd& Vg ,
                          MatrixXd& lengthsCurr,  MatrixXd& lengthsOrig, MatrixXi& Fg_pattern){
     // check if it makes sense, i.e. releases stress cutting in the direction
     // if the dot product for at least one adjacent vertex of the one we are going to cut is large enough we allow to cut further
@@ -442,6 +472,12 @@ void splitVertexFromCVE( cutVertEntry*& cve,
     midVect= midVect.normalized();
     midVec(0)= -midVect(1);
     midVec(1) = midVect(0);
+
+    VectorXd newMidVec(3);
+    VectorXd ws; MatrixXd dirs;
+    cout<<"starting midvec pca calculation"<<endl;
+    computeMidVecBasedOnPCA(newMidVec, vvAdj, vfAdj, Vg, lengthsCurr, lengthsOrig, Fg, cve->vert, ws, dirs );
+
     // todo sketchy, for whatever reason it breaks without this. does it do the transposing?
     cout<<" midvec "<<midVec.transpose()<<endl;
 
@@ -543,29 +579,29 @@ void splitVertexFromCVE( cutVertEntry*& cve,
             }
         }
 
-        cout<<newnewVertIdx<<" newnew and new "<<newVertIdx<<", check with matrix sizes "<< newVg.rows()<<endl;
+//        cout<<newnewVertIdx<<" newnew and new "<<newVertIdx<<", check with matrix sizes "<< newVg.rows()<<endl;
         MatrixXd newnewVg(newVg.rows()+1, 3);
         newnewVg.block(0,0, newVg.rows(), 3)= newVg;
         newnewVg.row(newnewVertIdx)= newVg.row(insertIdx);//+ (eps * toRight).transpose();
 
         handledVerticesSet.insert(newnewVertIdx);
-        cout<<newnewVg.row(insertIdx)<<" old insert idx"<<endl;
-        cout<<newnewVg.row(newnewVertIdx)<<" new insert idx duplicate "<<endl;
+//        cout<<newnewVg.row(insertIdx)<<" old insert idx"<<endl;
+//        cout<<newnewVg.row(newnewVertIdx)<<" new insert idx duplicate "<<endl;
 
         newVg.resize(newnewVg.rows(), 3);
         newVg = newnewVg;
         cout<<" fin operation"<<endl;
-        cout<<newVg.row(newnewVertIdx)<<" newnew"<<endl;
-        cout<<newVg.row(insertIdx)<<" insert"<<endl;
-        cout<<newVg.row(newVertIdx)<<" new"<<endl;
-        cout<<newVg.row(cve->vert)<<" vert"<<endl;
+//        cout<<newVg.row(newnewVertIdx)<<" newnew"<<endl;
+//        cout<<newVg.row(insertIdx)<<" insert"<<endl;
+//        cout<<newVg.row(newVertIdx)<<" new"<<endl;
+//        cout<<newVg.row(cve->vert)<<" vert"<<endl;
 
         cve->finFlag= true;
 
     }
 
     Vg.resize(newVg.rows(), 3);
-    Vg= newVg;
+    Vg = newVg;
 
     if(toPattern_boundaryVerticesSet.find(insertIdx)!= toPattern_boundaryVerticesSet.end()){
             cout<<"we are nearly done here, it's cut through! "<<endl;
@@ -584,12 +620,9 @@ void splitVertexFromCVE( cutVertEntry*& cve,
         cout<<" inserted"<<endl;
     }
 
-
-
     cve-> vert = insertIdx;
     cve->levelOne = false;
     cout<<"fin"<<endl<<endl;
-
 
 }
 void splitVertex(Node** head, int & listLength, int  whichTear, MatrixXd& Vg, MatrixXi& Fg, vector<vector<int> >& vfAdj, MatrixXd& lengthsOrig, MatrixXd& lengthsCurr){
@@ -895,7 +928,6 @@ void splitCounterPart(vector<cutVertEntry*>& cutPositions, int idxOfCVE,  cutVer
 
     }else{
         otherSeamId = cornerToSeams[searchedVert][0];
-//        cout<<" other seam id is "<<otherSeamId<<endl;
     }
 
     for(int i=0; i<cutPositions.size(); i++){
@@ -907,9 +939,9 @@ void splitCounterPart(vector<cutVertEntry*>& cutPositions, int idxOfCVE,  cutVer
 
         }
     }
-    for(int i=0; i< cornerToSeams[searchedVert].size(); i++){
-        cout<<cornerToSeams[searchedVert][i]<<" ";
-    }
+//    for(int i=0; i< cornerToSeams[searchedVert].size(); i++){
+////        cout<<cornerToSeams[searchedVert][i]<<" ";
+//    }
     return -1;
 
 }
@@ -2090,28 +2122,30 @@ void computeCovarianceMatrix( MatrixXd& pointVec, VectorXd& barycenter, Matrix2d
     int n;
     n = pointVec.rows();
     // first compute the barycenter
-    barycenter = VectorXd::Zero(pointVec.cols());
+    barycenter = VectorXd::Zero(pointVec.cols()-1);
     for(int i = 0; i < n; i++){
-        barycenter += pointVec.row(i);
-
+        barycenter += pointVec.row(i).leftCols(2).transpose();
     }
     barycenter /= n;
 
     // compute covariance matrix
     m.resize(2, 2);
-    m = Matrix2d::Zero(2, 2);
+    m.setZero();
     MatrixXd p(2,1);
+
     for(int i = 0; i < n; i++){
-        p= (pointVec.row(i)- barycenter.transpose());
+        p = (pointVec.row(i).leftCols(2) - barycenter.transpose()).transpose();
         m += p*p.transpose();
 
     }
+
 }
 void fitVecToPointSet( MatrixXd& pointVec, VectorXd& vec ){
+
     Eigen::Matrix2d covMat ;
     VectorXd b;
     computeCovarianceMatrix(pointVec, b, covMat);
-//
+
     Eigen::SelfAdjointEigenSolver<Eigen::Matrix2d> eig(covMat);
     Eigen::VectorXd eval = eig.eigenvalues();
     Eigen::Matrix2d evec = eig.eigenvectors();
@@ -2121,6 +2155,8 @@ void fitVecToPointSet( MatrixXd& pointVec, VectorXd& vec ){
 
     vec(0) = evec(0,minInd);
     vec(1) = evec(1,minInd);
-    vec += b;
-//
+//    vec += b;
+    cout<<"in leaving fit "<<endl;
+
+
 }
