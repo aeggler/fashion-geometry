@@ -182,9 +182,8 @@ void computeMidVecBasedOnPCA(VectorXd& midVec, vector<vector<int>>& vvAdj, vecto
         dirs.row(i) *= ws(i);
         dirs.row(i) += Vg.row(vert);
     }
-    cout<<"before fitting"<<endl;
     fitVecToPointSet( dirs, midVec );
-    midVec(2) =0;// Vg(vert, 2); // just to get the 3rd constant dimension right
+    midVec(2) = 0;// Vg(vert, 2); // just to get the 3rd constant dimension right
     midVec= midVec.normalized();
     cout<<" the newly computed midvec of "<<vert<<" is "<<midVec.transpose()<<endl;
 }
@@ -468,10 +467,7 @@ void splitVertexFromCVE( cutVertEntry*& cve,
     midVec = (-1) * newMidVec;
     // todo sketchy, for whatever reason it breaks without this. does it do the transposing?
     cout<<" midvec "<<midVec.transpose()<<endl;
-    //todo check which one is closer, pos or neg sign ?
 
-
-    cout<<" checking new condition for non boundary "<<endl;
     Vector3d cutDirection = midVec;
     cutDirection(0)= -cutDirection(1);
     cutDirection(1) = midVec(0);
@@ -480,12 +476,9 @@ void splitVertexFromCVE( cutVertEntry*& cve,
         cout<<"stopping now with new condition "<<endl;
         return;
     }
-    cout<<"end new condition"<<endl;
 
-    // all other normal cases
-    double dist = std::numeric_limits<double>::max();
-    int idxofClosest = -1;
-
+    //  we have the midvec direction, but don't know for sure if adding or subtract. Take tthe direction that has longer distance to the existing boundary to not go backwards.
+    // This is a heuristic.
     for(int i=0; i<vvAdj[cve -> vert].size(); i++) {
         int adjVert = vvAdj[cve->vert][i];
         if(! (adjVert ==boundary[ minusOneId] || adjVert == boundary[plusOneId]) )continue; // we want a border
@@ -503,6 +496,9 @@ void splitVertexFromCVE( cutVertEntry*& cve,
 
     }
 
+    // all other normal cases
+    double dist = std::numeric_limits<double>::max();
+    int idxofClosest = -1;
     for(int i=0; i<vvAdj[cve -> vert ].size(); i++){
         int adjVert = vvAdj[cve -> vert][i];
         if(adjVert== minusOneId || adjVert == plusOneId) continue; // we want a middle one
@@ -514,7 +510,6 @@ void splitVertexFromCVE( cutVertEntry*& cve,
             idxofClosest= i;
             dist = (midVec - edgeVec).norm();
         }
-
     }
 
     // is the new to be inserted vertex
@@ -2166,7 +2161,6 @@ void fitVecToPointSet( MatrixXd& pointVec, VectorXd& vec ){
     vec(0) = evec(0,minInd);
     vec(1) = evec(1,minInd);
 //    vec += b;
-    cout<<"in leaving fit "<<endl;
 
 
 }
