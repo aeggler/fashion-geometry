@@ -11,6 +11,7 @@
 #include "igl/boundary_loop.h"
 #include "adjacency.h"
 #include <cmath>
+//#include <igl/triangle/triangulate.h>
 
 
 using namespace std;
@@ -64,3 +65,20 @@ void smoothBetweenVertices(MatrixXd& currPattern, MatrixXi& Fg_pattern, vector<i
 
 
 }
+void startRetriangulation(vector<VectorXd>& polylineSelected){
+    int n = polylineSelected.size();
+    MatrixXd V (n, 2);
+    for(int i=0; i<n; i++){
+        V.row(i) = polylineSelected[i].leftCols(2);
+    }
+    MatrixXi E(n,2);
+    for(int i=0; i < n; i++){
+        E(i, 0) = i;
+        E(i, 1) = (i+1) % n;
+    }
+    MatrixXd H;
+
+
+
+}
+

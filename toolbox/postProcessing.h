@@ -14,4 +14,6 @@ using namespace std;
 using namespace Eigen;
 
 void smoothBetweenVertices(MatrixXd& currPattern, MatrixXi& Fg_pattern,vector<int>& startAndEnd);
+void startRetriangulation(vector<VectorXd>& polylineSelected);
+
 #endif //EXAMPLE_POSTPROCESSING_H

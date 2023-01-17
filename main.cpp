@@ -71,7 +71,7 @@ int timestepCounter;
 bool LShapeAllowed;
 
 
-enum MouseMode { SELECTPATCH, SELECTBOUNDARY, NONE, SELECTVERT };
+enum MouseMode { SELECTPATCH, SELECTBOUNDARY, NONE, SELECTVERT, SELECTAREA };
 MouseMode mouse_mode = NONE;
 // pre computations
 Eigen::MatrixXi e4list;
@@ -141,7 +141,7 @@ MatrixXd patternPreInterpol,patternPreInterpol_temp ;
 MatrixXd garmentPreInterpol,garmentPreInterpol_temp ;
 MatrixXd mannequinPreInterpol, mannequinPreInterpol_temp;
 Eigen::VectorXi componentIdPerFace,componentIdPerFaceNew, componentIdPerVert;
-
+vector<VectorXd> polylineSelected;
 //test
 //Eigen::SparseMatrix<double> L;
 MatrixXd perFaceD2, perFaceD1;
@@ -883,7 +883,10 @@ int main(int argc, char *argv[])
         }
         if (ImGui::CollapsingHeader("Modify adapted Pattern ", ImGuiTreeNodeFlags_DefaultOpen)){
             bool confirmSmooth = false;
+            bool confirmLine = false;
+
             bool startSmooth = false;
+            bool choosePatchArea = false;
             if(ImGui::Checkbox("Start smooth", &startSmooth)) {
                 string modifiedPattern = "/Users/annaeggler/Desktop/mappedPattern.obj"; //
                 igl::readOBJ(modifiedPattern, currPattern, Fg_pattern);
@@ -900,6 +903,7 @@ int main(int argc, char *argv[])
             }
 
             if(ImGui::Checkbox("Confirm smooth", &confirmSmooth)) {
+                mouse_mode = NONE;
                 if (startAndEnd.size() == 2) {
                     cout << "Great, you selected " << startAndEnd[0] << " and " << startAndEnd[1]
                          << ". Let's get to work on smoothing. " << endl;
@@ -910,6 +914,46 @@ int main(int argc, char *argv[])
                 viewer.data().clear();
                 viewer.data().show_lines = true;
                 viewer.data().set_mesh(currPattern, Fg_pattern);
+            }
+            if(ImGui::Checkbox("Select area to triangulate", &choosePatchArea)){
+                viewer.selected_data_index = 0;
+                viewer.data().clear();
+                viewer.data().show_lines = true;
+                viewer.data().set_mesh(currPattern, Fg_pattern);
+
+
+                viewer.selected_data_index = 1;
+                viewer.data().clear();
+                viewer.data().show_lines = true;
+
+                MatrixXd visToPattern = Vg_pattern_orig;
+                igl::boundary_loop(Fg_pattern_orig, boundaryL_toPattern);
+                int boundVert = 0;
+                for(int i = 0; i < boundaryL_toPattern.size(); i++){
+                    boundVert += boundaryL_toPattern[i].size();
+                    for(int j = 0; j < boundaryL_toPattern[i].size(); j++){
+                        toPattern_boundaryVerticesSet.insert(boundaryL_toPattern[i][j]);
+                    }
+                }
+                MatrixXi boundaryOfToPattern(boundVert, 2);
+                int curr = 0;
+                for (int i=0; i< boundaryL_toPattern.size(); i++){
+                    for(int j=0; j<boundaryL_toPattern[i].size(); j++){
+                        boundaryOfToPattern(curr, 0) = boundaryL_toPattern[i][j];
+                        boundaryOfToPattern(curr, 1) = boundaryL_toPattern[i][(j + 1) % (boundaryL_toPattern[i].size())];
+                        curr++;
+                    }
+                }
+
+                viewer.data().set_edges(visToPattern, boundaryOfToPattern, Eigen::RowVector3d(0, 0, 1));
+                mouse_mode= SELECTAREA;
+            }
+            if(ImGui::Checkbox("Confirm smooth", &confirmLine)){
+                mouse_mode = NONE;
+                if(polylineSelected.size()<3){
+                    cout<<"No, choose at least 3 positions"<<endl;
+                }
+                startRetriangulation(polylineSelected);
             }
 
         }
@@ -1036,7 +1080,6 @@ bool callback_mouse_down(igl::opengl::glfw::Viewer& viewer, int button, int modi
         if (computePointOnMesh(viewer, Vrs, Fg_pattern, b, fid)) {
             int v_id = computeClosestVertexOnMesh(b, fid, Fg_pattern);
             viewer.data().set_points(Vrs.row(v_id), RowVector3d(1.0, 0.0, 0.0));
-            whichPatchMove = componentIdPerVert(v_id);
             cout<<"Selected vertex "<<v_id<<endl;
             if(startAndEnd.size()>=2){
                 startAndEnd.clear();
@@ -1047,9 +1090,42 @@ bool callback_mouse_down(igl::opengl::glfw::Viewer& viewer, int button, int modi
 //                mouse_mode = NONE;
 //                return false;
 //            }
-            // TODO now we could constrain the whole patch or the boundary
             return true;
         }
+    }
+    if(mouse_mode == SELECTAREA){
+        int fid;
+        Eigen::Vector3d b;
+        MatrixXd Vrs = currPattern;//+   Vg_pattern_orig.size(), 3);
+        int v_id;
+        int whichMesh;
+        if (computePointOnMesh(viewer, Vrs, Fg_pattern, b, fid)) {
+             v_id = computeClosestVertexOnMesh(b, fid, Fg_pattern);
+            viewer.data().set_points(Vrs.row(v_id), RowVector3d(1.0, 1.0, 0.0));
+            cout<<"Selected vertex "<<v_id<<endl;
+            whichMesh=1;
+
+        }else{
+            Vrs = Vg_pattern_orig;
+            if (computePointOnMesh(viewer, Vrs, Fg_pattern_orig, b, fid)) {
+                v_id = computeClosestVertexOnMesh(b, fid, Fg_pattern_orig);
+                viewer.data().set_points(Vrs.row(v_id), RowVector3d(.0, 1.0, 0.0));
+                cout<<"Selected vertex on other mesh "<<v_id<<endl;
+                whichMesh=2;
+            }
+        }
+
+
+        Vector3d point = Vrs.row(v_id);
+        point(0) = viewer.current_mouse_x;
+        point(1) = viewer.core().viewport(3) - viewer.current_mouse_y;
+
+        auto dist = (Vrs.row(v_id).transpose() - point).norm();
+        cout<<dist<<" the distance ";
+        polylineSelected.push_back(Vrs.row(v_id).transpose());
+        cout<<"if finished confirm"<<endl;
+
+
     }
     return false;
 }
