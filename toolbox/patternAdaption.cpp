@@ -188,13 +188,13 @@ void computeMidVecBasedOnPCA(VectorXd& midVec, vector<vector<int>>& vvAdj, vecto
     cout<<" the newly computed midvec of "<<vert<<" is "<<midVec.transpose()<<endl;
 }
 
-    bool checkIfTearIsUseful(int vert, Vector3d& cutDirection,  vector<vector<int>>& vvAdj,  vector<vector<int>>& vfAdj, MatrixXd& Vg ,
+bool checkIfTearIsUseful(int vert, Vector3d& cutDirection,  vector<vector<int>>& vvAdj,  vector<vector<int>>& vfAdj, MatrixXd& Vg ,
                          MatrixXd& lengthsCurr,  MatrixXd& lengthsOrig, MatrixXi& Fg_pattern, VectorXd& ws, bool preComputed ){
     // check if it makes sense, i.e. releases stress cutting in the direction
     // if the dot product for at least one adjacent vertex of the one we are going to cut is large enough we allow to cut further
     // todo 3.1. maybe a better option is not to ignore ones with wrong direction but to actually clamp the stess
 
-    double thereshold = 1.051;
+    double thereshold = 1.051;// todo fix this!! it cuts pretty mich always
     double thW = 1.1; double thDot = 0.5;
     bool flag = false;
     if(!preComputed) ws.resize(vvAdj[vert].size());
@@ -224,7 +224,8 @@ void computeMidVecBasedOnPCA(VectorXd& midVec, vector<vector<int>>& vvAdj, vecto
         if(w > 2){
             w = 2;
         }
-        if(abs(vecDir.dot(cutDirection.normalized())) * w > thereshold || (w > thW && abs(vecDir.dot(cutDirection.normalized()))>thDot ) ){
+        auto dotdir = (1-abs(vecDir.dot(cutDirection.normalized())));
+        if(dotdir * w > thereshold || (w > thW && dotdir > thDot ) ){
             flag= true;
         }
     }
@@ -238,7 +239,7 @@ void computeMidVecBasedOnPCA(VectorXd& midVec, vector<vector<int>>& vvAdj, vecto
             vecDir -= Vg.row(vert);
             vecDir = vecDir.normalized();
 
-          cout<<otherVert<<" RESULT thereshold "<< vecDir.dot(cutDirection.normalized())<<" "<< w <<" = "<<abs(vecDir.dot(cutDirection.normalized())) * w <<endl;
+          cout<<otherVert<<" RESULT thereshold "<< (1-abs(vecDir.dot(cutDirection.normalized()))) <<" "<< w <<" = "<<(1-abs(vecDir.dot(cutDirection.normalized()))) * w <<endl;
         }
 
     }

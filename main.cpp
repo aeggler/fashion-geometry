@@ -22,6 +22,7 @@
 #include "toolbox/garment_adaption.h"
 #include "toolbox/MathFunctions.h"
 #include "toolbox/patternAdaption.h"
+#include "toolbox/postProcessing.h"
 #include <igl/signed_distance.h>
 #include <map>
 #include <set>
@@ -70,7 +71,7 @@ int timestepCounter;
 bool LShapeAllowed;
 
 
-enum MouseMode { SELECTPATCH, SELECTBOUNDARY, NONE };
+enum MouseMode { SELECTPATCH, SELECTBOUNDARY, NONE, SELECTVERT };
 MouseMode mouse_mode = NONE;
 // pre computations
 Eigen::MatrixXi e4list;
@@ -148,6 +149,7 @@ VectorXd cornerVertices;
 vector<cutVertEntry*> cutPositions;
 map<int, pair<int, int>>  releasedVert; // all positions that need not be mapped to the boundary anymore from at least one side. keep track which side is released
 set<int> toPattern_boundaryVerticesSet; // the boudary vertices of the toPattern, for visualization purposes
+vector<int> startAndEnd; // start and end to do the smoothing
 
 void preComputeAdaption();
 void computeBaryCoordsGarOnNewMannequin(igl::opengl::glfw::Viewer& viewer);
@@ -715,7 +717,7 @@ int main(int argc, char *argv[])
 
             }
         }
-        if (ImGui::CollapsingHeader("Simulation", ImGuiTreeNodeFlags_DefaultOpen)) {
+        if (ImGui::CollapsingHeader("Simulation", ImGuiTreeNodeFlags_OpenOnArrow)) {
 
             ImGui::InputInt("Converge Iterations ", &(convergeIterations), 0, 0);
 
@@ -876,7 +878,35 @@ int main(int argc, char *argv[])
 //                adaptionFlag = true;
             }
             if(ImGui::Checkbox("Allow L-shaped fabric insertion", &LShapeAllowed)){}
-            if(ImGui::Checkbox("Prefer many small cuts", &preferManySmallCuts));
+            if(ImGui::Checkbox("Prefer many small cuts", &preferManySmallCuts)){};
+
+        }
+        if (ImGui::CollapsingHeader("Modify adapted Pattern ", ImGuiTreeNodeFlags_DefaultOpen)){
+            bool confirmSmooth = false;
+            bool startSmooth = false;
+            if(ImGui::Checkbox("Start smooth", &startSmooth)) {
+                string modifiedPattern = "/Users/annaeggler/Desktop/mappedPattern.obj"; //
+                igl::readOBJ(modifiedPattern, currPattern, Fg_pattern);
+                cout<<endl << "Select start and end of the seam you want to smooth and then confirm" << endl;
+                viewer.selected_data_index = 1;
+                viewer.data().clear();
+                viewer.selected_data_index = 0;
+                viewer.data().clear();
+                viewer.data().show_lines = true;
+                viewer.data().set_mesh(currPattern, Fg_pattern);
+                mouse_mode = SELECTVERT;
+
+
+            }
+
+            if(ImGui::Checkbox("Confirm smooth", &confirmSmooth)) {
+                if (startAndEnd.size() == 2) {
+                    cout << "Great, you selected " << startAndEnd[0] << " and " << startAndEnd[1]
+                         << ". Let's get to work on smoothing. " << endl;
+
+                    smoothBetweenVertices(currPattern, Fg_pattern, startAndEnd);
+                }
+            }
 
         }
         menu.draw_viewer_menu();
@@ -993,6 +1023,25 @@ bool callback_mouse_down(igl::opengl::glfw::Viewer& viewer, int button, int modi
             return true;
         }
         return false;
+    }
+    if(mouse_mode == SELECTVERT){
+        int fid;
+        Eigen::Vector3d b;
+        MatrixXd Vrs = currPattern;
+
+        if (computePointOnMesh(viewer, Vrs, Fg_pattern, b, fid)) {
+            int v_id = computeClosestVertexOnMesh(b, fid, Fg_pattern);
+            viewer.data().set_points(Vrs.row(v_id), RowVector3d(1.0, 0.0, 0.0));
+            whichPatchMove = componentIdPerVert(v_id);
+            cout<<"Selected vertex "<<v_id<<endl;
+            startAndEnd.push_back(v_id);
+            if(startAndEnd.size() == 2) {
+                mouse_mode = NONE;
+                return false;
+            }
+            // TODO now we could constrain the whole patch or the boundary
+            return true;
+        }
     }
     return false;
 }
