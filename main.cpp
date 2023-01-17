@@ -906,6 +906,10 @@ int main(int argc, char *argv[])
 
                     smoothBetweenVertices(currPattern, Fg_pattern, startAndEnd);
                 }
+                viewer.selected_data_index = 0;
+                viewer.data().clear();
+                viewer.data().show_lines = true;
+                viewer.data().set_mesh(currPattern, Fg_pattern);
             }
 
         }
@@ -1034,11 +1038,15 @@ bool callback_mouse_down(igl::opengl::glfw::Viewer& viewer, int button, int modi
             viewer.data().set_points(Vrs.row(v_id), RowVector3d(1.0, 0.0, 0.0));
             whichPatchMove = componentIdPerVert(v_id);
             cout<<"Selected vertex "<<v_id<<endl;
-            startAndEnd.push_back(v_id);
-            if(startAndEnd.size() == 2) {
-                mouse_mode = NONE;
-                return false;
+            if(startAndEnd.size()>=2){
+                startAndEnd.clear();
             }
+            startAndEnd.push_back(v_id);
+
+//            if(startAndEnd.size() == 2) {
+//                mouse_mode = NONE;
+//                return false;
+//            }
             // TODO now we could constrain the whole patch or the boundary
             return true;
         }
