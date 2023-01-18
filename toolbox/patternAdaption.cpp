@@ -398,8 +398,6 @@ void splitVertexFromCVE( cutVertEntry*& cve,
         }
 
 
-        //todo 4.1.
-
         newVg.row(newVertIdx) = Vg.row(cve->vert);
 
         cve->continuedCorner = true;
@@ -493,11 +491,11 @@ void splitVertexFromCVE( cutVertEntry*& cve,
     Vector3d C = Vg.row(cve -> vert).transpose()+ midVec;
     //(AB,AM), where M(X,Y) is the query point:
     //https://stackoverflow.com/questions/1560492/how-to-tell-whether-a-point-is-to-the-right-or-left-side-of-a-line
-    auto sign1 = abs((Btemp(0)-A(0) )*(A(1)-C(1))-(Btemp(1)-A(1))*(A(0)-C(0)));
-    sign1 /= sqrt((Btemp(0)-A(0) )*(Btemp(0)-A(0) ) + (Btemp(1)-A(1))*(Btemp(1)-A(1)));
+    auto dist1 = abs((Btemp(0)-A(0) )*(A(1)-C(1))-(Btemp(1)-A(1))*(A(0)-C(0)));
+    dist1 /= sqrt((Btemp(0)-A(0) )*(Btemp(0)-A(0) ) + (Btemp(1)-A(1))*(Btemp(1)-A(1)));
     C = Vg.row(cve -> vert).transpose() + newMidVec;
-    auto sign2 = abs((Btemp(0)-A(0) )*(A(1)-C(1))-(Btemp(1)-A(1))*(A(0)-C(0)));
-    sign2 /= sqrt((Btemp(0)-A(0) )*(Btemp(0)-A(0) ) + (Btemp(1)-A(1))*(Btemp(1)-A(1)));
+    auto dist2 = abs((Btemp(0)-A(0) )*(A(1)-C(1))-(Btemp(1)-A(1))*(A(0)-C(0)));
+    dist2 /= sqrt((Btemp(0)-A(0) )*(Btemp(0)-A(0) ) + (Btemp(1)-A(1))*(Btemp(1)-A(1)));
 
 
 
@@ -512,13 +510,13 @@ void splitVertexFromCVE( cutVertEntry*& cve,
         double posVec = (midVec - edgeVec).norm();
         double negVec = (newMidVec - edgeVec).norm();
         cout<<posVec<<" pos and neg "<<negVec<<endl;
-        cout<<sign1<<" sign 1 and 2 "<<sign2<<endl;
+        cout<<dist1<<" sign 1 and 2 "<<dist1<<endl;
         // take the longer sign. If they are the same (= initial), take the one on the same side as interior vertices
         double eps = 0.0001;
-        if(sign2 > sign1){
+        if(dist2 > dist1){
             midVec = newMidVec;
             cout<<"WE CHANGED THE SIGN OF THE MIDVEC!"<<endl;
-        }else if ((sign1- sign2) < eps){
+        }else if ((dist1- dist2) < eps){
             cout<<"initial!"<<endl;
 
             Vector3d C = Vg.row(cve -> vert).transpose()+ midVec;
