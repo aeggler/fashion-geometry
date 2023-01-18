@@ -102,8 +102,8 @@ void backTo3Dmapping(MatrixXd& adaptedPattern, MatrixXi& adaptedPattern_faces, M
     for(int i=0; i< adaptedPattern.rows(); i++){
         VectorXd bary;
         auto face = perfectPattern_faces.row(I(i));
-        igl::barycentric_coordinates(adaptedPattern.row(i), adaptedPattern.row(face(0)), adaptedPattern.row(face(1)),
-                                     adaptedPattern.row(face(2)), bary);
+        igl::barycentric_coordinates(adaptedPattern.row(i), perfectPattern.row(face(0)), perfectPattern.row(face(1)),
+                                     perfectPattern.row(face(2)), bary);
         B.row(i) = bary;
     }
     cout<<"Got all barycentric coords"<<endl;
