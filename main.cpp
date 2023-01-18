@@ -882,13 +882,13 @@ int main(int argc, char *argv[])
 
         }
         if (ImGui::CollapsingHeader("Modify adapted Pattern ", ImGuiTreeNodeFlags_DefaultOpen)){
-            bool confirmSmooth = false;
-            bool confirmLine = false;
-
+            bool backTo3D = false;
             bool startSmooth = false;
             bool choosePatchArea = false;
             if(ImGui::Checkbox("Start smooth", &startSmooth)) {
-                string modifiedPattern = "/Users/annaeggler/Desktop/mappedPattern.obj"; //
+//                string modifiedPattern = "/Users/annaeggler/Desktop/mappedPattern.obj"; //
+                string modifiedPattern = "/Users/annaeggler/Desktop/mappedPatternWithSmoothedCuts.obj"; //
+
                 igl::readOBJ(modifiedPattern, currPattern, Fg_pattern);
                 cout<<endl << "Select start and end of the seam you want to smooth and then confirm" << endl;
                 viewer.selected_data_index = 1;
@@ -902,8 +902,7 @@ int main(int argc, char *argv[])
 
             }
 
-            if(ImGui::Checkbox("Confirm smooth", &confirmSmooth)) {
-                mouse_mode = NONE;
+            if(ImGui::Button("Confirm smooth", ImVec2(-1, 0))) {
                 if (startAndEnd.size() == 2) {
                     cout << "Great, you selected " << startAndEnd[0] << " and " << startAndEnd[1]
                          << ". Let's get to work on smoothing. " << endl;
@@ -915,6 +914,11 @@ int main(int argc, char *argv[])
                 viewer.data().show_lines = true;
                 viewer.data().set_mesh(currPattern, Fg_pattern);
             }
+            if(ImGui::Button("End smooth", ImVec2(-1, 0))) {
+                mouse_mode = NONE;
+                cout<<"End smoothing selection"<<endl;
+            }
+
             if(ImGui::Checkbox("Select area to triangulate", &choosePatchArea)){
                 viewer.selected_data_index = 0;
                 viewer.data().clear();
@@ -948,12 +952,35 @@ int main(int argc, char *argv[])
                 viewer.data().set_edges(visToPattern, boundaryOfToPattern, Eigen::RowVector3d(0, 0, 1));
                 mouse_mode= SELECTAREA;
             }
-            if(ImGui::Checkbox("Confirm smooth", &confirmLine)){
-                mouse_mode = NONE;
+            if(ImGui::Button("Confirm area", ImVec2(-1, 0))){
                 if(polylineSelected.size()<3){
                     cout<<"No, choose at least 3 positions"<<endl;
                 }
                 startRetriangulation(polylineSelected);
+            }
+            if(ImGui::Button("End Area", ImVec2(-1, 0))) {
+                cout<<"End area selection"<<endl;
+                mouse_mode = NONE;
+            }
+            if(ImGui::Checkbox("Put adapted pattern back to 3D" , &backTo3D)){
+                mouse_mode = NONE;
+                MatrixXd adaptedPatternIn3d;
+
+                MatrixXd perfectPatternForThisShape = Vg_pattern_orig;
+                MatrixXd adaptedPattern = currPattern;
+                MatrixXd perfectPatternIn3d = Vg_orig;
+
+                MatrixXi adaptedPattern_faces = Fg_pattern;
+                MatrixXi perfectPattern_faces = Fg_pattern_orig;
+                MatrixXi perfectPatternIn3d_faces = Fg_orig;
+                backTo3Dmapping(adaptedPattern, adaptedPattern_faces, perfectPatternForThisShape, perfectPattern_faces, perfectPatternIn3d,
+                                perfectPatternIn3d_faces, adaptedPatternIn3d);
+
+                viewer.selected_data_index = 0;
+                viewer.data().clear();
+                viewer.data().show_lines = true;
+                viewer.data().set_mesh(adaptedPatternIn3d, Fg_pattern);
+
             }
 
         }

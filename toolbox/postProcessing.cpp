@@ -7,11 +7,13 @@
 #include <iostream>
 #include "seam.h"
 #include <igl/edge_lengths.h>
-#include <igl/adjacency_list.h>
+#include <igl/signed_distance.h>
 #include "igl/boundary_loop.h"
 #include "adjacency.h"
 #include <cmath>
+#include "igl/barycentric_interpolation.h"
 //#include <igl/triangle/triangulate.h>
+//#include <>
 
 
 using namespace std;
@@ -82,3 +84,30 @@ void startRetriangulation(vector<VectorXd>& polylineSelected){
 
 }
 
+void backTo3Dmapping(MatrixXd& adaptedPattern, MatrixXi& adaptedPattern_faces, MatrixXd& perfectPattern, MatrixXi& perfectPattern_faces ,
+                     MatrixXd& perfectPatternIn3d, MatrixXi& perfectPatternIn3d_faces, MatrixXd& adaptedPatternIn3d){
+    //idea: we have with perfectPatternForThisShape the perfect pattern and also in 3d
+    // since the adapted pattern is a subset of the perfect pattern, we can locate every vertex of adapted pattern in perfectPattern and apply it using barycentric coordinates in 3d
+    // maybe we have to do some manual stitching later but that should be ok.
+
+    VectorXd S; VectorXi I;//face index of smallest distance
+    MatrixXd C,N;
+    cout<<"Starting with signed distance "<<endl;
+    igl::signed_distance(adaptedPattern, perfectPattern, perfectPattern_faces, igl::SIGNED_DISTANCE_TYPE_UNSIGNED, S, I, C, N);
+    cout<<"Finished signed distance "<<endl;
+    for(int i=3149; i<=3158; i++){
+        cout<<I(i)<<" face of"<<i<<endl;
+    }
+    MatrixXd B(adaptedPattern.rows(), 3); // contains all barycentric coordinates
+    for(int i=0; i< adaptedPattern.rows(); i++){
+        VectorXd bary;
+        auto face = perfectPattern_faces.row(I(i));
+        igl::barycentric_coordinates(adaptedPattern.row(i), adaptedPattern.row(face(0)), adaptedPattern.row(face(1)),
+                                     adaptedPattern.row(face(2)), bary);
+        B.row(i) = bary;
+    }
+    cout<<"Got all barycentric coords"<<endl;
+    igl::barycentric_interpolation(perfectPatternIn3d, perfectPatternIn3d_faces, B, I, adaptedPatternIn3d);
+    cout<<"Got interpolation"<<endl;
+
+}
