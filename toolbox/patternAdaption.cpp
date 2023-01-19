@@ -160,7 +160,7 @@ bool isRight(Vector3d a,Vector3d b,Vector3d c ){
 
 }
 void computeMidVecBasedOnPCA(VectorXd& midVec, vector<vector<int>>& vvAdj, vector<vector<int>>& vfAdj, MatrixXd& Vg ,
-                             MatrixXd& lengthsCurr, MatrixXd& lengthsOrig, MatrixXi& Fg_pattern,int& vert, VectorXd& ws, MatrixXd& dirs){
+                             MatrixXd& lengthsCurr, MatrixXd& lengthsOrig, MatrixXi& Fg_pattern,int& vert, VectorXd& ws, MatrixXd& dirs, double& lenMid){
     int n = vvAdj[vert].size();
     ws.resize(n);
     midVec.resize(3);
@@ -185,6 +185,7 @@ void computeMidVecBasedOnPCA(VectorXd& midVec, vector<vector<int>>& vvAdj, vecto
     }
     fitVecToPointSet( dirs, midVec );
     midVec(2) = 0;// Vg(vert, 2); // just to get the 3rd constant dimension right
+    lenMid = midVec.norm();
     midVec = midVec.normalized();
     cout<<" the newly computed midvec of "<<vert<<" is "<<midVec.transpose()<<endl;
 }
@@ -303,7 +304,7 @@ void splitVertexFromCVE( cutVertEntry*& cve,
                          const bool & LShapeAllowed
                          ){
 
-    cout<<" patch "<<cve->patch<<" of "<<boundaryL.size() <<endl;
+    cout<<" patch "<<cve->patch<<" of "<<boundaryL.size()<<" L Shape allowed? "<<LShapeAllowed <<endl;
 
     if(cve-> finFlag) {
         cout<<cve->vert<<" done already "<<endl;
@@ -314,12 +315,13 @@ void splitVertexFromCVE( cutVertEntry*& cve,
 // todo this prohibits any kind of cross cutting! maybe not always desirable ! removing?
     if(handledVerticesSet.find(cve->vert) != handledVerticesSet.end()){
         cout<<"Handled by other seams already."<<endl;
-        if(cveStartPositionsSet.find(cve->vert) == cveStartPositionsSet.end() && LShapeAllowed){
+        if(cveStartPositionsSet.find(cve->vert) != cveStartPositionsSet.end() && LShapeAllowed){
+            cout<<"But it isi a corner and we allow L Shapes. Go on."<<endl;
+            
+        }else{
             cout<<"And really it is in the middle. Stop ."<<endl;
             cve->finFlag = true;
             return ;
-        }else{
-            cout<<"But it isi a corner and we allow L Shapes. Go on."<<endl;
         }
 
     }
@@ -499,19 +501,14 @@ void splitVertexFromCVE( cutVertEntry*& cve,
         return;
     }
 
-    Vector3d midVec;// = leftRot;
-    Vector3d midVect = Vg.row(boundaryL[cve->patch][plusOneId]) - Vg.row(boundaryL[cve->patch][minusOneId]);
-    if(!cve->levelOne){
-        midVect = cve->leftdirection - cve->rightdirection;
-    }
-    midVect= midVect.normalized();
-    midVec(0)= -midVect(1);
-    midVec(1) = midVect(0);
+    Vector3d midVec;
 
-    VectorXd newMidVec;
-    VectorXd ws; MatrixXd dirs;
+    double lenMidVec;
+    VectorXd ws, newMidVec;
+    MatrixXd dirs;
     cout<<"starting midvec pca calculation"<<endl;
-    computeMidVecBasedOnPCA(newMidVec, vvAdj, vfAdj, Vg, lengthsCurr, lengthsOrig, Fg, cve->vert, ws, dirs );
+
+    computeMidVecBasedOnPCA(newMidVec, vvAdj, vfAdj, Vg, lengthsCurr, lengthsOrig, Fg, cve->vert, ws, dirs, lenMidVec );
     midVec = (-1) * newMidVec;
     // todo sketchy, for whatever reason it breaks without this. does it do the transposing?
     cout<<" midvec "<<midVec.transpose()<<endl;
@@ -546,19 +543,20 @@ void splitVertexFromCVE( cutVertEntry*& cve,
     dist2 /= sqrt((Btemp(0)-A(0) )*(Btemp(0)-A(0) ) + (Btemp(1)-A(1))*(Btemp(1)-A(1)));
 
 
-
+    // we have a vector from the pca, but do we need to change the sing?
+    //take the longer direction form the boundary. And if it's on the boundary ,take the side where all other vertices lie
     for(int i=0; i<vvAdj[cve -> vert].size(); i++) {
         int adjVert = vvAdj[cve->vert][i];
         if(! (adjVert ==boundary[ minusOneId] || adjVert == boundary[plusOneId]) )continue; // we want a border
-        //todo if levelone take the side of the other interior vertices
+        // if levelone take the side of the other interior vertices
         // the direction we want has a longer distance to the border
         Vector3d edgeVec = Vg.row(adjVert)- Vg.row(cve -> vert);
         edgeVec= edgeVec.normalized();
         // both have unit distance, so as a measure we can take the distance from another
         double posVec = (midVec - edgeVec).norm();
         double negVec = (newMidVec - edgeVec).norm();
-        cout<<posVec<<" pos and neg "<<negVec<<endl;
-        cout<<dist1<<" sign 1 and 2 "<<dist1<<endl;
+//        cout<<posVec<<" pos and neg "<<negVec<<endl;
+//        cout<<dist1<<" sign 1 and 2 "<<dist1<<endl;
         // take the longer sign. If they are the same (= initial), take the one on the same side as interior vertices
         double eps = 0.0001;
         if(dist2 > dist1){
@@ -588,10 +586,6 @@ void splitVertexFromCVE( cutVertEntry*& cve,
             }
 
         }
-//        if(negVec > posVec){
-//            midVec = newMidVec;
-//            cout<<"WE CHANGED THE SIGN OF THE MIDVEC!"<<endl;
-//        }
         break;
 
     }
@@ -599,6 +593,7 @@ void splitVertexFromCVE( cutVertEntry*& cve,
     // all other normal cases
     double dist = std::numeric_limits<double>::max();
     int idxofClosest = -1;
+    // find the index of the closest
     for(int i=0; i<vvAdj[cve -> vert ].size(); i++){
         int adjVert = vvAdj[cve -> vert][i];
         if(adjVert== boundary[minusOneId ]|| adjVert == boundary[plusOneId]) continue; // we want a middle one
@@ -614,6 +609,49 @@ void splitVertexFromCVE( cutVertEntry*& cve,
 
     // is the new to be inserted vertex
     int insertIdx =  vvAdj[cve -> vert][idxofClosest];
+
+
+    /*-----------------begin trial of snapping to pca direction ------------------*/
+    VectorXd signs(vfAdj[insertIdx].size());
+    for(int i=0; i<vfAdj[insertIdx].size(); i++){
+        int idx1, idx2, idx3;
+        idx1 = Fg(vfAdj[insertIdx][i], 0);
+        idx2 = Fg(vfAdj[insertIdx][i], 1);
+        idx3 = Fg(vfAdj[insertIdx][i], 2);
+        double part1 = (Vg(idx2, 1) - Vg(idx1, 1)) * (Vg(idx2, 0) - Vg(idx1, 0));
+        double part2 = (Vg(idx3, 2) - Vg(idx1,1)) * (Vg(idx3, 0) - Vg(idx1, 0));
+
+        signs(i) = ((part1-part2) );
+    }
+
+    Vg.row(insertIdx) = Vg.row(cve->vert) + lenMidVec * midVec.transpose();
+    for(int i=0; i<vfAdj[insertIdx].size(); i++){
+        int idx1, idx2, idx3;
+        idx1 = Fg(vfAdj[insertIdx][i], 0);
+        idx2 = Fg(vfAdj[insertIdx][i], 1);
+        idx3 = Fg(vfAdj[insertIdx][i], 2);
+        double part1 = (Vg(idx2, 1) - Vg(idx1, 1)) * (Vg(idx2, 0) - Vg(idx1, 0));
+        double part2 = (Vg(idx3, 2) - Vg(idx1,1)) * (Vg(idx3, 0) - Vg(idx1, 0));
+        auto sign = (( part1 - part2) > 0);
+
+        if((signs(i)>0) != sign ) {
+            cout<< (part1 - part2) <<" ERROR WE FLIPPED SOMETING "<< vfAdj[insertIdx][i]<<endl;
+            cout<<signs(i)<<" ERROR WE FLIPPED SOMETING "<< vfAdj[insertIdx][i]<<endl;
+            cout<<"ERROR WE FLIPPED SOMETING "<< vfAdj[insertIdx][i]<<endl;
+        }// mess with the original edge length for computation . this is not clean II thing
+        // todo
+        lengthsOrig(vfAdj[insertIdx][i], 0) = (Vg.row(idx2) - Vg.row(idx3)).norm();
+        lengthsOrig(vfAdj[insertIdx][i], 1) = (Vg.row(idx1) - Vg.row(idx3)).norm();
+        lengthsOrig(vfAdj[insertIdx][i], 2) = (Vg.row(idx2) - Vg.row(idx1)).norm();
+
+    }
+    /*-----------------end trial of snapping to pca direction ------------------*/
+
+
+
+
+
+
     MatrixXi TT, TTi;
     igl::triangle_triangle_adjacency(Fg, TT, TTi);
     std::pair<int, int>  faces;
@@ -647,20 +685,16 @@ void splitVertexFromCVE( cutVertEntry*& cve,
     }
 
     newVg.row(newVertIdx) = Vg.row(cve->vert);
-    if(cve->vert == 1448 || cve->vert == 1447){
-        cout<<(releasedVertNew.find(cve->vert) != releasedVertNew.end())<<" released?"<<endl;
-    }
+
     if(releasedVertNew.find(cve->vert) != releasedVertNew.end() ){
         // if that one was released and we cut here (only if l shapes are allowed), we have to release the duplicate too!
         releasedVertNew[newVertIdx] = releasedVertNew[cve-> vert];
         pair<int, int> valPair = make_pair(cve->seamType, cve ->seamIdInList);
         releasedVert[newVertIdx] = valPair;
 
-        cout<<"added "<<releasedVertNew[newVertIdx]<<" and of other "<< releasedVertNew[cve->vert]<<endl;
-        cout<<releasedVert[newVertIdx].first<<" "<< releasedVert[cve->vert].first<<endl;
     }
     cout<<insertIdx<<" the inserted index"<<endl;// TODO CASE IT IS NOT RIGHT NEITHER LEFT BUT ACTUALLY ON!!
-    //todo handle the case where this becomes a non manifold vertex and cut through immediately. but it destroys all patch ids
+
     Eigen::MatrixXi B;
     bool isManifold = igl::is_vertex_manifold( Fg, B);
     if(B(insertIdx, 0)!= 1){
@@ -1803,6 +1837,7 @@ int tearFurther(vector<cutVertEntry*>& cutPositions, MatrixXd&  currPattern, Mat
     cout<<prevFinished<<" --------------------"<<endl;
     return returnPosition;
 }
+
 void smoothSingleCut( cutVertEntry*& cve, MatrixXd& Vg, std::vector<std::vector<int> >& boundaryL){
     auto boundary = boundaryL[cve->patch];
     int startCut;
@@ -1891,6 +1926,7 @@ void smoothSingleCut( cutVertEntry*& cve, MatrixXd& Vg, std::vector<std::vector<
     }
 
 }
+
 void smoothCuts(vector<cutVertEntry*>& cutPositions, MatrixXd&  currPattern, MatrixXi& Fg_pattern,vector<seam*>& seamsList, vector<minusOneSeam*>& minusOneSeams,
             map<int, pair<int, int>> & releasedVert, set<int>& toPattern_boundaryVerticesSet,  std::vector<std::vector<int> >& boundaryL, set<int> & cornerSet ){
 
@@ -1899,6 +1935,7 @@ void smoothCuts(vector<cutVertEntry*>& cutPositions, MatrixXd&  currPattern, Mat
         smoothSingleCut(cutPositions[i] , currPattern, boundaryL);
     }
 }
+
 int computeTear(Eigen::MatrixXd & fromPattern, MatrixXd&  currPattern, MatrixXi& Fg_pattern, MatrixXi& Fg_pattern_orig,
                  vector<seam*>& seamsList, vector<minusOneSeam*>& minusOneSeams, std::vector<std::vector<int> >& boundaryL, bool & finished,
                  const std::vector<std::vector<std::pair<int, int>>>& cornersPerBoundary, map<int, vector<pair<int, int>>>& seamIdPerCorner,
