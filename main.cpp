@@ -68,7 +68,7 @@ double gravityfact =.0;
 int localGlobalIterations= 2000;
 int convergeIterations = 450;
 int timestepCounter;
-bool LShapeAllowed;
+bool LShapeAllowed = false;
 
 
 enum MouseMode { SELECTPATCH, SELECTBOUNDARY, NONE, SELECTVERT, SELECTAREA };
@@ -388,6 +388,7 @@ int main(int argc, char *argv[])
 
     viewer.append_mesh();   // mesh for the garment
     viewer.append_mesh();   // mesh for the mannequin
+    viewer.append_mesh(); // for other visualizations
 
     // set background
     viewer.core().background_color = Eigen::Vector4f(1, 1, 1, 1);
@@ -815,14 +816,18 @@ int main(int argc, char *argv[])
                 viewer.core().is_animating = false;
 
                 bool fin = false;
-                computeTear(fromPattern, currPattern, Fg_pattern, Fg_pattern_orig, seamsList ,
+                int pos = computeTear(fromPattern, currPattern, Fg_pattern, Fg_pattern_orig, seamsList ,
                             minusOneSeamsList, boundaryL, fin, cornerPerBoundary, seamIdPerCorner,
                             cornerVertices, cutPositions, releasedVert, toPattern_boundaryVerticesSet, cornerSet,
                             handledVerticesSet,
-                            Vg_pattern, prevTearFinished);
+                            Vg_pattern, prevTearFinished, LShapeAllowed);
+                if(pos!=-1){
+                    viewer.selected_data_index = 2;
+                    viewer.data().set_points(currPattern.row(pos), RowVector3d(1.0, 0.0, 0.0));
 
+                }
 
-//                viewer.selected_data_index = 0;
+//
 //                viewer.data().clear();
 //                viewer.data().set_mesh(currPattern, Fg_pattern);
                 std::vector<std::vector<int> > boundaryLnew;
@@ -842,8 +847,20 @@ int main(int argc, char *argv[])
                 simulate = false;
                 adaptionFlag = false;
                 viewer.core().is_animating = false;
-                tearFurther(cutPositions, currPattern, Fg_pattern, seamsList, minusOneSeamsList, releasedVert,
-                            toPattern_boundaryVerticesSet, boundaryL, cornerSet, handledVerticesSet, prevTearFinished, preferManySmallCuts);
+                int pos = tearFurther(cutPositions, currPattern, Fg_pattern, seamsList, minusOneSeamsList, releasedVert,
+                            toPattern_boundaryVerticesSet, boundaryL, cornerSet, handledVerticesSet, prevTearFinished,
+                            preferManySmallCuts, LShapeAllowed );
+                if(pos!=-1){
+                    viewer.selected_data_index = 2;
+                    viewer.data().clear();
+                    viewer.data().set_points(currPattern.row(pos), RowVector3d(1.0, 0.0, 0.0));
+
+                }
+                if(pos == 1447){
+                    viewer.selected_data_index = 0;
+                    viewer.data().clear();
+                    viewer.data().set_mesh(currPattern, Fg_pattern);
+                }
 
                 std::vector<std::vector<int> > boundaryLnew;
                 igl::boundary_loop(Fg_pattern, boundaryLnew);
@@ -855,8 +872,12 @@ int main(int argc, char *argv[])
                 boundaryL.clear();
                 boundaryL= boundaryLnew;
                 cout<<" restart adaption "<<endl;
-                viewer.core().is_animating = true;
-                adaptionFlag = true;
+                if(pos != 1447){
+                    viewer.core().is_animating = true;
+                    adaptionFlag = true;
+                }
+
+
 
             }
             if(ImGui::Button("Smooth cuts", ImVec2(-1, 0))){
@@ -1742,7 +1763,7 @@ void solveStretchAdaptionViaEdgeLength(){
             if(toPattern_boundaryVerticesSet.find(Fg_pattern(i, j)) != toPattern_boundaryVerticesSet.end() &&
             toPattern_boundaryVerticesSet.find(Fg_pattern(i,(j+1)%3)) != toPattern_boundaryVerticesSet.end()){
                 //todo
-                stiffnessUsed *= 3;
+//                stiffnessUsed *= 3;//we go faster back to the original length
             }
 
             PBD.solve_DistanceConstraint(p0, mass0, p1, 1, patternEdgeLengths_orig(i, (j+2) % 3),stiffnessUsed, corr0, corr1);
@@ -1899,7 +1920,6 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
     visToPattern.col(2) *= 1.01;
 //    viewer.data().meshgl.glLineWidth(10);
     viewer.data().set_edges(visToPattern, EdgesVisFromPattern, Eigen::RowVector3d(0, 0, 1));
-//    viewer.data().meshgl.glLineWidth(1);
 
 
     viewer.selected_data_index = 0;

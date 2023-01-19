@@ -130,9 +130,8 @@ bool PositionBasedDynamics::solve_DistanceConstraint(
     Vector3r corr;
     corr = stiffness * n * (d - restLength) / wSum;
 
-    corr0 =    corr;
+    corr0 =  corr;
     corr1 = - corr;
-    if(invMass0==5) cout<<d<<" "<<restLength<<endl;
     return true;
 }
 // ----------------------------------------------------------------------------------------------

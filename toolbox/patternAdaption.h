@@ -59,7 +59,7 @@ public:
 
 };
 
-void computeTear(MatrixXd& fromPatternFile,
+int computeTear(MatrixXd& fromPatternFile,
                  MatrixXd& currPattern, // the current vertex positions
                  MatrixXi& Fg_pattern, // faces, can change as we insert new vertices
                  MatrixXi& Fg_pattern_orig, // not to be changed, original faces, matches with Vg and fromPatternFile
@@ -76,7 +76,8 @@ void computeTear(MatrixXd& fromPatternFile,
                  set<int> & cornerSet,
                  set<int>& handledVerticesSet,
                  MatrixXd& Vg,
-                 bool& prevFinished
+                 bool& prevFinished,
+                 const bool & LShapeAllowed
                  );
 
 
@@ -88,12 +89,13 @@ void projectBackOnBoundary(const MatrixXd & Vg_to, MatrixXd& p, const vector<sea
                            map<int, pair<int, int>>& releasedVert, bool visFlag
                            );
 
-void tearFurther(vector<cutVertEntry*>& cutPositions, MatrixXd&  currPattern, MatrixXi& Fg_pattern,vector<seam*>& seamsList, vector<minusOneSeam*>& minusOneSeams,
+int tearFurther(vector<cutVertEntry*>& cutPositions, MatrixXd&  currPattern, MatrixXi& Fg_pattern,vector<seam*>& seamsList, vector<minusOneSeam*>& minusOneSeams,
                  map<int, pair<int, int>> & releasedVert, set<int>& toPattern_boundaryVerticesSet,  std::vector<std::vector<int> >& boundaryL,
                  set<int> & cornerSet,
                  set<int>& handledVerticesSet,
                  bool& prevFinished,
-                 const bool &preferManySmallCuts
+                 const bool &preferManySmallCuts,
+                 const bool & LShapeAllowed
 );
 void smoothCuts(vector<cutVertEntry*>& cutPositions, MatrixXd&  currPattern, MatrixXi& Fg_pattern,vector<seam*>& seamsList, vector<minusOneSeam*>& minusOneSeams,
                 map<int, pair<int, int>> & releasedVert, set<int>& toPattern_boundaryVerticesSet,  std::vector<std::vector<int> >& boundaryL, set<int> & cornerSet );

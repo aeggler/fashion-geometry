@@ -25,8 +25,9 @@
 using namespace std;
 using namespace Eigen;
 
-
+//tood attention this can create degenerate triangles
 void smoothBetweenVertices(MatrixXd& currPattern, MatrixXi& Fg_pattern, vector<int>& startAndEnd){
+
     vector<vector<int>> boundaryL;
     int patch =-1; int startIdx, endIdx;
 
@@ -100,7 +101,7 @@ void smoothBetweenVertices(MatrixXd& currPattern, MatrixXi& Fg_pattern, vector<i
             if(sign < -1){
                 double tt = (R-Q).dot(C-Q)/((R-Q).dot(R-Q));
                 Vector3d targetPosNeigh = Q+tt*(R-Q);
-                cout<<neigh<<" iterative neigh is on on the other side of the boundary "<<sign<<endl;
+                cout<<neigh<<" iterative neigh is on on the other side of the boundary, maybe creating degenerate triangles! "<<sign<<endl;
                 furtherChecks.push_back(neigh);
                 currPattern.row(neigh) = targetPosNeigh;
 
