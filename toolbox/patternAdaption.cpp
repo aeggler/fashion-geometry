@@ -12,20 +12,12 @@
 #include "/Library/gurobi1000/macos_universal2/include/gurobi_c++.h"
 #include "adjacency.h"
 #include <igl/HalfEdgeIterator.h>
+#include "MathFunctions.h"
+#include <igl/barycentric_coordinates.h>
+#include <igl/barycentric_interpolation.h>
 
 using namespace std;
 using namespace Eigen;
-
-class Node{
-public:
-    int vertId;
-    Node *next;
-    Node *prev;
-    int faceId;
-    int edgeOfFaceId;
-    int duplicate;
-    double stretchLeft;
-};
 
 MatrixXd lengthsOrig;
 map<int, cutVertEntry *> cveStartPositionsSet;
@@ -48,31 +40,7 @@ int findWhichEdgeOfFace(int face, int v1, int v2, MatrixXi& Fg){
     return whichEdge;
 }
 
-// push item to the back of the list
-void push(Node** tail_ref, int vert_Id, int dupl, int face_id ,int whichEdge,  double stretch_Left, int& listLength){
 
-    Node* new_node = new Node();
-    new_node -> prev = (*tail_ref);
-    new_node -> next = NULL;
-
-    new_node -> vertId = vert_Id;
-    new_node -> duplicate = dupl;
-    new_node -> faceId = face_id;
-    new_node -> edgeOfFaceId = whichEdge;
-    new_node -> stretchLeft = stretch_Left;
-
-    if((*tail_ref)!= NULL){
-        (*tail_ref)-> next = new_node;
-    }
-    (*tail_ref) = new_node;
-
-    if(new_node-> prev != NULL){
-//        new_node -> stretchRight  = new_node-> prev->stretchLeft;
-//        new_node -> faceIdRight = new_node -> prev -> faceId;
-//        new_node-> edgeOfFaceIdRight = new_node -> prev -> edgeOfFaceId;
-    }
-    listLength++;
-}
 void findIndxInBoundaryloop(vector<int> & boundary, int& target,int& idx){
     idx = 0;
     while (boundary[idx] != target && idx < boundary.size()){
@@ -87,47 +55,8 @@ void findIndxInBoundaryloop(vector<int> & boundary, int& target,int& idx){
 }
 bool canBeSplit(int vertId,  vector<vector<int> >& vfAdj){
     return vfAdj[vertId].size()>1;
+}
 
-}
-int printList(Node * node, int length,  vector<vector<int> >& vfAdj){
-    // this is the thereshold
-    double maxStretch = 0.0001;
-    int idxMax = -1;
-    int currIdx = 0;
-//    while (node != NULL){
-    while(currIdx < length){
-//        cout<<node->vertId<<" "<< node->stretchLeft <<" and face to the left  "<<node->faceId<<" and id "<<node-> next->vertId <<endl;
-        if(node->stretchLeft + node->prev->stretchLeft > maxStretch && canBeSplit(node->vertId, vfAdj)){
-            maxStretch = node->stretchLeft + node->prev->stretchLeft;
-            idxMax = currIdx;
-        }
-        currIdx++;
-        node = node -> next;
-    }
-    if (idxMax == -1){
-        cout<<" nothing to tear! "<<endl;
-    }
-    return idxMax;
-}
-void printDataOfIdx(Node * node, int whichTear){
-    int currIdx = 0;
-    while (currIdx<whichTear){
-        node = node-> next;
-        currIdx++;
-    }
-    cout<<node->vertId<<" "<< node->stretchLeft + node->prev->stretchLeft<<endl;
-    cout<<node -> faceId<<" "<< node -> edgeOfFaceId<<" "<< node -> duplicate<<" the metadata"<<endl;
-    cout<<  node -> prev->faceId <<" "<< node-> prev->edgeOfFaceId <<" the right side"<<endl;
-}
-Node getDataOfIdx(Node * node, int whichTear){
-    int currIdx = 0;
-    while (currIdx<whichTear){
-        node = node-> next;
-        currIdx++;
-    }
-    return *node;
-
-}
 void updateWithNewId(MatrixXi& Fg, int vert,int rightFaceId, int newVertIdx ){
     if(Fg(rightFaceId , 1) == vert ){
         Fg(rightFaceId , 1) = newVertIdx;
@@ -182,10 +111,11 @@ void computeMidVecBasedOnPCA(VectorXd& midVec, vector<vector<int>>& vvAdj, vecto
         }
         dirs.row(i) *= ws(i);
         dirs.row(i) += Vg.row(vert);
+        cout<<dirs.row(i)<<" direction , stress "<<ws(i)<<" for " <<otherVert<<endl;
     }
     fitVecToPointSet( dirs, midVec );
     midVec(2) = 0;// Vg(vert, 2); // just to get the 3rd constant dimension right
-    lenMid = midVec.norm();
+    lenMid =  midVec.norm();
     midVec = midVec.normalized();
     cout<<" the newly computed midvec of "<<vert<<" is "<<midVec.transpose()<<endl;
 }
@@ -197,7 +127,7 @@ bool checkIfTearIsUseful(int vert, Vector3d& cutDirection,  vector<vector<int>>&
     // todo 3.1. maybe a better option is not to ignore ones with wrong direction but to actually clamp the stess
 
     double thereshold = 1.051;// todo fix this!! it cuts pretty mich always
-    double thW = 1.1; double thDot = 0.4;
+    double thW = 1.1; double thDot = 0.3;
     bool flag = false;
     if(!preComputed) ws.resize(vvAdj[vert].size());
 
@@ -301,7 +231,8 @@ void splitVertexFromCVE( cutVertEntry*& cve,
                          MatrixXd& lengthsCurr,
                          set<int> & cornerSet,
                          set<int>& handledVerticesSet ,
-                         const bool & LShapeAllowed
+                         const bool & LShapeAllowed,
+                         MatrixXd& Vg_pattern_orig
                          ){
 
     cout<<" patch "<<cve->patch<<" of "<<boundaryL.size()<<" L Shape allowed? "<<LShapeAllowed <<endl;
@@ -317,7 +248,7 @@ void splitVertexFromCVE( cutVertEntry*& cve,
         cout<<"Handled by other seams already."<<endl;
         if(cveStartPositionsSet.find(cve->vert) != cveStartPositionsSet.end() && LShapeAllowed){
             cout<<"But it isi a corner and we allow L Shapes. Go on."<<endl;
-            
+
         }else{
             cout<<"And really it is in the middle. Stop ."<<endl;
             cve->finFlag = true;
@@ -531,64 +462,51 @@ void splitVertexFromCVE( cutVertEntry*& cve,
     }else{
         A = Vg.row(cve -> leftCorner);
         Btemp = Vg.row(cve -> rightCorner);
+        cout<<cve -> rightCorner<<" leftcorner "<<cve -> leftCorner<<endl;
     }
+    cout<<(Btemp-A).transpose()<<" compare line"<<endl;
 
-    Vector3d C = Vg.row(cve -> vert).transpose()+ midVec;
     //(AB,AM), where M(X,Y) is the query point:
     //https://stackoverflow.com/questions/1560492/how-to-tell-whether-a-point-is-to-the-right-or-left-side-of-a-line
+    Vector3d C = Vg.row(cve -> vert).transpose()+ midVec;
     auto dist1 = abs((Btemp(0)-A(0) )*(A(1)-C(1))-(Btemp(1)-A(1))*(A(0)-C(0)));
     dist1 /= sqrt((Btemp(0)-A(0) )*(Btemp(0)-A(0) ) + (Btemp(1)-A(1))*(Btemp(1)-A(1)));
+
     C = Vg.row(cve -> vert).transpose() + newMidVec;
     auto dist2 = abs((Btemp(0)-A(0) )*(A(1)-C(1))-(Btemp(1)-A(1))*(A(0)-C(0)));
     dist2 /= sqrt((Btemp(0)-A(0) )*(Btemp(0)-A(0) ) + (Btemp(1)-A(1))*(Btemp(1)-A(1)));
 
-
     // we have a vector from the pca, but do we need to change the sing?
-    //take the longer direction form the boundary. And if it's on the boundary ,take the side where all other vertices lie
-    for(int i=0; i<vvAdj[cve -> vert].size(); i++) {
-        int adjVert = vvAdj[cve->vert][i];
-        if(! (adjVert ==boundary[ minusOneId] || adjVert == boundary[plusOneId]) )continue; // we want a border
-        // if levelone take the side of the other interior vertices
-        // the direction we want has a longer distance to the border
-        Vector3d edgeVec = Vg.row(adjVert)- Vg.row(cve -> vert);
-        edgeVec= edgeVec.normalized();
-        // both have unit distance, so as a measure we can take the distance from another
-        double posVec = (midVec - edgeVec).norm();
-        double negVec = (newMidVec - edgeVec).norm();
-//        cout<<posVec<<" pos and neg "<<negVec<<endl;
-//        cout<<dist1<<" sign 1 and 2 "<<dist1<<endl;
-        // take the longer sign. If they are the same (= initial), take the one on the same side as interior vertices
-        double eps = 0.0001;
-        if(dist2 > dist1){
+    if(!cve-> levelOne){
+        if(dist2 > dist1 ){
             midVec = newMidVec;
             cout<<"WE CHANGED THE SIGN OF THE MIDVEC!"<<endl;
-        }else if ((dist1- dist2) < eps){
-            cout<<"initial!"<<endl;
-
-            Vector3d C = Vg.row(cve -> vert).transpose()+ midVec;
-            //(AB,AM), where M(X,Y) is the query point:
-            //https://stackoverflow.com/questions/1560492/how-to-tell-whether-a-point-is-to-the-right-or-left-side-of-a-line
-            auto sign1 =(((Btemp(0)-A(0) )*(A(1)-C(1))-(Btemp(1)-A(1))*(A(0)-C(0))) > 0);
-            cout<<"side of midvec "<<sign1<<endl;
-            // take the side of interior vertices
-            for(int j=0; j<vvAdj[cve -> vert].size(); j++) {
-                int testInt = vvAdj[cve->vert][j];
-                if ((testInt == boundary[minusOneId] || testInt == boundary[plusOneId]))continue;
-                // it is an interior
-                C = Vg.row(testInt);
-                auto sign2 = (((Btemp(0)-A(0) )*(A(1)-C(1))-(Btemp(1)-A(1))*(A(0)-C(0))) > 0);
-                cout<<"side of interior vert "<<sign2<<endl;
-                if(sign1!= sign2){
-                    midVec = newMidVec;
-                    cout<<"WE CHANGED THE SIGN OF THE MIDVEC!"<<endl;
-                }
-                break;
-            }
-
         }
-        break;
-
+    }else{
+        cout<<"initial!"<<endl;
+        // if levelone take the side of the other interior vertices
+        Vector3d C = Vg.row(cve -> vert).transpose()+ midVec;
+        //(AB,AM), where M(X,Y) is the query point:
+        //https://stackoverflow.com/questions/1560492/how-to-tell-whether-a-point-is-to-the-right-or-left-side-of-a-line
+        auto sign1 =(((Btemp(0)-A(0) )*(A(1)-C(1))-(Btemp(1)-A(1))*(A(0)-C(0))) > 0);
+        cout<<"side of midvec "<<sign1<<endl;
+        // take the side of interior vertices
+        for(int j=0; j<vvAdj[cve -> vert].size(); j++) {
+            int testInt = vvAdj[cve->vert][j];
+            if ((testInt == boundary[minusOneId] || testInt == boundary[plusOneId]))continue;
+            // it is an interior
+            C = Vg.row(testInt);
+            auto sign2 = (((Btemp(0)-A(0) )*(A(1)-C(1))-(Btemp(1)-A(1))*(A(0)-C(0))) > 0);
+            cout<<"side of interior vert "<<sign2<<endl;
+            if(sign1!= sign2){
+                midVec = newMidVec;
+                cout<<"WE CHANGED THE SIGN OF THE MIDVEC!"<<endl;
+            }
+            break;
+        }
     }
+
+
 
     // all other normal cases
     double dist = std::numeric_limits<double>::max();
@@ -600,10 +518,11 @@ void splitVertexFromCVE( cutVertEntry*& cve,
 
         Vector3d edgeVec = Vg.row(adjVert)- Vg.row(cve -> vert);
         edgeVec= edgeVec.normalized();
+        cout<<adjVert<<" : "<<edgeVec.transpose()<<" "<<"with dist " <<(midVec.normalized() - edgeVec).norm()<<endl;
         // both have unit distance, so as a measure we can take the distance from another
-        if((midVec - edgeVec).norm() < dist){
+        if((midVec.normalized() - edgeVec).norm() < dist){
             idxofClosest= i;
-            dist = (midVec - edgeVec).norm();
+            dist = (midVec.normalized() - edgeVec).norm();
         }
     }
 
@@ -623,8 +542,97 @@ void splitVertexFromCVE( cutVertEntry*& cve,
 
         signs(i) = ((part1-part2) );
     }
+//    Vg.row(insertIdx) = Vg.row(cve->vert) + lenMidVec * midVec.transpose();
+//    cout<<"Position after: "<<Vg.row(insertIdx)<<endl;
+//bool raySegmentIntersection(const Vector2d& p, const Vector2d& q,const Vector2d & qs, const Vector2d& ray, double rayMaxLength, Vector2d& intersect){
+//adjacentFacesToEdge( const int v1, const int v2, const std::vector< std::vector<int> > & vertexFaceAdjecencyList, std::pair<int, int> & faces
 
-    Vg.row(insertIdx) = Vg.row(cve->vert) + lenMidVec * midVec.transpose();
+    Vector2d mid2 = midVec.transpose().leftCols(2);
+    pair<int, int> adjFaces;
+    adjacentFacesToEdge(insertIdx, cve->vert, vfAdj, adjFaces);
+    int intersectingFace = -1 ;
+    VectorXd newPos = Vg.row(insertIdx);
+    for(int i=0; i<3; i++){
+        if(Fg(adjFaces.first, i) == cve->vert){
+            continue;
+        }
+        for(int j=i+1; j<3; j++){
+            Vector2d intersectPosition;
+             if (Fg(adjFaces.first, j) == cve-> vert){
+                 continue;
+             }
+            cout<<"searching first "<<Fg(adjFaces.first, j)<<" "<<Fg(adjFaces.first, i)<<endl;
+
+            if(raySegmentIntersection(Vg.row(cve->vert).leftCols(2), Vg.row(Fg(adjFaces.first, i)).leftCols(2),
+                                                                            Vg.row(Fg(adjFaces.first, j)).leftCols(2), mid2,
+                                                                            lengthsOrig(adjFaces.first, i)*10, intersectPosition)){
+                cout<<Fg(adjFaces.first, i)<<" it intersects! "<<Fg(adjFaces.first, j)<<endl;
+                cout<<"the face is "<<adjFaces.first<<endl;
+                cout<<Vg.row(insertIdx)<<" insert Idx"<<endl;
+                cout<<intersectPosition.transpose()<<" intersect position"<<endl;
+                intersectingFace = adjFaces.first;
+//                newPos = intersectPosition;
+                newPos(0)= intersectPosition(0);
+                newPos(1)= intersectPosition(1);
+            }
+        }
+    }
+    for(int i=0; i<3; i++){
+        if(Fg(adjFaces.second, i) == cve->vert){
+            continue;
+        }
+        for(int j=i+1; j<3; j++){
+            Vector2d intersectPosition;
+            if (Fg(adjFaces.second, j) == cve-> vert){
+                continue;
+            }
+            cout<<"searching "<<Fg(adjFaces.second, j)<<" "<<Fg(adjFaces.second, i)<<endl;
+            if(raySegmentIntersection(Vg.row(cve->vert).leftCols(2), Vg.row(Fg(adjFaces.second, i)).leftCols(2),
+                                      Vg.row(Fg(adjFaces.second, j)).leftCols(2), mid2,
+                                      lengthsOrig(adjFaces.second, i)*10, intersectPosition)){
+                cout<<Fg(adjFaces.second, i)<<" it intersects! "<<Fg(adjFaces.second, j)<<endl;
+                cout<<Vg.row(insertIdx)<<" insert Idx"<<endl;
+                cout<<intersectPosition.transpose()<<" intersect position"<<endl;
+//                newPos = intersectPosition;
+                newPos(0)= intersectPosition(0);
+                newPos(1)= intersectPosition(1);
+
+                intersectingFace = adjFaces.second;
+
+
+            }
+        }
+    }
+    if(intersectingFace == -1 ){
+        cout<<"ERRRROR WE FOUND NO FACE!!! "<<endl;
+    }
+
+    MatrixXd insertIdxInBary;
+    MatrixXd input(1, 3);
+    input.row(0)= newPos;
+    igl::barycentric_coordinates(input, Vg.row(Fg(intersectingFace, 0)), Vg.row(Fg(intersectingFace, 1)),
+                                 Vg.row(Fg(intersectingFace, 2)), insertIdxInBary);
+
+//    cout<<Vg.row(insertIdx)<<" curr before"<<endl;
+    newVg.row(insertIdx) = newPos;
+    cout<<newVg.row(insertIdx)<<" curr after"<<endl;
+
+//    cout<< "insertIdxInBary " << insertIdxInBary << "*" <<endl;
+    //todo now we need to change the rest shape to this position
+    VectorXd updatedRestShapeVertPos = insertIdxInBary(0) * Vg_pattern_orig.row(Fg(intersectingFace, 0)) ;
+    updatedRestShapeVertPos += insertIdxInBary(1) * Vg_pattern_orig.row(Fg(intersectingFace, 1)) ;
+    updatedRestShapeVertPos += insertIdxInBary(2) * Vg_pattern_orig.row(Fg(intersectingFace, 2) );
+// todo upadte all origiinal edge lengths
+    cout<<Vg_pattern_orig.row(insertIdx)<<" orig before"<<endl;
+    Vg_pattern_orig.row(insertIdx) = updatedRestShapeVertPos;
+    cout<<Vg_pattern_orig.row(insertIdx)<<" orig after"<<endl;
+
+    cout<<" /////////////////////////"<<endl;
+
+
+
+    //some stuff is wrong
+    //todo maybe it takes the wrong direction sometimes
     for(int i=0; i<vfAdj[insertIdx].size(); i++){
         int idx1, idx2, idx3;
         idx1 = Fg(vfAdj[insertIdx][i], 0);
@@ -637,12 +645,10 @@ void splitVertexFromCVE( cutVertEntry*& cve,
         if((signs(i)>0) != sign ) {
             cout<< (part1 - part2) <<" ERROR WE FLIPPED SOMETING "<< vfAdj[insertIdx][i]<<endl;
             cout<<signs(i)<<" ERROR WE FLIPPED SOMETING "<< vfAdj[insertIdx][i]<<endl;
-            cout<<"ERROR WE FLIPPED SOMETING "<< vfAdj[insertIdx][i]<<endl;
+            cout << endl;
         }// mess with the original edge length for computation . this is not clean II thing
         // todo
-        lengthsOrig(vfAdj[insertIdx][i], 0) = (Vg.row(idx2) - Vg.row(idx3)).norm();
-        lengthsOrig(vfAdj[insertIdx][i], 1) = (Vg.row(idx1) - Vg.row(idx3)).norm();
-        lengthsOrig(vfAdj[insertIdx][i], 2) = (Vg.row(idx2) - Vg.row(idx1)).norm();
+//        cout<< lengthsOrig(vfAdj[insertIdx][i], 0) <<" "<< lengthsOrig(vfAdj[insertIdx][i], 0)<<" "<< lengthsOrig(vfAdj[insertIdx][i], 0)<<" before lengths"<<endl;
 
     }
     /*-----------------end trial of snapping to pca direction ------------------*/
@@ -772,198 +778,15 @@ void splitVertexFromCVE( cutVertEntry*& cve,
 
     cve-> vert = insertIdx;
     cve->levelOne = false;
+    cout<<Vg.row(insertIdx)<<" insert Idx at end "<<endl;
+
     cout<<"fin"<<endl<<endl;
-}
-void splitVertex(Node** head, int & listLength, int  whichTear, MatrixXd& Vg, MatrixXi& Fg, vector<vector<int> >& vfAdj, MatrixXd& lengthsOrig, MatrixXd& lengthsCurr){
-    cout<<"splitting "<<endl;
-
-    Node* node = (*head);
-    int currIdx = 0;
-    while (currIdx<whichTear){
-        node = node-> next;
-        currIdx++;
-    }
-    whichTear = node->vertId;
-
-    // to which vert is the vertex adjacent? from there we get all the adjacent edges
-    vector<vector<int>> vvAdj;
-    igl::adjacency_list(Fg,vvAdj);
-    vector<int> adjacentFaces = vfAdj[whichTear];
-    if(adjacentFaces.size()<2){
-        // there is nothing to split, only left and right vertex are adjacent
-        cout<<" no splitting here"<<endl;
-        return;
-    }
-
-    int newVertIdx = Vg.rows();
-    MatrixXd newVg (newVertIdx+1, 3);
-    newVg.block(0,0, newVertIdx, 3)= Vg;
-
-    node -> duplicate = newVertIdx;
-    // we need to know which is closest to normal in order to insert this and new vertex and in right order
-    int leftId = node -> next -> vertId;
-    int rightId = node -> prev -> vertId;
-
-    Vector3d toLeft = Vg.row(leftId)- Vg.row(whichTear);
-    Vector3d toRight = Vg.row(rightId) - Vg.row(whichTear);
-    Vector3d midVec = (toLeft.normalized()+ toRight.normalized())/2;
-    midVec(0)= -toLeft.normalized()(1);
-    midVec(1)= toLeft.normalized()(0);
-//    cout<<midVec.transpose()<<" mid vector"<<endl;//TODO THIS IS a heuristic
-//    double angle = acos((toLeft.normalized()).dot(toRight.normalized()));
-//    double deg = angle*180/M_PI;
-
-    // first: find closest to mid, this is the new inserted voundary point
-    double dist = std::numeric_limits<double>::max();
-    int idxofClosest = -1;
-    for(int i=0; i<vvAdj[whichTear].size(); i++){
-        int adjVert = vvAdj[whichTear][i];
-        if(adjVert== rightId || adjVert == leftId) continue; // we want a middle one
-        Vector3d edgeVec = Vg.row(adjVert)- Vg.row(whichTear);
-        edgeVec= edgeVec.normalized();
-        // both have unit distance, so as a measure we can take the distance form another
-        if((midVec - edgeVec).norm()<dist){
-            idxofClosest= i;
-            dist = (midVec - edgeVec).norm();
-        }
-
-    }
-    // is the new to be inserted vertex
-    int insertIdx =  vvAdj[whichTear][idxofClosest];
-    cout<<insertIdx<<" the inserted index"<<endl;
-    // TODO if this is a boundary vertex we disconnect the mesh and are finished
-
-    double x1 = Vg(whichTear, 0); double y1 = Vg(whichTear, 1);
-    double x2 = Vg(insertIdx, 0); double y2 = Vg(insertIdx, 1);
-
-    // it should be sufficient to check one edge per face since it cannot happen that a face has edges on both sides
-    // if it coudl then it is (a) not stressed or (b) we found no splitnormal
-
-    // right gets  newVertIdx
-    double dRight = (Vg(rightId, 0) - x1) * (y2-y1) - (Vg(rightId, 1) - y1) * (x2 - x1);
-    // defines the side of right, left is the opposite
-    bool rightDSmaller = (dRight<0);
-
-    if(Fg(node->prev->faceId , 1) == whichTear){
-        Fg(node->prev->faceId, 1) = newVertIdx;
-    }
-    else if(Fg(node-> prev->faceId , 0)== whichTear){
-        Fg(node->prev->faceId, 0) = newVertIdx;
-    }
-    else {
-        Fg(node->prev->faceId, 2) = newVertIdx;
-    }
-
-    // adapt the position
-    double eps = 0.01;
-    cout<<"orig "<<Vg.row(whichTear)<<endl;
-    cout<<toRight.transpose()<<" right"<<endl;
-    cout<<toLeft.transpose()<<" left"<<endl;
-    newVg.row(newVertIdx)= Vg.row(whichTear)+ (eps * toRight).transpose();
-    newVg.row(whichTear) = Vg.row(whichTear) + (eps * toLeft).transpose();
-    Vg.resize(Vg.rows()+1, 3);
-    Vg= newVg;
-
-    // adapt the faces to have the right id
-    for(int i=0; i<adjacentFaces.size(); i++){
-        // we take one edge and check it's side
-        if(adjacentFaces[i]== leftId || adjacentFaces[i]== rightId) continue; // they are handled seperately
-        int testVert =-1;
-        if(Fg(adjacentFaces[i], 0)!= whichTear &&
-        Fg(adjacentFaces[i], 0)!= newVertIdx &&
-        Fg(adjacentFaces[i], 0)!= leftId &&
-        Fg(adjacentFaces[i], 0)!= rightId &&
-        Fg(adjacentFaces[i], 0)!= insertIdx
-        ){
-            testVert = Fg(adjacentFaces[i], 0);
-        }else if(
-                Fg(adjacentFaces[i], 1)!= whichTear &&
-                Fg(adjacentFaces[i], 1)!= newVertIdx &&
-        Fg(adjacentFaces[i], 1)!= leftId &&
-        Fg(adjacentFaces[i], 1)!= rightId &&
-        Fg(adjacentFaces[i], 1)!= insertIdx ){
-            testVert = Fg(adjacentFaces[i], 1);
-        }
-        else if(Fg(adjacentFaces[i], 2)!= whichTear &&
-                Fg(adjacentFaces[i], 2)!= newVertIdx &&
-                 Fg(adjacentFaces[i], 2)!= leftId &&
-                 Fg(adjacentFaces[i], 2)!= rightId &&
-                 Fg(adjacentFaces[i], 2)!= insertIdx ){
-            testVert = Fg(adjacentFaces[i], 2);
-        }
-        else{
-            cout<<"face "<<adjacentFaces[i]<<" becomes skipped and remains "<< Fg.row(adjacentFaces[i])<<endl;
-            continue;
-        }
-
-        double d = (Vg(testVert, 0) - x1)*(y2-y1)-(Vg(testVert, 1) - y1)*(x2 - x1);
-
-        // if it is one of the same side as the one we call right
-        if (rightDSmaller == (d<0)){
-            if(adjacentFaces[i]==5319)cout<<" in loop"<<endl;
-            // same side as what we call right
-            if(Fg(adjacentFaces[i], 1)== whichTear && testVert!= -1  ){
-                Fg(adjacentFaces[i], 1) = newVertIdx;
-            }
-            else if(Fg(adjacentFaces[i], 0)== whichTear && testVert!= -1){
-                Fg(adjacentFaces[i], 0) = newVertIdx;
-            }
-            else if(testVert!= -1 && Fg(adjacentFaces[i], 2)== whichTear){
-                Fg(adjacentFaces[i], 2) = newVertIdx;
-            }
-
-        }
-        cout<<"face "<<adjacentFaces[i]<<" becomes "<< Fg.row(adjacentFaces[i])<<endl;
-    }
-
-    // update vertexFace
-    createVertexFaceAdjacencyList(Fg, vfAdj);
-    int faceOfMid = adjacentFaceToEdge( insertIdx, whichTear, -1, vfAdj );
-    int faceOfRight = adjacentFaceToEdge( insertIdx, newVertIdx, -1, vfAdj );
-
-    // now insert into the linked list
-// node is the left side, insert idx follows right and then the new one
-    Node* middle_node = new Node();
-    middle_node->vertId = insertIdx;
-    middle_node->faceId = faceOfMid;
-    middle_node -> duplicate = -1;
-
-    Node* right_noed = new Node();
-    right_noed-> vertId = newVertIdx;
-    right_noed->faceId = faceOfRight; //right_noed -> faceIdRight = node->faceIdRight;
-    right_noed-> duplicate = whichTear;
-
-    middle_node-> next = node;
-    middle_node->prev = right_noed;
-    right_noed-> next = middle_node;
-    right_noed -> prev = node->prev;
-    node->prev ->next = right_noed;
-    node ->prev = middle_node;
-
-    listLength+=2;
-    // find middle node edge of face id
-    // find right node edge of face id
-
-    middle_node->edgeOfFaceId = findWhichEdgeOfFace(faceOfMid, insertIdx, whichTear, Fg);
-//    cout<< middle_node->edgeOfFaceId<<" edge left "<<endl;
-    right_noed->edgeOfFaceId = findWhichEdgeOfFace(faceOfRight, newVertIdx, whichTear, Fg);
-//    cout<< right_noed->edgeOfFaceId<<" edge right "<<endl;
-
-    double origLength = lengthsOrig(faceOfMid, middle_node->edgeOfFaceId);
-    double newLength = lengthsCurr ( faceOfMid, middle_node->edgeOfFaceId);
-
-    middle_node-> stretchLeft = newLength/origLength;// assuming the new one is stretched it is certainly longer
-
-    origLength = lengthsOrig(faceOfRight, right_noed->edgeOfFaceId);
-    newLength = lengthsCurr (faceOfRight, right_noed->edgeOfFaceId);
-
-    right_noed-> stretchLeft = newLength/origLength;// assuming the new one is stretched it is certainly longer
 
 }
 void splitCounterPart(vector<cutVertEntry*>& cutPositions, int idxOfCVE,  cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<vector<int> >& vfAdj,
                       std::vector<std::vector<int> >& boundaryL,  vector<seam*>& seamsList, vector<minusOneSeam*> & minusOneSeams,
                       map<int, pair<int, int>> & releasedVert, set<int>& toPattern_boundaryVerticesSet,  MatrixXd& lengthsCurr,
-                      MatrixXi& Fg_pattern, set<int> & cornerSet,  set<int>& handledVerticesSet, const bool & LShapeAllowed){
+                      MatrixXi& Fg_pattern, set<int> & cornerSet,  set<int>& handledVerticesSet, const bool & LShapeAllowed,MatrixXd& Vg_pattern_orig){
     //idx of cve has higher stress, hence we have searched before already, just need to increment
     //if not found we have handled it already
     if(cve->seamType == -1 ) {
@@ -982,7 +805,8 @@ void splitCounterPart(vector<cutVertEntry*>& cutPositions, int idxOfCVE,  cutVer
         }
         if(idx == -1) return;
         splitVertexFromCVE( cutPositions[idx], Vg, Fg, vfAdj,
-                            boundaryL, seamsList, minusOneSeams, releasedVert, toPattern_boundaryVerticesSet, lengthsCurr, cornerSet, handledVerticesSet, LShapeAllowed);
+                            boundaryL, seamsList, minusOneSeams, releasedVert, toPattern_boundaryVerticesSet,
+                            lengthsCurr, cornerSet, handledVerticesSet, LShapeAllowed, Vg_pattern_orig);
         return;
     }
 
@@ -1028,7 +852,8 @@ void splitCounterPart(vector<cutVertEntry*>& cutPositions, int idxOfCVE,  cutVer
         return;
     }
     splitVertexFromCVE( cutPositions[idx], Vg, Fg, vfAdj,
-                        boundaryL, seamsList, minusOneSeams, releasedVert, toPattern_boundaryVerticesSet, lengthsCurr, cornerSet, handledVerticesSet, LShapeAllowed);
+                        boundaryL, seamsList, minusOneSeams, releasedVert, toPattern_boundaryVerticesSet, lengthsCurr,
+                        cornerSet, handledVerticesSet, LShapeAllowed, Vg_pattern_orig);
     return;
 }
 /*
@@ -1693,10 +1518,6 @@ void setLP(std::vector<std::vector<int> >& boundaryL , vector<vector<int>> & vfA
                     cve->continuedDirection = Vg.row(prevVert)- Vg.row(vert);
                 }
 
-                    cout<<endl<<(firstInSeam==vert) <<" first ? "<<inverted<<endl;
-                    cout<<nextStress<<" nextStress and Vert "<<nextVert<<endl;
-                    cout<<prevStress<<" prev stress and vert "<<prevVert<<endl;
-
             }else{
                 cve->stress = (nextStress + prevStress)/2;
             }
@@ -1739,9 +1560,11 @@ void updateStress(vector<cutVertEntry*>& cutPositions, vector<seam*>& seamsList,
 
 int tearFurther(vector<cutVertEntry*>& cutPositions, MatrixXd&  currPattern, MatrixXi& Fg_pattern,vector<seam*>& seamsList, vector<minusOneSeam*>& minusOneSeams,
                  map<int, pair<int, int>> & releasedVert, set<int>& toPattern_boundaryVerticesSet,  std::vector<std::vector<int> >& boundaryL,
-                 set<int> & cornerSet, set<int>& handledVerticesSet,  bool& prevFinished, const bool & preferManySmallCuts, const bool & LShapeAllowed ){
+                 set<int> & cornerSet, set<int>& handledVerticesSet,  bool& prevFinished, const bool & preferManySmallCuts, const bool & LShapeAllowed,
+                 MatrixXd& patternEdgeLengths_orig, MatrixXd& Vg_pattern_orig ){
     cout<<endl<<endl<<"-----------------------"<<endl<<endl;
-    int returnPosition = -1;
+
+            int returnPosition = -1;
     //when releasing the boundary it can turn into a non manifold mesh. not sure if this causes further problems
     Eigen::MatrixXi B;
     bool isManifold = igl::is_vertex_manifold( Fg_pattern, B);
@@ -1750,6 +1573,7 @@ int tearFurther(vector<cutVertEntry*>& cutPositions, MatrixXd&  currPattern, Mat
     createVertexFaceAdjacencyList(Fg_pattern, vfAdj);
     MatrixXd lengthsCurr;
     igl::edge_lengths(currPattern, Fg_pattern, lengthsCurr);
+    lengthsOrig = patternEdgeLengths_orig;
 
     updateStress( cutPositions, seamsList, minusOneSeams, boundaryL,  Fg_pattern, vfAdj, lengthsCurr);
 
@@ -1780,7 +1604,8 @@ int tearFurther(vector<cutVertEntry*>& cutPositions, MatrixXd&  currPattern, Mat
                 }else{
                     returnPosition = cutPositions[parallel] ->vert;
                     splitVertexFromCVE(cutPositions[parallel], currPattern, Fg_pattern, vfAdj, boundaryL, seamsList,
-                                       minusOneSeams, releasedVert, toPattern_boundaryVerticesSet,lengthsCurr, cornerSet, handledVerticesSet, LShapeAllowed);
+                                       minusOneSeams, releasedVert, toPattern_boundaryVerticesSet,lengthsCurr, cornerSet,
+                                       handledVerticesSet, LShapeAllowed, Vg_pattern_orig);
                     prevFinished = cutPositions[parallel]->finFlag;
                 }
             }else{
@@ -1794,7 +1619,7 @@ int tearFurther(vector<cutVertEntry*>& cutPositions, MatrixXd&  currPattern, Mat
             cout<<"split origninal "<<endl;
             returnPosition = cutPositions[count] ->vert;
             splitVertexFromCVE(cutPositions[count], currPattern, Fg_pattern, vfAdj, boundaryL, seamsList, minusOneSeams, releasedVert,
-                                   toPattern_boundaryVerticesSet,lengthsCurr, cornerSet, handledVerticesSet, LShapeAllowed );
+                                   toPattern_boundaryVerticesSet,lengthsCurr, cornerSet, handledVerticesSet, LShapeAllowed, Vg_pattern_orig );
             cout<<"finished ? "<<cutPositions[count]->finFlag<<endl;
             prevFinished = cutPositions[count] -> finFlag;
 
@@ -1823,7 +1648,8 @@ int tearFurther(vector<cutVertEntry*>& cutPositions, MatrixXd&  currPattern, Mat
                 cout<<"split parallel "<<endl;
 
                 splitVertexFromCVE(cutPositions[parallel], currPattern, Fg_pattern, vfAdj, boundaryL, seamsList,
-                                   minusOneSeams, releasedVert, toPattern_boundaryVerticesSet,lengthsCurr, cornerSet, handledVerticesSet, LShapeAllowed);
+                                   minusOneSeams, releasedVert, toPattern_boundaryVerticesSet,lengthsCurr, cornerSet,
+                                   handledVerticesSet, LShapeAllowed, Vg_pattern_orig);
                 cout<<"finished  p ? "<<cutPositions[parallel]->finFlag<<endl;
                 prevFinished = (prevFinished && cutPositions[parallel] -> finFlag);
 
@@ -1835,6 +1661,7 @@ int tearFurther(vector<cutVertEntry*>& cutPositions, MatrixXd&  currPattern, Mat
 
     }
     cout<<prevFinished<<" --------------------"<<endl;
+
     return returnPosition;
 }
 
@@ -1936,18 +1763,20 @@ void smoothCuts(vector<cutVertEntry*>& cutPositions, MatrixXd&  currPattern, Mat
     }
 }
 
-int computeTear(Eigen::MatrixXd & fromPattern, MatrixXd&  currPattern, MatrixXi& Fg_pattern, MatrixXi& Fg_pattern_orig,
+int computeTear(Eigen::MatrixXd & fromPattern, MatrixXd&  currPattern, MatrixXi& Fg_pattern, MatrixXd& patternlengthsOrig,
                  vector<seam*>& seamsList, vector<minusOneSeam*>& minusOneSeams, std::vector<std::vector<int> >& boundaryL, bool & finished,
                  const std::vector<std::vector<std::pair<int, int>>>& cornersPerBoundary, map<int, vector<pair<int, int>>>& seamIdPerCorner,
                  VectorXd& cornerVert, vector<cutVertEntry*>& cutPositions, map<int, pair<int, int>> & releasedVert,
-                 set<int>& toPattern_boundaryVerticesSet, set<int> & cornerSet, set<int>& handledVerticesSet , MatrixXd& Vg, bool& prevFinished, const bool & LShapeAllowed )
+                 set<int>& toPattern_boundaryVerticesSet, set<int> & cornerSet, set<int>& handledVerticesSet , MatrixXd& Vg,
+                 bool& prevFinished, const bool & LShapeAllowed,MatrixXd& Vg_pattern_orig )
                  {
 
     vector<vector<int> > vfAdj;
     createVertexFaceAdjacencyList(Fg_pattern, vfAdj);
     MatrixXd lengthsCurr;
     igl::edge_lengths(currPattern, Fg_pattern, lengthsCurr);
-    igl::edge_lengths(fromPattern, Fg_pattern_orig, lengthsOrig);
+    lengthsOrig =  patternlengthsOrig;
+//    igl::edge_lengths(fromPattern, Fg_pattern_orig, lengthsOrig);
 
     for(int i =0; i<seamsList.size(); i++){
         seam* currSeam = seamsList[i];
@@ -2005,7 +1834,7 @@ int computeTear(Eigen::MatrixXd & fromPattern, MatrixXd&  currPattern, MatrixXi&
         cout<<cutPositions[count]->stress<<" curr stress "<<cutPositions[count]->stressWithCounter<<endl;
         int currVert = cutPositions[count]->vert;
         splitVertexFromCVE(cutPositions[count], currPattern, Fg_pattern, vfAdj, boundaryL, seamsList,
-                           minusOneSeams, releasedVert, toPattern_boundaryVerticesSet,lengthsCurr, cornerSet, handledVerticesSet, LShapeAllowed);
+                           minusOneSeams, releasedVert, toPattern_boundaryVerticesSet,lengthsCurr, cornerSet, handledVerticesSet, LShapeAllowed, Vg_pattern_orig);
         prevFinished = cutPositions[count] -> finFlag;
 
         if( releasedVertNew.find(currVert) != releasedVertNew.end()){
@@ -2015,7 +1844,8 @@ int computeTear(Eigen::MatrixXd & fromPattern, MatrixXd&  currPattern, MatrixXi&
             if(parallel<0) {cout<<"no proper parallel found"<<endl;continue;}
             returnPosition = cutPositions[parallel] ->vert;
             splitVertexFromCVE(cutPositions[parallel], currPattern, Fg_pattern, vfAdj, boundaryL, seamsList,
-                               minusOneSeams, releasedVert, toPattern_boundaryVerticesSet,lengthsCurr, cornerSet, handledVerticesSet, LShapeAllowed);
+                               minusOneSeams, releasedVert, toPattern_boundaryVerticesSet,lengthsCurr,
+                               cornerSet, handledVerticesSet, LShapeAllowed, Vg_pattern_orig);
             prevFinished = (prevFinished && cutPositions[parallel] -> finFlag);
 
         }
@@ -2314,6 +2144,8 @@ void fitVecToPointSet( MatrixXd& pointVec, VectorXd& vec ){
 
     vec(0) = evec(0,minInd);
     vec(1) = evec(1,minInd);
+    vec = vec.normalized();
+    vec *= eval;
 //    vec += b;
 
 

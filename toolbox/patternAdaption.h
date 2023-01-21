@@ -62,7 +62,7 @@ public:
 int computeTear(MatrixXd& fromPatternFile,
                  MatrixXd& currPattern, // the current vertex positions
                  MatrixXi& Fg_pattern, // faces, can change as we insert new vertices
-                 MatrixXi& Fg_pattern_orig, // not to be changed, original faces, matches with Vg and fromPatternFile
+                 MatrixXd& lengthsOrig, // not to be changed, original faces, matches with Vg and fromPatternFile
                  vector<seam*>& seamsList, // all seams with partner
                  vector<minusOneSeam*> & minusOneSeams, // all boudary seams (seam type -1)
                  std::vector<std::vector<int> >& boundaryL, // the boundary loop, updated after each tear iteration so should be fresh when usig it
@@ -77,7 +77,8 @@ int computeTear(MatrixXd& fromPatternFile,
                  set<int>& handledVerticesSet,
                  MatrixXd& Vg,
                  bool& prevFinished,
-                 const bool & LShapeAllowed
+                 const bool & LShapeAllowed,
+                MatrixXd& Vg_pattern_orig
                  );
 
 
@@ -95,7 +96,9 @@ int tearFurther(vector<cutVertEntry*>& cutPositions, MatrixXd&  currPattern, Mat
                  set<int>& handledVerticesSet,
                  bool& prevFinished,
                  const bool &preferManySmallCuts,
-                 const bool & LShapeAllowed
+                 const bool & LShapeAllowed ,
+                MatrixXd& patternEdgeLengths_orig,
+                MatrixXd& Vg_pattern_orig
 );
 void smoothCuts(vector<cutVertEntry*>& cutPositions, MatrixXd&  currPattern, MatrixXi& Fg_pattern,vector<seam*>& seamsList, vector<minusOneSeam*>& minusOneSeams,
                 map<int, pair<int, int>> & releasedVert, set<int>& toPattern_boundaryVerticesSet,  std::vector<std::vector<int> >& boundaryL, set<int> & cornerSet );

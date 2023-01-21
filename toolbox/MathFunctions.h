@@ -21,4 +21,6 @@ public:
     static void setUpRotationMatrix(double angle,Vector3d& axis, Matrix4d& rotationMatrix);
 
 };
+bool raySegmentIntersection(const Vector2d& p, const Vector2d& q,const Vector2d & qs, const Vector2d& ray, double rayMaxLength, Vector2d& intersect);
+
 #endif //EXAMPLE_MATHFUNCTIONS_H

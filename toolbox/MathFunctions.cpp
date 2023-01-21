@@ -76,3 +76,36 @@ void MathFunctions::setUpRotationMatrix(double angle, Vector3d& axis, Matrix4d& 
     rotationMatrix(3,3) = 1.0;
     return;
 }
+double v2cross(const Vector2d& p, const Vector2d& q){
+    return ((p(0)*q(1))-(p(1)*q(0)));
+}
+//https://stackoverflow.com/questions/563198/how-do-you-detect-where-two-line-segments-intersect/565282#565282
+bool raySegmentIntersection(const Vector2d& p, const Vector2d& q,const Vector2d & qs, const Vector2d& ray, double rayMaxLength, Vector2d& intersect){
+    bool doIntersect = false;
+    Vector2d r = ray.normalized();
+    r*= rayMaxLength;
+    Vector2d s = qs-q;
+
+    auto rcross_s= v2cross(r,s);
+    if(rcross_s == 0){// they are parallel or colinear
+        return doIntersect;
+    }
+    // compute u, t,  and check for 0 ≤ t ≤ 1 and 0 ≤ u ≤ 1 to see if they intersect
+    /*
+    t = (q − p) × s / (r × s)
+
+    u = (p − q) × r / (s × r) = (q − p) × r / (r × s)
+     */
+
+    auto qp = q-p;
+    auto t = v2cross(qp, s) / rcross_s;
+    auto u = v2cross(qp,r) / rcross_s;
+    if(0 <= t && t <= 1 && 0 <= u && u <= 1 ){
+        doIntersect = true;
+        intersect = p + t*r;
+    }
+
+    return doIntersect;
+
+
+}

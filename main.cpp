@@ -816,18 +816,16 @@ int main(int argc, char *argv[])
                 viewer.core().is_animating = false;
 
                 bool fin = false;
-                int pos = computeTear(fromPattern, currPattern, Fg_pattern, Fg_pattern_orig, seamsList ,
+                int pos = computeTear(fromPattern, currPattern, Fg_pattern, patternEdgeLengths_orig, seamsList ,
                             minusOneSeamsList, boundaryL, fin, cornerPerBoundary, seamIdPerCorner,
                             cornerVertices, cutPositions, releasedVert, toPattern_boundaryVerticesSet, cornerSet,
                             handledVerticesSet,
-                            Vg_pattern, prevTearFinished, LShapeAllowed);
+                            Vg_pattern, prevTearFinished, LShapeAllowed, Vg_pattern_orig);
                 if(pos!=-1){
                     viewer.selected_data_index = 2;
                     viewer.data().set_points(currPattern.row(pos), RowVector3d(1.0, 0.0, 0.0));
 
                 }
-
-//
 //                viewer.data().clear();
 //                viewer.data().set_mesh(currPattern, Fg_pattern);
                 std::vector<std::vector<int> > boundaryLnew;
@@ -847,36 +845,53 @@ int main(int argc, char *argv[])
                 simulate = false;
                 adaptionFlag = false;
                 viewer.core().is_animating = false;
+
+                auto copyPattern = fromPattern;
                 int pos = tearFurther(cutPositions, currPattern, Fg_pattern, seamsList, minusOneSeamsList, releasedVert,
                             toPattern_boundaryVerticesSet, boundaryL, cornerSet, handledVerticesSet, prevTearFinished,
-                            preferManySmallCuts, LShapeAllowed );
+                            preferManySmallCuts, LShapeAllowed, patternEdgeLengths_orig, fromPattern);
                 if(pos!=-1){
                     viewer.selected_data_index = 2;
                     viewer.data().clear();
                     viewer.data().set_points(currPattern.row(pos), RowVector3d(1.0, 0.0, 0.0));
 
                 }
-                if(pos == 1447){
-                    viewer.selected_data_index = 0;
-                    viewer.data().clear();
-                    viewer.data().set_mesh(currPattern, Fg_pattern);
-                }
+//                if(pos == 1447){
+//                    viewer.selected_data_index = 0;
+//                    viewer.data().clear();
+//                    viewer.data().set_mesh(currPattern, Fg_pattern);
+//                }
 
                 std::vector<std::vector<int> > boundaryLnew;
                 igl::boundary_loop(Fg_pattern, boundaryLnew);
-                cout<<"back, number of patches "<<boundaryLnew.size()<<endl;
 
                 if(boundaryLnew.size() != boundaryL.size()){
                     updatePatchId(cutPositions, boundaryLnew,seamsList, minusOneSeamsList );
                 }
                 boundaryL.clear();
                 boundaryL= boundaryLnew;
-                cout<<" restart adaption "<<endl;
-                if(pos != 1447){
+
+
+
+                // also adapt the new edge lengths since we might have changed the rest position when cutting in middle
+//                if(true){//
+                bool changeFlag=false;
+                if( copyPattern != fromPattern){
+                    MatrixXd lengthsOrig;
+                    igl::edge_lengths(fromPattern, Fg_pattern_orig, lengthsOrig);
+                    patternEdgeLengths_orig = lengthsOrig;
+                    cout<<"---------------------"<<endl;
+
+                    cout<<"updated edge lengths"<<endl;
+                    changeFlag= true;
+                    viewer.selected_data_index = 0;
+                    viewer.data().clear();
+                    viewer.data().set_mesh(currPattern, Fg_pattern);
+                }
+                if(!changeFlag){
                     viewer.core().is_animating = true;
                     adaptionFlag = true;
                 }
-
 
 
             }
