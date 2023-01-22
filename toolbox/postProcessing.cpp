@@ -165,30 +165,31 @@ void triangulateFAKE(MatrixXd& V, MatrixXi& E, MatrixXd& H, string flags, Matrix
     out.pointmarkerlist = NULL;
 
 //     Call triangle/
+     cout<<" calling triangle"<<endl;
      triangulate((char *)full_flags.c_str(), &in, &out, (triangulateio *) NULL);
 //    triangulate(const_cast<char*>(full_flags.c_str()), &in, &out, 0);
 //
 //    // Return the mesh
-//    V2 = MapXdr(out.pointlist,out.numberofpoints,2).cast< double>();
-//    F2 = MapXir(out.trianglelist,out.numberoftriangles,3).cast< int>();
-//    E2 = MapXir(out.segmentlist,out.numberofsegments,2).cast< int>();
-//    if(VM.size())
-//    {
-//        VM2 = MapXir(out.pointmarkerlist,out.numberofpoints,1).cast<int>();
-//    }
-//    if(EM.size())
-//    {
-//        EM2 = MapXir(out.segmentmarkerlist,out.numberofsegments,1).cast< int>();
-//    }
-
+    V2 = MapXdr(out.pointlist,out.numberofpoints,2).cast< double>();
+    F2 = MapXir(out.trianglelist,out.numberoftriangles,3).cast< int>();
+    E2 = MapXir(out.segmentlist,out.numberofsegments,2).cast< int>();
+    if(VM.size())
+    {
+        VM2 = MapXir(out.pointmarkerlist,out.numberofpoints,1).cast<int>();
+    }
+    if(EM.size())
+    {
+        EM2 = MapXir(out.segmentmarkerlist,out.numberofsegments,1).cast< int>();
+    }
 
 
 }
-void startRetriangulation(vector<VectorXd>& polylineSelected){
+void startRetriangulation(vector<VectorXd>& polylineSelected, MatrixXd& V2, MatrixXi& F2 ){
+    cout<<endl<<endl;
     int n = polylineSelected.size();
     MatrixXd V (n, 2);
     for(int i=0; i<n; i++){
-        V.row(i) = polylineSelected[i].leftCols(2);
+        V.row(i) = polylineSelected[i].transpose().leftCols(2);
     }
     MatrixXi E(n,2);
     for(int i=0; i < n; i++){
@@ -197,8 +198,8 @@ void startRetriangulation(vector<VectorXd>& polylineSelected){
     }
     MatrixXd H;
     string flags = "";
-    MatrixXd V2;
-    MatrixXi F2;
+    cout<<" starting triangulation with "<<E.rows()<<" edges and "<<V.rows()<<" points"<<endl;
+
     triangulateFAKE(V, E, H, flags, V2, F2 );
 
 }

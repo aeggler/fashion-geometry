@@ -992,12 +992,28 @@ int main(int argc, char *argv[])
                 if(polylineSelected.size()<3){
                     cout<<"No, choose at least 3 positions"<<endl;
                 }
-                startRetriangulation(polylineSelected);
+                cout<<polylineSelected.size()<<" polyline size"<<endl;
+                MatrixXd Vg_retri;
+                MatrixXi Fg_retri;
+                startRetriangulation(polylineSelected, Vg_retri, Fg_retri);
+                cout<<" vertices "<<Vg_retri.rows()<<endl;
+                for(int i = 0; i < Vg_retri.rows(); i++){
+                    cout<<Vg_retri.row(i)<<"."<<endl;
+                }
+                cout<<" faces "<<Fg_retri.rows()<<endl;
+
+                viewer.selected_data_index = 1;
+                viewer.data().clear();
+                viewer.selected_data_index = 0;
+                viewer.data().clear();
+                viewer.data().show_lines = true;
+                viewer.data().set_mesh(Vg_retri, Fg_retri);
             }
             if(ImGui::Button("End Area", ImVec2(-1, 0))) {
                 cout<<"End area selection"<<endl;
                 mouse_mode = NONE;
             }
+
             if(ImGui::Checkbox("Put adapted pattern back to 3D" , &backTo3D)){
                 mouse_mode = NONE;
                 MatrixXd adaptedPatternIn3d;
@@ -1184,8 +1200,8 @@ bool callback_mouse_down(igl::opengl::glfw::Viewer& viewer, int button, int modi
         point(1) = viewer.core().viewport(3) - viewer.current_mouse_y;
 
         auto dist = (Vrs.row(v_id).transpose() - point).norm();
-        cout<<dist<<" the distance ";
-        polylineSelected.push_back(Vrs.row(v_id).transpose());
+        cout<<dist<<" the distance "<<Vrs.row(v_id);
+        polylineSelected.push_back(Vrs.row(v_id));
         cout<<"if finished confirm"<<endl;
 
 
