@@ -2,14 +2,24 @@ cmake_minimum_required(VERSION 3.16)
 project(example)
 list(PREPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
+#
+#add_library(triangle STATIC triangle_libigl/triangle.cpp)
+#target_compile_definitions(triangle PRIVATE -DTRILIBRARY -DANSI_DECLARATORS)
+## Generate position independent code
+#set_target_properties(triangle PROPERTIES POSITION_INDEPENDENT_CODE ON)
+
 # Libigl
+option(LIBIGL_RESTRICTED_TRIANGLE "Build target igl_restricted::triangle" ON)
 include(libigl)
 
 # Enable the target igl::glfw
 igl_include(glfw)
 igl_include(imgui)
+
+igl_include_optional(restricted triangle)
+#igl_include(triangle)
 #set(PMP_VERSION 1.2.0)
-#include_directories("ext/pmp-library/external/imgui")
+#include_directories("external/triangle")
 
 # which directories to process
 
@@ -25,11 +35,12 @@ file(GLOB SRC_FILES main.cpp
         toolbox/garment_adaption.cpp        toolbox/garment_adaption.h
         toolbox/seam.cpp                    toolbox/seam.h
         toolbox/patternAdaption.cpp         toolbox/patternAdaption.h
-#
+        toolbox/postProcessing.cpp          toolbox/postProcessing.h
+        triangle/triangle.c                 triangle/triangle.h
 
         )
 add_executable(${PROJECT_NAME} ${SRC_FILES})
-target_link_libraries(${PROJECT_NAME} PUBLIC igl::glfw igl::imgui)
+target_link_libraries(${PROJECT_NAME} PUBLIC igl::glfw igl::imgui  )#igl_restricted::triangle
 find_package(GUROBI REQUIRED)
 
 #In my Mac GUROBI_INCLUDE_DIRS points to "/Library/gurobi951/macos_universal2/include"

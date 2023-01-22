@@ -229,3 +229,78 @@ void backTo3Dmapping(MatrixXd& adaptedPattern, MatrixXi& adaptedPattern_faces, M
     cout<<"Got interpolation"<<endl;
 
 }
+
+void computeAllBetweens(vector<VectorXd>& polylineSelected,vector<int>& polylineIndex, vector<int>& polyLineMeshIndicator,
+                   vector<vector<int>>& boundaryL_adaptedFromPattern, vector<vector<int>>& boundaryL_toPattern,
+                   MatrixXd& currPattern, MatrixXd& Vg_pattern_orig ){
+    for(int i=0; i< polylineIndex.size(); i+=2){
+        int start = polylineIndex[i]; int startIdx, endIdx, patch;
+        int end = polylineIndex[i+1];
+        if(polyLineMeshIndicator[i] != polyLineMeshIndicator[i+1]){
+            cout<<" Error: The vertices chosen are not from the same mesh. "<<endl;
+        }
+
+        vector<vector<int>> boundaryToSearch = (polyLineMeshIndicator[i] == 1 ) ? boundaryL_adaptedFromPattern : boundaryL_toPattern;
+        MatrixXd v_used = (polyLineMeshIndicator[i] == 1 ) ? currPattern : Vg_pattern_orig;
+
+        for(int j=0; j<boundaryToSearch.size(); j++){
+            bool found = false;
+            for (int k =0; k<boundaryToSearch[j].size(); k++){
+                if(boundaryToSearch[j][k] == start){
+                    startIdx = k;
+                    patch = j;
+                    found = true;
+                }
+            }
+            if(!found) continue;
+
+            for (int k =0; k<boundaryToSearch[j].size(); k++){
+                if(boundaryToSearch[j][k] == end){
+                    endIdx = k;
+                }
+            }
+            // we have both start and end , their absolute distance should be
+            int smaller = (endIdx > startIdx) ? startIdx : endIdx;
+            bool inverted = false;
+            if(smaller == endIdx) {
+                inverted = true;
+            }
+            int greater = (endIdx < startIdx) ? startIdx : endIdx;
+
+            int dist = (greater - smaller);
+            int otherdist = boundaryToSearch[j].size()-greater + smaller;
+
+            if(dist<otherdist){
+                if(!inverted){
+                    for(int k= smaller; k<= greater; k++){
+                        polylineSelected.push_back(v_used.row(k));
+                    }
+                }else{
+                    for(int k= greater; k>= smaller ; k--){
+                        polylineSelected.push_back(v_used.row(k));
+                    }
+                }
+
+            }else{
+                if(!inverted){
+                    int k= greater;
+                    while( k != smaller ){
+                        polylineSelected.push_back(v_used.row(k));
+                        k++;
+                        k = k % boundaryToSearch[j].size();
+                    }
+                }else{
+                    int k = smaller;
+                    while (k!= greater){
+                        polylineSelected.push_back(v_used.row(k));
+                        k--;
+                    if(k<0) k += boundaryToSearch[j].size();
+                    }
+                }
+
+            }
+        }
+
+    }
+}
+

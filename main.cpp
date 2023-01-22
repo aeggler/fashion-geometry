@@ -9,6 +9,7 @@
 #include <igl/adjacency_list.h>
 #include <igl/facet_components.h>
 #include <igl/vertex_components.h>
+#include <igl/unproject.h>
 #include <igl/unproject_onto_mesh.h>
 #include <igl/boundary_loop.h>
 #include <iostream>
@@ -142,6 +143,8 @@ MatrixXd garmentPreInterpol,garmentPreInterpol_temp ;
 MatrixXd mannequinPreInterpol, mannequinPreInterpol_temp;
 Eigen::VectorXi componentIdPerFace,componentIdPerFaceNew, componentIdPerVert;
 vector<VectorXd> polylineSelected;
+vector<int> polylineIndex;
+vector<int> polyLineMeshIndicator;
 //test
 //Eigen::SparseMatrix<double> L;
 MatrixXd perFaceD2, perFaceD1;
@@ -956,6 +959,9 @@ int main(int argc, char *argv[])
             }
 
             if(ImGui::Checkbox("Select area to triangulate", &choosePatchArea)){
+                cout<<"Please choose an area to triangulate. Click on the area within the mesh to get the closest point. "
+                      "Automatically the boundary between the two selected vertices will be chosen."
+                      "Ensure that to subsequent vertices are chosen from the same mesh (ie. if one is in yellow, then other too)."<<endl;
                 viewer.selected_data_index = 0;
                 viewer.data().clear();
                 viewer.data().show_lines = true;
@@ -986,20 +992,29 @@ int main(int argc, char *argv[])
                 }
 
                 viewer.data().set_edges(visToPattern, boundaryOfToPattern, Eigen::RowVector3d(0, 0, 1));
+//                viewer.data().set_points(visToPattern,RowVector3d(.0, 1.0, 0.0));
                 mouse_mode= SELECTAREA;
             }
             if(ImGui::Button("Confirm area", ImVec2(-1, 0))){
                 if(polylineSelected.size()<3){
                     cout<<"No, choose at least 3 positions"<<endl;
                 }
+                if(polylineSelected.size()%2 != 0){
+                    cout<<"No, choose an endpoint"<<endl;
+                }
                 cout<<polylineSelected.size()<<" polyline size"<<endl;
+                polylineSelected.clear();
+                std::vector<std::vector<int> > boundaryL_adaptedFromPattern;
+                igl::boundary_loop( Fg_pattern, boundaryL_adaptedFromPattern );
+
+                //todo changes with mesh
+                computeAllBetweens( polylineSelected, polylineIndex,polyLineMeshIndicator, boundaryL_adaptedFromPattern,boundaryL_toPattern, currPattern, Vg_pattern_orig  );
+
+
                 MatrixXd Vg_retri;
                 MatrixXi Fg_retri;
                 startRetriangulation(polylineSelected, Vg_retri, Fg_retri);
                 cout<<" vertices "<<Vg_retri.rows()<<endl;
-                for(int i = 0; i < Vg_retri.rows(); i++){
-                    cout<<Vg_retri.row(i)<<"."<<endl;
-                }
                 cout<<" faces "<<Fg_retri.rows()<<endl;
 
                 viewer.selected_data_index = 1;
@@ -1009,6 +1024,10 @@ int main(int argc, char *argv[])
                 viewer.data().show_lines = true;
                 viewer.data().set_mesh(Vg_retri, Fg_retri);
             }
+//            if(ImGui::Button("Refine Triangulation Area", ImVec2(-1, 0))) {
+//                cout<<"End area selection"<<endl;
+//                mouse_mode = NONE;
+//            }
             if(ImGui::Button("End Area", ImVec2(-1, 0))) {
                 cout<<"End area selection"<<endl;
                 mouse_mode = NONE;
@@ -1119,6 +1138,8 @@ void preComputeAdaption(){
 bool computePointOnMesh(igl::opengl::glfw::Viewer& viewer, MatrixXd& V, MatrixXi& F, Vector3d& b, int& fid) {
     double x = viewer.current_mouse_x;
     double y = viewer.core().viewport(3) - viewer.current_mouse_y;
+//    auto test = igl::unproject(Vector3f(x, y, 0),viewer.core().view, viewer.core().proj, viewer.core().viewport);
+//    cout<<test<<" testing"<<endl;
     return igl::unproject_onto_mesh(Vector2f(x, y), viewer.core().view, viewer.core().proj, viewer.core().viewport, V, F, fid, b);
 }
 int computeClosestVertexOnMesh(Vector3d& b, int& fid, MatrixXi& F) {
@@ -1189,20 +1210,18 @@ bool callback_mouse_down(igl::opengl::glfw::Viewer& viewer, int button, int modi
             if (computePointOnMesh(viewer, Vrs, Fg_pattern_orig, b, fid)) {
                 v_id = computeClosestVertexOnMesh(b, fid, Fg_pattern_orig);
                 viewer.data().set_points(Vrs.row(v_id), RowVector3d(.0, 1.0, 0.0));
-                cout<<"Selected vertex on other mesh "<<v_id<<endl;
                 whichMesh=2;
             }
         }
 
-
-        Vector3d point = Vrs.row(v_id);
-        point(0) = viewer.current_mouse_x;
-        point(1) = viewer.core().viewport(3) - viewer.current_mouse_y;
-
-        auto dist = (Vrs.row(v_id).transpose() - point).norm();
-        cout<<dist<<" the distance "<<Vrs.row(v_id);
         polylineSelected.push_back(Vrs.row(v_id));
-        cout<<"if finished confirm"<<endl;
+        polylineIndex.push_back(v_id);
+        polyLineMeshIndicator.push_back(whichMesh);
+        if(  polylineSelected.size()%2 !=0){
+            cout<<"please select endpoint from same mesh "<<endl;
+        }else{
+            cout<<"finished, please confirm "<<endl;
+        }
 
 
     }
