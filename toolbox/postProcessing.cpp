@@ -14,10 +14,10 @@
 #include "igl/barycentric_interpolation.h"
 #include "igl/adjacency_list.h"
 //#define ANSI_DECLARATORS
-////#define TRILIBRARY
+//#define TRILIBRARY
 //extern "C"{
-//#include "../triangle/triangle.h"
-//
+#include "../triangle/triangle.h"
+
 //};
 
 //#include "igl/triangle/triangulate.h"
@@ -113,58 +113,59 @@ void smoothBetweenVertices(MatrixXd& currPattern, MatrixXi& Fg_pattern, vector<i
 
 // see https://github.com/libigl/libigl/blob/main/include/igl/triangle/triangulate.cpp
 void triangulateFAKE(MatrixXd& V, MatrixXi& E, MatrixXd& H, string flags, MatrixXd& V2, MatrixXi& F2){
-//    Eigen::VectorXi VM,EM,VM2,EM2;
-//    // "Vertex markers must be empty or same size as V");
-////    "Segment markers must be empty or same size as E");
-//    Eigen::MatrixXi E2;
-//    // Prepare the flags
-//    string full_flags = flags + "pz" + (EM.size() || VM.size() ? "" : "B");
-//    typedef Map< Matrix<double,Dynamic,Dynamic,RowMajor> > MapXdr;
-//    typedef Map< Matrix<int,Dynamic,Dynamic,RowMajor> > MapXir;
-//    triangulateio in;
-//    in.numberofpoints = V.rows();
-//    in.pointlist = (double*)calloc(V.size(),sizeof(double));
-//    {
-//        MapXdr inpl(in.pointlist,V.rows(),V.cols());
-//        inpl = V.template cast<double>();
-//    }
-//
-//    in.numberofpointattributes = 0;
-//    in.pointmarkerlist = (int*)calloc(V.size(),sizeof(int)) ;
-//    for(unsigned i=0;i<V.rows();++i) in.pointmarkerlist[i] = VM.size()?VM(i):1;
-//
-//    in.trianglelist = NULL;
-//    in.numberoftriangles = 0;
-//    in.numberofcorners = 0;
-//    in.numberoftriangleattributes = 0;
-//    in.triangleattributelist = NULL;
-//
-//    in.numberofsegments = E.size()?E.rows():0;
-//    in.segmentlist = (int*)calloc(E.size(),sizeof(int));
-//    {
-//        MapXir insl(in.segmentlist,E.rows(),E.cols());
-//        insl = E.template cast<int>();
-//    }
-//    in.segmentmarkerlist = (int*)calloc(E.rows(),sizeof(int));
-//    for (unsigned i=0;i<E.rows();++i) in.segmentmarkerlist[i] = EM.size()?EM(i):1;
-//
-//    in.numberofholes = H.size()?H.rows():0;
-//    in.holelist = (double*)calloc(H.size(),sizeof(double));
-//    {
-//        MapXdr inhl(in.holelist,H.rows(),H.cols());
-//        inhl = H.template cast<double>();
-//    }
-//    in.numberofregions = 0;
-//
-//    // Prepare the output struct
-//    triangulateio out;
-//    out.pointlist = NULL;
-//    out.trianglelist = NULL;
-//    out.segmentlist = NULL;
-//    out.segmentmarkerlist = NULL;
-//    out.pointmarkerlist = NULL;
+    Eigen::VectorXi VM,EM,VM2,EM2;
+    // "Vertex markers must be empty or same size as V");
+//    "Segment markers must be empty or same size as E");
+    Eigen::MatrixXi E2;
+    // Prepare the flags
+    string full_flags = flags + "pz" + (EM.size() || VM.size() ? "" : "B");
+    typedef Map< Matrix<double,Dynamic,Dynamic,RowMajor> > MapXdr;
+    typedef Map< Matrix<int,Dynamic,Dynamic,RowMajor> > MapXir;
+    triangulateio in;
+    in.numberofpoints = V.rows();
+    in.pointlist = (double*)calloc(V.size(),sizeof(double));
+    {
+        MapXdr inpl(in.pointlist,V.rows(),V.cols());
+        inpl = V.template cast<double>();
+    }
 
-    // Call triangle
+    in.numberofpointattributes = 0;
+    in.pointmarkerlist = (int*)calloc(V.size(),sizeof(int)) ;
+    for(unsigned i=0;i<V.rows();++i) in.pointmarkerlist[i] = VM.size()?VM(i):1;
+
+    in.trianglelist = NULL;
+    in.numberoftriangles = 0;
+    in.numberofcorners = 0;
+    in.numberoftriangleattributes = 0;
+    in.triangleattributelist = NULL;
+
+    in.numberofsegments = E.size()?E.rows():0;
+    in.segmentlist = (int*)calloc(E.size(),sizeof(int));
+    {
+        MapXir insl(in.segmentlist,E.rows(),E.cols());
+        insl = E.template cast<int>();
+    }
+    in.segmentmarkerlist = (int*)calloc(E.rows(),sizeof(int));
+    for (unsigned i=0;i<E.rows();++i) in.segmentmarkerlist[i] = EM.size()?EM(i):1;
+
+    in.numberofholes = H.size()?H.rows():0;
+    in.holelist = (double*)calloc(H.size(),sizeof(double));
+    {
+        MapXdr inhl(in.holelist,H.rows(),H.cols());
+        inhl = H.template cast<double>();
+    }
+    in.numberofregions = 0;
+
+    // Prepare the output struct
+    triangulateio out;
+    out.pointlist = NULL;
+    out.trianglelist = NULL;
+    out.segmentlist = NULL;
+    out.segmentmarkerlist = NULL;
+    out.pointmarkerlist = NULL;
+
+//     Call triangle/
+     triangulate((char *)full_flags.c_str(), &in, &out, (triangulateio *) NULL);
 //    triangulate(const_cast<char*>(full_flags.c_str()), &in, &out, 0);
 //
 //    // Return the mesh
