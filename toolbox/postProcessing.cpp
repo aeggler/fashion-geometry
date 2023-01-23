@@ -171,6 +171,7 @@ void triangulateFAKE(MatrixXd& V, MatrixXi& E, MatrixXd& H, string flags, Matrix
 //
 //    // Return the mesh
     V2 = MapXdr(out.pointlist,out.numberofpoints,2).cast< double>();
+
     F2 = MapXir(out.trianglelist,out.numberoftriangles,3).cast< int>();
     E2 = MapXir(out.segmentlist,out.numberofsegments,2).cast< int>();
     if(VM.size())
@@ -181,8 +182,10 @@ void triangulateFAKE(MatrixXd& V, MatrixXi& E, MatrixXd& H, string flags, Matrix
     {
         EM2 = MapXir(out.segmentmarkerlist,out.numberofsegments,1).cast< int>();
     }
-
-
+    MatrixXd V2new = MatrixXd::Constant(V2.rows(), 3, 200);
+    V2new.block(0,0,V2.rows(), 2) = V2;
+    V2.resize(V2.rows(), V2new.cols());
+    V2 = V2new;
 }
 void startRetriangulation(vector<VectorXd>& polylineSelected, MatrixXd& V2, MatrixXi& F2 ){
     cout<<endl<<endl;
@@ -197,7 +200,7 @@ void startRetriangulation(vector<VectorXd>& polylineSelected, MatrixXd& V2, Matr
         E(i, 1) = (i+1) % n;
     }
     MatrixXd H;
-    string flags = "";
+    string flags = "qa224.64";
     cout<<" starting triangulation with "<<E.rows()<<" edges and "<<V.rows()<<" points"<<endl;
 
     triangulateFAKE(V, E, H, flags, V2, F2 );
@@ -270,14 +273,17 @@ void computeAllBetweens(vector<VectorXd>& polylineSelected,vector<int>& polyline
             int dist = (greater - smaller);
             int otherdist = boundaryToSearch[j].size()-greater + smaller;
 
+
             if(dist<otherdist){
                 if(!inverted){
                     for(int k= smaller; k<= greater; k++){
-                        polylineSelected.push_back(v_used.row(k));
+                        polylineSelected.push_back(v_used.row(boundaryToSearch[j][k]));
+                        cout<<v_used.row(boundaryToSearch[j][k])<<endl;
                     }
                 }else{
                     for(int k= greater; k>= smaller ; k--){
-                        polylineSelected.push_back(v_used.row(k));
+                        polylineSelected.push_back(v_used.row(boundaryToSearch[j][k]));
+                        cout<<v_used.row(boundaryToSearch[j][k])<<endl;
                     }
                 }
 
@@ -285,16 +291,18 @@ void computeAllBetweens(vector<VectorXd>& polylineSelected,vector<int>& polyline
                 if(!inverted){
                     int k= greater;
                     while( k != smaller ){
-                        polylineSelected.push_back(v_used.row(k));
+                        polylineSelected.push_back(v_used.row(boundaryToSearch[j][k]));
+                        cout<<v_used.row(boundaryToSearch[j][k])<<endl;
                         k++;
                         k = k % boundaryToSearch[j].size();
                     }
                 }else{
                     int k = smaller;
                     while (k!= greater){
-                        polylineSelected.push_back(v_used.row(k));
+                        polylineSelected.push_back(v_used.row(boundaryToSearch[j][k]));
+                        cout<<v_used.row(boundaryToSearch[j][k])<<endl;
                         k--;
-                    if(k<0) k += boundaryToSearch[j].size();
+                        if(k<0) k += boundaryToSearch[j].size();
                     }
                 }
 

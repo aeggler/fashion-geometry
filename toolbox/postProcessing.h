@@ -20,5 +20,8 @@ void smoothBetweenVertices(MatrixXd& currPattern, MatrixXi& Fg_pattern,vector<in
 void backTo3Dmapping(MatrixXd& adaptedPattern, MatrixXi& adaptedPattern_faces, MatrixXd& perfectPattern, MatrixXi& perfectPattern_faces ,
                      MatrixXd& perfectPatternIn3d, MatrixXi& perfectPatternIn3d_faces, MatrixXd& adaptedPatternIn3d);
 void startRetriangulation(vector<VectorXd>& polylineSelected, MatrixXd& V2, MatrixXi& F2 );
+void computeAllBetweens(vector<VectorXd>& polylineSelected,vector<int>& polylineIndex, vector<int>& polyLineMeshIndicator,
+                        vector<vector<int>>& boundaryL_adaptedFromPattern, vector<vector<int>>& boundaryL_toPattern,
+                        MatrixXd& currPattern, MatrixXd& Vg_pattern_orig );
 
 #endif //EXAMPLE_POSTPROCESSING_H

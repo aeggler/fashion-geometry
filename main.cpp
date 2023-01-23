@@ -859,11 +859,6 @@ int main(int argc, char *argv[])
                     viewer.data().set_points(currPattern.row(pos), RowVector3d(1.0, 0.0, 0.0));
 
                 }
-//                if(pos == 1447){
-//                    viewer.selected_data_index = 0;
-//                    viewer.data().clear();
-//                    viewer.data().set_mesh(currPattern, Fg_pattern);
-//                }
 
                 std::vector<std::vector<int> > boundaryLnew;
                 igl::boundary_loop(Fg_pattern, boundaryLnew);
@@ -876,9 +871,8 @@ int main(int argc, char *argv[])
 
 
 
-                // also adapt the new edge lengths since we might have changed the rest position when cutting in middle
-//                if(true){//
-                bool changeFlag=false;
+                // also adapt the new edge lengths since we might have changed the rest position when cutting in middl
+                bool changeFlag = false;
                 if( copyPattern != fromPattern){
                     MatrixXd lengthsOrig;
                     igl::edge_lengths(fromPattern, Fg_pattern_orig, lengthsOrig);
@@ -992,7 +986,6 @@ int main(int argc, char *argv[])
                 }
 
                 viewer.data().set_edges(visToPattern, boundaryOfToPattern, Eigen::RowVector3d(0, 0, 1));
-//                viewer.data().set_points(visToPattern,RowVector3d(.0, 1.0, 0.0));
                 mouse_mode= SELECTAREA;
             }
             if(ImGui::Button("Confirm area", ImVec2(-1, 0))){
@@ -1002,14 +995,13 @@ int main(int argc, char *argv[])
                 if(polylineSelected.size()%2 != 0){
                     cout<<"No, choose an endpoint"<<endl;
                 }
-                cout<<polylineSelected.size()<<" polyline size"<<endl;
+
                 polylineSelected.clear();
                 std::vector<std::vector<int> > boundaryL_adaptedFromPattern;
                 igl::boundary_loop( Fg_pattern, boundaryL_adaptedFromPattern );
 
-                //todo changes with mesh
+                //todo changes with mesh, maybe constrain the boundary vertices
                 computeAllBetweens( polylineSelected, polylineIndex,polyLineMeshIndicator, boundaryL_adaptedFromPattern,boundaryL_toPattern, currPattern, Vg_pattern_orig  );
-
 
                 MatrixXd Vg_retri;
                 MatrixXi Fg_retri;
@@ -1019,15 +1011,10 @@ int main(int argc, char *argv[])
 
                 viewer.selected_data_index = 1;
                 viewer.data().clear();
-                viewer.selected_data_index = 0;
-                viewer.data().clear();
                 viewer.data().show_lines = true;
                 viewer.data().set_mesh(Vg_retri, Fg_retri);
             }
-//            if(ImGui::Button("Refine Triangulation Area", ImVec2(-1, 0))) {
-//                cout<<"End area selection"<<endl;
-//                mouse_mode = NONE;
-//            }
+
             if(ImGui::Button("End Area", ImVec2(-1, 0))) {
                 cout<<"End area selection"<<endl;
                 mouse_mode = NONE;
@@ -1138,8 +1125,6 @@ void preComputeAdaption(){
 bool computePointOnMesh(igl::opengl::glfw::Viewer& viewer, MatrixXd& V, MatrixXi& F, Vector3d& b, int& fid) {
     double x = viewer.current_mouse_x;
     double y = viewer.core().viewport(3) - viewer.current_mouse_y;
-//    auto test = igl::unproject(Vector3f(x, y, 0),viewer.core().view, viewer.core().proj, viewer.core().viewport);
-//    cout<<test<<" testing"<<endl;
     return igl::unproject_onto_mesh(Vector2f(x, y), viewer.core().view, viewer.core().proj, viewer.core().viewport, V, F, fid, b);
 }
 int computeClosestVertexOnMesh(Vector3d& b, int& fid, MatrixXi& F) {
@@ -1194,22 +1179,21 @@ bool callback_mouse_down(igl::opengl::glfw::Viewer& viewer, int button, int modi
         }
     }
     if(mouse_mode == SELECTAREA){
-        int fid;
+        int fid, v_id, whichMesh;
         Eigen::Vector3d b;
-        MatrixXd Vrs = currPattern;//+   Vg_pattern_orig.size(), 3);
-        int v_id;
-        int whichMesh;
+        MatrixXd Vrs = currPattern;
+        // it is in the from mesh, thus snap to the closest vertex on the mesh
         if (computePointOnMesh(viewer, Vrs, Fg_pattern, b, fid)) {
              v_id = computeClosestVertexOnMesh(b, fid, Fg_pattern);
             viewer.data().set_points(Vrs.row(v_id), RowVector3d(1.0, 1.0, 0.0));
-            cout<<"Selected vertex "<<v_id<<endl;
             whichMesh=1;
 
+            // the vertex is not in our original fromMesh. Locate it in the toMesh and use the exackt mouse chosen position by the barycentric coordinates to set it's position
         }else{
             Vrs = Vg_pattern_orig;
             if (computePointOnMesh(viewer, Vrs, Fg_pattern_orig, b, fid)) {
-                v_id = computeClosestVertexOnMesh(b, fid, Fg_pattern_orig);
-                viewer.data().set_points(Vrs.row(v_id), RowVector3d(.0, 1.0, 0.0));
+                VectorXd chosen = b(0) * Vrs.row(Fg_pattern_orig(fid ,0)) + b(1) * Vrs.row(Fg_pattern_orig(fid, 1))+ b(2) * Vrs.row(Fg_pattern_orig(fid, 2));
+                viewer.data().set_points(chosen.transpose(), RowVector3d(.0, 1.0, 0.0));
                 whichMesh=2;
             }
         }
@@ -1217,13 +1201,11 @@ bool callback_mouse_down(igl::opengl::glfw::Viewer& viewer, int button, int modi
         polylineSelected.push_back(Vrs.row(v_id));
         polylineIndex.push_back(v_id);
         polyLineMeshIndicator.push_back(whichMesh);
-        if(  polylineSelected.size()%2 !=0){
+        if(  polylineSelected.size() % 2 != 0){
             cout<<"please select endpoint from same mesh "<<endl;
         }else{
             cout<<"finished, please confirm "<<endl;
         }
-
-
     }
     return false;
 }

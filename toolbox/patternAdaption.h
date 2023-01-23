@@ -27,6 +27,7 @@ public:
     Vector3d continuedDirection;
     Vector3d leftdirection;
     Vector3d rightdirection;
+    Vector3d midVec;
     bool bridgeFlag;
     bool finFlag;
     bool levelOne;
@@ -41,6 +42,7 @@ public:
         this -> seamIdInList = seamIdInList;
         handled = false;
         counterPartIdx  = -1;
+        midVec = Vector3d::Zero();
     }
     cutVertEntry ( int vert, int seamType, int seamIdInList, int patch){
         this -> vert = vert;
@@ -50,6 +52,7 @@ public:
         levelOne = true;
         handled = false;
         counterPartIdx = - 1;
+        midVec = Vector3d::Zero();
 
     }
 

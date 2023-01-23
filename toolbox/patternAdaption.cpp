@@ -100,6 +100,7 @@ void computeMidVecBasedOnPCA(VectorXd& midVec, vector<vector<int>>& vvAdj, vecto
         int otherVert = vvAdj[vert][i];
         dirs.row(i) = (Vg.row(otherVert) - Vg.row(vert)).normalized();
         adjacentFacesToEdge(vert, otherVert, vfAdj, faces );
+        //face area weighting needed?
 
         if(faces.first!= -1){
             int whichEdgeLeft = findWhichEdgeOfFace(faces.first, vert, otherVert, Fg_pattern);
@@ -219,6 +220,19 @@ void getBoundaryNextVert(const bool& startCorner ,const int seamType, const int 
     }
 }
 
+void computeOrientationOfFaces(VectorXd& signs,vector<int> vfAdj, MatrixXi& Fg, MatrixXd& Vg){
+    signs.resize(vfAdj.size());
+    for(int i=0; i<vfAdj.size(); i++){
+        int idx1, idx2, idx3;
+        idx1 = Fg(vfAdj[i], 0);
+        idx2 = Fg(vfAdj[i], 1);
+        idx3 = Fg(vfAdj[i], 2);
+        double part1 = (Vg(idx2, 1) - Vg(idx1, 1)) * (Vg(idx2, 0) - Vg(idx1, 0));
+        double part2 = (Vg(idx3, 2) - Vg(idx1,1)) * (Vg(idx3, 0) - Vg(idx1, 0));
+
+        signs(i) = ((part1-part2) );
+    }
+}
 void splitVertexFromCVE( cutVertEntry*& cve,
                          MatrixXd& Vg, // this is the current pattern we modify
                          MatrixXi& Fg, // this will be modified and have entries that are not in the original pattern
@@ -462,9 +476,9 @@ void splitVertexFromCVE( cutVertEntry*& cve,
     }else{
         A = Vg.row(cve -> leftCorner);
         Btemp = Vg.row(cve -> rightCorner);
-        cout<<cve -> rightCorner<<" leftcorner "<<cve -> leftCorner<<endl;
+//        cout<<cve -> rightCorner<<" leftcorner "<<cve -> leftCorner<<endl;
     }
-    cout<<(Btemp-A).transpose()<<" compare line"<<endl;
+//    cout<<(Btemp-A).transpose()<<" compare line"<<endl;
 
     //(AB,AM), where M(X,Y) is the query point:
     //https://stackoverflow.com/questions/1560492/how-to-tell-whether-a-point-is-to-the-right-or-left-side-of-a-line
@@ -489,7 +503,7 @@ void splitVertexFromCVE( cutVertEntry*& cve,
         //(AB,AM), where M(X,Y) is the query point:
         //https://stackoverflow.com/questions/1560492/how-to-tell-whether-a-point-is-to-the-right-or-left-side-of-a-line
         auto sign1 =(((Btemp(0)-A(0) )*(A(1)-C(1))-(Btemp(1)-A(1))*(A(0)-C(0))) > 0);
-        cout<<"side of midvec "<<sign1<<endl;
+//        cout<<"side of midvec "<<sign1<<endl;
         // take the side of interior vertices
         for(int j=0; j<vvAdj[cve -> vert].size(); j++) {
             int testInt = vvAdj[cve->vert][j];
@@ -497,7 +511,7 @@ void splitVertexFromCVE( cutVertEntry*& cve,
             // it is an interior
             C = Vg.row(testInt);
             auto sign2 = (((Btemp(0)-A(0) )*(A(1)-C(1))-(Btemp(1)-A(1))*(A(0)-C(0))) > 0);
-            cout<<"side of interior vert "<<sign2<<endl;
+//            cout<<"side of interior vert "<<sign2<<endl;
             if(sign1!= sign2){
                 midVec = newMidVec;
                 cout<<"WE CHANGED THE SIGN OF THE MIDVEC!"<<endl;
@@ -505,107 +519,55 @@ void splitVertexFromCVE( cutVertEntry*& cve,
             break;
         }
     }
-
-
-
-    // all other normal cases
-    double dist = std::numeric_limits<double>::max();
-    int idxofClosest = -1;
-    // find the index of the closest
-    for(int i=0; i<vvAdj[cve -> vert ].size(); i++){
-        int adjVert = vvAdj[cve -> vert][i];
-        if(adjVert== boundary[minusOneId ]|| adjVert == boundary[plusOneId]) continue; // we want a middle one
-
-        Vector3d edgeVec = Vg.row(adjVert)- Vg.row(cve -> vert);
-        edgeVec= edgeVec.normalized();
-        cout<<adjVert<<" : "<<edgeVec.transpose()<<" "<<"with dist " <<(midVec.normalized() - edgeVec).norm()<<endl;
-        // both have unit distance, so as a measure we can take the distance from another
-        if((midVec.normalized() - edgeVec).norm() < dist){
-            idxofClosest= i;
-            dist = (midVec.normalized() - edgeVec).norm();
-        }
+    // the new midvec is secured now. But to ensure a smooth line we want to include the previous midvec too
+    double prior = 0.5;
+    if(cve->midVec != Vector3d::Zero()){
+        cout<<"using a prior of "<<prior<<" * "<<cve->midVec.transpose()<<endl;
+        midVec = (1-prior)* midVec + prior * cve->midVec;
     }
-
-    // is the new to be inserted vertex
-    int insertIdx =  vvAdj[cve -> vert][idxofClosest];
-
+    cve-> midVec = midVec;
 
     /*-----------------begin trial of snapping to pca direction ------------------*/
-    VectorXd signs(vfAdj[insertIdx].size());
-    for(int i=0; i<vfAdj[insertIdx].size(); i++){
-        int idx1, idx2, idx3;
-        idx1 = Fg(vfAdj[insertIdx][i], 0);
-        idx2 = Fg(vfAdj[insertIdx][i], 1);
-        idx3 = Fg(vfAdj[insertIdx][i], 2);
-        double part1 = (Vg(idx2, 1) - Vg(idx1, 1)) * (Vg(idx2, 0) - Vg(idx1, 0));
-        double part2 = (Vg(idx3, 2) - Vg(idx1,1)) * (Vg(idx3, 0) - Vg(idx1, 0));
-
-        signs(i) = ((part1-part2) );
-    }
-//    Vg.row(insertIdx) = Vg.row(cve->vert) + lenMidVec * midVec.transpose();
-//    cout<<"Position after: "<<Vg.row(insertIdx)<<endl;
-//bool raySegmentIntersection(const Vector2d& p, const Vector2d& q,const Vector2d & qs, const Vector2d& ray, double rayMaxLength, Vector2d& intersect){
-//adjacentFacesToEdge( const int v1, const int v2, const std::vector< std::vector<int> > & vertexFaceAdjecencyList, std::pair<int, int> & faces
 
     Vector2d mid2 = midVec.transpose().leftCols(2);
-    pair<int, int> adjFaces;
-    adjacentFacesToEdge(insertIdx, cve->vert, vfAdj, adjFaces);
+    int insertIdx = -1;
     int intersectingFace = -1 ;
-    VectorXd newPos = Vg.row(insertIdx);
-    for(int i=0; i<3; i++){
-        if(Fg(adjFaces.first, i) == cve->vert){
-            continue;
-        }
-        for(int j=i+1; j<3; j++){
-            Vector2d intersectPosition;
-             if (Fg(adjFaces.first, j) == cve-> vert){
-                 continue;
-             }
-            cout<<"searching first "<<Fg(adjFaces.first, j)<<" "<<Fg(adjFaces.first, i)<<endl;
+    Vector2d intersectPosition;
+    VectorXd newPos = Vg.row(cve->vert);
 
-            if(raySegmentIntersection(Vg.row(cve->vert).leftCols(2), Vg.row(Fg(adjFaces.first, i)).leftCols(2),
-                                                                            Vg.row(Fg(adjFaces.first, j)).leftCols(2), mid2,
-                                                                            lengthsOrig(adjFaces.first, i)*10, intersectPosition)){
-                cout<<Fg(adjFaces.first, i)<<" it intersects! "<<Fg(adjFaces.first, j)<<endl;
-                cout<<"the face is "<<adjFaces.first<<endl;
-                cout<<Vg.row(insertIdx)<<" insert Idx"<<endl;
-                cout<<intersectPosition.transpose()<<" intersect position"<<endl;
-                intersectingFace = adjFaces.first;
-//                newPos = intersectPosition;
-                newPos(0)= intersectPosition(0);
-                newPos(1)= intersectPosition(1);
-            }
+    for(int i=0; i < vfAdj[cve->vert].size(); i++){
+        int adjFace = vfAdj[cve->vert][i];
+        int k=0;
+        if(Fg(adjFace, k) == cve->vert) k++;
+
+        int j = k+1;
+        if(Fg(adjFace, j) == cve->vert) j++;
+
+        if(raySegmentIntersection(Vg.row(cve->vert).leftCols(2), Vg.row(Fg(adjFace, k)).leftCols(2),
+                                                                            Vg.row(Fg(adjFace, j)).leftCols(2), mid2,
+                                                                            lengthsOrig(adjFace, i)*10, intersectPosition)){
+            cout<<Fg.row(adjFace)<<" "<<k<<" "<<j<<endl;
+            intersectingFace = adjFace;
+            newPos(0)= intersectPosition(0);
+            newPos(1)= intersectPosition(1);
+            newPos(2) = Vg(Fg(adjFace, k), 2);
+            double dist1 = (Vg.row(Fg(adjFace, k))- newPos).squaredNorm();
+            double dist2 = (Vg.row(Fg(adjFace, j))- newPos).squaredNorm();
+
+            insertIdx = (dist1<dist2) ? Fg(adjFace, k): Fg(adjFace, j);
+            cout<< insertIdx <<" the insert idx is found "<<endl;
+            break; // it intersects only one
         }
+
     }
-    for(int i=0; i<3; i++){
-        if(Fg(adjFaces.second, i) == cve->vert){
-            continue;
-        }
-        for(int j=i+1; j<3; j++){
-            Vector2d intersectPosition;
-            if (Fg(adjFaces.second, j) == cve-> vert){
-                continue;
-            }
-            cout<<"searching "<<Fg(adjFaces.second, j)<<" "<<Fg(adjFaces.second, i)<<endl;
-            if(raySegmentIntersection(Vg.row(cve->vert).leftCols(2), Vg.row(Fg(adjFaces.second, i)).leftCols(2),
-                                      Vg.row(Fg(adjFaces.second, j)).leftCols(2), mid2,
-                                      lengthsOrig(adjFaces.second, i)*10, intersectPosition)){
-                cout<<Fg(adjFaces.second, i)<<" it intersects! "<<Fg(adjFaces.second, j)<<endl;
-                cout<<Vg.row(insertIdx)<<" insert Idx"<<endl;
-                cout<<intersectPosition.transpose()<<" intersect position"<<endl;
-//                newPos = intersectPosition;
-                newPos(0)= intersectPosition(0);
-                newPos(1)= intersectPosition(1);
 
-                intersectingFace = adjFaces.second;
-
-
-            }
-        }
-    }
-    if(intersectingFace == -1 ){
+// todo no face found, maybe one is exactly on the intersection? might be! in that case we have to search again...
+    if(intersectingFace == -1 || insertIdx ==-1){
         cout<<"ERRRROR WE FOUND NO FACE!!! "<<endl;
     }
+    VectorXd signs, signsAfter;
+    // preparation, calc orientation to check if flipped after
+    computeOrientationOfFaces(signs, vfAdj[insertIdx], Fg, Vg);
 
     MatrixXd insertIdxInBary;
     MatrixXd input(1, 3);
@@ -613,49 +575,29 @@ void splitVertexFromCVE( cutVertEntry*& cve,
     igl::barycentric_coordinates(input, Vg.row(Fg(intersectingFace, 0)), Vg.row(Fg(intersectingFace, 1)),
                                  Vg.row(Fg(intersectingFace, 2)), insertIdxInBary);
 
-//    cout<<Vg.row(insertIdx)<<" curr before"<<endl;
     newVg.row(insertIdx) = newPos;
-    cout<<newVg.row(insertIdx)<<" curr after"<<endl;
 
-//    cout<< "insertIdxInBary " << insertIdxInBary << "*" <<endl;
     //todo now we need to change the rest shape to this position
     VectorXd updatedRestShapeVertPos = insertIdxInBary(0) * Vg_pattern_orig.row(Fg(intersectingFace, 0)) ;
     updatedRestShapeVertPos += insertIdxInBary(1) * Vg_pattern_orig.row(Fg(intersectingFace, 1)) ;
     updatedRestShapeVertPos += insertIdxInBary(2) * Vg_pattern_orig.row(Fg(intersectingFace, 2) );
-// todo upadte all origiinal edge lengths
-    cout<<Vg_pattern_orig.row(insertIdx)<<" orig before"<<endl;
+    // todo upadte all original edge lengths -> in main
     Vg_pattern_orig.row(insertIdx) = updatedRestShapeVertPos;
-    cout<<Vg_pattern_orig.row(insertIdx)<<" orig after"<<endl;
-
-    cout<<" /////////////////////////"<<endl;
-
-
 
     //some stuff is wrong
     //todo maybe it takes the wrong direction sometimes
-    for(int i=0; i<vfAdj[insertIdx].size(); i++){
-        int idx1, idx2, idx3;
-        idx1 = Fg(vfAdj[insertIdx][i], 0);
-        idx2 = Fg(vfAdj[insertIdx][i], 1);
-        idx3 = Fg(vfAdj[insertIdx][i], 2);
-        double part1 = (Vg(idx2, 1) - Vg(idx1, 1)) * (Vg(idx2, 0) - Vg(idx1, 0));
-        double part2 = (Vg(idx3, 2) - Vg(idx1,1)) * (Vg(idx3, 0) - Vg(idx1, 0));
-        auto sign = (( part1 - part2) > 0);
-
-        if((signs(i)>0) != sign ) {
-            cout<< (part1 - part2) <<" ERROR WE FLIPPED SOMETING "<< vfAdj[insertIdx][i]<<endl;
-            cout<<signs(i)<<" ERROR WE FLIPPED SOMETING "<< vfAdj[insertIdx][i]<<endl;
-            cout << endl;
-        }// mess with the original edge length for computation . this is not clean II thing
-        // todo
-//        cout<< lengthsOrig(vfAdj[insertIdx][i], 0) <<" "<< lengthsOrig(vfAdj[insertIdx][i], 0)<<" "<< lengthsOrig(vfAdj[insertIdx][i], 0)<<" before lengths"<<endl;
-
+    computeOrientationOfFaces(signsAfter, vfAdj[insertIdx], Fg, Vg);
+    if(signsAfter != signs){
+        for(int i=0; i<vfAdj[insertIdx].size(); i++){
+            if(signs(i) != signsAfter(i) ) {
+                cout <<" ERROR WE FLIPPED SOMETING in face "<< vfAdj[insertIdx][i]<<endl;
+                cout << endl;
+            }// mess with the original edge length for computation . this is not clean II thing
+            // todo
+        }
     }
+
     /*-----------------end trial of snapping to pca direction ------------------*/
-
-
-
-
 
 
     MatrixXi TT, TTi;
@@ -778,7 +720,6 @@ void splitVertexFromCVE( cutVertEntry*& cve,
 
     cve-> vert = insertIdx;
     cve->levelOne = false;
-    cout<<Vg.row(insertIdx)<<" insert Idx at end "<<endl;
 
     cout<<"fin"<<endl<<endl;
 
