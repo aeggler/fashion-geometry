@@ -200,7 +200,7 @@ void startRetriangulation(vector<VectorXd>& polylineSelected, MatrixXd& V2, Matr
         E(i, 1) = (i+1) % n;
     }
     MatrixXd H;
-    string flags = "qa224.64";
+    string flags = "qa254.64";
     cout<<" starting triangulation with "<<E.rows()<<" edges and "<<V.rows()<<" points"<<endl;
 
     triangulateFAKE(V, E, H, flags, V2, F2 );

@@ -180,7 +180,7 @@ bool checkIfTearIsUseful(int vert, Vector3d& cutDirection,  vector<vector<int>>&
     }
     return flag;
 }
-map<int, int> releasedVertNew;
+map<int, vector<int>> releasedVertNew;
 map<int, vector<int>> cornerToSeams;
 void addToMapIfNotExisting( int key, int i){
     if(cornerToSeams.find(key) != cornerToSeams.end()){
@@ -260,8 +260,11 @@ void splitVertexFromCVE( cutVertEntry*& cve,
 // todo this prohibits any kind of cross cutting! maybe not always desirable ! removing?
     if(handledVerticesSet.find(cve->vert) != handledVerticesSet.end()){
         cout<<"Handled by other seams already."<<endl;
-        if(cveStartPositionsSet.find(cve->vert) != cveStartPositionsSet.end() && LShapeAllowed){
-            cout<<"But it isi a corner and we allow L Shapes. Go on."<<endl;
+
+        // if it is a corner (and cut from both sides(,) or a cut position itself, mabe we can still cut
+        bool cornerOrStart = ((cveStartPositionsSet.find(cve->vert) != cveStartPositionsSet.end()) || cornerSet.find(cve->vert) != cornerSet.end());
+        if( cornerOrStart && LShapeAllowed){
+            cout<<"But it is a corner and we allow L Shapes. Go on."<<endl;
 
         }else{
             cout<<"And really it is in the middle. Stop ."<<endl;
@@ -383,10 +386,25 @@ void splitVertexFromCVE( cutVertEntry*& cve,
         // now we need to find the seam from which we release.
         // each corner is adjacent to two seams. If one is the one we make the decision from, then the other is the one from which it is released
         if(cornerToSeams[cve->cornerInitial][0] == seamComp ){
-            releasedVertNew[cve->vert]= cornerToSeams[cve->cornerInitial][1];
+            // if we allow releasing from two seams this has to be a vec
+            if(releasedVertNew.find(cve->vert)!= releasedVertNew.end()){
+                releasedVertNew[cve->vert].push_back( cornerToSeams[cve->cornerInitial][1]);
+            }else{
+                vector<int> temp;
+                temp.push_back(cornerToSeams[cve->cornerInitial][1]);
+                releasedVertNew[cve->vert] = temp;
+            }
+
 
         }else if (cornerToSeams[cve->cornerInitial][1] == seamComp ){
-            releasedVertNew[cve->vert]= cornerToSeams[cve->cornerInitial][0];
+            // if we allow releasing from two seams this has to be a vec
+            if(releasedVertNew.find(cve->vert)!= releasedVertNew.end()){
+                releasedVertNew[cve->vert].push_back( cornerToSeams[cve->cornerInitial][0]);
+            }else{
+                vector<int> temp;
+                temp.push_back(cornerToSeams[cve->cornerInitial][0]);
+                releasedVertNew[cve->vert] = temp;
+            }
         }else{
             cout<<cornerToSeams[cve->cornerInitial][0]<<" we have a problem, it is not found "<<cornerToSeams[cve->cornerInitial][1]<<" but what we have is "
             <<cve->seamType<<" "<< cve ->seamIdInList<<endl;
@@ -459,8 +477,6 @@ void splitVertexFromCVE( cutVertEntry*& cve,
     cout<<" midvec "<<midVec.transpose()<<endl;
 
     Vector3d cutDirection = midVec;
-//    cutDirection(0)= -cutDirection(1);
-//    cutDirection(1) = midVec(0);
     if(!checkIfTearIsUseful(cve-> vert, cutDirection, vvAdj, vfAdj, Vg, lengthsCurr, lengthsOrig, Fg, ws, true)){
         cve-> finFlag = true;
         cout<<"stopping now with new condition "<<endl;
@@ -545,8 +561,8 @@ void splitVertexFromCVE( cutVertEntry*& cve,
 
         if(raySegmentIntersection(Vg.row(cve->vert).leftCols(2), Vg.row(Fg(adjFace, k)).leftCols(2),
                                                                             Vg.row(Fg(adjFace, j)).leftCols(2), mid2,
-                                                                            lengthsOrig(adjFace, i)*10, intersectPosition)){
-            cout<<Fg.row(adjFace)<<" "<<k<<" "<<j<<endl;
+                                                                            lengthsOrig(adjFace, 0)*100, intersectPosition)){
+//            cout<<Fg.row(adjFace)<<", face id "<<adjFace<<" k="<<k<<" j="<<j<<endl;
             intersectingFace = adjFace;
             newPos(0)= intersectPosition(0);
             newPos(1)= intersectPosition(1);
@@ -560,10 +576,41 @@ void splitVertexFromCVE( cutVertEntry*& cve,
         }
 
     }
-
-// todo no face found, maybe one is exactly on the intersection? might be! in that case we have to search again...
+//continue herre !
+    // todo no face found, maybe one is exactly on the intersection? might be! in that case we have to search again...
     if(intersectingFace == -1 || insertIdx ==-1){
         cout<<"ERRRROR WE FOUND NO FACE!!! "<<endl;
+        cout<< mid2.transpose()<<" "<<cve->vert<<endl;
+
+        for(int i=0; i < vfAdj[cve->vert].size(); i++){
+            int adjFace = vfAdj[cve->vert][i];
+            int k=0;
+            if(Fg(adjFace, k) == cve->vert) k++;
+
+            int j = k+1;
+            if(Fg(adjFace, j) == cve->vert) j++;
+            cout<<adjFace<<" adj face;"<<endl;
+            cout<<"to "<<Fg(adjFace, j)<<": "<< (Vg.row(Fg(adjFace, j)).leftCols(2)-Vg.row(cve->vert).leftCols(2)) <<endl;
+            cout<<"to "<<Fg(adjFace, k)<<": "<< (Vg.row(Fg(adjFace, k)).leftCols(2)-Vg.row(cve->vert).leftCols(2)) <<endl;
+
+
+            if(raySegmentIntersection(Vg.row(cve->vert).leftCols(2), Vg.row(Fg(adjFace, k)).leftCols(2),
+                                      Vg.row(Fg(adjFace, j)).leftCols(2), mid2,
+                                      lengthsOrig(adjFace, i)*10, intersectPosition)){
+                cout<<Fg.row(adjFace)<<", face id "<<adjFace<<" k="<<k<<" j="<<j<<endl;
+                intersectingFace = adjFace;
+                newPos(0)= intersectPosition(0);
+                newPos(1)= intersectPosition(1);
+                newPos(2) = Vg(Fg(adjFace, k), 2);
+                double dist1 = (Vg.row(Fg(adjFace, k))- newPos).squaredNorm();
+                double dist2 = (Vg.row(Fg(adjFace, j))- newPos).squaredNorm();
+
+                insertIdx = (dist1<dist2) ? Fg(adjFace, k): Fg(adjFace, j);
+                cout<< insertIdx <<" the insert idx is found "<<endl;
+                break; // it intersects only one
+            }
+
+        }
     }
     VectorXd signs, signsAfter;
     // preparation, calc orientation to check if flipped after
@@ -807,7 +854,6 @@ void splitCounterPart(vector<cutVertEntry*>& cutPositions, int idxOfCVE,  cutVer
  */
  int openParallelPosition(int& cornerInitial, int& seamType, vector<seam*>& seamsList, vector <cutVertEntry*>& cutPositions){
      // if a paralell cut position exists we find and open it . But attention, it is not guaranteed the position exists. But we don't enforce it (might be worth a thought tough)
-//     cout<<"searching for index to open parallel of "<<cornerInitial<<endl;
     if(seamType<0){
 //        cout<<" seam Type -1"<<endl;
         return -1; // no parallel to open
@@ -1531,24 +1577,32 @@ int tearFurther(vector<cutVertEntry*>& cutPositions, MatrixXd&  currPattern, Mat
         bool parallelFinFlag = true;
         int parallel;
         //it cannot find the first one if it has not been released yet. need tto rewrite it
+        int thisSeam = cutPositions[count]->seamIdInList;
+        if(thisSeam<0) thisSeam = thisSeam*(-1)+1;
 
         if(cutPositions[count]->finFlag ){
-
             // if it is a corner and it has been released
             if((cutPositions[count]->startCorner || cutPositions[count]->endCorner) &&
-            releasedVertNew.find( cutPositions[count]->cornerInitial) != releasedVertNew.end()){
-                parallel = openParallelPosition(cutPositions[count]-> cornerInitial, releasedVertNew[cutPositions[count]->cornerInitial], seamsList, cutPositions);
-                if(parallel >= 0) parallelFinFlag = cutPositions[parallel]->finFlag;
-                if(parallelFinFlag){
+                releasedVertNew.find( cutPositions[count]->cornerInitial) != releasedVertNew.end() ){
+                int seamPotentiallyReleasedFrom = (cornerToSeams[cutPositions[count]-> cornerInitial][0] == thisSeam) ? cornerToSeams[cutPositions[count]-> cornerInitial][1] : cornerToSeams[cutPositions[count]-> cornerInitial][0];
+                if(releasedVertNew[ cutPositions[count]->cornerInitial].end() != std::find( releasedVertNew[ cutPositions[count]->cornerInitial].begin(), releasedVertNew[ cutPositions[count]->cornerInitial].end(), seamPotentiallyReleasedFrom)){
+                    parallel = openParallelPosition(cutPositions[count]-> cornerInitial, seamPotentiallyReleasedFrom, seamsList, cutPositions);//releasedVertNew[cutPositions[count]->cornerInitial]
+                    if(parallel >= 0) parallelFinFlag = cutPositions[parallel]->finFlag;
+                    if(parallelFinFlag){
+                        i--;
+                        count ++;
+                    }else{
+                        returnPosition = cutPositions[parallel] ->vert;
+                        splitVertexFromCVE(cutPositions[parallel], currPattern, Fg_pattern, vfAdj, boundaryL, seamsList,
+                                           minusOneSeams, releasedVert, toPattern_boundaryVerticesSet,lengthsCurr, cornerSet,
+                                           handledVerticesSet, LShapeAllowed, Vg_pattern_orig);
+                        prevFinished = cutPositions[parallel]->finFlag;
+                    }
+                }else{
                     i--;
                     count ++;
-                }else{
-                    returnPosition = cutPositions[parallel] ->vert;
-                    splitVertexFromCVE(cutPositions[parallel], currPattern, Fg_pattern, vfAdj, boundaryL, seamsList,
-                                       minusOneSeams, releasedVert, toPattern_boundaryVerticesSet,lengthsCurr, cornerSet,
-                                       handledVerticesSet, LShapeAllowed, Vg_pattern_orig);
-                    prevFinished = cutPositions[parallel]->finFlag;
                 }
+
             }else{
                 i--;
                 count ++;
@@ -1574,9 +1628,18 @@ int tearFurther(vector<cutVertEntry*>& cutPositions, MatrixXd&  currPattern, Mat
 //            cout<<"-1 seam, no counter to split"<<endl;
 //        }
             parallel = -1;
+            /*
+            // if it is a corner and it has been released
+                std::find( releasedVertNew[ cutPositions[count]->cornerInitial].begin(), releasedVertNew[ cutPositions[count]->cornerInitial].end(), seamPotentiallyReleasedFrom)){
+
+                parallel = openParallelPosition(cutPositions[count]-> cornerInitial, seamPotentiallyReleasedFrom, seamsList, cutPositions);//releasedVertNew[cutPositions[count]->cornerInitial]
+                if(par*/
             if(cutPositions[count]->startCorner || cutPositions[count]->endCorner){
                 // once we finished cutting one side, check if it was a side opening. If so we can go on with the other side
-                parallel = openParallelPosition(cutPositions[count]-> cornerInitial, releasedVertNew[cutPositions[count]-> cornerInitial], seamsList, cutPositions);
+                int seamPotentiallyReleasedFrom = (cornerToSeams[cutPositions[count]-> cornerInitial][0] == thisSeam) ? cornerToSeams[cutPositions[count]-> cornerInitial][1] : cornerToSeams[cutPositions[count]-> cornerInitial][0];
+
+//                parallel = openParallelPosition(cutPositions[count]-> cornerInitial, releasedVertNew[cutPositions[count]-> cornerInitial], seamsList, cutPositions);
+                parallel = openParallelPosition(cutPositions[count]-> cornerInitial, seamPotentiallyReleasedFrom, seamsList, cutPositions);
                 // open the other side of a released seam .
                 // attention this is not the other side of the seam but the same 3D corner of a different patch.
                 // note that there is no guarantee there is a cut position. If not, we do not enforce it.
@@ -1781,7 +1844,8 @@ int computeTear(Eigen::MatrixXd & fromPattern, MatrixXd&  currPattern, MatrixXi&
         if( releasedVertNew.find(currVert) != releasedVertNew.end()){
             // dann können müssen wir ja auch die passende andere seite des cuts öffnen
             // achtung, das ist nicht die corresponding seam
-            int parallel = openParallelPosition(cutPositions[count]-> cornerInitial, releasedVertNew[currVert], seamsList, cutPositions);
+            // es kann aber noch nicht von einer anderen Seite geöffnett sein. daher nimm idx [0] von den released vert
+            int parallel = openParallelPosition(cutPositions[count]-> cornerInitial, releasedVertNew[currVert][0], seamsList, cutPositions);
             if(parallel<0) {cout<<"no proper parallel found"<<endl;continue;}
             returnPosition = cutPositions[parallel] ->vert;
             splitVertexFromCVE(cutPositions[parallel], currPattern, Fg_pattern, vfAdj, boundaryL, seamsList,
@@ -1907,7 +1971,8 @@ void projectBackOnBoundary(const MatrixXd & Vg_to, MatrixXd& p, const vector<sea
                 updatePositionToIntersection( p, next,Vg_seam1to);
             }
             // else it is released somehow. But from which seam? If it is released from another seam then pull it to this boundary still
-            else if( releasedVertNew[next] != j){
+            else if( std::find(releasedVertNew[next].begin(), releasedVertNew[next].end(), j) != releasedVertNew[next].end()){
+                //releasedVertNew[next] != j
                updatePositionToIntersection( p, next,Vg_seam1to);
 
             }
@@ -1915,7 +1980,8 @@ void projectBackOnBoundary(const MatrixXd & Vg_to, MatrixXd& p, const vector<sea
             next = boundaryL_toPattern[stP1.second][(stP1.first + i1) % bsize];
         }
         // the last corner. Again if it is constrained from another side pull it to boundary, else ignore since handled by corner
-        if(releasedVert.find(next) != releasedVert.end() && releasedVertNew[next] != j){
+        if(releasedVert.find(next) != releasedVert.end() && (std::find(releasedVertNew[next].begin(), releasedVertNew[next].end(), j) != releasedVertNew[next].end())){
+            // releasedVertNew[next] != j){
             updatePositionToIntersection( p, next,Vg_seam1to);
         }
 
@@ -1929,7 +1995,8 @@ void projectBackOnBoundary(const MatrixXd & Vg_to, MatrixXd& p, const vector<sea
             // general case an interior vertex , if it is not constrained pull it to boundary
             if(releasedVert.find(next) == releasedVert.end() ){// && i2!=0
                 updatePositionToIntersection( p, next,Vg_seam2to);
-            } else if( releasedVertNew[next] != j){
+            } else if( std::find(releasedVertNew[next].begin(), releasedVertNew[next].end(), j) != releasedVertNew[next].end()){
+//                    releasedVertNew[next] != j){
                 updatePositionToIntersection( p, next,Vg_seam2to);
 
             }
@@ -1942,7 +2009,9 @@ void projectBackOnBoundary(const MatrixXd & Vg_to, MatrixXd& p, const vector<sea
             next = boundaryL_toPattern[stP2.second][nextidx];
         }
 
-        if(releasedVert.find(next) != releasedVert.end() && releasedVertNew[next] != j){
+        if(releasedVert.find(next) != releasedVert.end() && (std::find(releasedVertNew[next].begin(), releasedVertNew[next].end(), j) != releasedVertNew[next].end())){
+
+//        releasedVertNew[next] != j){
             updatePositionToIntersection( p, next,Vg_seam2to);
         }
 
@@ -1952,7 +2021,8 @@ void projectBackOnBoundary(const MatrixXd & Vg_to, MatrixXd& p, const vector<sea
 
             if(releasedVert.find(addedVert.second) == releasedVert.end() ){// && i2!=0
                 updatePositionToIntersection(p, addedVert.second, Vg_seam1to);
-            } else if( releasedVertNew[addedVert.second] != j){
+            } else if( std::find(releasedVertNew[next].begin(), releasedVertNew[next].end(), j) != releasedVertNew[next].end()){
+//                    releasedVertNew[addedVert.second] != j){
                 updatePositionToIntersection(p, addedVert.second, Vg_seam1to);
             }
         }
@@ -1960,7 +2030,8 @@ void projectBackOnBoundary(const MatrixXd & Vg_to, MatrixXd& p, const vector<sea
 
             if(releasedVert.find(addedVert.second) == releasedVert.end() ){// && i2!=0
                 updatePositionToIntersection(p, addedVert.second, Vg_seam2to);
-            } else if( releasedVertNew[addedVert.second] != j){
+            } else if( std::find(releasedVertNew[next].begin(), releasedVertNew[next].end(), j) != releasedVertNew[next].end()){
+//                    releasedVertNew[addedVert.second] != j){
                 updatePositionToIntersection(p, addedVert.second, Vg_seam2to);
             }
         }
@@ -1992,7 +2063,8 @@ void projectBackOnBoundary(const MatrixXd & Vg_to, MatrixXd& p, const vector<sea
             // general case, it is not released hence pull it to the boundary
             if(releasedVert.find(next) == releasedVert.end()){
                 updatePositionToIntersection( p, next,Vg_seamto);
-            }else if(releasedVertNew[next] != (-1)*(j+1)){
+            }else if(std::find(releasedVertNew[next].begin(), releasedVertNew[next].end(),  (-1)*(j+1)) != releasedVertNew[next].end()){
+//                    releasedVertNew[next] != (-1)*(j+1)){
                 // it is released but not from this seam,thus it has to stay on the projection
                 updatePositionToIntersection( p, next,Vg_seamto);
             }
@@ -2000,7 +2072,8 @@ void projectBackOnBoundary(const MatrixXd & Vg_to, MatrixXd& p, const vector<sea
             next = boundaryL_toPattern[patch][( startidx + i1) % boundLen];
         }
         // it is released for another side hence we have to pull it to our side
-        if(releasedVert.find(next) != releasedVert.end() && releasedVertNew[next] != (-1)*(j+1)){
+        if(releasedVert.find(next) != releasedVert.end() && std::find(releasedVertNew[next].begin(), releasedVertNew[next].end(),  (-1)*(j+1)) != releasedVertNew[next].end()){
+        //releasedVertNew[next] != (-1)*(j+1)){
             updatePositionToIntersection( p, next,Vg_seamto);
 
         }

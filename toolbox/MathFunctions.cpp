@@ -83,7 +83,7 @@ double v2cross(const Vector2d& p, const Vector2d& q){
 bool raySegmentIntersection(const Vector2d& p, const Vector2d& q,const Vector2d & qs, const Vector2d& ray, double rayMaxLength, Vector2d& intersect){
     bool doIntersect = false;
     Vector2d r = ray.normalized();
-    r*= rayMaxLength;
+    r *= rayMaxLength;
     Vector2d s = qs-q;
 
     auto rcross_s= v2cross(r,s);
