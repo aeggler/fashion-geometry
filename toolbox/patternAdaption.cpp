@@ -771,9 +771,7 @@ void splitVertexFromCVE( cutVertEntry*& cve,
 
     cve-> vert = insertIdx;
     cve->levelOne = false;
-
-    cout<<"fin"<<endl<<endl;
-
+    
 }
 void splitCounterPart(vector<cutVertEntry*>& cutPositions, int idxOfCVE,  cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<vector<int> >& vfAdj,
                       std::vector<std::vector<int> >& boundaryL,  vector<seam*>& seamsList, vector<minusOneSeam*> & minusOneSeams,
@@ -1588,7 +1586,7 @@ int tearFurther(vector<cutVertEntry*>& cutPositions, MatrixXd&  currPattern, Mat
             // if it is a corner and it has been released
             if((cutPositions[count]->startCorner || cutPositions[count]->endCorner) &&
                 releasedVertNew.find( cutPositions[count]->cornerInitial) != releasedVertNew.end() ){
-                int seamPotentiallyReleasedFrom = thisSeam;//(cornerToSeams[cutPositions[count]-> cornerInitial][0] == thisSeam) ? cornerToSeams[cutPositions[count]-> cornerInitial][1] : cornerToSeams[cutPositions[count]-> cornerInitial][0];
+                int seamPotentiallyReleasedFrom = (cornerToSeams[cutPositions[count]-> cornerInitial][0] == thisSeam) ? cornerToSeams[cutPositions[count]-> cornerInitial][1] : cornerToSeams[cutPositions[count]-> cornerInitial][0];
                 if(releasedVertNew[ cutPositions[count]->cornerInitial].end() != std::find( releasedVertNew[ cutPositions[count]->cornerInitial].begin(), releasedVertNew[ cutPositions[count]->cornerInitial].end(), seamPotentiallyReleasedFrom)){
                     parallel = openParallelPosition(cutPositions[count]-> cornerInitial, seamPotentiallyReleasedFrom, seamsList, cutPositions);//releasedVertNew[cutPositions[count]->cornerInitial]
                     if(parallel >= 0) parallelFinFlag = cutPositions[parallel]->finFlag;
@@ -1615,31 +1613,18 @@ int tearFurther(vector<cutVertEntry*>& cutPositions, MatrixXd&  currPattern, Mat
         }else{
 
             cout<<endl<< cutPositions[count]->vert<<" vertex up next handling with i= "<<count<<" /"<<cutPositions.size()-1<<endl;
-            cout<<"split origninal of seam  "<< cutPositions[count]->seamIdInList<<endl;
             returnPosition = cutPositions[count] ->vert;
             splitVertexFromCVE(cutPositions[count], currPattern, Fg_pattern, vfAdj, boundaryL, seamsList, minusOneSeams, releasedVert,
                                    toPattern_boundaryVerticesSet,lengthsCurr, cornerSet, handledVerticesSet, LShapeAllowed, Vg_pattern_orig );
-            cout<<"finished ? "<<cutPositions[count]->finFlag<<endl;
+            cout<<"finished ? "<<cutPositions[count]->finFlag<<endl<<endl;
             prevFinished = cutPositions[count] -> finFlag;
 
-            cout<<"now caring about parallel--------------"<<endl;
             parallel = -1;
-
             // if it is a corner and it has been released
-
-
-//                parallel = openParallelPosition(cutPositions[count]-> cornerInitial, seamPotentiallyReleasedFrom, seamsList, cutPositions);//releasedVertNew[cutPositions[count]->cornerInitial]
             if(cutPositions[count]->startCorner || cutPositions[count]->endCorner){
-
                 // once we finished cutting one side, check if it was a side opening. If so we can go on with the other side
-                int seamPotentiallyReleasedFrom = thisSeam;//(cornerToSeams[cutPositions[count]-> cornerInitial][0] == thisSeam) ? cornerToSeams[cutPositions[count]-> cornerInitial][1] : cornerToSeams[cutPositions[count]-> cornerInitial][0];
-                cout<<"current seam "<<seamPotentiallyReleasedFrom<<endl;
                 //this is the released seam, so the other one is the one we have in common
-                seamPotentiallyReleasedFrom = (cornerToSeams[cutPositions[count]-> cornerInitial][0] == thisSeam) ? cornerToSeams[cutPositions[count]-> cornerInitial][1] : cornerToSeams[cutPositions[count]-> cornerInitial][0];
-                cout<<"seam released from "<<seamPotentiallyReleasedFrom<<endl;
-                cout<<"alternativces are"<<cornerToSeams[cutPositions[count]-> cornerInitial][0]<<" "<<cornerToSeams[cutPositions[count]-> cornerInitial][1]<<endl;
-
-//                parallel = openParallelPosition(cutPositions[count]-> cornerInitial, releasedVertNew[cutPositions[count]-> cornerInitial], seamsList, cutPositions);
+                int seamPotentiallyReleasedFrom = (cornerToSeams[cutPositions[count]-> cornerInitial][0] == thisSeam) ? cornerToSeams[cutPositions[count]-> cornerInitial][1] : cornerToSeams[cutPositions[count]-> cornerInitial][0];
                 parallel = openParallelPosition(cutPositions[count]-> cornerInitial, seamPotentiallyReleasedFrom, seamsList, cutPositions);
                 // open the other side of a released seam .
                 // attention this is not the other side of the seam but the same 3D corner of a different patch.
