@@ -122,6 +122,8 @@ static bool StressU = false;
 static bool StressV = false;
 static bool StressDiffJac = false;
 static bool StressJac = false;
+static bool prioInner = false;
+static bool prioOuter = false;
 int whichPatchMove=0;
 bool prevTearFinished;// indicating if a cut is finished or not to make sure we sort only after a completed cut
 bool preferManySmallCuts= false;
@@ -823,7 +825,8 @@ int main(int argc, char *argv[])
                             minusOneSeamsList, boundaryL, fin, cornerPerBoundary, seamIdPerCorner,
                             cornerVertices, cutPositions, releasedVert, toPattern_boundaryVerticesSet, cornerSet,
                             handledVerticesSet,
-                            Vg_pattern, prevTearFinished, LShapeAllowed, Vg_pattern_orig);
+                            Vg_pattern, prevTearFinished, LShapeAllowed, Vg_pattern_orig,
+                            prioInner, prioOuter);
                 if(pos!=-1){
                     viewer.selected_data_index = 2;
                     viewer.data().set_points(currPattern.row(pos), RowVector3d(1.0, 0.0, 0.0));
@@ -852,7 +855,7 @@ int main(int argc, char *argv[])
                 auto copyPattern = fromPattern;
                 int pos = tearFurther(cutPositions, currPattern, Fg_pattern, seamsList, minusOneSeamsList, releasedVert,
                             toPattern_boundaryVerticesSet, boundaryL, cornerSet, handledVerticesSet, prevTearFinished,
-                            preferManySmallCuts, LShapeAllowed, patternEdgeLengths_orig, fromPattern);
+                            preferManySmallCuts, LShapeAllowed, patternEdgeLengths_orig, fromPattern, prioInner, prioOuter);
                 if(pos!=-1){
                     viewer.selected_data_index = 2;
                     viewer.data().clear();
@@ -885,11 +888,8 @@ int main(int argc, char *argv[])
                     viewer.data().clear();
                     viewer.data().set_mesh(currPattern, Fg_pattern);
                 }
-                if(!changeFlag){
-                    viewer.core().is_animating = true;
-                    adaptionFlag = true;
-                }
-
+                viewer.core().is_animating = true;
+                adaptionFlag = true;
 
             }
             if(ImGui::Button("Smooth cuts", ImVec2(-1, 0))){
@@ -911,6 +911,12 @@ int main(int argc, char *argv[])
 //                adaptionFlag = true;
             }
             if(ImGui::Checkbox("Allow L-shaped fabric insertion", &LShapeAllowed)){}
+            if(ImGui::Checkbox("Prioritize Inner Cuts", &prioInner)){
+                prioOuter = false;
+            }
+            if(ImGui::Checkbox("Prioritize Outer Cuts ", &prioOuter)){
+                prioInner= false;
+            }
             if(ImGui::Checkbox("Prefer many small cuts", &preferManySmallCuts)){};
 
         }

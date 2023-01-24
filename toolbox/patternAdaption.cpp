@@ -609,7 +609,6 @@ void splitVertexFromCVE( cutVertEntry*& cve,
 
     /*-----------------end trial of snapping to pca direction ------------------*/
 
-
     MatrixXi TT, TTi;
     igl::triangle_triangle_adjacency(Fg, TT, TTi);
     std::pair<int, int>  faces;
@@ -1470,7 +1469,8 @@ void setLP(std::vector<std::vector<int> >& boundaryL , vector<vector<int>> & vfA
 
 
 void updateStress(vector<cutVertEntry*>& cutPositions, vector<seam*>& seamsList, vector<minusOneSeam*>& minusOneSeams,
-                  std::vector<std::vector<int> >& boundaryL, MatrixXi& Fg_pattern, vector<vector<int>> & vfAdj, MatrixXd& lengthsCurr
+                  std::vector<std::vector<int> >& boundaryL, MatrixXi& Fg_pattern, vector<vector<int>> & vfAdj, MatrixXd& lengthsCurr, bool& prioInner,
+                  bool& prioOuter
                   ){
     for(int i=0; i< cutPositions.size(); i++){
 
@@ -1494,6 +1494,12 @@ void updateStress(vector<cutVertEntry*>& cutPositions, vector<seam*>& seamsList,
         }else{
             cve -> stress = (prevStress + nextStress)/2;
         }
+        if(prioOuter && cve->seamType==-1){
+            cve->stress +=1;
+        }
+        if(prioInner && cve->seamType ==1){
+            cve->stress +=1;
+        }
     }
 
 }
@@ -1501,7 +1507,8 @@ void updateStress(vector<cutVertEntry*>& cutPositions, vector<seam*>& seamsList,
 int tearFurther(vector<cutVertEntry*>& cutPositions, MatrixXd&  currPattern, MatrixXi& Fg_pattern,vector<seam*>& seamsList, vector<minusOneSeam*>& minusOneSeams,
                  map<int, pair<int, int>> & releasedVert, set<int>& toPattern_boundaryVerticesSet,  std::vector<std::vector<int> >& boundaryL,
                  set<int> & cornerSet, set<int>& handledVerticesSet,  bool& prevFinished, const bool & preferManySmallCuts, const bool & LShapeAllowed,
-                 MatrixXd& patternEdgeLengths_orig, MatrixXd& Vg_pattern_orig ){
+                 MatrixXd& patternEdgeLengths_orig, MatrixXd& Vg_pattern_orig, bool& prioInner,
+                bool& prioOuter ){
     cout<<endl<<endl<<"-----------------------"<<endl<<endl;
 
             int returnPosition = -1;
@@ -1515,7 +1522,7 @@ int tearFurther(vector<cutVertEntry*>& cutPositions, MatrixXd&  currPattern, Mat
     igl::edge_lengths(currPattern, Fg_pattern, lengthsCurr);
     lengthsOrig = patternEdgeLengths_orig;
 
-    updateStress( cutPositions, seamsList, minusOneSeams, boundaryL,  Fg_pattern, vfAdj, lengthsCurr);
+    updateStress( cutPositions, seamsList, minusOneSeams, boundaryL,  Fg_pattern, vfAdj, lengthsCurr,  prioInner, prioOuter);
 
     if(prevFinished || preferManySmallCuts){
         // if we want many small cuts we sort always and there is no need to finish a seam before handling the next one!
@@ -1709,7 +1716,8 @@ int computeTear(Eigen::MatrixXd & fromPattern, MatrixXd&  currPattern, MatrixXi&
                  const std::vector<std::vector<std::pair<int, int>>>& cornersPerBoundary, map<int, vector<pair<int, int>>>& seamIdPerCorner,
                  VectorXd& cornerVert, vector<cutVertEntry*>& cutPositions, map<int, pair<int, int>> & releasedVert,
                  set<int>& toPattern_boundaryVerticesSet, set<int> & cornerSet, set<int>& handledVerticesSet , MatrixXd& Vg,
-                 bool& prevFinished, const bool & LShapeAllowed,MatrixXd& Vg_pattern_orig )
+                 bool& prevFinished, const bool & LShapeAllowed,MatrixXd& Vg_pattern_orig, bool& prioInner,
+                bool& prioOuter )
                  {
 
     vector<vector<int> > vfAdj;
@@ -1752,6 +1760,10 @@ int computeTear(Eigen::MatrixXd & fromPattern, MatrixXd&  currPattern, MatrixXi&
     setLP(boundaryL, vfAdj, Fg_pattern, lengthsOrig, lengthsCurr, cornersPerBoundary, seamIdPerCorner,
           seamsList, minusOneSeams, tailor_lazyness, minConstrained, cutPositions,
           cornerVert, Vg, LShapeAllowed);
+
+    //update with the preferences before sorting
+    updateStress( cutPositions, seamsList, minusOneSeams, boundaryL,  Fg_pattern, vfAdj, lengthsCurr,  prioInner, prioOuter);
+
 
     //  here we need to sort and check if handled already
     sort(cutPositions.begin(), cutPositions.end(), []( cutVertEntry* &a,  cutVertEntry* &b) { return a->stress > b-> stress; });
