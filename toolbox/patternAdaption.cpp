@@ -1494,12 +1494,34 @@ void updateStress(vector<cutVertEntry*>& cutPositions, vector<seam*>& seamsList,
         }else{
             cve -> stress = (prevStress + nextStress)/2;
         }
-        if(prioOuter && cve->seamType==-1){
-            cve->stress +=1;
+        if(cve->startCorner || cve->endCorner){
+            // check what kind of seam the other side is
+            int thisSeam;
+            if(cve->seamType == -1){
+                thisSeam = (-1) * cve->seamIdInList -1;
+            }else if (cve->seamIdInList<0) {
+                thisSeam = (-1) * cve->seamIdInList -1;
+            }else{
+               thisSeam =  cve->seamIdInList;
+            }
+
+            int otherSeam = (cornerToSeams[cve->cornerInitial][0] == thisSeam) ? cornerToSeams[cve->cornerInitial][1] : cornerToSeams[cve->cornerInitial][0];
+            if(prioOuter && otherSeam < 0){
+                cve->stress +=1;
+            }
+            if(prioInner && otherSeam >= 0){
+                cve->stress +=1;
+            }
+
+        }else{
+            if(prioOuter && cve->seamType==-1){
+                cve->stress +=1;
+            }
+            if(prioInner && cve->seamType ==1){
+                cve->stress +=1;
+            }
         }
-        if(prioInner && cve->seamType ==1){
-            cve->stress +=1;
-        }
+
     }
 
 }
@@ -1528,6 +1550,7 @@ int tearFurther(vector<cutVertEntry*>& cutPositions, MatrixXd&  currPattern, Mat
         // if we want many small cuts we sort always and there is no need to finish a seam before handling the next one!
         cout<<"It's time to sort again"<<endl;
         sort(cutPositions.begin(), cutPositions.end(), []( cutVertEntry* &a,  cutVertEntry* &b) { return a->stress > b-> stress; });
+
 
     }
 
@@ -1767,6 +1790,8 @@ int computeTear(Eigen::MatrixXd & fromPattern, MatrixXd&  currPattern, MatrixXi&
 
     //  here we need to sort and check if handled already
     sort(cutPositions.begin(), cutPositions.end(), []( cutVertEntry* &a,  cutVertEntry* &b) { return a->stress > b-> stress; });
+
+
     for(int i =0; i < cutPositions.size(); i++){
         findCorrespondingCounterCutPosition(cutPositions, i, cutPositions[i], currPattern, Fg_pattern, vfAdj, boundaryL,
                                             seamsList, minusOneSeams, releasedVert, toPattern_boundaryVerticesSet,lengthsCurr,Fg_pattern, cornerSet, handledVerticesSet );

@@ -103,7 +103,7 @@ int tearFurther(vector<cutVertEntry*>& cutPositions, MatrixXd&  currPattern, Mat
                  const bool &preferManySmallCuts,
                  const bool & LShapeAllowed ,
                 MatrixXd& patternEdgeLengths_orig,
-                MatrixXd& Vg_pattern_orig
+                MatrixXd& Vg_pattern_orig,
                 bool& prioInner,
                 bool& prioOuter
 );

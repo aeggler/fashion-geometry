@@ -915,7 +915,11 @@ int main(int argc, char *argv[])
                 prioOuter = false;
             }
             if(ImGui::Checkbox("Prioritize Outer Cuts ", &prioOuter)){
-                prioInner= false;
+                prioInner = false;
+            }
+            if(ImGui::Button("Remove priorities ", ImVec2(-1, 0))){
+                prioInner = false;
+                prioOuter = false;
             }
             if(ImGui::Checkbox("Prefer many small cuts", &preferManySmallCuts)){};
 
