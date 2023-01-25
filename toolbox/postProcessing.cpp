@@ -231,6 +231,69 @@ void backTo3Dmapping(MatrixXd& adaptedPattern, MatrixXi& adaptedPattern_faces, M
 
 }
 
+bool vertOnEdge(const Vector3d& R, const Vector3d& Q, const Vector3d& p){
+
+    double t = (R-Q).dot(p-Q)/((R-Q).dot(R-Q));
+    return (t<=1 && t>=0 );
+
+}
+void computeAllBetweensNew(vector<VectorXd>& polylineSelected,vector<int>& polylineIndex, vector<int>& polyLineMeshIndicator,
+                           vector<vector<int>>& boundaryL_adaptedFromPattern, vector<vector<int>>& boundaryL_toPattern,
+                           MatrixXd& currPattern, MatrixXd& Vg_to, vector<VectorXd>& polyLineInput, vector<int>& connectedVert) {
+    polyLineInput.clear();
+    connectedVert.clear();
+    /* given 6 positios in total
+     *   we assume v0 is on the from mesh ,adapted pattern
+     *   v1 is a corner that should intersect the to pattern
+     *   v2 is on the to pattern (but need not be a vertex
+     *      |
+     *      v2
+     *      |
+     * --v0--v1
+     *      |
+     *
+     * */
+    //step 1 locate v1 on the toPattern by checking on which edge it is
+    int closer1, closer2, far1, far2; // closer is the one in direction of v2
+    int patch;
+    vector<vector<int>> boundaryToSearch = boundaryL_adaptedFromPattern;
+    for (int j = 0; j < boundaryToSearch.size(); j++) {
+        bool found = false;
+        for (int k = 0; k < boundaryToSearch[j].size(); k++) {
+            int v = boundaryToSearch[j][k];
+            int v1 = boundaryToSearch[j][k+1 % boundaryToSearch[j].size() ];
+            if (vertOnEdge(Vg_to.row(v).transpose(), Vg_to.row(v1).transpose(), polylineSelected[1])) {
+                cout << "found vertex on patch " << j<<" between vertices "<<k<<" and "<<k+1 << endl;
+                closer1 = k;
+                far1 = k+1 % boundaryToSearch[j].size();
+                if ((Vg_to.row(v)- polylineSelected[1]).norm() < ( Vg_to.row(v1)-polylineSelected[1]).norm() ) {
+                    // swap
+                    swap(closer1, far1);
+                }
+                patch = j;
+                found = true;
+            }
+        }
+        if (!found) continue;
+        // else we look for the other one
+        for (int k = 0; k < boundaryToSearch[j].size(); k++) {
+            int v = boundaryToSearch[j][k];
+            int v1 = boundaryToSearch[j][k+1 % boundaryToSearch[j].size() ];
+            if (vertOnEdge(Vg_to.row(v).transpose(), Vg_to.row(v1).transpose(), polylineSelected[4])) {
+                cout << "found vertex on patch " << j<<" between vertices "<<k<<" and "<<k+1 << endl;
+                closer2 = k;
+                far2 = k+1 % boundaryToSearch[j].size();
+                if ((Vg_to.row(v)- polylineSelected[4]).norm() < ( Vg_to.row(v1)-polylineSelected[4]).norm() ) {
+                    // swap
+                    swap(closer2, far2);
+                }
+            }
+        }
+    }
+    // hopefully we found both by now! 
+
+
+}
 void computeAllBetweens(vector<VectorXd>& polylineSelected,vector<int>& polylineIndex, vector<int>& polyLineMeshIndicator,
                    vector<vector<int>>& boundaryL_adaptedFromPattern, vector<vector<int>>& boundaryL_toPattern,
                    MatrixXd& currPattern, MatrixXd& Vg_pattern_orig, vector<VectorXd>& polyLineInput, vector<int>& connectedVert){
