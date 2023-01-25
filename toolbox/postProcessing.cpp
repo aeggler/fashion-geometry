@@ -167,8 +167,6 @@ void triangulateFAKE(MatrixXd& V, MatrixXi& E, MatrixXd& H, string flags, Matrix
 //     Call triangle/
      cout<<" calling triangle"<<endl;
      triangulate((char *)full_flags.c_str(), &in, &out, (triangulateio *) NULL);
-//    triangulate(const_cast<char*>(full_flags.c_str()), &in, &out, 0);
-//
 //    // Return the mesh
     V2 = MapXdr(out.pointlist,out.numberofpoints,2).cast< double>();
 
@@ -240,98 +238,105 @@ void computeAllBetweens(vector<VectorXd>& polylineSelected,vector<int>& polyline
     connectedVert.clear();
 
     for(int i=0; i< polylineIndex.size(); i++){
-        if(polyLineMeshIndicator[i] ==2 || i+1 == polylineIndex.size() || polyLineMeshIndicator[i+1]==2 ){
-            polyLineInput.push_back(polylineSelected[i]);
-            connectedVert.push_back(-1);
+        //add the current one
+        polyLineInput.push_back(polylineSelected[i]);
+        if(i+1 == polylineIndex.size()) continue; // there is no after
+        if(polyLineMeshIndicator[i] ==2 || polyLineMeshIndicator[i+1]==2 ){
+           // check if there are ot be inserted vertices on the other boundary line
             continue;
-        }
-        int start = polylineIndex[i]; int startIdx, endIdx, patch;
-        int end = polylineIndex[i+1];
-        cout<<"both from same patch"<<endl;
-        vector<vector<int>> boundaryToSearch = (polyLineMeshIndicator[i] == 1 ) ? boundaryL_adaptedFromPattern : boundaryL_toPattern;
-        MatrixXd v_used = (polyLineMeshIndicator[i] == 1 ) ? currPattern : Vg_pattern_orig;
+        }else{
+            // add all vertices in between to the vector , but attention,exclude start and end
+            int start = polylineIndex[i]; int startIdx, endIdx, patch;
+            int end = polylineIndex[i+1];
+            cout<<"both from same patch"<<endl;
+            vector<vector<int>> boundaryToSearch = boundaryL_adaptedFromPattern;
+            MatrixXd v_used = currPattern ;
 
-        for(int j=0; j<boundaryToSearch.size(); j++){
-            bool found = false;
-            for (int k =0; k<boundaryToSearch[j].size(); k++){
-                if(boundaryToSearch[j][k] == start){
-                    cout<<"found vertex "<<start<<" on patch "<<j<<endl;
-                    startIdx = k;
-                    patch = j;
-                    found = true;
-                }
-            }
-            if(!found) continue;
-
-            for (int k =0; k<boundaryToSearch[j].size(); k++){
-                if(boundaryToSearch[j][k] == end){
-                    endIdx = k;
-                    cout<<"found vertex "<<end<<endl;
-                }
-            }
-            // we have both start and end , their absolute distance should be
-            int smaller = (endIdx > startIdx) ? startIdx : endIdx;
-            bool inverted = false;
-            if(smaller == endIdx) {
-                inverted = true;
-            }
-            int greater = (endIdx < startIdx) ? startIdx : endIdx;
-
-            int dist = (greater - smaller);
-            int otherdist = boundaryToSearch[j].size()-greater + smaller;
-            cout<<otherdist<<" betweens "<<dist<<endl;
-
-
-            if(dist<otherdist){
-                if(!inverted){
-                    for(int k= smaller; k<= greater; k++){
-                        polyLineInput.push_back(v_used.row(boundaryToSearch[j][k]));
-                        cout<<v_used.row(boundaryToSearch[j][k])<<endl;
-                        connectedVert.push_back(boundaryToSearch[j][k]);
-
+            for(int j=0; j<boundaryToSearch.size(); j++){
+                bool found = false;
+                for (int k =0; k<boundaryToSearch[j].size(); k++){
+                    if(boundaryToSearch[j][k] == start){
+                        cout<<"found vertex "<<start<<" on patch "<<j<<endl;
+                        startIdx = k;
+                        patch = j;
+                        found = true;
                     }
+                }
+                if(!found) continue;
+
+                for (int k =0; k<boundaryToSearch[j].size(); k++){
+                    if(boundaryToSearch[j][k] == end){
+                        endIdx = k;
+                        cout<<"found vertex "<<end<<endl;
+                    }
+                }
+                // we have both start and end , their absolute distance should be
+                int smaller = (endIdx > startIdx) ? startIdx : endIdx;
+                bool inverted = false;
+                if(smaller == endIdx) {
+                    inverted = true;
+                }
+                int greater = (endIdx < startIdx) ? startIdx : endIdx;
+
+                int dist = (greater - smaller);
+                int otherdist = boundaryToSearch[j].size()-greater + smaller;
+                cout<<otherdist<<" betweens "<<dist<<endl;
+
+
+                if(dist<otherdist){
+                    if(!inverted){
+                        for(int k = smaller+1; k < greater; k++){
+                            polyLineInput.push_back(v_used.row(boundaryToSearch[j][k]));
+                            cout<<v_used.row(boundaryToSearch[j][k])<<endl;
+//                            connectedVert.push_back(boundaryToSearch[j][k]);
+
+                        }
+                    }else{
+                        for(int k= greater-1; k> smaller ; k--){
+                            polyLineInput.push_back(v_used.row(boundaryToSearch[j][k]));
+                            cout<<v_used.row(boundaryToSearch[j][k])<<endl;
+//                            connectedVert.push_back(boundaryToSearch[j][k]);
+
+                        }
+                    }
+
                 }else{
-                    for(int k= greater; k>= smaller ; k--){
-                        polyLineInput.push_back(v_used.row(boundaryToSearch[j][k]));
-                        cout<<v_used.row(boundaryToSearch[j][k])<<endl;
-                        connectedVert.push_back(boundaryToSearch[j][k]);
-
-                    }
-                }
-
-            }else{
-                if(!inverted){
-                    int k= smaller;
-                    while( k != greater ){
-                        polyLineInput.push_back(v_used.row(boundaryToSearch[j][k]));
-                        cout<<v_used.row(boundaryToSearch[j][k])<<endl;
-                        connectedVert.push_back(boundaryToSearch[j][k]);
-
-                        k--;
+                    if(!inverted){
+                        int k= smaller; k--;
                         if(k<0) k += boundaryToSearch[j].size();
+                        while( k != greater ){
+                            polyLineInput.push_back(v_used.row(boundaryToSearch[j][k]));
+                            cout<<v_used.row(boundaryToSearch[j][k])<<endl;
+                            connectedVert.push_back(boundaryToSearch[j][k]);
+
+                            k--;
+                            if(k<0) k += boundaryToSearch[j].size();
 
 //                        k = k % boundaryToSearch[j].size();
-                    }// and one more
-                    polyLineInput.push_back(v_used.row(boundaryToSearch[j][k]));
-                    cout<<v_used.row(boundaryToSearch[j][k])<<"w-i"<<endl;
-                    connectedVert.push_back(boundaryToSearch[j][k]);
-                }else{
-                    int k = greater;
-                    while (k!= smaller){
-                        polyLineInput.push_back(v_used.row(boundaryToSearch[j][k]));
-                        cout<<v_used.row(boundaryToSearch[j][k])<<endl;
-                        connectedVert.push_back(boundaryToSearch[j][k]);
-                        k++;
+                        }// and one more
+//                        polyLineInput.push_back(v_used.row(boundaryToSearch[j][k]));
+//                        cout<<v_used.row(boundaryToSearch[j][k])<<"w-i"<<endl;
+//                        connectedVert.push_back(boundaryToSearch[j][k]);
+                    }else{
+                        int k = greater; k++;
                         k = k % boundaryToSearch[j].size();
-                    }// last one k==greater
-                    polyLineInput.push_back(v_used.row(boundaryToSearch[j][k]));
-                    cout<<v_used.row(boundaryToSearch[j][k])<<"wi"<<endl;
-                    connectedVert.push_back(boundaryToSearch[j][k]);
-                }
+                        while (k!= smaller){
+                            polyLineInput.push_back(v_used.row(boundaryToSearch[j][k]));
+                            cout<<v_used.row(boundaryToSearch[j][k])<<endl;
+//                            connectedVert.push_back(boundaryToSearch[j][k]);
+                            k++;
+                            k = k % boundaryToSearch[j].size();
+                        }// last one k==greater
+//                        polyLineInput.push_back(v_used.row(boundaryToSearch[j][k]));
+//                        cout<<v_used.row(boundaryToSearch[j][k])<<"wi"<<endl;
+//                        connectedVert.push_back(boundaryToSearch[j][k]);
+                    }
 
+                }
             }
+
         }
-        i++;
+
 
     }
 }
