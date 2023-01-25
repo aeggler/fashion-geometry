@@ -929,8 +929,10 @@ int main(int argc, char *argv[])
             bool choosePatchArea = false;
             if(ImGui::Checkbox("Start triangulating", &startSmooth)) {
 //                string modifiedPattern = "/Users/annaeggler/Desktop/mappedPattern.obj"; //
-//                string modifiedPattern = "/Users/annaeggler/Desktop/mappedPatternWithSmoothPCACuts.obj"; //
-                string modifiedPattern = "/Users/annaeggler/Desktop/mappedTri.obj"; //
+                string modifiedPattern = "/Users/annaeggler/Desktop/mappedPatternWithSmoothPCACuts.obj"; //
+//                string modifiedPattern = "/Users/annaeggler/Desktop/mappedTri.obj"; //
+//                string modifiedPattern = "/Users/annaeggler/Desktop/mappedPatternFull.obj"; //
+
 
                 igl::readOBJ(modifiedPattern, currPattern, Fg_pattern);
                 prevFaces = Fg_pattern_orig.rows();
@@ -965,8 +967,8 @@ int main(int argc, char *argv[])
 
             if(ImGui::Checkbox("Select area to triangulate", &choosePatchArea)){
                 cout<<"Please choose an area to triangulate. Click on the area within the mesh to get the closest point. "
-                      "Automatically the boundary between the two selected vertices will be chosen."
-                      "Ensure that to subsequent vertices are chosen from the same mesh (ie. if one is in yellow, then other too)."<<endl;
+                      "Automatically the boundary between the two selected vertices will be chosen."<<endl;
+
                 polylineSelected.clear();
                 polylineIndex.clear();
                 polyLineMeshIndicator.clear();
@@ -1007,23 +1009,19 @@ int main(int argc, char *argv[])
                 if(polylineSelected.size()<3){
                     cout<<"No, choose at least 3 positions"<<endl;
                 }
-                if(polylineSelected.size()%2 != 0){
-                    cout<<"Assuming it's a dart, triangular-ish"<<endl;
-                }
 
                 vector<VectorXd> polyLineInput ;
                 std::vector<std::vector<int> > boundaryL_adaptedFromPattern;
                 igl::boundary_loop( Fg_pattern, boundaryL_adaptedFromPattern );
-                cout<<" vertices before "<<currPattern.rows()<<endl;
-                cout<<" faces before "<<Fg_pattern.rows()<<endl;
+
                 //todo changes with mesh, maybe constrain the boundary vertices
                 computeAllBetweens( polylineSelected, polylineIndex,polyLineMeshIndicator, boundaryL_adaptedFromPattern,
                                     boundaryL_toPattern, currPattern, Vg_pattern_orig ,polyLineInput, connectedVert );
 
 
                 startRetriangulation(polyLineInput, Vg_retri, Fg_retri);
-                cout<<" vertices "<<Vg_retri.rows()<<endl;
-                cout<<" faces "<<Fg_retri.rows()<<endl;
+                cout<<" vertices inserted "<<Vg_retri.rows()<<endl;
+                cout<<" faces inserted"<<Fg_retri.rows()<<endl;
 
 
                 viewer.selected_data_index = 1;
@@ -1034,8 +1032,7 @@ int main(int argc, char *argv[])
             if(ImGui::Button("Add Area to Pattern", ImVec2(-1, 0))) {
                 mouse_mode = NONE;
                 mergeTriagulatedAndPattern(connectedVert, Vg_retri, Fg_retri, currPattern, Fg_pattern);
-                cout<<" vertices after "<<currPattern.rows()<<endl;
-                cout<<" faces after "<<Fg_pattern.rows()<<endl;
+
                 viewer.selected_data_index = 1;
                 viewer.data().clear();
                 viewer.selected_data_index = 0;
@@ -1232,7 +1229,6 @@ bool callback_mouse_down(igl::opengl::glfw::Viewer& viewer, int button, int modi
 
             // the vertex is not in our original fromMesh. Locate it in the toMesh and use the exackt mouse chosen position by the barycentric coordinates to set it's position
         }else{
-            cout<<" not on inner"<<endl;
             Vrs = Vg_pattern_orig;
             if (computePointOnMesh(viewer, Vrs, Fg_pattern_orig, b, fid)) {
                 cout<<"on outer"<<endl;
@@ -1241,7 +1237,7 @@ bool callback_mouse_down(igl::opengl::glfw::Viewer& viewer, int button, int modi
                 cout<<chosen.transpose()<<" chosen"<<endl;
                 whichMesh = 2;
                 polylineSelected.push_back(chosen);
-                polylineIndex.push_back(-1);
+                polylineIndex.push_back(fid);
 
 
             }
