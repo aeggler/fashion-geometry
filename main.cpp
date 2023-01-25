@@ -929,10 +929,11 @@ int main(int argc, char *argv[])
             bool choosePatchArea = false;
             if(ImGui::Checkbox("Start triangulating", &startSmooth)) {
 //                string modifiedPattern = "/Users/annaeggler/Desktop/mappedPattern.obj"; //
-                string modifiedPattern = "/Users/annaeggler/Desktop/mappedPatternWithSmoothPCACuts.obj"; //
+//                string modifiedPattern = "/Users/annaeggler/Desktop/mappedPatternWithSmoothPCACuts.obj"; //
+                string modifiedPattern = "/Users/annaeggler/Desktop/mappedTri.obj"; //
 
                 igl::readOBJ(modifiedPattern, currPattern, Fg_pattern);
-                prevFaces = Fg_pattern.rows();
+                prevFaces = Fg_pattern_orig.rows();
                 cout<<endl << "Select start and end of the seam you want to smooth and then confirm" << endl;
                 viewer.selected_data_index = 1;
                 viewer.data().clear();
@@ -1013,7 +1014,8 @@ int main(int argc, char *argv[])
                 vector<VectorXd> polyLineInput ;
                 std::vector<std::vector<int> > boundaryL_adaptedFromPattern;
                 igl::boundary_loop( Fg_pattern, boundaryL_adaptedFromPattern );
-
+                cout<<" vertices before "<<currPattern.rows()<<endl;
+                cout<<" faces before "<<Fg_pattern.rows()<<endl;
                 //todo changes with mesh, maybe constrain the boundary vertices
                 computeAllBetweens( polylineSelected, polylineIndex,polyLineMeshIndicator, boundaryL_adaptedFromPattern,
                                     boundaryL_toPattern, currPattern, Vg_pattern_orig ,polyLineInput, connectedVert );
@@ -1023,6 +1025,7 @@ int main(int argc, char *argv[])
                 cout<<" vertices "<<Vg_retri.rows()<<endl;
                 cout<<" faces "<<Fg_retri.rows()<<endl;
 
+
                 viewer.selected_data_index = 1;
                 viewer.data().clear();
                 viewer.data().show_lines = true;
@@ -1031,6 +1034,8 @@ int main(int argc, char *argv[])
             if(ImGui::Button("Add Area to Pattern", ImVec2(-1, 0))) {
                 mouse_mode = NONE;
                 mergeTriagulatedAndPattern(connectedVert, Vg_retri, Fg_retri, currPattern, Fg_pattern);
+                cout<<" vertices after "<<currPattern.rows()<<endl;
+                cout<<" faces after "<<Fg_pattern.rows()<<endl;
                 viewer.selected_data_index = 1;
                 viewer.data().clear();
                 viewer.selected_data_index = 0;
@@ -1066,6 +1071,11 @@ int main(int argc, char *argv[])
                 viewer.data().clear();
                 viewer.data().show_lines = true;
                 viewer.data().set_mesh(adaptedPatternIn3d, Fg_pattern);
+                MatrixXd C = MatrixXd::Zero(Fg_pattern.rows(), 3);
+                C.col(1)=  VectorXd::Ones(Fg_pattern.rows());
+                C.block(0,0, prevFaces, 1) = VectorXd::Ones(prevFaces);
+                viewer.data().set_colors(C);
+
 
             }
 

@@ -200,7 +200,7 @@ void startRetriangulation(vector<VectorXd>& polylineSelected, MatrixXd& V2, Matr
         E(i, 1) = (i+1) % n;
     }
     MatrixXd H;
-    string flags = "qa254.64";
+    string flags = "qa234.64";
     cout<<" starting triangulation with "<<E.rows()<<" edges and "<<V.rows()<<" points"<<endl;
 
     triangulateFAKE(V, E, H, flags, V2, F2 );
@@ -239,9 +239,6 @@ void computeAllBetweens(vector<VectorXd>& polylineSelected,vector<int>& polyline
     polyLineInput.clear();
     connectedVert.clear();
 
-//    if(polylineIndex.size() ==2 && polylineIndex[0] == 1 && polylineIndex[1]==1){
-//        cout<<"triangulatinig a fracture! "<<endl;
-//    }
     for(int i=0; i< polylineIndex.size(); i++){
         if(polyLineMeshIndicator[i] ==2 || i+1 == polylineIndex.size() || polyLineMeshIndicator[i+1]==2 ){
             polyLineInput.push_back(polylineSelected[i]);
@@ -304,30 +301,31 @@ void computeAllBetweens(vector<VectorXd>& polylineSelected,vector<int>& polyline
 
             }else{
                 if(!inverted){
-                    int k= greater;
-                    while( k != smaller ){
-                        polyLineInput.push_back(v_used.row(boundaryToSearch[j][k]));
-                        cout<<v_used.row(boundaryToSearch[j][k])<<endl;
-                        connectedVert.push_back(boundaryToSearch[j][k]);
-
-                        k++;
-                        k = k % boundaryToSearch[j].size();
-                    }// and one more
-                    polyLineInput.push_back(v_used.row(boundaryToSearch[j][k]));
-                    cout<<v_used.row(boundaryToSearch[j][k])<<endl;
-                    connectedVert.push_back(boundaryToSearch[j][k]);
-                }else{
-                    int k = smaller;
-                    while (k!= greater){
+                    int k= smaller;
+                    while( k != greater ){
                         polyLineInput.push_back(v_used.row(boundaryToSearch[j][k]));
                         cout<<v_used.row(boundaryToSearch[j][k])<<endl;
                         connectedVert.push_back(boundaryToSearch[j][k]);
 
                         k--;
                         if(k<0) k += boundaryToSearch[j].size();
+
+//                        k = k % boundaryToSearch[j].size();
+                    }// and one more
+                    polyLineInput.push_back(v_used.row(boundaryToSearch[j][k]));
+                    cout<<v_used.row(boundaryToSearch[j][k])<<"w-i"<<endl;
+                    connectedVert.push_back(boundaryToSearch[j][k]);
+                }else{
+                    int k = greater;
+                    while (k!= smaller){
+                        polyLineInput.push_back(v_used.row(boundaryToSearch[j][k]));
+                        cout<<v_used.row(boundaryToSearch[j][k])<<endl;
+                        connectedVert.push_back(boundaryToSearch[j][k]);
+                        k++;
+                        k = k % boundaryToSearch[j].size();
                     }// last one k==greater
                     polyLineInput.push_back(v_used.row(boundaryToSearch[j][k]));
-                    cout<<v_used.row(boundaryToSearch[j][k])<<endl;
+                    cout<<v_used.row(boundaryToSearch[j][k])<<"wi"<<endl;
                     connectedVert.push_back(boundaryToSearch[j][k]);
                 }
 
@@ -358,30 +356,24 @@ void replaceInFaces(int id, int newId, MatrixXi& Fg){
 
 void mergeTriagulatedAndPattern(const vector<int> &connectedVert, MatrixXd& Vg_retri, MatrixXi& Fg_retri, MatrixXd& currPattern, MatrixXi& Fg_pattern){
     int offset = currPattern.rows();
-    int count = 0;
-    vector<VectorXd> mergedV;
-    for(int i =0; i< Vg_retri.size(); i++){
-        int matchesOne = -1;
+//    int count = 0;
+    MatrixXd newVg (offset+Vg_retri.rows(), 3);
+    newVg.block(0,0,offset, 3) = currPattern;
+
+    for(int i =0; i< Vg_retri.rows(); i++){
 //        mathcesOne = checkIfMatchesOne(Vg_retri.row(i), connectedVert, currPattern );
-        if(matchesOne < 0){
-            // we found none! Replace!
-            matchesOne = count+offset;
-            count ++;
-            mergedV.push_back(Vg_retri.row(i));
-            replaceInFaces(i, matchesOne, Fg_retri);
-        }
+        newVg.row(offset+i) = Vg_retri.row(i);
+//        cout<<newVg.row(offset+i)<<endl;
+        replaceInFaces(i, offset+i, Fg_retri);
+
 
     }
-    MatrixXd newVg (count+offset, 3);
-    newVg.block(0,0,offset, 3) = currPattern;
-    for(int i=0; i<mergedV.size(); i++){
-        newVg.row(offset+i) = mergedV[i];
-    }
+
     MatrixXi newFg (Fg_pattern.rows()+ Fg_retri.rows(), 3);
     newFg.block(0,0,Fg_pattern.rows(), 3) = Fg_pattern;
     newFg.block(Fg_pattern.rows(), 0, Fg_retri.rows(), 3) = Fg_retri;
 
-    currPattern.resize(count+offset, 3);
+    currPattern.resize(newVg.rows(), 3);
     currPattern = newVg;
     Fg_pattern.resize(newFg.rows(), 3);
     Fg_pattern = newFg;
