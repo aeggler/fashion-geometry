@@ -966,11 +966,14 @@ int main(int argc, char *argv[])
                 cout<<"Please choose an area to triangulate. Click on the area within the mesh to get the closest point. "
                       "Automatically the boundary between the two selected vertices will be chosen."
                       "Ensure that to subsequent vertices are chosen from the same mesh (ie. if one is in yellow, then other too)."<<endl;
+                polylineSelected.clear();
+                polylineIndex.clear();
+                polyLineMeshIndicator.clear();
+                connectedVert.clear();
                 viewer.selected_data_index = 0;
                 viewer.data().clear();
                 viewer.data().show_lines = true;
                 viewer.data().set_mesh(currPattern, Fg_pattern);
-
 
                 viewer.selected_data_index = 1;
                 viewer.data().clear();

@@ -242,15 +242,14 @@ void computeAllBetweens(vector<VectorXd>& polylineSelected,vector<int>& polyline
 //    if(polylineIndex.size() ==2 && polylineIndex[0] == 1 && polylineIndex[1]==1){
 //        cout<<"triangulatinig a fracture! "<<endl;
 //    }
-    for(int i=0; i< polylineIndex.size(); i+=2){
-        int start = polylineIndex[i]; int startIdx, endIdx, patch;
-        int end = polylineIndex[i+1];
-        if(polyLineMeshIndicator[i] ==2 || polyLineMeshIndicator[i+1]==2){
+    for(int i=0; i< polylineIndex.size(); i++){
+        if(polyLineMeshIndicator[i] ==2 || i+1 == polylineIndex.size() || polyLineMeshIndicator[i+1]==2 ){
             polyLineInput.push_back(polylineSelected[i]);
             connectedVert.push_back(-1);
-            i--;
             continue;
         }
+        int start = polylineIndex[i]; int startIdx, endIdx, patch;
+        int end = polylineIndex[i+1];
         cout<<"both from same patch"<<endl;
         vector<vector<int>> boundaryToSearch = (polyLineMeshIndicator[i] == 1 ) ? boundaryL_adaptedFromPattern : boundaryL_toPattern;
         MatrixXd v_used = (polyLineMeshIndicator[i] == 1 ) ? currPattern : Vg_pattern_orig;
@@ -313,7 +312,10 @@ void computeAllBetweens(vector<VectorXd>& polylineSelected,vector<int>& polyline
 
                         k++;
                         k = k % boundaryToSearch[j].size();
-                    }
+                    }// and one more
+                    polyLineInput.push_back(v_used.row(boundaryToSearch[j][k]));
+                    cout<<v_used.row(boundaryToSearch[j][k])<<endl;
+                    connectedVert.push_back(boundaryToSearch[j][k]);
                 }else{
                     int k = smaller;
                     while (k!= greater){
@@ -323,11 +325,15 @@ void computeAllBetweens(vector<VectorXd>& polylineSelected,vector<int>& polyline
 
                         k--;
                         if(k<0) k += boundaryToSearch[j].size();
-                    }
+                    }// last one k==greater
+                    polyLineInput.push_back(v_used.row(boundaryToSearch[j][k]));
+                    cout<<v_used.row(boundaryToSearch[j][k])<<endl;
+                    connectedVert.push_back(boundaryToSearch[j][k]);
                 }
 
             }
         }
+        i++;
 
     }
 }
