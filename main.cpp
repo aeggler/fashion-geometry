@@ -150,6 +150,10 @@ vector<int> polyLineMeshIndicator;
 //test
 //Eigen::SparseMatrix<double> L;
 MatrixXd perFaceD2, perFaceD1;
+MatrixXd Vg_retri;// retriangulated area
+MatrixXi Fg_retri;// retriangulated face
+vector<int> connectedVert; int prevFaces;// initial umber of faces (for coloring), and boundary vertices that are now duplicated (not used now)
+
 VectorXd cornerVertices;
 vector<cutVertEntry*> cutPositions;
 map<int, pair<int, int>>  releasedVert; // all positions that need not be mapped to the boundary anymore from at least one side. keep track which side is released
@@ -832,8 +836,6 @@ int main(int argc, char *argv[])
                     viewer.data().set_points(currPattern.row(pos), RowVector3d(1.0, 0.0, 0.0));
 
                 }
-//                viewer.data().clear();
-//                viewer.data().set_mesh(currPattern, Fg_pattern);
                 std::vector<std::vector<int> > boundaryLnew;
                 igl::boundary_loop(Fg_pattern, boundaryLnew);
                 if(boundaryLnew.size() != boundaryL.size()){
@@ -860,7 +862,6 @@ int main(int argc, char *argv[])
                     viewer.selected_data_index = 2;
                     viewer.data().clear();
                     viewer.data().set_points(currPattern.row(pos), RowVector3d(1.0, 0.0, 0.0));
-
                 }
 
                 std::vector<std::vector<int> > boundaryLnew;
@@ -871,8 +872,6 @@ int main(int argc, char *argv[])
                 }
                 boundaryL.clear();
                 boundaryL= boundaryLnew;
-
-
 
                 // also adapt the new edge lengths since we might have changed the rest position when cutting in middl
                 bool changeFlag = false;
@@ -928,11 +927,12 @@ int main(int argc, char *argv[])
             bool backTo3D = false;
             bool startSmooth = false;
             bool choosePatchArea = false;
-            if(ImGui::Checkbox("Start smooth", &startSmooth)) {
+            if(ImGui::Checkbox("Start triangulating", &startSmooth)) {
 //                string modifiedPattern = "/Users/annaeggler/Desktop/mappedPattern.obj"; //
-                string modifiedPattern = "/Users/annaeggler/Desktop/mappedPatternWithSmoothedCuts.obj"; //
+                string modifiedPattern = "/Users/annaeggler/Desktop/mappedPatternWithSmoothPCACuts.obj"; //
 
                 igl::readOBJ(modifiedPattern, currPattern, Fg_pattern);
+                prevFaces = Fg_pattern.rows();
                 cout<<endl << "Select start and end of the seam you want to smooth and then confirm" << endl;
                 viewer.selected_data_index = 1;
                 viewer.data().clear();
@@ -940,7 +940,7 @@ int main(int argc, char *argv[])
                 viewer.data().clear();
                 viewer.data().show_lines = true;
                 viewer.data().set_mesh(currPattern, Fg_pattern);
-                mouse_mode = SELECTVERT;
+               // mouse_mode = SELECTVERT;
 
 
             }
@@ -998,24 +998,25 @@ int main(int argc, char *argv[])
                 viewer.data().set_edges(visToPattern, boundaryOfToPattern, Eigen::RowVector3d(0, 0, 1));
                 mouse_mode= SELECTAREA;
             }
+
             if(ImGui::Button("Confirm area", ImVec2(-1, 0))){
                 if(polylineSelected.size()<3){
                     cout<<"No, choose at least 3 positions"<<endl;
                 }
                 if(polylineSelected.size()%2 != 0){
-                    cout<<"No, choose an endpoint"<<endl;
+                    cout<<"Assuming it's a dart, triangular-ish"<<endl;
                 }
 
-                polylineSelected.clear();
+                vector<VectorXd> polyLineInput ;
                 std::vector<std::vector<int> > boundaryL_adaptedFromPattern;
                 igl::boundary_loop( Fg_pattern, boundaryL_adaptedFromPattern );
 
                 //todo changes with mesh, maybe constrain the boundary vertices
-                computeAllBetweens( polylineSelected, polylineIndex,polyLineMeshIndicator, boundaryL_adaptedFromPattern,boundaryL_toPattern, currPattern, Vg_pattern_orig  );
+                computeAllBetweens( polylineSelected, polylineIndex,polyLineMeshIndicator, boundaryL_adaptedFromPattern,
+                                    boundaryL_toPattern, currPattern, Vg_pattern_orig ,polyLineInput, connectedVert );
 
-                MatrixXd Vg_retri;
-                MatrixXi Fg_retri;
-                startRetriangulation(polylineSelected, Vg_retri, Fg_retri);
+
+                startRetriangulation(polyLineInput, Vg_retri, Fg_retri);
                 cout<<" vertices "<<Vg_retri.rows()<<endl;
                 cout<<" faces "<<Fg_retri.rows()<<endl;
 
@@ -1023,6 +1024,20 @@ int main(int argc, char *argv[])
                 viewer.data().clear();
                 viewer.data().show_lines = true;
                 viewer.data().set_mesh(Vg_retri, Fg_retri);
+            }
+            if(ImGui::Button("Add Area to Pattern", ImVec2(-1, 0))) {
+                mouse_mode = NONE;
+                mergeTriagulatedAndPattern(connectedVert, Vg_retri, Fg_retri, currPattern, Fg_pattern);
+                viewer.selected_data_index = 1;
+                viewer.data().clear();
+                viewer.selected_data_index = 0;
+                viewer.data().clear();
+                viewer.data().set_mesh(currPattern, Fg_pattern);
+                MatrixXd C = MatrixXd::Zero(Fg_pattern.rows(), 3);
+                C.col(1)=  VectorXd::Ones(Fg_pattern.rows());
+                C.block(0,0, prevFaces, 1) = VectorXd::Ones(prevFaces);
+                viewer.data().set_colors(C);
+
             }
 
             if(ImGui::Button("End Area", ImVec2(-1, 0))) {
@@ -1197,19 +1212,28 @@ bool callback_mouse_down(igl::opengl::glfw::Viewer& viewer, int button, int modi
              v_id = computeClosestVertexOnMesh(b, fid, Fg_pattern);
             viewer.data().set_points(Vrs.row(v_id), RowVector3d(1.0, 1.0, 0.0));
             whichMesh=1;
+            cout<<"found on inner mesh"<<endl;
+            polylineSelected.push_back(Vrs.row(v_id));
+            polylineIndex.push_back(v_id);
+
 
             // the vertex is not in our original fromMesh. Locate it in the toMesh and use the exackt mouse chosen position by the barycentric coordinates to set it's position
         }else{
+            cout<<" not on inner"<<endl;
             Vrs = Vg_pattern_orig;
             if (computePointOnMesh(viewer, Vrs, Fg_pattern_orig, b, fid)) {
+                cout<<"on outer"<<endl;
                 VectorXd chosen = b(0) * Vrs.row(Fg_pattern_orig(fid ,0)) + b(1) * Vrs.row(Fg_pattern_orig(fid, 1))+ b(2) * Vrs.row(Fg_pattern_orig(fid, 2));
                 viewer.data().set_points(chosen.transpose(), RowVector3d(.0, 1.0, 0.0));
-                whichMesh=2;
+                cout<<chosen.transpose()<<" chosen"<<endl;
+                whichMesh = 2;
+                polylineSelected.push_back(chosen);
+                polylineIndex.push_back(-1);
+
+
             }
         }
 
-        polylineSelected.push_back(Vrs.row(v_id));
-        polylineIndex.push_back(v_id);
         polyLineMeshIndicator.push_back(whichMesh);
         if(  polylineSelected.size() % 2 != 0){
             cout<<"please select endpoint from same mesh "<<endl;

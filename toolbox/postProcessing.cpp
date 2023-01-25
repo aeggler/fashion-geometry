@@ -235,14 +235,23 @@ void backTo3Dmapping(MatrixXd& adaptedPattern, MatrixXi& adaptedPattern_faces, M
 
 void computeAllBetweens(vector<VectorXd>& polylineSelected,vector<int>& polylineIndex, vector<int>& polyLineMeshIndicator,
                    vector<vector<int>>& boundaryL_adaptedFromPattern, vector<vector<int>>& boundaryL_toPattern,
-                   MatrixXd& currPattern, MatrixXd& Vg_pattern_orig ){
+                   MatrixXd& currPattern, MatrixXd& Vg_pattern_orig, vector<VectorXd>& polyLineInput, vector<int>& connectedVert){
+    polyLineInput.clear();
+    connectedVert.clear();
+
+//    if(polylineIndex.size() ==2 && polylineIndex[0] == 1 && polylineIndex[1]==1){
+//        cout<<"triangulatinig a fracture! "<<endl;
+//    }
     for(int i=0; i< polylineIndex.size(); i+=2){
         int start = polylineIndex[i]; int startIdx, endIdx, patch;
         int end = polylineIndex[i+1];
-        if(polyLineMeshIndicator[i] != polyLineMeshIndicator[i+1]){
-            cout<<" Error: The vertices chosen are not from the same mesh. "<<endl;
+        if(polyLineMeshIndicator[i] ==2 || polyLineMeshIndicator[i+1]==2){
+            polyLineInput.push_back(polylineSelected[i]);
+            connectedVert.push_back(-1);
+            i--;
+            continue;
         }
-
+        cout<<"both from same patch"<<endl;
         vector<vector<int>> boundaryToSearch = (polyLineMeshIndicator[i] == 1 ) ? boundaryL_adaptedFromPattern : boundaryL_toPattern;
         MatrixXd v_used = (polyLineMeshIndicator[i] == 1 ) ? currPattern : Vg_pattern_orig;
 
@@ -250,6 +259,7 @@ void computeAllBetweens(vector<VectorXd>& polylineSelected,vector<int>& polyline
             bool found = false;
             for (int k =0; k<boundaryToSearch[j].size(); k++){
                 if(boundaryToSearch[j][k] == start){
+                    cout<<"found vertex "<<start<<" on patch "<<j<<endl;
                     startIdx = k;
                     patch = j;
                     found = true;
@@ -260,6 +270,7 @@ void computeAllBetweens(vector<VectorXd>& polylineSelected,vector<int>& polyline
             for (int k =0; k<boundaryToSearch[j].size(); k++){
                 if(boundaryToSearch[j][k] == end){
                     endIdx = k;
+                    cout<<"found vertex "<<end<<endl;
                 }
             }
             // we have both start and end , their absolute distance should be
@@ -272,18 +283,23 @@ void computeAllBetweens(vector<VectorXd>& polylineSelected,vector<int>& polyline
 
             int dist = (greater - smaller);
             int otherdist = boundaryToSearch[j].size()-greater + smaller;
+            cout<<otherdist<<" betweens "<<dist<<endl;
 
 
             if(dist<otherdist){
                 if(!inverted){
                     for(int k= smaller; k<= greater; k++){
-                        polylineSelected.push_back(v_used.row(boundaryToSearch[j][k]));
+                        polyLineInput.push_back(v_used.row(boundaryToSearch[j][k]));
                         cout<<v_used.row(boundaryToSearch[j][k])<<endl;
+                        connectedVert.push_back(boundaryToSearch[j][k]);
+
                     }
                 }else{
                     for(int k= greater; k>= smaller ; k--){
-                        polylineSelected.push_back(v_used.row(boundaryToSearch[j][k]));
+                        polyLineInput.push_back(v_used.row(boundaryToSearch[j][k]));
                         cout<<v_used.row(boundaryToSearch[j][k])<<endl;
+                        connectedVert.push_back(boundaryToSearch[j][k]);
+
                     }
                 }
 
@@ -291,16 +307,20 @@ void computeAllBetweens(vector<VectorXd>& polylineSelected,vector<int>& polyline
                 if(!inverted){
                     int k= greater;
                     while( k != smaller ){
-                        polylineSelected.push_back(v_used.row(boundaryToSearch[j][k]));
+                        polyLineInput.push_back(v_used.row(boundaryToSearch[j][k]));
                         cout<<v_used.row(boundaryToSearch[j][k])<<endl;
+                        connectedVert.push_back(boundaryToSearch[j][k]);
+
                         k++;
                         k = k % boundaryToSearch[j].size();
                     }
                 }else{
                     int k = smaller;
                     while (k!= greater){
-                        polylineSelected.push_back(v_used.row(boundaryToSearch[j][k]));
+                        polyLineInput.push_back(v_used.row(boundaryToSearch[j][k]));
                         cout<<v_used.row(boundaryToSearch[j][k])<<endl;
+                        connectedVert.push_back(boundaryToSearch[j][k]);
+
                         k--;
                         if(k<0) k += boundaryToSearch[j].size();
                     }
@@ -311,4 +331,59 @@ void computeAllBetweens(vector<VectorXd>& polylineSelected,vector<int>& polyline
 
     }
 }
+
+int checkIfMatchesOne(VectorXd v,const vector<int>& connectedVert, const MatrixXd& currPattern ){
+    for(int i=0; i<connectedVert.size(); i++){
+        if(v == currPattern.row(connectedVert[i])){
+            return connectedVert[i];
+        }
+    }
+    return -1;
+}
+void replaceInFaces(int id, int newId, MatrixXi& Fg){
+    for(int i = 0; i< Fg.rows(); i++){
+        for(int j = 0; j < 3; j++){
+            if(Fg(i, j) == id){
+                Fg(i, j) = newId;
+            }
+        }
+    }
+}
+
+void mergeTriagulatedAndPattern(const vector<int> &connectedVert, MatrixXd& Vg_retri, MatrixXi& Fg_retri, MatrixXd& currPattern, MatrixXi& Fg_pattern){
+    int offset = currPattern.rows();
+    int count = 0;
+    vector<VectorXd> mergedV;
+    for(int i =0; i< Vg_retri.size(); i++){
+        int matchesOne = -1;
+//        mathcesOne = checkIfMatchesOne(Vg_retri.row(i), connectedVert, currPattern );
+        if(matchesOne < 0){
+            // we found none! Replace!
+            matchesOne = count+offset;
+            count ++;
+            mergedV.push_back(Vg_retri.row(i));
+            replaceInFaces(i, matchesOne, Fg_retri);
+        }
+
+    }
+    MatrixXd newVg (count+offset, 3);
+    newVg.block(0,0,offset, 3) = currPattern;
+    for(int i=0; i<mergedV.size(); i++){
+        newVg.row(offset+i) = mergedV[i];
+    }
+    MatrixXi newFg (Fg_pattern.rows()+ Fg_retri.rows(), 3);
+    newFg.block(0,0,Fg_pattern.rows(), 3) = Fg_pattern;
+    newFg.block(Fg_pattern.rows(), 0, Fg_retri.rows(), 3) = Fg_retri;
+
+    currPattern.resize(count+offset, 3);
+    currPattern = newVg;
+    Fg_pattern.resize(newFg.rows(), 3);
+    Fg_pattern = newFg;
+
+    vector<vector<int>> newBound;
+    igl::boundary_loop(Fg_pattern, newBound);
+    cout<<"We now have "<<newBound.size()<<" patches. "<<endl;
+
+}
+
 

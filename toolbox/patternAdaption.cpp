@@ -1556,6 +1556,12 @@ int tearFurther(vector<cutVertEntry*>& cutPositions, MatrixXd&  currPattern, Mat
 
     int  count = 0 ;
     for(int i = 0; i < 1; i++){
+        if(count == cutPositions.size()){
+            cout<<endl<<"* * * * * * * * * * * * * * * * * * *"<<endl;
+            cout<<"All done. Stop now. "<<endl;
+            cout<<"* * * * * * * * * * * * * * * * * * * *"<<endl;
+            return -1;
+        }
         int currVert = cutPositions[count]->vert;
         bool parallelFinFlag = true;
         int parallel;
