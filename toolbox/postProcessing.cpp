@@ -235,9 +235,9 @@ bool vertOnEdge(const VectorXd& R, const VectorXd& Q, VectorXd& p,int v){
     double eps = 0.02;
     auto QR = Q-R;
     auto Qp = Q-p;
-//cout<<"v= "<<v<<endl;
+cout<<"v= "<<v<<endl;
     VectorXd diff = (Qp).normalized() - (QR).normalized();
-    if(v==1535|| v==1534){
+    if(v==2275|| v==2274){
         cout<<diff.transpose()<<" diff"<<endl;
         double tt = (p-R)(0)/(QR)(0);
         double t2 =  (p-R)(1)/(QR)(1);
@@ -250,10 +250,10 @@ bool vertOnEdge(const VectorXd& R, const VectorXd& Q, VectorXd& p,int v){
     double t = (p-R)(0)/(QR)(0);
     double tt=  (p-R)(1)/(QR)(1);
 //    if((p-R)(0)-(QR)(0)< 0.01){// numerically instable
-    if(t<0 &&tt>0){
+    if (0 > t || t > 1 ) {// t does not work anyways ,try with tt
         t =tt;
     }
-    if (0<=t && t<=1 ) cout<<t<<" = t , and makes "<<endl<<(R+t*(Q-R)).transpose()<<endl<<p.transpose()<<" =? "<<endl;
+    if (0<=t && t<=1 ) cout<<v<<" "<<t<<" = t , and makes "<<endl<<(R+t*(Q-R)).transpose()<<endl<<p.transpose()<<" =? "<<endl;
 //    if(v==1535|| v==1534){
 //        cout<<" candidate t= "<< t <<endl;
 //
@@ -264,7 +264,7 @@ bool vertOnEdge(const VectorXd& R, const VectorXd& Q, VectorXd& p,int v){
 //    if(v==1556|| v==1557){
 //        cout<<posdiff.transpose()<<" posdiff"<<endl;
 //    }
-    return (abs(posdiff(0)) + abs(posdiff(1)) < 10*eps);
+    return (abs(posdiff(0)) + abs(posdiff(1)) < 1);
 
 
 }
@@ -273,7 +273,7 @@ void computeAllBetweensNew(vector<VectorXd>& polylineSelected,vector<int>& polyl
                            MatrixXd& currPattern, MatrixXd& Vg_to, vector<VectorXd>& polyLineInput, vector<int>& connectedVert) {
     polyLineInput.clear();
     connectedVert.clear();
-    cout<<"Seam Size "<<polylineSelected.size()<<endl;
+    cout<<endl<<"Seam Size "<<polylineSelected.size()<<endl<<endl;
     /* given 6 positios in total
      *   we assume v0 is on the from mesh ,adapted pattern
      *   v1 is a corner that should intersect the to pattern
@@ -341,8 +341,9 @@ void computeAllBetweensNew(vector<VectorXd>& polylineSelected,vector<int>& polyl
         int i= far1;// for safety of tri better not?
         i++;
         i= i % boundaryToSearch[patch].size();
-        while( i != far2){
-            cout<<boundaryToSearch[patch][i]<<" "<<Vg_to.row(boundaryToSearch[patch][i])<<endl;
+        int count = 0;
+        while( i != far2 && i!=closer2 && count < boundaryToSearch[patch].size()){
+            cout<<boundaryToSearch[patch][i]<<" 1, asc "<<Vg_to.row(boundaryToSearch[patch][i])<<endl;
             polyLineInput.push_back(Vg_to.row(boundaryToSearch[patch][i]).transpose());
             i++;
             i= i % boundaryToSearch[patch].size();
@@ -352,10 +353,14 @@ void computeAllBetweensNew(vector<VectorXd>& polylineSelected,vector<int>& polyl
 
 
     }else{// descending
-        int i= far1; i--;  if(i<0) i+= boundaryToSearch[patch].size();
-        while( i != far2 && i!=closer2){
-            int curr = i%boundaryToSearch[patch].size();
-            cout<<boundaryToSearch[patch][i]<<" "<<Vg_to.row(boundaryToSearch[patch][i])<<endl;
+        int i= far1;
+        i--;
+        if(i<0) i+= boundaryToSearch[patch].size();
+        int count = 0;
+
+        while( i != far2 && i!=closer2 && count < boundaryToSearch[patch].size()){
+            count++;
+            cout<<boundaryToSearch[patch][i]<<" 1, ,desc "<<Vg_to.row(boundaryToSearch[patch][i])<<endl;
             polyLineInput.push_back(Vg_to.row(boundaryToSearch[patch][i]).transpose());
             i--;
             if(i<0) i+= boundaryToSearch[patch].size();
@@ -395,10 +400,11 @@ void computeAllBetweensNew(vector<VectorXd>& polylineSelected,vector<int>& polyl
     cout<<"asc? "<<asc<<endl;
     if(asc){// ascending
         int i = idx4;
-        while(i !=idx1){
+        int count = 0;
+        while(i !=idx1 && count < boundaryToSearch[patchFrom].size()){
             polyLineInput.push_back(currPattern.row(boundaryToSearch[patchFrom][i]).transpose());
-            cout<<boundaryToSearch[patchFrom][i]<<" "<<currPattern.row(boundaryToSearch[patchFrom][i])<<endl;
-            i++;
+            cout<<boundaryToSearch[patchFrom][i]<<" 2, asc"<<currPattern.row(boundaryToSearch[patchFrom][i])<<endl;
+            i++; count++;
             i = i %boundaryToSearch[patchFrom].size();
         }
         polyLineInput.push_back(currPattern.row(boundaryToSearch[patchFrom][i]).transpose());
@@ -406,10 +412,11 @@ void computeAllBetweensNew(vector<VectorXd>& polylineSelected,vector<int>& polyl
 
     }else{
         int i = idx4;
-        while(i !=idx1){
+        int count = 0;
+        while(i !=idx1 && count < boundaryToSearch[patchFrom].size()){
             polyLineInput.push_back(currPattern.row(boundaryToSearch[patchFrom][i]).transpose());
-            cout<<boundaryToSearch[patchFrom][i]<<" "<<currPattern.row(boundaryToSearch[patchFrom][i])<<endl;
-            i--;
+            cout<<boundaryToSearch[patchFrom][i]<<" 2, desc "<<currPattern.row(boundaryToSearch[patchFrom][i])<<endl;
+            i--; count++;
             if(i <0) i+= boundaryToSearch[patchFrom].size();
         }
         polyLineInput.push_back(currPattern.row(boundaryToSearch[patchFrom][i]).transpose());
