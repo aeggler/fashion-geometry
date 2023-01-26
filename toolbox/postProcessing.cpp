@@ -296,7 +296,11 @@ void computeAllBetweensNew(vector<VectorXd>& polylineSelected,vector<int>& polyl
                 cout<<Vg_to.row(v)<<", " << Vg_to.row(v1)<<", "<< polylineSelected[1].transpose()<<endl;
                 closer1 = k;
                 far1 = k+1 % boundaryToSearch[j].size();
-                if ((Vg_to.row(v)- polylineSelected[2]).norm() < ( Vg_to.row(v1)-polylineSelected[2]).norm() ) {
+                VectorXd v21 = (polylineSelected[2]-polylineSelected[1]).normalized();
+                VectorXd vv1 = ( Vg_to.row(v)-polylineSelected[1]).normalized()- v21;
+                VectorXd vv11 =  (Vg_to.row(v1)-polylineSelected[1]).normalized()- v21;
+                if( (abs(vv11(0))+abs(vv11(1))) > (abs(vv1(0))+abs(vv1(1))) ){
+//                if ((Vg_to.row(v)- polylineSelected[2]).norm() < ( Vg_to.row(v1)-polylineSelected[2]).norm() ) {
                     // swap
                     swap(closer1, far1);
                 }
@@ -316,7 +320,11 @@ void computeAllBetweensNew(vector<VectorXd>& polylineSelected,vector<int>& polyl
                 cout<<Vg_to.row(v)<<" " << Vg_to.row(v1)<<" "<< polylineSelected[4]<<endl;
                 closer2 = k;
                 far2 = k+1 % boundaryToSearch[j].size();
-                if ((Vg_to.row(v)- polylineSelected[3]).norm() < ( Vg_to.row(v1)-polylineSelected[3]).norm() ) {
+//                if ((Vg_to.row(v)- polylineSelected[3]).norm() < ( Vg_to.row(v1)-polylineSelected[3]).norm() ) {
+                VectorXd v21 = (polylineSelected[4]-polylineSelected[3]).normalized();
+                VectorXd vv1 = ( Vg_to.row(v)-polylineSelected[3]).normalized()- v21;
+                VectorXd vv11 =  (Vg_to.row(v1)-polylineSelected[3]).normalized()- v21;
+                if( (abs(vv11(0))+abs(vv11(1))) < (abs(vv1(0))+abs(vv1(1))) ){
                     // swap
                     swap(closer2, far2);
                 }
@@ -342,14 +350,14 @@ void computeAllBetweensNew(vector<VectorXd>& polylineSelected,vector<int>& polyl
 
     }else{// descending
         int i= far1; i--;  if(i<0) i+= boundaryToSearch[patch].size();
-        while( i != far2){
+        while( i != far2 && i!=closer2){
             int curr = i%boundaryToSearch[patch].size();
             cout<<boundaryToSearch[patch][i]<<" "<<Vg_to.row(boundaryToSearch[patch][i])<<endl;
             polyLineInput.push_back(Vg_to.row(boundaryToSearch[patch][i]).transpose());
             i--;
             if(i<0) i+= boundaryToSearch[patch].size();
         }
-//        cout<<boundaryToSearch[patch][i]<<" "<<Vg_to.row(boundaryToSearch[patch][i])<<endl;
+        cout<<"end "<<endl;
 //        polyLineInput.push_back(Vg_to.row(boundaryToSearch[patch][i]).transpose());
     }
 
@@ -410,10 +418,13 @@ void computeAllBetweensNew(vector<VectorXd>& polylineSelected,vector<int>& polyl
 void computeAllBetweens(vector<VectorXd>& polylineSelected,vector<int>& polylineIndex, vector<int>& polyLineMeshIndicator,
                    vector<vector<int>>& boundaryL_adaptedFromPattern, vector<vector<int>>& boundaryL_toPattern,
                    MatrixXd& currPattern, MatrixXd& Vg_pattern_orig, vector<VectorXd>& polyLineInput, vector<int>& connectedVert){
-    computeAllBetweensNew(polylineSelected, polylineIndex, polyLineMeshIndicator,
-                        boundaryL_adaptedFromPattern, boundaryL_toPattern,
-                        currPattern,  Vg_pattern_orig, polyLineInput, connectedVert);
-    return;
+    if(polylineSelected.size()>2){
+        computeAllBetweensNew(polylineSelected, polylineIndex, polyLineMeshIndicator,
+                              boundaryL_adaptedFromPattern, boundaryL_toPattern,
+                              currPattern,  Vg_pattern_orig, polyLineInput, connectedVert);
+        return;
+    }
+
 
     polyLineInput.clear();
     connectedVert.clear();
