@@ -231,10 +231,39 @@ void backTo3Dmapping(MatrixXd& adaptedPattern, MatrixXi& adaptedPattern_faces, M
 
 }
 
-bool vertOnEdge(const Vector3d& R, const Vector3d& Q, const Vector3d& p){
+bool vertOnEdge(const VectorXd& R, const VectorXd& Q, VectorXd& p,int v){
+    double eps = 0.01;
+    auto QR = Q-R;
+    auto Qp = Q-p;
 
-    double t = (R-Q).dot(p-Q)/((R-Q).dot(R-Q));
-    return (t<=1 && t>=0 );
+    VectorXd diff = (Qp).normalized() - (QR).normalized();
+    if(v==1556|| v==1557){
+        cout<<diff.transpose()<<" diff"<<endl;
+        double tt = (p-R)(0)/(QR)(0);
+        double t2 =  (p-R)(1)/(QR)(1);
+        cout<<tt<<" = t=  "<<t2<<", and makes "<<endl<<(R+tt*(Q-R)).transpose()<<endl<<p.transpose()<<" =? "<<endl;
+    }
+    if (abs(diff(0))+abs(diff(1)) >eps) return false;
+    // p is on the line, but also on the segment?
+    // R + t* (Q-R)= p
+//    double t = (R-Q).dot(p-Q)/((R-Q).dot(R-Q));
+    double t = (p-R)(0)/(QR)(0);
+    if((p-R)(0)-(QR)(0)< 0.01){// numerically instable
+        t=(p-R)(1)/(QR)(1);
+    }
+    if (0<=t && t<=1 ) cout<<t<<" = t , and makes "<<endl<<(R+t*(Q-R)).transpose()<<endl<<p.transpose()<<" =? "<<endl;
+    if(v==1556|| v==1557){
+        cout<<" candidate t= "<< t <<endl;
+
+    }
+    if (0>t || t>1 ) return false;
+    VectorXd posdiff = R+t*(Q-R) - p;
+    cout<<"diff from real pos " << abs(posdiff(0)) + abs(posdiff(1)) <<endl;
+    if(v==1556|| v==1557){
+        cout<<posdiff.transpose()<<" posdiff"<<endl;
+    }
+    return (abs(posdiff(0)) + abs(posdiff(1)) < 10*eps);
+
 
 }
 void computeAllBetweensNew(vector<VectorXd>& polylineSelected,vector<int>& polylineIndex, vector<int>& polyLineMeshIndicator,
@@ -245,58 +274,147 @@ void computeAllBetweensNew(vector<VectorXd>& polylineSelected,vector<int>& polyl
     /* given 6 positios in total
      *   we assume v0 is on the from mesh ,adapted pattern
      *   v1 is a corner that should intersect the to pattern
-     *   v2 is on the to pattern (but need not be a vertex
-     *      |
-     *      v2
-     *      |
-     * --v0--v1
-     *      |
+     *   v2 is on the to pattern (but need not be a vertex, but shouuld be far away in another face)
+     *      |           |
+     *      v2          v3
+     *      |           |
+     * --v0--v1         v4 -- v5
+     *      |           |
      *
      * */
     //step 1 locate v1 on the toPattern by checking on which edge it is
     int closer1, closer2, far1, far2; // closer is the one in direction of v2
     int patch;
-    vector<vector<int>> boundaryToSearch = boundaryL_adaptedFromPattern;
+    vector<vector<int>> boundaryToSearch = boundaryL_toPattern;
     for (int j = 0; j < boundaryToSearch.size(); j++) {
         bool found = false;
         for (int k = 0; k < boundaryToSearch[j].size(); k++) {
             int v = boundaryToSearch[j][k];
             int v1 = boundaryToSearch[j][k+1 % boundaryToSearch[j].size() ];
-            if (vertOnEdge(Vg_to.row(v).transpose(), Vg_to.row(v1).transpose(), polylineSelected[1])) {
-                cout << "found vertex on patch " << j<<" between vertices "<<k<<" and "<<k+1 << endl;
+            if (vertOnEdge(Vg_to.row(v).transpose(), Vg_to.row(v1).transpose(), polylineSelected[1], v)) {
+                cout << "found vertex 1 on patch " << j<<" between vertices "<<v<<" and "<<v1 << endl;
+                cout<<Vg_to.row(v)<<", " << Vg_to.row(v1)<<", "<< polylineSelected[1].transpose()<<endl;
                 closer1 = k;
                 far1 = k+1 % boundaryToSearch[j].size();
-                if ((Vg_to.row(v)- polylineSelected[1]).norm() < ( Vg_to.row(v1)-polylineSelected[1]).norm() ) {
+                if ((Vg_to.row(v)- polylineSelected[2]).norm() < ( Vg_to.row(v1)-polylineSelected[2]).norm() ) {
                     // swap
                     swap(closer1, far1);
                 }
                 patch = j;
                 found = true;
+                break;
             }
         }
         if (!found) continue;
+        cout<<"*****************second searched"<<endl;
         // else we look for the other one
         for (int k = 0; k < boundaryToSearch[j].size(); k++) {
             int v = boundaryToSearch[j][k];
             int v1 = boundaryToSearch[j][k+1 % boundaryToSearch[j].size() ];
-            if (vertOnEdge(Vg_to.row(v).transpose(), Vg_to.row(v1).transpose(), polylineSelected[4])) {
-                cout << "found vertex on patch " << j<<" between vertices "<<k<<" and "<<k+1 << endl;
+            if (vertOnEdge(Vg_to.row(v).transpose(), Vg_to.row(v1).transpose(), polylineSelected[4], v)) {
+                cout << "found vertex  4 on patch " << j<<" between vertices "<<v<<" and "<<v1 << endl;
+                cout<<Vg_to.row(v)<<" " << Vg_to.row(v1)<<" "<< polylineSelected[4]<<endl;
                 closer2 = k;
                 far2 = k+1 % boundaryToSearch[j].size();
-                if ((Vg_to.row(v)- polylineSelected[4]).norm() < ( Vg_to.row(v1)-polylineSelected[4]).norm() ) {
+                if ((Vg_to.row(v)- polylineSelected[3]).norm() < ( Vg_to.row(v1)-polylineSelected[3]).norm() ) {
                     // swap
                     swap(closer2, far2);
                 }
+                break;
             }
         }
     }
-    // hopefully we found both by now! 
+    // hopefully we found both by now!
+    cout<<boundaryToSearch[patch][closer1]<<" "<<boundaryToSearch[patch][far1]<<" and other side "<<boundaryToSearch[patch][far2]<<" "<<boundaryToSearch[patch][closer2]<<endl;
+    if(closer1< far1){// ascending order
+        int i= far1;// for safety of tri better not?
+        i++;
+        i= i % boundaryToSearch[patch].size();
+        while( i != far2){
+            cout<<boundaryToSearch[patch][i]<<" "<<Vg_to.row(boundaryToSearch[patch][i])<<endl;
+            polyLineInput.push_back(Vg_to.row(boundaryToSearch[patch][i]).transpose());
+            i++;
+            i= i % boundaryToSearch[patch].size();
+        }
+//        cout<<boundaryToSearch[patch][i]<<" "<<Vg_to.row(boundaryToSearch[patch][i])<<endl;
+//        polyLineInput.push_back(Vg_to.row(boundaryToSearch[patch][i]).transpose());
+
+
+    }else{// descending
+        int i= far1; i--;  if(i<0) i+= boundaryToSearch[patch].size();
+        while( i != far2){
+            int curr = i%boundaryToSearch[patch].size();
+            cout<<boundaryToSearch[patch][i]<<" "<<Vg_to.row(boundaryToSearch[patch][i])<<endl;
+            polyLineInput.push_back(Vg_to.row(boundaryToSearch[patch][i]).transpose());
+            i--;
+            if(i<0) i+= boundaryToSearch[patch].size();
+        }
+//        cout<<boundaryToSearch[patch][i]<<" "<<Vg_to.row(boundaryToSearch[patch][i])<<endl;
+//        polyLineInput.push_back(Vg_to.row(boundaryToSearch[patch][i]).transpose());
+    }
+
+    // search 0,1,4,5 on the other smaller pattern
+    int patchFrom;
+    int idx0, idx1, idx4, idx5;
+    boundaryToSearch = boundaryL_adaptedFromPattern;
+    for(int j=0; j< boundaryToSearch.size(); j++){
+        for(int i=0; i< boundaryToSearch[j].size(); i++){
+            if(boundaryToSearch[j][i] == polylineIndex[0]){
+                cout<<i<<"found vertex 0 "<<polylineIndex[0]<<" on patch "<<j<<endl;
+                idx0 = i;
+                patchFrom = j;
+
+            }else if(boundaryToSearch[j][i] == polylineIndex[1]){
+                cout<<i<<"found vertex 1 "<<polylineIndex[1]<<" on patch "<<j<<endl;
+                idx1 = i;
+            }else if(boundaryToSearch[j][i] == polylineIndex[4]){
+                cout<<i<<"found vertex 4 "<<polylineIndex[4]<<" on patch "<<j<<endl;
+                idx4 = i;
+            }else if(boundaryToSearch[j][i] == polylineIndex[5]){
+                cout<<i<<"found vertex 5 "<<polylineIndex[5]<<" on patch "<<j<<endl;
+                idx5 = i;
+            }
+        }
+    }
+    // hopefully now all indices are found
+    bool asc = (idx5>idx4);
+    if(idx4==0) asc = (idx5>(idx4+boundaryToSearch[patchFrom].size() ));
+    cout<<"asc? "<<asc<<endl;
+    if(asc){// ascending
+        int i = idx4;
+        while(i !=idx1){
+            polyLineInput.push_back(currPattern.row(boundaryToSearch[patchFrom][i]).transpose());
+            cout<<boundaryToSearch[patchFrom][i]<<" "<<currPattern.row(boundaryToSearch[patchFrom][i])<<endl;
+            i++;
+            i = i %boundaryToSearch[patchFrom].size();
+        }
+        polyLineInput.push_back(currPattern.row(boundaryToSearch[patchFrom][i]).transpose());
+        cout<<boundaryToSearch[patchFrom][i]<<" "<<currPattern.row(boundaryToSearch[patchFrom][i])<<endl;
+
+    }else{
+        int i = idx4;
+        while(i !=idx1){
+            polyLineInput.push_back(currPattern.row(boundaryToSearch[patchFrom][i]).transpose());
+            cout<<boundaryToSearch[patchFrom][i]<<" "<<currPattern.row(boundaryToSearch[patchFrom][i])<<endl;
+            i--;
+            if(i <0) i+= boundaryToSearch[patchFrom].size();
+        }
+        polyLineInput.push_back(currPattern.row(boundaryToSearch[patchFrom][i]).transpose());
+        cout<<boundaryToSearch[patchFrom][i]<<" "<<currPattern.row(boundaryToSearch[patchFrom][i])<<endl;
+
+    }
+
 
 
 }
 void computeAllBetweens(vector<VectorXd>& polylineSelected,vector<int>& polylineIndex, vector<int>& polyLineMeshIndicator,
                    vector<vector<int>>& boundaryL_adaptedFromPattern, vector<vector<int>>& boundaryL_toPattern,
                    MatrixXd& currPattern, MatrixXd& Vg_pattern_orig, vector<VectorXd>& polyLineInput, vector<int>& connectedVert){
+    computeAllBetweensNew(polylineSelected, polylineIndex, polyLineMeshIndicator,
+                        boundaryL_adaptedFromPattern, boundaryL_toPattern,
+                        currPattern,  Vg_pattern_orig, polyLineInput, connectedVert);
+    return;
+
     polyLineInput.clear();
     connectedVert.clear();
 
