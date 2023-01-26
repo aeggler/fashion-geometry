@@ -929,9 +929,9 @@ int main(int argc, char *argv[])
             bool choosePatchArea = false;
             if(ImGui::Checkbox("Start triangulating", &startSmooth)) {
 //                string modifiedPattern = "/Users/annaeggler/Desktop/mappedPattern.obj"; //
-                string modifiedPattern = "/Users/annaeggler/Desktop/mappedPatternWithSmoothPCACuts.obj"; //
+//                string modifiedPattern = "/Users/annaeggler/Desktop/mappedPatternWithSmoothPCACuts.obj"; //
 //                string modifiedPattern = "/Users/annaeggler/Desktop/mappedTri.obj"; //
-//                string modifiedPattern = "/Users/annaeggler/Desktop/mappedPatternFull.obj"; //
+                string modifiedPattern = "/Users/annaeggler/Desktop/mappedPatternTri.obj"; //
 
 
                 igl::readOBJ(modifiedPattern, currPattern, Fg_pattern);
