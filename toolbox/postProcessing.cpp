@@ -232,12 +232,12 @@ void backTo3Dmapping(MatrixXd& adaptedPattern, MatrixXi& adaptedPattern_faces, M
 }
 
 bool vertOnEdge(const VectorXd& R, const VectorXd& Q, VectorXd& p,int v){
-    double eps = 0.01;
+    double eps = 0.02;
     auto QR = Q-R;
     auto Qp = Q-p;
-
+//cout<<"v= "<<v<<endl;
     VectorXd diff = (Qp).normalized() - (QR).normalized();
-    if(v==1556|| v==1557){
+    if(v==1535|| v==1534){
         cout<<diff.transpose()<<" diff"<<endl;
         double tt = (p-R)(0)/(QR)(0);
         double t2 =  (p-R)(1)/(QR)(1);
@@ -248,20 +248,22 @@ bool vertOnEdge(const VectorXd& R, const VectorXd& Q, VectorXd& p,int v){
     // R + t* (Q-R)= p
 //    double t = (R-Q).dot(p-Q)/((R-Q).dot(R-Q));
     double t = (p-R)(0)/(QR)(0);
-    if((p-R)(0)-(QR)(0)< 0.01){// numerically instable
-        t=(p-R)(1)/(QR)(1);
+    double tt=  (p-R)(1)/(QR)(1);
+//    if((p-R)(0)-(QR)(0)< 0.01){// numerically instable
+    if(t<0 &&tt>0){
+        t =tt;
     }
     if (0<=t && t<=1 ) cout<<t<<" = t , and makes "<<endl<<(R+t*(Q-R)).transpose()<<endl<<p.transpose()<<" =? "<<endl;
-    if(v==1556|| v==1557){
-        cout<<" candidate t= "<< t <<endl;
-
-    }
+//    if(v==1535|| v==1534){
+//        cout<<" candidate t= "<< t <<endl;
+//
+//    }
     if (0>t || t>1 ) return false;
     VectorXd posdiff = R+t*(Q-R) - p;
     cout<<"diff from real pos " << abs(posdiff(0)) + abs(posdiff(1)) <<endl;
-    if(v==1556|| v==1557){
-        cout<<posdiff.transpose()<<" posdiff"<<endl;
-    }
+//    if(v==1556|| v==1557){
+//        cout<<posdiff.transpose()<<" posdiff"<<endl;
+//    }
     return (abs(posdiff(0)) + abs(posdiff(1)) < 10*eps);
 
 
@@ -271,6 +273,7 @@ void computeAllBetweensNew(vector<VectorXd>& polylineSelected,vector<int>& polyl
                            MatrixXd& currPattern, MatrixXd& Vg_to, vector<VectorXd>& polyLineInput, vector<int>& connectedVert) {
     polyLineInput.clear();
     connectedVert.clear();
+    cout<<"Seam Size "<<polylineSelected.size()<<endl;
     /* given 6 positios in total
      *   we assume v0 is on the from mesh ,adapted pattern
      *   v1 is a corner that should intersect the to pattern
@@ -344,8 +347,8 @@ void computeAllBetweensNew(vector<VectorXd>& polylineSelected,vector<int>& polyl
             i++;
             i= i % boundaryToSearch[patch].size();
         }
-//        cout<<boundaryToSearch[patch][i]<<" "<<Vg_to.row(boundaryToSearch[patch][i])<<endl;
-//        polyLineInput.push_back(Vg_to.row(boundaryToSearch[patch][i]).transpose());
+        cout<<boundaryToSearch[patch][i]<<" "<<Vg_to.row(boundaryToSearch[patch][i])<<endl;
+        polyLineInput.push_back(Vg_to.row(boundaryToSearch[patch][i]).transpose());
 
 
     }else{// descending
@@ -357,8 +360,10 @@ void computeAllBetweensNew(vector<VectorXd>& polylineSelected,vector<int>& polyl
             i--;
             if(i<0) i+= boundaryToSearch[patch].size();
         }
+        cout<<boundaryToSearch[patch][i]<<" "<<Vg_to.row(boundaryToSearch[patch][i])<<endl;
+
         cout<<"end "<<endl;
-//        polyLineInput.push_back(Vg_to.row(boundaryToSearch[patch][i]).transpose());
+        polyLineInput.push_back(Vg_to.row(boundaryToSearch[patch][i]).transpose());
     }
 
     // search 0,1,4,5 on the other smaller pattern
