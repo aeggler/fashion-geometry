@@ -936,7 +936,7 @@ int main(int argc, char *argv[])
 
                 igl::readOBJ(modifiedPattern, currPattern, Fg_pattern);
                 prevFaces = Fg_pattern_orig.rows();
-                cout<<endl << "Select start and end of the seam you want to smooth and then confirm" << endl;
+//                cout<<endl << "Select start and end of the seam you want to smooth and then confirm" << endl;
                 viewer.selected_data_index = 1;
                 viewer.data().clear();
                 viewer.selected_data_index = 0;
@@ -966,8 +966,16 @@ int main(int argc, char *argv[])
             }
 
             if(ImGui::Checkbox("Select area to triangulate", &choosePatchArea)){
-                cout<<"Please choose an area to triangulate. Click on the area within the mesh to get the closest point. "
-                      "Automatically the boundary between the two selected vertices will be chosen."<<endl;
+                cout<<"Please choose an area to triangulate. Attention, the following order is required "<<endl;
+                cout<<"      |           |        "<<endl;
+                cout<<"      v2          v3       "<<endl;
+                cout<<"      |           |        "<<endl;
+                cout<<" --v0--v1         v4 -- v5 "<<endl;
+                cout<<"       |           |       "<<endl;
+                cout<<"Note that v0, ,v1, v4 and v5 should be inside the original mesh i.e yellow area. Click on the area within the mesh to get the closest point. "
+
+                      "v2, v3 should be withing the blue boundary line, in direction of the triangulated area. "<<endl;
+                cout<<"For a single cut insertion simply chose the corner points (#2)"<<endl;
 
                 polylineSelected.clear();
                 polylineIndex.clear();
@@ -1006,8 +1014,8 @@ int main(int argc, char *argv[])
             }
 
             if(ImGui::Button("Confirm area", ImVec2(-1, 0))){
-                if(polylineSelected.size()<3){
-                    cout<<"No, choose at least 3 positions"<<endl;
+                if(polylineSelected.size()<2){
+                    cout<<"No, choose at least 2 positions"<<endl;
                 }
 
                 vector<VectorXd> polyLineInput ;
