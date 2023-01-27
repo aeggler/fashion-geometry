@@ -39,7 +39,10 @@ using Matrix4r = Eigen::Matrix<Real, 4, 4, Eigen::DontAlign>;
 
 // The matrices of mesh and garment, original and modified
 Eigen::MatrixXd Vg, Vm, testMorph_V1; // mesh for the garment and mannequin
+MatrixXd testMorph_V1left, testMorph_V1right;
 Eigen::MatrixXi Fg, Fm, Fg_pattern,Fg_pattern_orig, testMorph_F1;
+MatrixXi testMorph_F1left, testMorph_F1right; // separate for case of wider legs
+map<int, int> leftHalfToFullFaceMap, rightHalfToFullFaceMap; // when wider legs we need two different collision detectiosn
 Eigen::MatrixXd Vg_orig, Vm_orig; // original mesh for the garment and mannequin, restore for translation
 Eigen::MatrixXd Vg_pattern, Vg_pattern_orig; // the pattern for the rest shape, we might change this
 Eigen::MatrixXi Fg_orig, Fm_orig;
@@ -447,8 +450,17 @@ int main(int argc, char *argv[])
     Vm_orig = Vm; Fm_orig = Fm;
     mannequinPreInterpol = Vm;
 
-    string morphBody1 =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins_petite/avatar/avatar_one_component.ply";
+//    string morphBody1 =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins_petite/avatar/avatar_one_component.ply";
+    string morphBody1 =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/CLO_avatars_oneComponent/avatar_plus_straight_05_OC.ply";
+    string morphBody1left =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/CLO_avatars_oneComponent/avatar_plus_straight_05_OC_leftHalf.ply";
+    string morphBody1right =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/CLO_avatars_oneComponent/avatar_plus_straight_05_OC_rightHalf.ply";
+
+
     igl::readPLY(morphBody1, testMorph_V1, testMorph_F1);
+    igl::readPLY(morphBody1left, testMorph_V1left, testMorph_F1left);
+    igl::readPLY(morphBody1right, testMorph_V1right, testMorph_F1right);
+
+    createHalfAvatarMap( testMorph_V1, testMorph_F1, testMorph_V1left, testMorph_F1left, testMorph_V1right, testMorph_F1right, leftHalfToFullFaceMap, rightHalfToFullFaceMap);
 
     if(Fm != testMorph_F1){
         cout<<"the faces are not the same!"<<endl;
@@ -1562,17 +1574,41 @@ void setupCollisionConstraints(){
     //MatrixXd C, N;
     collisionVert = Eigen::MatrixXi::Zero(numVert, 1);
     pureCollVert.clear();
+    //new part
+    VectorXi closestFaceIdCollision;
+    igl::AABB<Eigen::MatrixXd, 3> col_treeLeft;
+    col_treeLeft.init(testMorph_V1left, testMorph_F1left);
+    MatrixXd Vmleft, FN_mleft, EN_mleft, Cleft, Nleft, VN_mleft;
+    MatrixXi Fmleft, EMAP_mleft, E_mleft;
 
-    igl::signed_distance_pseudonormal(p, Vm, Fm, col_tree, FN_m, VN_m, EN_m, EMAP_m, S, closestFaceId, C, N);
-    int collCount=0;
+    Vmleft = testMorph_V1left;
+    Fmleft = testMorph_F1left;
+    igl::per_face_normals(Vmleft, Fmleft, FN_mleft);
+    igl::per_vertex_normals(Vmleft, Fmleft, igl::PER_VERTEX_NORMALS_WEIGHTING_TYPE_ANGLE, FN_mleft, VN_mleft);
+    igl::per_edge_normals(Vmleft, Fmleft, igl::PER_EDGE_NORMALS_WEIGHTING_TYPE_UNIFORM, FN_mleft,
+                          EN_mleft, E_mleft, EMAP_mleft);
+    igl::signed_distance_pseudonormal(p, Vmleft, Fmleft, col_treeLeft, FN_mleft, VN_mleft, EN_mleft,
+                                      EMAP_mleft, S, closestFaceIdCollision, Cleft, Nleft);
+
+    int collCount = 0;
     for(int i=0; i<numVert; i++){
-        if(S(i)<coll_EPS){
+        if(S(i) < coll_EPS && leftHalfToFullFaceMap[closestFaceIdCollision(i)]== closestFaceId(i)){
             collCount++;
             collisionVert(i)=1;
             pureCollVert.push_back(i);
-
+            cout<<"Vertex "<<i<<" collides"<<endl;
         }
     }
+//    igl::signed_distance_pseudonormal(p, Vm, Fm, col_tree, FN_m, VN_m, EN_m, EMAP_m, S, closestFaceId, C, N);
+//    int collCount=0;
+//    for(int i=0; i<numVert; i++){
+//        if(S(i)<coll_EPS){
+//            collCount++;
+//            collisionVert(i)=1;
+//            pureCollVert.push_back(i);
+//
+//        }
+//    }
     if(pureCollVert.size()!= collCount){
         cout<<" size problem"<<endl;
     }
@@ -1691,6 +1727,9 @@ void solveStretchUV(){
     }
 }
 void solveCollisionConstraint(){
+    // idea: have for each vertex a set of faces that it may intersect with
+    // check collision for noth sides seperately
+    // if closestFaceID not in set of allowed faces (computed in initial guess) (first trial with closestFaceId)
     for(int i=0; i<pureCollVert.size(); i++){
         int j = pureCollVert[i];
         Vector3r deltap0;

@@ -277,7 +277,7 @@ void computeAllBetweensNew(vector<VectorXd>& polylineSelected,vector<int>& polyl
     polyLineInput.clear();
     connectedVert.clear();
     cout<<endl<<"Seam Size "<<polylineSelected.size()<<endl<<endl;
-    /* given 6 positios in total
+    /* given 6 positions in total
      *   we assume v0 is on the from mesh ,adapted pattern
      *   v1 is a corner that should intersect the to pattern
      *   v2 is on the to pattern (but need not be a vertex, but shouuld be far away in another face)
@@ -607,4 +607,74 @@ void mergeTriagulatedAndPattern(const vector<int> &connectedVert, MatrixXd& Vg_r
 
 }
 
+vector<int> toVecInt(VectorXi& v){
+    vector<int> vec;
+    for(int i=0; i<v.rows(); i++){
+        vec.push_back(v(i));
+    }
+    return vec;
+}
 
+vector<double> toVecDouble(VectorXd& v){
+    vector<double> vec;
+    for(int i=0; i<v.rows(); i++){
+        vec.push_back(v(i));
+    }
+    return vec;
+}
+void createHalfAvatarMap(MatrixXd& testMorph_V1, MatrixXi& testMorph_F1,
+    MatrixXd& testMorph_V1left, MatrixXi& testMorph_F1left,
+    MatrixXd& testMorph_V1right, MatrixXi& testMorph_F1right,
+    map<int, int>& leftHalfToFullFaceMap,  map<int, int>& rightHalfToFullFaceMap){
+
+    map<vector<double>, int> posToVertIdFull;
+    map<vector<int>, int> vertToFaceIdFull;
+
+    for(int i=0; i< testMorph_V1.rows(); i++){
+        VectorXd v = testMorph_V1.row(i).transpose();
+        vector<double> vert = toVecDouble(v);
+        posToVertIdFull[vert] = i;
+    }
+
+    for(int i=0; i< testMorph_F1.rows(); i++){
+        VectorXi f = testMorph_F1.row(i).transpose();
+        vector<int> face =  toVecInt(f);
+        vertToFaceIdFull[face]= i;
+    }
+
+    for(int i=0; i< testMorph_F1left.rows(); i++){
+        Vector3i idLeft = testMorph_F1left.row(i);
+        vector<int> idTotal;
+        VectorXd v = testMorph_V1left.row(idLeft(0)).transpose();
+        idTotal.push_back( posToVertIdFull[toVecDouble(v)]);
+        v = testMorph_V1left.row(idLeft(1)).transpose();
+        idTotal.push_back( posToVertIdFull[toVecDouble(v)]);
+        v = testMorph_V1left.row(idLeft(2)).transpose();
+        idTotal.push_back( posToVertIdFull[toVecDouble(v)]);
+
+        leftHalfToFullFaceMap[i] = vertToFaceIdFull[idTotal] ;
+    }
+
+    for(int i=0; i< testMorph_F1right.rows(); i++){
+        Vector3i idRight = testMorph_F1right.row(i);
+        vector<int> idTotal;
+        VectorXd v = testMorph_V1right.row(idRight(0)).transpose();
+        idTotal.push_back( posToVertIdFull[toVecDouble(v)]);
+
+        v = testMorph_V1right.row(idRight(1)).transpose();
+        idTotal.push_back( posToVertIdFull[toVecDouble(v)]);
+
+        v = testMorph_V1right.row(idRight(2)).transpose();
+        idTotal.push_back( posToVertIdFull[toVecDouble(v)]);
+
+
+        rightHalfToFullFaceMap[i] = vertToFaceIdFull[idTotal] ;
+
+//        Vector3d fullId = testMorph_F1right.row(i);
+//        fullId(0)= posToVertIdFull[testMorph_V1right.row(fullId(0))];
+//        fullId(1)= posToVertIdFull[testMorph_V1right.row(fullId(1))];
+//        fullId(2)= posToVertIdFull[testMorph_V1right.row(fullId(2))];
+//        rightHalfToFullFaceMap[i] = vertToFaceIdFull[fullId] ;
+    }
+
+}

@@ -1882,12 +1882,7 @@ void updatePositionToIntersection(MatrixXd& p,int next, const MatrixXd& Vg_bound
         }
     }
     double stiffness = 0.8; //todo
-//    if(next==62|| next == 63){
-//        cout<<next<<": "<<Vg_bound.row(0)<<"    , "<<Vg_bound.row(1)<<"    ,"<<Vg_bound.row(2)<<endl;
-//        cout<<mint<<" [pos] "<<p.row(next)<<" , i="<<mini<<endl<<" min dist target"<<minDistTarget.transpose() <<endl;
-//    }
     p.row(next) += stiffness * (minDistTarget.transpose()-p.row(next));
-//    if(next==62){cout<<"updated to "<<p.row(next)<<endl<<endl; }
 
 }
 

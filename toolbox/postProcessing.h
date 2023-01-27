@@ -28,4 +28,8 @@ void computeAllBetweensNew(vector<VectorXd>& polylineSelected,vector<int>& polyl
                            MatrixXd& currPattern, MatrixXd& Vg_to, vector<VectorXd>& polyLineInput, vector<int>& connectedVert) ;
 void mergeTriagulatedAndPattern(const vector<int> &connectedVert, MatrixXd& Vg_retri, MatrixXi& Fg_retri, MatrixXd& currPattern, MatrixXi& Fg_pattern);
 
+void createHalfAvatarMap(MatrixXd& testMorph_V1, MatrixXi& testMorph_F1,
+                         MatrixXd& testMorph_V1left, MatrixXi& testMorph_F1left,
+                         MatrixXd& testMorph_V1right, MatrixXi& testMorph_F1right,
+                         map<int, int>& leftHalfToFullFaceMap,  map<int, int>& rightHalfToFullFaceMap);
 #endif //EXAMPLE_POSTPROCESSING_H
