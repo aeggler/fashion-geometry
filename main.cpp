@@ -1564,7 +1564,7 @@ void preComputeConstraintsForRestshape(){
 }
 void setCollisionMesh(){
     // the mesh the garment collides with -> Vm Fm the mannequin mesh
-
+    initCollMeshCall(testMorph_V1left, testMorph_F1left,testMorph_V1right, testMorph_F1right);
     col_tree.init(Vm, Fm);
     igl::per_face_normals(Vm, Fm, FN_m);
     igl::per_vertex_normals(Vm, Fm, igl::PER_VERTEX_NORMALS_WEIGHTING_TYPE_ANGLE, FN_m, VN_m);
@@ -1575,8 +1575,8 @@ vector<VectorXd> CleftRight, NleftRight;
 void setupCollisionConstraints(){
     igl::writeOBJ("garment3DonNewAvatar.obj", p, Fg);
 
-    setupCollisionConstraintsCall( collisionVert, pureCollVert, testMorph_V1left, testMorph_F1left, p, numVert, coll_EPS,
-                               leftHalfToFullFaceMap, CleftRight, NleftRight, closestFaceId, Vm, Fm, Fg);
+    setupCollisionConstraintsCall( collisionVert, pureCollVert, testMorph_V1left, testMorph_F1left, testMorph_V1right, testMorph_F1right,p, numVert, coll_EPS,
+                               leftHalfToFullFaceMap, rightHalfToFullFaceMap,CleftRight, NleftRight, closestFaceId, Vm, Fm, Fg);
     return;
 }
 void solveBendingConstraint(){
@@ -1701,12 +1701,10 @@ void solveCollisionConstraint(){
     for(int i=0; i<pureCollVert.size(); i++){
         int j = pureCollVert[i];
         Vector3r deltap0;
-        cout<<i<<"= vert  "<<j<<endl <<p.row(j)<<", "<<endl<<  CleftRight[i].transpose()<<", " <<endl<< NleftRight[i].transpose()<<endl;
         PBD.solve_CollisionConstraint(p.row(j),  CleftRight[i], NleftRight[i], deltap0, coll_EPS, vel.row(j));
 
         // maybe I should compute the intersection instead of using the closest point C?
 //        PBD.solve_CollisionConstraint(p.row(j),  C.row(j), N.row(j), deltap0, coll_EPS, vel.row(j));
-        cout<<"returning "<<deltap0.transpose()<<endl<<endl;
         p.row(j) += collisionStiffness * deltap0;
     }
     cout<<"finished stretch constraint"<<endl;

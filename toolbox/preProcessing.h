@@ -14,7 +14,14 @@
 using namespace std;
 using namespace Eigen;
 
+void initCollMeshCall( MatrixXd& Vm_left, MatrixXi& Fm_left,
+                       MatrixXd& Vm_right, MatrixXi& Fm_right);
 
-void setupCollisionConstraintsCall(Eigen::MatrixXi& collisionVert, vector<int> & pureCollVert, MatrixXd& testMorph_V1left, MatrixXi& testMorph_F1left, MatrixXd& p, int& numVert, double coll_EPS,
-                               std::map<int, int> & leftHalfToFullFaceMap, vector<VectorXd> & CleftRight , vector<VectorXd>& NleftRight, VectorXi& closestFaceId,
+void setupCollisionConstraintsCall(Eigen::MatrixXi& collisionVert, vector<int> & pureCollVert,
+                                   MatrixXd& testMorph_V1left,
+                                   MatrixXi& testMorph_F1left,
+                                   MatrixXd& testMorph_V1right,
+                                   MatrixXi& testMorph_F1right,
+                                   MatrixXd& p, int& numVert, double coll_EPS,
+                               std::map<int, int> & leftHalfToFullFaceMap, std::map<int, int> & rightHalfToFullFaceMap, vector<VectorXd> & CleftRight , vector<VectorXd>& NleftRight, VectorXi& closestFaceId,
                                MatrixXd& Vm, MatrixXi& Fm, MatrixXi& Fg);
