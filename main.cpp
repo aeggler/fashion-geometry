@@ -24,7 +24,9 @@
 #include "toolbox/MathFunctions.h"
 #include "toolbox/patternAdaption.h"
 #include "toolbox/postProcessing.h"
+#include "toolbox/preProcessing.h"
 #include <igl/signed_distance.h>
+#include <igl/exact_geodesic.h>
 #include <map>
 #include <set>
 #include <string>
@@ -942,8 +944,8 @@ int main(int argc, char *argv[])
             if(ImGui::Checkbox("Start triangulating", &startSmooth)) {
 //                string modifiedPattern = "/Users/annaeggler/Desktop/mappedPattern.obj"; //
 //                string modifiedPattern = "/Users/annaeggler/Desktop/mappedPatternWithSmoothPCACuts.obj"; //
-//                string modifiedPattern = "/Users/annaeggler/Desktop/mappedTri.obj"; //
-                string modifiedPattern = "/Users/annaeggler/Desktop/mappedPatternTri.obj"; //
+                string modifiedPattern = "/Users/annaeggler/Desktop/mappedTri.obj"; //
+//                string modifiedPattern = "/Users/annaeggler/Desktop/mappedPatternTri.obj"; //
 
 
                 igl::readOBJ(modifiedPattern, currPattern, Fg_pattern);
@@ -1569,49 +1571,13 @@ void setCollisionMesh(){
     igl::per_edge_normals(Vm, Fm, igl::PER_EDGE_NORMALS_WEIGHTING_TYPE_UNIFORM, FN_m, EN_m, E_m, EMAP_m);
 
 }
+vector<VectorXd> CleftRight, NleftRight;
 void setupCollisionConstraints(){
-    VectorXd S;
-    //MatrixXd C, N;
-    collisionVert = Eigen::MatrixXi::Zero(numVert, 1);
-    pureCollVert.clear();
-    //new part
-    VectorXi closestFaceIdCollision;
-    igl::AABB<Eigen::MatrixXd, 3> col_treeLeft;
-    col_treeLeft.init(testMorph_V1left, testMorph_F1left);
-    MatrixXd Vmleft, FN_mleft, EN_mleft, Cleft, Nleft, VN_mleft;
-    MatrixXi Fmleft, EMAP_mleft, E_mleft;
+    igl::writeOBJ("garment3DonNewAvatar.obj", p, Fg);
 
-    Vmleft = testMorph_V1left;
-    Fmleft = testMorph_F1left;
-    igl::per_face_normals(Vmleft, Fmleft, FN_mleft);
-    igl::per_vertex_normals(Vmleft, Fmleft, igl::PER_VERTEX_NORMALS_WEIGHTING_TYPE_ANGLE, FN_mleft, VN_mleft);
-    igl::per_edge_normals(Vmleft, Fmleft, igl::PER_EDGE_NORMALS_WEIGHTING_TYPE_UNIFORM, FN_mleft,
-                          EN_mleft, E_mleft, EMAP_mleft);
-    igl::signed_distance_pseudonormal(p, Vmleft, Fmleft, col_treeLeft, FN_mleft, VN_mleft, EN_mleft,
-                                      EMAP_mleft, S, closestFaceIdCollision, Cleft, Nleft);
-
-    int collCount = 0;
-    for(int i=0; i<numVert; i++){
-        if(S(i) < coll_EPS && leftHalfToFullFaceMap[closestFaceIdCollision(i)]== closestFaceId(i)){
-            collCount++;
-            collisionVert(i)=1;
-            pureCollVert.push_back(i);
-            cout<<"Vertex "<<i<<" collides"<<endl;
-        }
-    }
-//    igl::signed_distance_pseudonormal(p, Vm, Fm, col_tree, FN_m, VN_m, EN_m, EMAP_m, S, closestFaceId, C, N);
-//    int collCount=0;
-//    for(int i=0; i<numVert; i++){
-//        if(S(i)<coll_EPS){
-//            collCount++;
-//            collisionVert(i)=1;
-//            pureCollVert.push_back(i);
-//
-//        }
-//    }
-    if(pureCollVert.size()!= collCount){
-        cout<<" size problem"<<endl;
-    }
+    setupCollisionConstraintsCall( collisionVert, pureCollVert, testMorph_V1left, testMorph_F1left, p, numVert, coll_EPS,
+                               leftHalfToFullFaceMap, CleftRight, NleftRight, closestFaceId, Vm, Fm, Fg);
+    return;
 }
 void solveBendingConstraint(){
     // for each pair of adjacent triangles, precomputed from restshape (2D pattern TODO)
@@ -1730,13 +1696,20 @@ void solveCollisionConstraint(){
     // idea: have for each vertex a set of faces that it may intersect with
     // check collision for noth sides seperately
     // if closestFaceID not in set of allowed faces (computed in initial guess) (first trial with closestFaceId)
+    cout<<"start stretch constraint"<<endl;
+
     for(int i=0; i<pureCollVert.size(); i++){
         int j = pureCollVert[i];
         Vector3r deltap0;
+        cout<<i<<"= vert  "<<j<<endl <<p.row(j)<<", "<<endl<<  CleftRight[i].transpose()<<", " <<endl<< NleftRight[i].transpose()<<endl;
+        PBD.solve_CollisionConstraint(p.row(j),  CleftRight[i], NleftRight[i], deltap0, coll_EPS, vel.row(j));
+
         // maybe I should compute the intersection instead of using the closest point C?
-        PBD.solve_CollisionConstraint(p.row(j),  C.row(j), N.row(j), deltap0, coll_EPS, vel.row(j));
+//        PBD.solve_CollisionConstraint(p.row(j),  C.row(j), N.row(j), deltap0, coll_EPS, vel.row(j));
+        cout<<"returning "<<deltap0.transpose()<<endl<<endl;
         p.row(j) += collisionStiffness * deltap0;
     }
+    cout<<"finished stretch constraint"<<endl;
 }
 
 void preComputeStretch(){
@@ -2148,7 +2121,6 @@ void dotimeStep(igl::opengl::glfw::Viewer& viewer){
         p.row(i) = x_new.row(i).array()+ timestep*vel.row(i).array();
     }
 
-    // detect collisions and solve for them in the loop
     setupCollisionConstraints();
     t.printTime(" setup collision constraints ");
 

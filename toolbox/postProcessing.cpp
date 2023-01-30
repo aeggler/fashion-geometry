@@ -13,14 +13,8 @@
 #include <cmath>
 #include "igl/barycentric_interpolation.h"
 #include "igl/adjacency_list.h"
-//#define ANSI_DECLARATORS
-//#define TRILIBRARY
-//extern "C"{
 #include "../triangle/triangle.h"
 
-//};
-
-//#include "igl/triangle/triangulate.h"
 
 using namespace std;
 using namespace Eigen;
