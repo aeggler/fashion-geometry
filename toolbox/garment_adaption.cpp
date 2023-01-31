@@ -309,7 +309,7 @@ void garment_adaption::performJacobianUpdateAndMerge(Eigen::MatrixXd & V_curr, i
                                                      vector<seam*>& seamsList, std::vector<std::vector<int>>& boundaryL
                                                      ){
     V= V_pattern;
-   // this is ithe skrinked model, it has too much stress, we want to enlarge it
+   // this is the skrinked model, it has too much stress, we want to enlarge it
     // j-1 gives us the pattern such that the stress is just the same as for the original
     // but j-1 gives a different vertex position per face, thus we average it
     // so for each face we apply the inverse and get two new edges. these edges start from v_curr_0
@@ -333,7 +333,7 @@ void garment_adaption::performJacobianUpdateAndMerge(Eigen::MatrixXd & V_curr, i
         /* we take the normal of the current and of the original triangle and align the original to the current
             * , the same rotation is then also applied to the jacobian*/
         Vector3d p2 = V_curr.row(id2) - V_curr.row(id0);
-        Vector3d p1 =V_curr.row(id1) - V_curr.row(id0);
+        Vector3d p1 = V_curr.row(id1) - V_curr.row(id0);
         Vector3d normalVec = p1.cross(p2);
         normalVec= normalVec.normalized(); // the new normal vector, how do we get from jacobians[j].col(2) to this?
 
@@ -360,7 +360,7 @@ void garment_adaption::performJacobianUpdateAndMerge(Eigen::MatrixXd & V_curr, i
             F.col(2) = normalVec.cross(oldNormalVec);
             R = F * G * F.inverse();
         }else {
-            R= MatrixXd::Identity(3, 3);
+            R = MatrixXd::Identity(3, 3);
         }
             // rotate normalVec to old
             MatrixXd Rinv = R.inverse();

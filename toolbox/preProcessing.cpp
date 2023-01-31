@@ -49,7 +49,7 @@ void setupCollisionConstraintsCall(Eigen::MatrixXi& collisionVert, vector<int> &
                                MatrixXd& Vm, MatrixXi& Fm, MatrixXi& Fg){
     CleftRight.clear();
     NleftRight.clear();
-
+    double absThereshold = 10;
     collisionVert = Eigen::MatrixXi::Zero(numVert, 1);
     pureCollVert.clear();
     //new part
@@ -62,7 +62,7 @@ void setupCollisionConstraintsCall(Eigen::MatrixXi& collisionVert, vector<int> &
     int collCount = 0;
     for(int i=0; i<numVert; i++){
         // to make sure negative does not count
-        if(Sleft(i) < coll_EPS && abs(Sleft(i))<10){// assuming no collision is bad enough to cause -10 problem!
+        if(Sleft(i) < coll_EPS && abs(Sleft(i))<absThereshold){// assuming no collision is bad enough to cause -10 problem!
 
             //TODO it might well be that closest Face Id is not always correct?
             //todo or its neighbors!!!
@@ -95,7 +95,7 @@ void setupCollisionConstraintsCall(Eigen::MatrixXi& collisionVert, vector<int> &
     igl::signed_distance_pseudonormal(p, Vm_right, Fm_right, col_treeRight, FN_mright, VN_mright, EN_mright,EMAP_mright, Sright, closestFaceIdright, Cright, Nright);
 
     for(int i=0; i<numVert; i++){
-        if(Sright(i) < coll_EPS && abs(Sright(i))<50) {
+        if(Sright(i) < coll_EPS && abs(Sright(i))<absThereshold) {
 
             if(rightHalfToFullFaceMap[closestFaceIdright(i)]== closestFaceId(i)){
                 if (collisionVert(i) == 1) {
