@@ -14,12 +14,16 @@
 #include "igl/barycentric_interpolation.h"
 #include "igl/adjacency_list.h"
 #include "../triangle/triangle.h"
+#include <fstream>
+#include <iterator>
+#include <set>
+
 
 
 using namespace std;
 using namespace Eigen;
 
-//tood attention this can create degenerate triangles
+//todo attention this can create degenerate triangles, or it is not even needed
 void smoothBetweenVertices(MatrixXd& currPattern, MatrixXi& Fg_pattern, vector<int>& startAndEnd){
 
     vector<vector<int>> boundaryL;
@@ -311,7 +315,7 @@ void computeAllBetweensNew(vector<VectorXd>& polylineSelected,vector<int>& polyl
             }
         }
         if (!found) continue;
-        cout<<"*****************second searched"<<endl;
+        cout<<"***************** second searched"<<endl;
         // else we look for the other one
         for (int k = 0; k < boundaryToSearch[j].size(); k++) {
             int v = boundaryToSearch[j][k];
@@ -624,11 +628,51 @@ void createHalfAvatarMap(MatrixXd& testMorph_V1, MatrixXi& testMorph_F1,
     map<vector<double>, int> posToVertIdFull;
     map<vector<int>, int> vertToFaceIdFull;
 
+//    vector<int> indicesOfLeft;
+//    vector<int> indicesOfRight;
+//    set<vector<double>> setOfLeftPos, setOfRightPos;
+//
+//    for(int i=0; i< testMorph_V1left.rows(); i++){
+//        VectorXd v = testMorph_V1left.row(i).transpose();
+//        vector<double> vert = toVecDouble(v);
+//        setOfLeftPos.insert(vert);
+//    }
+//    for(int i=0; i< testMorph_V1right.rows(); i++){
+//        VectorXd v = testMorph_V1right.row(i).transpose();
+//        vector<double> vert = toVecDouble(v);
+//        setOfRightPos.insert(vert);
+//    }
+
+//    string fileName = "./rightHalfFaces.txt";
+//    //https://eigen.tuxfamily.org/dox/structEigen_1_1IOFormat.html
+//    const static IOFormat CSVFormat(FullPrecision, DontAlignCols, ", ", "\n");
+//
+//    ofstream file(fileName);
+//    if (file.is_open())
+//    {
+//        file << testMorph_F1right.format(CSVFormat);
+//        file.close();
+//    }
+
     for(int i=0; i< testMorph_V1.rows(); i++){
         VectorXd v = testMorph_V1.row(i).transpose();
         vector<double> vert = toVecDouble(v);
         posToVertIdFull[vert] = i;
+//        if(setOfRightPos.contains(vert)){
+//        if(auto search = setOfRightPos.find(vert); search != setOfRightPos.end()){
+//            indicesOfRight.push_back(i);
+//        }else if (auto search = setOfLeftPos.find(vert); search != setOfLeftPos.end()){
+//            indicesOfLeft.push_back(i);
+//        }else{
+//            cout<<"NONE CONTAINS VERTEX "<<i<<endl;
+//        }
     }
+//    std::ofstream output_file("./rightHalfIndices.txt");
+//    std::ostream_iterator<int> output_iterator(output_file, "\n");
+//    std::copy(std::begin(indicesOfRight), std::end(indicesOfRight), output_iterator);
+
+//    std::ostream_iterator<std::string> output_iterator2(output_file2, "\n");
+//    std::copy(std::begin(indicesOfRight), std::end(indicesOfRight), output_iterator2);
 
     for(int i=0; i< testMorph_F1.rows(); i++){
         VectorXi f = testMorph_F1.row(i).transpose();
@@ -661,14 +705,8 @@ void createHalfAvatarMap(MatrixXd& testMorph_V1, MatrixXi& testMorph_F1,
         v = testMorph_V1right.row(idRight(2)).transpose();
         idTotal.push_back( posToVertIdFull[toVecDouble(v)]);
 
-
         rightHalfToFullFaceMap[i] = vertToFaceIdFull[idTotal] ;
 
-//        Vector3d fullId = testMorph_F1right.row(i);
-//        fullId(0)= posToVertIdFull[testMorph_V1right.row(fullId(0))];
-//        fullId(1)= posToVertIdFull[testMorph_V1right.row(fullId(1))];
-//        fullId(2)= posToVertIdFull[testMorph_V1right.row(fullId(2))];
-//        rightHalfToFullFaceMap[i] = vertToFaceIdFull[fullId] ;
     }
 
 }

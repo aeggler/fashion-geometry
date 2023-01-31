@@ -414,8 +414,9 @@ int main(int argc, char *argv[])
 
     //string garment_file_name = igl::file_dialog_open();
 //    string garment_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/leggins_3d/leggins_3d_merged.obj"; //smaller collision thereshold to make sure it is not "eaten" after intiial step , 3.5 instead of 4.5
-    string garment_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/patternComputed3D_converged.obj";// smaller collision thereshold to make sure it is not "eaten" after intiial step , 3.5 instead of 4.5 is ok
+//    string garment_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/patternComputed3D_converged.obj";// smaller collision thereshold to make sure it is not "eaten" after intiial step , 3.5 instead of 4.5 is ok
 //    string garment_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/dress_2/dress_3d_lowres/dress_3d_lowres_merged_inlay.obj";// for the dress
+    string garment_file_name =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/moreGarments/dress_4/dress_3d.obj";// for the dress
 
     igl::readOBJ(garment_file_name, Vg, Fg);
     igl::readOBJ(garment_file_name, Vg_orig, Fg_orig);
@@ -424,13 +425,14 @@ int main(int argc, char *argv[])
     garmentPreInterpol = Vg;
     Vg_orig = Vg; Fg_orig= Fg;
 
-    string garment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/leggins_2d/leggins_2d.obj"; //
+//    string garment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/leggins_2d/leggins_2d.obj"; //
+    string garment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/moreGarments/dress_4/dress_2d.obj";
 //    string garment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/dress_2/dress_2d_lowres/dress_2d_lowres.obj"; //dress
 
     igl::readOBJ(garment_pattern_file_name, Vg_pattern, Fg_pattern);
-    Vg_pattern_orig= Vg_pattern;
+    Vg_pattern_orig = Vg_pattern;
     Fg_pattern_orig = Fg_pattern;
-    patternPreInterpol= Vg_pattern;
+    patternPreInterpol = Vg_pattern;
 
     cornerVertices = VectorXd::Zero(Vg_pattern.rows());
     t.printTime(" init");
@@ -453,9 +455,22 @@ int main(int argc, char *argv[])
     mannequinPreInterpol = Vm;
 
 //    string morphBody1 =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins_petite/avatar/avatar_one_component.ply";
-    string morphBody1 =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/CLO_avatars_oneComponent/avatar_plus_straight_05_OC.ply";
-    string morphBody1left =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/CLO_avatars_oneComponent/avatar_plus_straight_05_OC_leftHalf.ply";
-    string morphBody1right =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/CLO_avatars_oneComponent/avatar_plus_straight_05_OC_rightHalf.ply";
+//    string morphBody1 =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/CLO_avatars_oneComponent/avatar_plus_straight_05_OC.ply";
+//    string morphBody1left =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/CLO_avatars_oneComponent/avatar_plus_straight_05_OC_leftHalf.ply";
+//    string morphBody1right =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/CLO_avatars_oneComponent/avatar_plus_straight_05_OC_rightHalf.ply";
+//
+//    string morphBody1 =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/moreGarments/dress_4/avatar_oneComponent.ply";
+//    string morphBody1left =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/moreGarments/dress_4/avatar_oneComponent_left.ply";
+//    string morphBody1right =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/moreGarments/dress_4/avatar_oneComponent_right.ply";
+
+//    string morphBody1 =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/CLO_avatars_oneComponent/avatar_missy_straight_01_OC.ply";//
+//    string morphBody1left =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/CLO_avatars_oneComponent/avatar_missy_straight_01_OC_left.ply";
+//    string morphBody1right =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/CLO_avatars_oneComponent/avatar_missy_straight_01_OC_right.ply";
+
+    string morphBody1 =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/avatar/avatar_one_component.ply";
+    string morphBody1left =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/avatar/avatar_one_component_left.ply";
+    string morphBody1right =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/avatar/avatar_one_component_right.ply";
+
 
 
     igl::readPLY(morphBody1, testMorph_V1, testMorph_F1);
@@ -482,14 +497,11 @@ int main(int argc, char *argv[])
     igl::vertex_components(Fg_pattern, componentIdPerVert);
     vertexMapGarmentAndPatchIdToPattern(Fg, Fg_pattern, componentIdPerVert, vertexMapGarAndIdToPatch);
 
-
     // use adjacentFacesToEdge of the 3D
     vector<vector<int> > vfAdj;
     createVertexFaceAdjacencyList(Fg, vfAdj);
     cornerVertices = VectorXd::Zero(Vg_pattern.rows());// 1 for each corner, 0 for all other vertices
 
-
-//    t.printTime( " before seams list  ");
     map<int, vector<pair<int, int>>> seamIdPerCorner;    // contains corner id and a list of which seams start here (max 2),
     // each vector element  is a pair where first is if it's a -1 seam, and second is which index in corresponding List. If negative it's a backside ,i.e. part 2 of the seam
 
@@ -512,9 +524,9 @@ int main(int argc, char *argv[])
     jacFlag = true;// not needed anymore...  was when we computed stress without reference jacobian
 
     setCollisionMesh();
-
+//todo
     computeBaryCoordsGarOnNewMannequin(viewer);// contains boundary vertices now
-//    Vg = Vg_orig;
+////    Vg = Vg_orig;
     Vm = testMorph_V1;
     Vm_orig = testMorph_V1;
     showGarment(viewer);
@@ -526,24 +538,10 @@ int main(int argc, char *argv[])
 
     setCollisionMesh();
 
-    /*------------- testing the setup -------------------*/
-//    for (auto const& [key, val] : seamIdPerCorner)
-//    {
-//        std::cout << key        // string (key)
-//                  << ':'
-//                  << val.size()<<" size,: "<<val[0].first<<" "<<  val[0].second      // string's value
-//                  << " "<< seamIdPerCorner[key][0].first
-//                  << std::endl;
-//    }
-
-    /*------------- end testing the setup -------------------*/
-
     // copy the matrices to not mess with them
-    string fromPatternFile = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/patternComputed.obj";
-    // quick
-//    cout<<"read pattern computed"<<endl;
+//    string fromPatternFile = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/patternComputed.obj";
     //TODO LATER NO MORE
-    igl::readOBJ(fromPatternFile, fromPattern, Fg_pattern);
+//    igl::readOBJ(fromPatternFile, fromPattern, Fg_pattern);
 //    string mappedPatternFile = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/mappedPattern.obj";
 //    igl::readOBJ(mappedPatternFile, currPattern, Fg_pattern);
     toPattern= Vg_pattern_orig;
@@ -762,6 +760,7 @@ int main(int argc, char *argv[])
                 StressU = false;
                 StressV=false;
                 StressDiffJac = false;
+                StressJac = false;
                 whichStressVisualize = 0;
                 showGarment(viewer);
             }
@@ -806,15 +805,22 @@ int main(int argc, char *argv[])
             }
             static bool remMan;
             if(ImGui::Checkbox("Original View ", &remMan)){
+                StressV= false;
+                noStress = false;
+                StressU = false;
+                StressDiffJac = false;
+                StressJac = false;
+
                 if(remMan){
-                    patternPreInterpol_temp= Vg_pattern;
-                    garmentPreInterpol_temp= Vg;
+
+                    patternPreInterpol_temp = Vg_pattern;
+                    garmentPreInterpol_temp = Vg;
                     mannequinPreInterpol_temp = Vm;
-                    Vg_pattern= patternPreInterpol;
+                    Vg_pattern = patternPreInterpol;
                     Vg = garmentPreInterpol;
                     Vm = mannequinPreInterpol;
                 }else{
-                    Vg_pattern= patternPreInterpol_temp;
+                    Vg_pattern = patternPreInterpol_temp;
                     Vg = garmentPreInterpol_temp;
                     Vm = mannequinPreInterpol_temp;
                 }
@@ -1275,7 +1281,6 @@ bool callback_mouse_down(igl::opengl::glfw::Viewer& viewer, int button, int modi
     return false;
 }
 void computeBaryCoordsGarOnNewMannequin(igl::opengl::glfw::Viewer& viewer){
-    VectorXd S;
     VectorXd distVec(Vg.rows());
 
     constrainedVertexIds.clear();
@@ -1284,20 +1289,15 @@ void computeBaryCoordsGarOnNewMannequin(igl::opengl::glfw::Viewer& viewer){
     createVertexFaceAdjacencyList(Fg, vfAdj);
     int boundarycount = 0;
 
-    igl::signed_distance_pseudonormal(Vg, Vm, Fm, col_tree, FN_m, VN_m, EN_m, EMAP_m, S, closestFaceId, C, N);
+    igl::signed_distance_pseudonormal(Vg, Vm, Fm, col_tree, FN_m, VN_m, EN_m, EMAP_m, distVec, closestFaceId, C, N);
     for(int i=0; i<Vg.rows(); i++){
         int closestFace = closestFaceId(i);
         Vector3d a = Vm.row(Fm(closestFace, 0));
         Vector3d b = Vm.row(Fm(closestFace, 1));
         Vector3d c = Vm.row(Fm(closestFace, 2));
 
-        Vector3d bary = (a+b+c)/3;
-        Vector3d vvec = Vg.row(i).transpose() - bary;
-        Vector3d normalVec = (b-a).cross(c-a);
-        normalVec = normalVec.normalized();
-        distVec(i) = vvec.dot(normalVec);
-
-        Vector3d currVert = Vg.row(i).transpose()- distVec(i)*normalVec;
+        Vector3d normalVec = N.row(i);
+        Vector3d currVert = C.row(i);
 
         Vector3d currInBary;
         MathFunctions mathFun;
@@ -1314,8 +1314,9 @@ void computeBaryCoordsGarOnNewMannequin(igl::opengl::glfw::Viewer& viewer){
         b = testMorph_V1.row(Fm(closestFace, 1));
         c = testMorph_V1.row(Fm(closestFace, 2));
         Vector3d newPos = currInBary(0) * a + currInBary(1) * b + currInBary(2) * c;
-        normalVec = (b-a).cross(c-a);
-        normalVec = normalVec.normalized();
+//        normalVec = (b-a).cross(c-a);
+//        normalVec = normalVec.normalized();
+
         Vg.row(i) = newPos + distVec(i) * normalVec;
     }
 
@@ -1336,7 +1337,7 @@ void showGarment(igl::opengl::glfw::Viewer& viewer) {
     viewer.data().show_texture = false;
     viewer.data().set_face_based(false);
     //remove wireframe
-    viewer.data().show_lines = false;
+    viewer.data().show_lines = true;
    // if 0 -> no face colour
 
     if(whichStressVisualize == 1){
@@ -1573,7 +1574,7 @@ void setCollisionMesh(){
 }
 vector<VectorXd> CleftRight, NleftRight;
 void setupCollisionConstraints(){
-    igl::writeOBJ("garment3DonNewAvatar.obj", p, Fg);
+//    igl::writeOBJ("garment3DonNewAvatar.obj", p, Fg);
 
     setupCollisionConstraintsCall( collisionVert, pureCollVert, testMorph_V1left, testMorph_F1left, testMorph_V1right, testMorph_F1right,p, numVert, coll_EPS,
                                leftHalfToFullFaceMap, rightHalfToFullFaceMap,CleftRight, NleftRight, closestFaceId, Vm, Fm, Fg);
@@ -1696,7 +1697,6 @@ void solveCollisionConstraint(){
     // idea: have for each vertex a set of faces that it may intersect with
     // check collision for noth sides seperately
     // if closestFaceID not in set of allowed faces (computed in initial guess) (first trial with closestFaceId)
-    cout<<"start stretch constraint"<<endl;
 
     for(int i=0; i<pureCollVert.size(); i++){
         int j = pureCollVert[i];
@@ -1707,7 +1707,6 @@ void solveCollisionConstraint(){
 //        PBD.solve_CollisionConstraint(p.row(j),  C.row(j), N.row(j), deltap0, coll_EPS, vel.row(j));
         p.row(j) += collisionStiffness * deltap0;
     }
-    cout<<"finished stretch constraint"<<endl;
 }
 
 void preComputeStretch(){
@@ -2110,36 +2109,43 @@ void dotimeStep(igl::opengl::glfw::Viewer& viewer){
     // the stress is already computed, we can use it here
     Eigen::MatrixXd x_new = Vg;
     p = Vg;
+    t.printTime(" set p ");
     // line (5) of the algorithm https://matthias-research.github.io/pages/publications/posBasedDyn.pdf
     // we only use it to add gravity to the system
     vel.col(1) += timestep * w*(-1)*grav*gravityfact;
+    t.printTime(" set vel ");
 
     // (7)
     for (int i = 0; i<numVert; i++){
         p.row(i) = x_new.row(i).array()+ timestep*vel.row(i).array();
     }
 
+    t.printTime(" setup p again ");
     setupCollisionConstraints();
     t.printTime(" setup collision constraints ");
 
     init_stretchUV();
     t.printTime(" setup uv stretch ");
+
     //(9)-(11), the loop should be repeated several times per timestep (according to Jan Bender)
     for(int i = 0; i < num_const_iterations; i++){
-            solveBendingConstraint();
-            solveStretchConstraint();
-            solveStretchUV();
-            solveConstrainedVertices();
-            /* we precomputed the normal and collision point of each vertex, now add the constraint (instead of checking collision in each iteration
-             this is imprecise but much faster and acc to paper works fine in practice*/
-            solveCollisionConstraint();
+        solveBendingConstraint();
+        solveStretchConstraint();
+        solveStretchUV();
+        solveConstrainedVertices();
+
+        /* we precomputed the normal and collision point of each vertex, now add the constraint (instead of checking collision in each iteration
+         this is imprecise but much faster and acc to paper works fine in practice*/
+        solveCollisionConstraint();
+
 //        t.printTime(" collision ");
     }
 
         // (13) velocity and position update
     double collision_damping = 0.5;
     for(int i=0; i<numVert; i++){
-         for(int j=0; j<3; j++){
+
+        for(int j=0; j<3; j++){
             vel(i,j) = (p(i,j) - x_new(i,j)) / timestep;
          }
          x_new.row(i) = p.row(i);

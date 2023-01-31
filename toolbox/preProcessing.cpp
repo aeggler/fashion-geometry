@@ -59,11 +59,10 @@ void setupCollisionConstraintsCall(Eigen::MatrixXi& collisionVert, vector<int> &
 
     igl::signed_distance_pseudonormal(p, Vm_left, Fm_left, col_treeLeft, FN_mleft, VN_mleft, EN_mleft,
                                       EMAP_mleft, Sleft, closestFaceIdLeft, Cleft, Nleft);
-
     int collCount = 0;
     for(int i=0; i<numVert; i++){
         // to make sure negative does not count
-        if(Sleft(i) < coll_EPS && abs(Sleft(i))<50){// todo check this constraint
+        if(Sleft(i) < coll_EPS && abs(Sleft(i))<10){// assuming no collision is bad enough to cause -10 problem!
 
             //TODO it might well be that closest Face Id is not always correct?
             //todo or its neighbors!!!
@@ -75,13 +74,11 @@ void setupCollisionConstraintsCall(Eigen::MatrixXi& collisionVert, vector<int> &
                 pureCollVert.push_back(i);
             }else{
                 // wenn die vertex normal von i und die face normal von closestFaceIdCollision
-                cout<<"Vert "<<i<<" intersecting face "<<leftHalfToFullFaceMap[closestFaceIdLeft(i)]<<endl;
+//                cout<<"Vert "<<i<<" intersecting face "<<leftHalfToFullFaceMap[closestFaceIdLeft(i)]<<endl;
                 double cosVal = VN_gar.row(i).dot(FN_mleft.row(closestFaceIdLeft(i)));
-                cout<<Sleft(i)<<" dist and cos val "<<cosVal<<endl;
 
-//                cout<<"doubt: "<<i<<"  would intersect face "<<closestFaceIdCollision(i)<<" on half model "<<endl;
                 if(cosVal<0){//D(0)>50
-                    cout<<"don't consider, it's a intersection we dont want to handle, let other side do this "<<endl;
+//                    cout<<"don't consider, it's a intersection we dont want to handle, let other side do this "<<endl;
 
                 }else{
                     collCount++;
@@ -90,7 +87,6 @@ void setupCollisionConstraintsCall(Eigen::MatrixXi& collisionVert, vector<int> &
                     CleftRight.push_back(Cleft.row(i));
                     NleftRight.push_back(Nleft.row(i));
                 }
-                cout<<endl;
             }
         }
     }
@@ -100,11 +96,12 @@ void setupCollisionConstraintsCall(Eigen::MatrixXi& collisionVert, vector<int> &
 
     for(int i=0; i<numVert; i++){
         if(Sright(i) < coll_EPS && abs(Sright(i))<50) {
-            if (collisionVert(i) == 1) {
-                cout << "it is in both. What to do? " << endl;
-                continue;
-            }
+
             if(rightHalfToFullFaceMap[closestFaceIdright(i)]== closestFaceId(i)){
+                if (collisionVert(i) == 1) {
+                    cout << i<<" with same index it is in both. What to do? " << endl;// ignoore it. most likely it is because left and right are not properly seperated
+                    continue;
+                }
                 collCount++;
                 collisionVert(i) = 1;
                 CleftRight.push_back(Cright.row(i));
@@ -114,6 +111,10 @@ void setupCollisionConstraintsCall(Eigen::MatrixXi& collisionVert, vector<int> &
                 // wenn die vertex normal von i und die face normal von closestFaceIdCollision
                 double cosVal = VN_gar.row(i).dot(FN_mright.row(closestFaceIdright(i)));
                 if(cosVal>0){//D(0)>50
+                    if (collisionVert(i) == 1) {
+                        cout << i<<" with cos it is in both. What to do? " <<rightHalfToFullFaceMap[closestFaceIdright(i)]<<" "<<leftHalfToFullFaceMap[closestFaceIdLeft(i)]<< endl;
+                        continue;
+                    }
                     collCount++;
                     collisionVert(i) = 1;
                     pureCollVert.push_back(i);
