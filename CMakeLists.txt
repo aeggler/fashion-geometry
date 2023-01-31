@@ -37,7 +37,7 @@ file(GLOB SRC_FILES main.cpp
         toolbox/patternAdaption.cpp         toolbox/patternAdaption.h
         toolbox/postProcessing.cpp          toolbox/postProcessing.h
         triangle/triangle.c                 triangle/triangle.h
-
+        toolbox/preProcessing.cpp           toolbox/preProcessing.h
         )
 add_executable(${PROJECT_NAME} ${SRC_FILES})
 target_link_libraries(${PROJECT_NAME} PUBLIC igl::glfw igl::imgui  )#igl_restricted::triangle
