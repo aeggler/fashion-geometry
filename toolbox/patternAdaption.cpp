@@ -258,7 +258,7 @@ void splitVertexFromCVE( cutVertEntry*& cve,
     }
     cve->handled = true;
 
-// todo this prohibits any kind of cross cutting! maybe not always desirable ! removing?
+// todo als the end of a cut through can be released
     if(handledVerticesSet.find(cve->vert) != handledVerticesSet.end()){
         cout<<"Handled by other seams already."<<endl;
 

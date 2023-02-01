@@ -412,8 +412,13 @@ int main(int argc, char *argv[])
     diffuse = Vector3d(0.4, 0.57, 0.66);    // blue
     specular = Vector3d(0.01, 0.01, 0.01);
 
-    //string garment_file_name = igl::file_dialog_open();
-    string garment_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/leggins_3d/leggins_3d_merged.obj"; //smaller collision thereshold to make sure it is not "eaten" after intiial step , 3.5 instead of 4.5
+    cout<<"choose garment 3D"<<endl;
+    string garment_file_name = igl::file_dialog_open();
+    cout<<garment_file_name<<" chosen file, thanks. "<<endl;
+
+//    string garment_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/retriBackIn3d.obj"; //smaller collision thereshold to make sure it is not "eaten" after intiial step , 3.5 instead of 4.5
+
+//    string garment_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/leggins_3d/leggins_3d_merged.obj"; //smaller collision thereshold to make sure it is not "eaten" after intiial step , 3.5 instead of 4.5
 //    string garment_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/patternComputed3D_converged.obj";// smaller collision thereshold to make sure it is not "eaten" after intiial step , 3.5 instead of 4.5 is ok
 //    string garment_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/dress_2/dress_3d_lowres/dress_3d_lowres_merged_inlay.obj";// for the dress
 //    string garment_file_name =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/moreGarments/dress_4/dress_3d.obj";// for the dress
@@ -425,7 +430,12 @@ int main(int argc, char *argv[])
     garmentPreInterpol = Vg;
     Vg_orig = Vg; Fg_orig= Fg;
 
-    string garment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/leggins_2d/leggins_2d.obj"; //
+    cout<<"choose garment 2D"<<endl;
+    string garment_pattern_file_name= igl::file_dialog_open();
+    cout<<garment_pattern_file_name<<" chosen file for pattern, thanks. "<<endl;
+
+//    string garment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/mappedPatternTriFinalRetri.obj"; //
+//    string garment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/leggins_2d/leggins_2d.obj"; //
 //    string garment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/moreGarments/dress_4/dress_2d.obj";
 //    string garment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/dress_2/dress_2d_lowres/dress_2d_lowres.obj"; //dress
 
@@ -446,6 +456,7 @@ int main(int argc, char *argv[])
     setNewGarmentMesh(viewer);
 
 // TODO remember to adapt the collision constraint solving dep on avatar, sometimes normalization is needed, sometimes not for whatever magic
+// this isi the same avatar for all garments we have: dress_4, leggins ,top_2 and skirt_1
     string avatar_file_name =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/avatar/avatar_one_component.ply";
 //    string avatar_file_name =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins_petite/avatar/avatar_one_component.ply";
 
@@ -474,8 +485,6 @@ int main(int argc, char *argv[])
 //    string morphBody1 =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/avatar/avatar_one_component.ply";
 //    string morphBody1left =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/avatar/avatar_one_component_left.ply";
 //    string morphBody1right =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/avatar/avatar_one_component_right.ply";
-
-
 
     igl::readPLY(morphBody1, testMorph_V1, testMorph_F1);
     igl::readPLY(morphBody1left, testMorph_V1left, testMorph_F1left);
@@ -544,11 +553,12 @@ int main(int argc, char *argv[])
 
     // copy the matrices to not mess with them
 //    string fromPatternFile = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/patternComputed.obj";
-    //TODO LATER NO MORE
+//    TODO LATER NO MORE
 //    igl::readOBJ(fromPatternFile, fromPattern, Fg_pattern);
-//    string mappedPatternFile = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/mappedPattern.obj";
-//    igl::readOBJ(mappedPatternFile, currPattern, Fg_pattern);
-    toPattern= Vg_pattern_orig;
+    fromPattern = Vg_pattern_orig;
+    string mappedPatternFile = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/patternComputed_maternity_01.obj";
+//    igl::readOBJ(mappedPatternFile, toPattern, Fg_pattern);// remove for imulation, add for adaptioin
+//    toPattern= Vg_pattern_orig;
 
     viewer.core().animation_max_fps = 200.;
     viewer.core().is_animating = false;
@@ -647,9 +657,9 @@ int main(int argc, char *argv[])
                 translateMesh(viewer, 2 );
             }
         }
-        if (ImGui::CollapsingHeader("Pattern Computation", ImGuiTreeNodeFlags_DefaultOpen)) {
+        if (ImGui::CollapsingHeader("Pattern Computation", ImGuiTreeNodeFlags_OpenOnArrow)) {
             if(ImGui::Checkbox("Show Pattern", &showPattern)){
-
+                cout<<Vg_pattern.rows()<<" "<<Fg_pattern.rows()<<endl;
                 viewer.selected_data_index = 0;
                 viewer.data().clear();
                 mouse_mode = SELECTPATCH;
@@ -954,21 +964,17 @@ int main(int argc, char *argv[])
             if(ImGui::Checkbox("Start triangulating", &startSmooth)) {
 //                string modifiedPattern = "/Users/annaeggler/Desktop/mappedPattern.obj"; //
 //                string modifiedPattern = "/Users/annaeggler/Desktop/mappedPatternWithSmoothPCACuts.obj"; //
-                string modifiedPattern = "/Users/annaeggler/Desktop/mappedTri.obj"; //
-//                string modifiedPattern = "/Users/annaeggler/Desktop/mappedPatternTri.obj"; //
-
+//                string modifiedPattern = "/Users/annaeggler/Desktop/mappedTri.obj"; //
+                string modifiedPattern = "/Users/annaeggler/Desktop/mappedPatternTriFinalRetri.obj"; //
 
                 igl::readOBJ(modifiedPattern, currPattern, Fg_pattern);
                 prevFaces = Fg_pattern_orig.rows();
-//                cout<<endl << "Select start and end of the seam you want to smooth and then confirm" << endl;
                 viewer.selected_data_index = 1;
                 viewer.data().clear();
                 viewer.selected_data_index = 0;
                 viewer.data().clear();
                 viewer.data().show_lines = true;
                 viewer.data().set_mesh(currPattern, Fg_pattern);
-               // mouse_mode = SELECTVERT;
-
 
             }
 
@@ -1100,6 +1106,7 @@ int main(int argc, char *argv[])
                 viewer.data().clear();
                 viewer.data().show_lines = true;
                 viewer.data().set_mesh(adaptedPatternIn3d, Fg_pattern);
+                        igl::writeOBJ("retriBackIn3d.obj", adaptedPatternIn3d, Fg_pattern);
                 MatrixXd C = MatrixXd::Zero(Fg_pattern.rows(), 3);
                 C.col(1)=  VectorXd::Ones(Fg_pattern.rows());
                 C.block(0,0, prevFaces, 1) = VectorXd::Ones(prevFaces);
@@ -1128,7 +1135,7 @@ void preComputeAdaption(){
     stretchStiffnessU = 0.08;
     stretchStiffnessD *= 2;
     boundaryStiffness = 0.999;
-    toPattern= Vg_pattern_orig;
+//    toPattern= Vg_pattern_orig;
     //   fromPattern = Vg_pattern;NOt yet
 
     cout<<" ***** start pattern adaptation ****** "<<endl;
