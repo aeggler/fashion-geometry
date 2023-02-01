@@ -62,6 +62,7 @@ void setupCollisionConstraintsCall(Eigen::MatrixXi& collisionVert, vector<int> &
     int collCount = 0;
     for(int i=0; i<numVert; i++){
         // to make sure negative does not count
+
         if(Sleft(i) < coll_EPS && abs(Sleft(i))<absThereshold){// assuming no collision is bad enough to cause -10 problem!
 
             //TODO it might well be that closest Face Id is not always correct?
@@ -93,7 +94,6 @@ void setupCollisionConstraintsCall(Eigen::MatrixXi& collisionVert, vector<int> &
 
     //trial adding right side
     igl::signed_distance_pseudonormal(p, Vm_right, Fm_right, col_treeRight, FN_mright, VN_mright, EN_mright,EMAP_mright, Sright, closestFaceIdright, Cright, Nright);
-
     for(int i=0; i<numVert; i++){
         if(Sright(i) < coll_EPS && abs(Sright(i))<absThereshold) {
 

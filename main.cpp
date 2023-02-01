@@ -204,7 +204,7 @@ bool pre_draw(igl::opengl::glfw::Viewer& viewer){
             t.printTime(" timestep finished  ");cout<<endl;
             showGarment(viewer);// not sure if I actually need this, at least it breaks nothing
             t.printTime(" showing   ");cout<<endl;
-            if(timestepCounter % convergeIterations == 10){
+            if(timestepCounter % convergeIterations == (convergeIterations-1)){
                 gar_adapt->performJacobianUpdateAndMerge(Vg, localGlobalIterations, baryCoords1, baryCoords2, Vg_pattern,  seamsList, boundaryL);
                 cout<<"after adaption"<<endl;
                 preComputeConstraintsForRestshape();
@@ -537,9 +537,10 @@ int main(int argc, char *argv[])
     jacFlag = true;// not needed anymore...  was when we computed stress without reference jacobian
 
     setCollisionMesh();
-//todo
-    computeBaryCoordsGarOnNewMannequin(viewer);// contains boundary vertices now
-////    Vg = Vg_orig;
+    //todo
+    cout<<"without"<<endl;
+    computeBaryCoordsGarOnNewMannequin(viewer);// contains boundary vertices now, needed for simulation, colsestFaceId
+//    Vg = Vg_orig;
     Vm = testMorph_V1;
     Vm_orig = testMorph_V1;
     showGarment(viewer);
@@ -557,7 +558,7 @@ int main(int argc, char *argv[])
 //    igl::readOBJ(fromPatternFile, fromPattern, Fg_pattern);
     fromPattern = Vg_pattern_orig;
     string mappedPatternFile = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/patternComputed_maternity_01.obj";
-//    igl::readOBJ(mappedPatternFile, toPattern, Fg_pattern);// remove for imulation, add for adaptioin
+//    igl::readOBJ(mappedPatternFile, toPattern, Fg_pattern);// remove for simulation, add for adaptioin
 //    toPattern= Vg_pattern_orig;
 
     viewer.core().animation_max_fps = 200.;
@@ -565,7 +566,6 @@ int main(int argc, char *argv[])
     int whichSeam = 0;
 
     //additional menu items
-
     int whichBound=0;
     float movePatternX=0; float movePatternY=0;
     bool showPattern= false;
@@ -1122,7 +1122,6 @@ int main(int argc, char *argv[])
     // Add content to the default menu window
     viewer.callback_pre_draw = &pre_draw;
     viewer.callback_key_down = &callback_key_down;
-
     viewer.selected_data_index = 0;
     viewer.callback_mouse_down = &callback_mouse_down;
 
@@ -1586,9 +1585,10 @@ void setCollisionMesh(){
 vector<VectorXd> CleftRight, NleftRight;
 void setupCollisionConstraints(){
 //    igl::writeOBJ("garment3DonNewAvatar.obj", p, Fg);
-
+//    cout<<"collConCall"<<endl;
     setupCollisionConstraintsCall( collisionVert, pureCollVert, testMorph_V1left, testMorph_F1left, testMorph_V1right, testMorph_F1right,p, numVert, coll_EPS,
                                leftHalfToFullFaceMap, rightHalfToFullFaceMap,CleftRight, NleftRight, closestFaceId, Vm, Fm, Fg);
+//    cout<<"after call"<<endl;
     return;
 }
 void solveBendingConstraint(){

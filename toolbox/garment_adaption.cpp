@@ -362,6 +362,7 @@ void garment_adaption::performJacobianUpdateAndMerge(Eigen::MatrixXd & V_curr, i
         }else {
             R = MatrixXd::Identity(3, 3);
         }
+
             // rotate normalVec to old
             MatrixXd Rinv = R.inverse();
             // Update: we do not rotate the jacobian but actually the positions, then from these rotated positions
@@ -385,7 +386,7 @@ void garment_adaption::performJacobianUpdateAndMerge(Eigen::MatrixXd & V_curr, i
             // they are normal aligned so it should be a simple rotation around normal axis
             //https://www.euclideanspace.com/maths/algebra/vectors/angleBetween/ and https://stackoverflow.com/questions/5188561/signed-angle-between-two-3d-vectors-with-same-origin-within-the-same-plane
             // praise stackoverflow
-            double newAngle = acos((alignFrom).dot(alignTo));
+            double newAngle = acos(min(max((alignFrom).dot(alignTo), -1.), 1.));
             auto crossVec = alignFrom.cross(alignTo); // or other way round?
             if(oldNormalVec.dot(crossVec)<0){
                 newAngle = -newAngle;
@@ -395,15 +396,18 @@ void garment_adaption::performJacobianUpdateAndMerge(Eigen::MatrixXd & V_curr, i
 
         // https://math.stackexchange.com/questions/3563901/how-to-find-2d-rotation-matrix-that-rotates-vector-mathbfa-to-mathbfb
             Eigen::Matrix4d newrotMat= Eigen::MatrixXd::Identity(4, 4);
+//            cout<<newAngle<<" "<< oldNormalVec.transpose()<<endl;
             setUpRotationMatrix(newdegree,oldNormalVec, newrotMat);
 
             Eigen::MatrixXd jacobianAdapted =   jacobians[j];
+//            cout<<newrotMat<<" newrotMat"<<endl;
             Matrix3d newnewRot = newrotMat.block(0,0,3,3);
 
         // when applied to the positions we rotate them back to align the normals,then we apply the jacobian inverse
         //then we apply the rotation around the normal
         // and finally the jinverse
         MatrixXd jacobi_adapted_Edge = inv_jacobians[j] * newnewRot * Rinv * positions;
+//        cout<< newnewRot<<" newnewrot "<<endl<<endl<<endl;
         jacobi_adapted_Edges[j]= jacobi_adapted_Edge;
 
     }
@@ -431,6 +435,7 @@ void garment_adaption::performJacobianUpdateAndMerge(Eigen::MatrixXd & V_curr, i
             Eigen::Vector3d ref = (v_asVec.block(3*idp0, 0, 3, 1)+
                     v_asVec.block(3*idp1, 0, 3, 1)+
                     v_asVec.block(3*idp2, 0, 3, 1))/3 ;
+//            cout<<"jac of face j="<<j<<" "<<jacobi_adapted_Edges[j]<<endl;
 
             perVertexPositions[idp0].push_back(std::make_pair(ref + jacobi_adapted_Edges[j].col(0), j));
             perVertexPositions[idp1].push_back(std::make_pair(ref + jacobi_adapted_Edges[j].col(1), j));
@@ -448,10 +453,10 @@ void garment_adaption::performJacobianUpdateAndMerge(Eigen::MatrixXd & V_curr, i
                 b(3 * counter) = currPos(0);
                 b(3 * counter + 1) = currPos(1);
                 b(3 * counter + 2) = currPos(2);
+
                 counter++;
             }
         }
-//        cout<<" testing  update "<<testcount++<<endl;
 
         /* new: we compute a rotation and translation per seam and from this the new target position of the vertices
          * See A setup for more information on this approach
@@ -462,7 +467,6 @@ void garment_adaption::performJacobianUpdateAndMerge(Eigen::MatrixXd & V_curr, i
             Eigen::MatrixXd toMat (seamsList[j]->seamLength()+1, 2);
             auto stP1 = seamsList[j]-> getStartAndPatch1();
             auto stP2 = seamsList[j]-> getStartAndPatch2ForCorres();
-//            cout<<" testing  list "<<j<<endl;
 
             int boundLen1 = boundaryL[stP1.second].size();
             int boundLen2 = boundaryL[stP2.second].size();
@@ -494,7 +498,6 @@ void garment_adaption::performJacobianUpdateAndMerge(Eigen::MatrixXd & V_curr, i
             MatrixXd fromToTo_t = (R_est * fromMat_t);
             fromToTo_t = fromToTo_t.colwise() + T_est;
             MatrixXd fromToTo = fromToTo_t.transpose();
-//            cout<<" before targets "<<endl;
 
             MatrixXd targetPosOfFromVertices = (toToFrom + fromMat) / 2;
             MatrixXd targetPorOfToVertices = (fromToTo + toMat) / 2;
@@ -508,11 +511,10 @@ void garment_adaption::performJacobianUpdateAndMerge(Eigen::MatrixXd & V_curr, i
                 b(3 * counter + 1) = targetPorOfToVertices (i, 1);
                 b(3 * counter + 2) = V_pattern(0, 2);
                 counter++;
+
             }
-//            cout<<" after setting"<<endl;
 
         }
-
 
         MatrixXd RHS = A.transpose() * W * b;
         v_asVecOld= v_asVec;
