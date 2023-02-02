@@ -4,6 +4,7 @@
 #include <Eigen/Dense>
 #include "patternAdaption.h"
 #include <iostream>
+#include <queue>
 #include "seam.h"
 #include <igl/edge_lengths.h>
 #include <igl/adjacency_list.h>
@@ -22,6 +23,7 @@ using namespace Eigen;
 MatrixXd lengthsOrig;
 map<int, cutVertEntry *> cveStartPositionsSet;
 set<int> cutThroughCornerVertices;
+vector<vector<int> > vvAdjProj;
 int findWhichEdgeOfFace(int face, int v1, int v2, MatrixXi& Fg){
     int faceidxv1, faceidxv2;
     for(int j=0; j<3; j++){
@@ -83,7 +85,7 @@ void addToDulicateList( cutVertEntry*& cve, vector<seam*>& seamsList,  vector<mi
 bool isRight(Vector3d a,Vector3d b,Vector3d c ){
     // right gets  newVertIdx
     if(((b(0) - a(0))*(c(1) - a(1)) - (b(1) - a(1))*(c(0) - a(0))) ==0 )cout<<"zero"<<endl;
-    cout<<((b(0) - a(0))*(c(1) - a(1)) - (b(1) - a(1))*(c(0) - a(0)))<<" is right if smaller 0 "<<endl;
+//    cout<<((b(0) - a(0))*(c(1) - a(1)) - (b(1) - a(1))*(c(0) - a(0)))<<" is right if smaller 0 "<<endl;
     // TODO HANDLE THIS CASE PROPERLY!!
     return ((b(0) - a(0))*(c(1) - a(1)) - (b(1) - a(1))*(c(0) - a(0))) < 0;
 
@@ -121,6 +123,56 @@ void computeMidVecBasedOnPCA(VectorXd& midVec, vector<vector<int>>& vvAdj, vecto
     cout<<" the newly computed midvec of "<<vert<<" is "<<midVec.transpose()<<endl;
 }
 
+
+void computeMidVecBasedOnStress(VectorXd& midVec, vector<vector<int>>& vfAdj, MatrixXd& Vg ,MatrixXd& Vg_orig ,
+                           MatrixXi& Fg, int& vert, double& lenMid){
+    // new approach: look at the stress vectors of all adjacent faces, take the average
+    Vector3d uVecs, vVecs;
+    for(int i=0; i<vfAdj[vert].size(); i++){
+        int face = vfAdj[vert][i];
+        Vector3d v0 = Vg_orig.row(Fg(face, 0)).transpose();
+        Vector3d v1 = Vg_orig.row(Fg(face, 1)).transpose();
+        Vector3d v2 = Vg_orig.row(Fg(face, 2)).transpose();
+
+        Vector3d bary = (v0 + v1 + v2)/3;
+        Vector3d u = bary; u(0)+= 1;
+        Vector3d v = bary; v(1)+= 1;
+        MatrixXd ubary, vbary;
+        MatrixXd input(1, 3);
+
+        input.row(0)= u;
+        igl::barycentric_coordinates( input, v0.transpose(), v1.transpose(), v2.transpose(), ubary);
+        input.row(0)= v;
+        igl::barycentric_coordinates( input, v0.transpose(), v1.transpose(), v2.transpose(), vbary);
+
+        Vector3d v0new = Vg.row(Fg(face, 0)).transpose();
+        Vector3d v1new = Vg.row(Fg(face, 1)).transpose();
+        Vector3d v2new = Vg.row(Fg(face, 2)).transpose();
+        Vector3d barynew = (v0new + v1new + v2new)/3;
+
+        Vector3d uVec = (ubary(0) * v0new + ubary(1) * v1new + ubary(2) * v2new) -  barynew;
+        Vector3d vVec = (vbary(0) * v0new + vbary(1) * v1new + vbary(2) * v2new) -  barynew;
+        uVecs += uVec;
+        vVecs += vVec;
+
+    }
+    uVecs/= vfAdj[vert].size();
+    vVecs/= vfAdj[vert].size();
+    VectorXd no;
+    if(uVecs.norm() > vVecs.norm()){
+        lenMid = uVecs.norm();
+        no = uVecs.normalized();
+    }else{
+        lenMid = vVecs.norm();
+        no = vVecs.normalized();
+    }
+    // rotate counterclockwise 90 deg. if wrong direction will be fixed after!
+    midVec.resize(3); // = no;  //
+    midVec(2) = 0;
+    midVec (0)= -no(1);// -y
+    midVec (1)= no(0);// x
+
+}
 bool checkIfTearIsUseful(int vert, Vector3d& cutDirection,  vector<vector<int>>& vvAdj,  vector<vector<int>>& vfAdj, MatrixXd& Vg ,
                          MatrixXd& lengthsCurr,  MatrixXd& lengthsOrig, MatrixXi& Fg_pattern, VectorXd& ws, bool preComputed ){
     // check if it makes sense, i.e. releases stress cutting in the direction
@@ -234,6 +286,32 @@ void computeOrientationOfFaces(VectorXd& signs,vector<int> vfAdj, MatrixXi& Fg, 
         signs(i) = ((part1-part2) );
     }
 }
+//void insertFracPart(int vert, vector<vector<int> >& vfAdj, MatrixXd& Vg, MatrixXd& Vg_pattern_orig,  MatrixXi& Fg, bool& firstLayer,  <pair<pair<int, VectorXd>, int>>& frac ){
+//    VectorXd midVec;
+//    double lenMidVec;
+//    computeMidVecBasedOnStress(midVec, vfAdj, Vg, Vg_pattern_orig, Fg, vert, lenMidVec);
+//
+//}
+//void preComputePath(cutVertEntry*& cve,
+//                    MatrixXd& Vg, // this is the current pattern we modify
+//                    MatrixXi& Fg, // this will be modified and have entries that are not in the original pattern
+//                    vector<vector<int> >& vfAdj,
+//                    std::vector<std::vector<int> >& boundaryL,
+//                    vector<seam*>& seamsList,
+//                    vector<minusOneSeam*> & minusOneSeams,
+//                    MatrixXd& Vg_pattern_orig){
+//    // contains a pair of face and bary coords and which vert is closest, i.e at which vec we would have to continue
+//    queue frac <pair<pair<int, VectorXd>, int>>;
+//    insertFracPart( cve->vert, vfAdj, Vg, Vg_pattern_orig, Fg, true, frac );
+//    while(get<1>frac ! in boundary){
+//        //we insert another part
+//        int currVert = lastElementOfFrac;
+//        insertFracePart(currVert, vfAdj, Vg, Vg_pattern_orig, Fg, true, frac);
+//
+//    }
+//
+//}
+
 void splitVertexFromCVE( cutVertEntry*& cve,
                          MatrixXd& Vg, // this is the current pattern we modify
                          MatrixXi& Fg, // this will be modified and have entries that are not in the original pattern
@@ -438,13 +516,27 @@ void splitVertexFromCVE( cutVertEntry*& cve,
     Vector3d midVec;
 
     double lenMidVec;
-    VectorXd ws, newMidVec;
+    VectorXd ws, newMidVec, stressMidVec;
     MatrixXd dirs;
+//    if(cve->levelOne){
+//        preComputePath(cve,  Vg, // this is the current pattern we modify
+//                        Fg, // this will be modified and have entries that are not in the original pattern
+//                        vfAdj,
+//                        boundaryL,
+//                        seamsList,
+//                        minusOneSeams,
+//                        releasedVert,
+//                        toPattern_boundaryVerticesSet,
+//                        lengthsCurr,
+//                        cornerSet,
+//                        Vg_pattern_orig);
+//    }
+    computeMidVecBasedOnStress(stressMidVec, vfAdj, Vg, Vg_pattern_orig, Fg, cve->vert, lenMidVec );
 
     computeMidVecBasedOnPCA(newMidVec, vvAdj, vfAdj, Vg, lengthsCurr, lengthsOrig, Fg, cve->vert, ws, dirs, lenMidVec );
-    midVec = (-1) * newMidVec;
+    midVec = (-1) * stressMidVec; // newMidVec;
     // todo sketchy, for whatever reason it breaks without this. does it do the transposing?
-    cout<<" midvec "<<midVec.transpose()<<endl;
+    cout<<" stress and pca midvec "<<midVec.transpose()<<endl;//<<stressMidVec.transpose()
 
     Vector3d cutDirection = midVec;
     if(!checkIfTearIsUseful(cve-> vert, cutDirection, vvAdj, vfAdj, Vg, lengthsCurr, lengthsOrig, Fg, ws, true)){
@@ -453,7 +545,7 @@ void splitVertexFromCVE( cutVertEntry*& cve,
         return;
     }
 
-    //  we have the midvec direction, but don't know for sure if adding or subtract. Take tthe direction that has longer distance to the existing boundary to not go backwards.
+    //  we have the midvec direction, but don't know for sure if adding or subtract. Take the direction that has longer distance to the existing boundary to not go backwards.
     // This is a heuristic.
     Vector3d A, Btemp;
     if(cve->levelOne){
@@ -1861,8 +1953,7 @@ int computeTear(Eigen::MatrixXd & fromPattern, MatrixXd&  currPattern, MatrixXi&
 cout<<"fin compute tear "<<endl ;
     return returnPosition;
 }
-
-void updatePositionToIntersection(MatrixXd& p,int next, const MatrixXd& Vg_bound){
+void updatePositionToIntersection(MatrixXd& p,int next, const MatrixXd& Vg_bound, bool shouldBeLeft){
 
     // we know that the first two indices of the face define the edge we want to intersect with
     // derive where QR and P meet = t, https://math.stackexchange.com/questions/1521128/given-a-line-and-a-point-in-3d-how-to-find-the-closest-point-on-the-line
@@ -1911,6 +2002,8 @@ void projectBackOnBoundary(const MatrixXd & Vg_to, MatrixXd& p, const vector<sea
                            const MatrixXi& Fg_pattern_orig, const std::vector<std::vector<int> >& boundaryL_toPattern, map<int, pair<int, int>> & releasedVert ,bool visFlag){
 
     int numSeams = seamsList.size();
+    vvAdjProj.clear();
+    igl::adjacency_list(Fg_pattern,vvAdjProj);
 
     for (int j = 0; j<numSeams; j++){
         seam* currSeam  = seamsList[j];
@@ -1923,14 +2016,17 @@ void projectBackOnBoundary(const MatrixXd & Vg_to, MatrixXd& p, const vector<sea
         // build the structure for closest search
         MatrixXd Vg_seam1to(len+1 , 3);
         MatrixXd Vg_seam2to(len+1 , 3);
-
+        bool shoulBeLeft =true; // for 2 case
         for(int i = 0; i<= len ; i++){
             int v1_oneSide = boundaryL_toPattern[stP1.second][(stP1.first+i) % boundLen1];
             int v1_otherSide_idx = (stP2.first-i);// % boundLen2;
             if(v1_otherSide_idx < 0) {
                 v1_otherSide_idx +=boundLen2;
             }
-            if(seamsList[j]->inverted) v1_otherSide_idx = (stP2.first + i) % boundLen2;
+            if(seamsList[j]->inverted) {
+                v1_otherSide_idx = (stP2.first + i) % boundLen2;
+                shoulBeLeft = false;
+            }
             int v1_otherSide = boundaryL_toPattern[stP2.second][v1_otherSide_idx];
 
             Vg_seam1to.row(i) = Vg_to.row(v1_oneSide);
@@ -1949,18 +2045,18 @@ void projectBackOnBoundary(const MatrixXd & Vg_to, MatrixXd& p, const vector<sea
         while( next!= ends.first ){
             // it is not released, project on boundary
             if(releasedVert.find(next) == releasedVert.end()){
-                updatePositionToIntersection( p, next,Vg_seam1to);
+                updatePositionToIntersection( p, next,Vg_seam1to, true);
             }
             // else it is released somehow. But from which seam? If it is released from another seam then pull it to this boundary still
             else if( std::find(releasedVertNew[next].begin(), releasedVertNew[next].end(), j) == releasedVertNew[next].end()){
-               updatePositionToIntersection( p, next,Vg_seam1to);
+               updatePositionToIntersection( p, next,Vg_seam1to, true);
             }
             i1++;
             next = boundaryL_toPattern[stP1.second][(stP1.first + i1) % bsize];
         }
         // the last corner. Again if it is constrained from another side pull it to boundary, else ignore since handled by corner
         if(releasedVert.find(next) != releasedVert.end() && (std::find(releasedVertNew[next].begin(), releasedVertNew[next].end(), j) == releasedVertNew[next].end())){
-            updatePositionToIntersection( p, next,Vg_seam1to);
+            updatePositionToIntersection( p, next,Vg_seam1to, true);
         }
 
         int i2 = 0;
@@ -1971,9 +2067,9 @@ void projectBackOnBoundary(const MatrixXd & Vg_to, MatrixXd& p, const vector<sea
         while( next!= ends.second ){
             // general case an interior vertex , if it is not constrained pull it to boundary
             if(releasedVert.find(next) == releasedVert.end() ){
-                updatePositionToIntersection( p, next,Vg_seam2to);
+                updatePositionToIntersection( p, next,Vg_seam2to, shoulBeLeft);
             } else if( std::find(releasedVertNew[next].begin(), releasedVertNew[next].end(), j) == releasedVertNew[next].end()){
-                updatePositionToIntersection( p, next,Vg_seam2to);
+                updatePositionToIntersection( p, next,Vg_seam2to, shoulBeLeft);
             }
 
             i2++;
@@ -1985,30 +2081,30 @@ void projectBackOnBoundary(const MatrixXd & Vg_to, MatrixXd& p, const vector<sea
         }
 
         if(releasedVert.find(next) != releasedVert.end() && (std::find(releasedVertNew[next].begin(), releasedVertNew[next].end(), j) == releasedVertNew[next].end())){
-            updatePositionToIntersection( p, next,Vg_seam2to);
+            updatePositionToIntersection( p, next,Vg_seam2to, shoulBeLeft);
         }
 
         // also project all duplicates of interior cut vertices
         for(const auto & addedVert : currSeam->duplicates){
 
             if(releasedVert.find(addedVert.second) == releasedVert.end() ){
-                updatePositionToIntersection(p, addedVert.second, Vg_seam1to);
+                updatePositionToIntersection(p, addedVert.second, Vg_seam1to, true);
             } else if( std::find(releasedVertNew[next].begin(), releasedVertNew[next].end(), j) == releasedVertNew[next].end()){
-                updatePositionToIntersection(p, addedVert.second, Vg_seam1to);
+                updatePositionToIntersection(p, addedVert.second, Vg_seam1to, true);
             }
         }
         for(const auto & addedVert : currSeam->duplicates2){
 
             if(releasedVert.find(addedVert.second) == releasedVert.end() ){
-                updatePositionToIntersection(p, addedVert.second, Vg_seam2to);
+                updatePositionToIntersection(p, addedVert.second, Vg_seam2to, shoulBeLeft);
             } else if( std::find(releasedVertNew[next].begin(), releasedVertNew[next].end(), j) == releasedVertNew[next].end()){
-                updatePositionToIntersection(p, addedVert.second, Vg_seam2to);
+                updatePositionToIntersection(p, addedVert.second, Vg_seam2to, shoulBeLeft);
             }
         }
 
     }
-    for(int j = 0; j < minusOneSeams.size(); j++){
 
+    for(int j = 0; j < minusOneSeams.size(); j++){
         minusOneSeam* currSeam  = minusOneSeams[j];
         int patch = currSeam -> getPatch();
         int startVert = currSeam -> getStartVert();
@@ -2032,22 +2128,22 @@ void projectBackOnBoundary(const MatrixXd & Vg_to, MatrixXd& p, const vector<sea
         while(next != endVert){
             // general case, it is not released hence pull it to the boundary
             if(releasedVert.find(next) == releasedVert.end()){
-                updatePositionToIntersection( p, next,Vg_seamto);
+                updatePositionToIntersection( p, next,Vg_seamto , true);
             }else if(std::find(releasedVertNew[next].begin(), releasedVertNew[next].end(),  (-1)*(j+1)) == releasedVertNew[next].end()){
                 // it is released but not from this seam,thus it has to stay on the projection
-                updatePositionToIntersection( p, next,Vg_seamto);
+                updatePositionToIntersection( p, next,Vg_seamto, true);
             }
             i1++;
             next = boundaryL_toPattern[patch][( startidx + i1) % boundLen];
         }
         // it is released for another side hence we have to pull it to our side
         if(releasedVert.find(next) != releasedVert.end() && std::find(releasedVertNew[next].begin(), releasedVertNew[next].end(),  (-1)*(j+1)) == releasedVertNew[next].end()){
-            updatePositionToIntersection( p, next,Vg_seamto);
+            updatePositionToIntersection( p, next,Vg_seamto, true);
 
         }
         // also map all projections
         for(const auto & addedVert : currSeam -> duplicates){
-            updatePositionToIntersection(p, addedVert.second, Vg_seamto);
+            updatePositionToIntersection(p, addedVert.second, Vg_seamto, true);
 
         }
 
@@ -2059,16 +2155,12 @@ void updatePatchId(vector<cutVertEntry*>& cutPositions, const std::vector<std::v
     cout<<" The number of patches has changed. Create a mapping from one to the other and update all cve "<<endl;
     map<int, int> mapVertToNewPatch;
     for(int i = 0; i < boundaryLnew.size(); i++){
-//        cout<<"Patch "<<i<<endl;
         for(int j = 0; j < boundaryLnew[i].size(); j++){
-//            cout<<boundaryLnew[i][j]<<" ";
             mapVertToNewPatch[boundaryLnew[i][j]] = i;
         }
     }
     for(int i = 0; i < cutPositions.size(); i++){
-//        cout<<"Vert "<<cutPositions[i] -> vert<<" was on patch "<<cutPositions[i] -> patch;
         cutPositions[i] -> patch = mapVertToNewPatch[cutPositions[i] -> vert];
-//        cout<<" now it's on "<<cutPositions[i] -> patch<<endl;
     }
 //  ATTENTTION THE SEAM ID OF THE PATCH IS NOT UPDATED !!!
 //  some  SEAMS ARE SPLIT BETWEE TWO PATCHES (THE NEW PATCH) AND THUS THE SEAMID IS NOT THE SAME FOR START END END
