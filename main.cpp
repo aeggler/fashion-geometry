@@ -412,13 +412,12 @@ int main(int argc, char *argv[])
     diffuse = Vector3d(0.4, 0.57, 0.66);    // blue
     specular = Vector3d(0.01, 0.01, 0.01);
 
-    cout<<"choose garment 3D"<<endl;
-    string garment_file_name = igl::file_dialog_open();
-    cout<<garment_file_name<<" chosen file, thanks. "<<endl;
+//    cout<<"choose garment 3D"<<endl;
+//    string garment_file_name = igl::file_dialog_open();
+//    cout<<garment_file_name<<" chosen file, thanks. "<<endl;
 
 //    string garment_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/retriBackIn3d.obj"; //smaller collision thereshold to make sure it is not "eaten" after intiial step , 3.5 instead of 4.5
-
-//    string garment_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/leggins_3d/leggins_3d_merged.obj"; //smaller collision thereshold to make sure it is not "eaten" after intiial step , 3.5 instead of 4.5
+    string garment_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/leggins_3d/leggins_3d_merged.obj"; //smaller collision thereshold to make sure it is not "eaten" after intiial step , 3.5 instead of 4.5
 //    string garment_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/patternComputed3D_converged.obj";// smaller collision thereshold to make sure it is not "eaten" after intiial step , 3.5 instead of 4.5 is ok
 //    string garment_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/dress_2/dress_3d_lowres/dress_3d_lowres_merged_inlay.obj";// for the dress
 //    string garment_file_name =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/moreGarments/dress_4/dress_3d.obj";// for the dress
@@ -430,12 +429,12 @@ int main(int argc, char *argv[])
     garmentPreInterpol = Vg;
     Vg_orig = Vg; Fg_orig= Fg;
 
-    cout<<"choose garment 2D"<<endl;
-    string garment_pattern_file_name= igl::file_dialog_open();
-    cout<<garment_pattern_file_name<<" chosen file for pattern, thanks. "<<endl;
+//    cout<<"choose garment 2D"<<endl;
+//    string garment_pattern_file_name= igl::file_dialog_open();
+//    cout<<garment_pattern_file_name<<" chosen file for pattern, thanks. "<<endl;
 
 //    string garment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/mappedPatternTriFinalRetri.obj"; //
-//    string garment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/leggins_2d/leggins_2d.obj"; //
+    string garment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/leggins_2d/leggins_2d.obj"; //
 //    string garment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/moreGarments/dress_4/dress_2d.obj";
 //    string garment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/dress_2/dress_2d_lowres/dress_2d_lowres.obj"; //dress
 
@@ -538,7 +537,6 @@ int main(int argc, char *argv[])
 
     setCollisionMesh();
     //todo
-    cout<<"without"<<endl;
     computeBaryCoordsGarOnNewMannequin(viewer);// contains boundary vertices now, needed for simulation, colsestFaceId
 //    Vg = Vg_orig;
     Vm = testMorph_V1;
@@ -558,7 +556,7 @@ int main(int argc, char *argv[])
 //    igl::readOBJ(fromPatternFile, fromPattern, Fg_pattern);
     fromPattern = Vg_pattern_orig;
     string mappedPatternFile = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/patternComputed_maternity_01.obj";
-//    igl::readOBJ(mappedPatternFile, toPattern, Fg_pattern);// remove for simulation, add for adaptioin
+    igl::readOBJ(mappedPatternFile, toPattern, Fg_pattern);// remove for simulation, add for adaptioin
 //    toPattern= Vg_pattern_orig;
 
     viewer.core().animation_max_fps = 200.;
@@ -960,12 +958,14 @@ int main(int argc, char *argv[])
         if (ImGui::CollapsingHeader("Modify adapted Pattern ", ImGuiTreeNodeFlags_DefaultOpen)){
             bool backTo3D = false;
             bool startSmooth = false;
+            bool startTri = false;
             bool choosePatchArea = false;
-            if(ImGui::Checkbox("Start triangulating", &startSmooth)) {
+            if(ImGui::Checkbox("Start triangulating", &startTri)) {
 //                string modifiedPattern = "/Users/annaeggler/Desktop/mappedPattern.obj"; //
 //                string modifiedPattern = "/Users/annaeggler/Desktop/mappedPatternWithSmoothPCACuts.obj"; //
 //                string modifiedPattern = "/Users/annaeggler/Desktop/mappedTri.obj"; //
-                string modifiedPattern = "/Users/annaeggler/Desktop/mappedPatternTriFinalRetri.obj"; //
+                string modifiedPattern  = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/fractured_Maternity_01.obj"; //
+
 
                 igl::readOBJ(modifiedPattern, currPattern, Fg_pattern);
                 prevFaces = Fg_pattern_orig.rows();
@@ -977,11 +977,15 @@ int main(int argc, char *argv[])
                 viewer.data().set_mesh(currPattern, Fg_pattern);
 
             }
+            if(ImGui::Checkbox("Start smooth", &startSmooth)) {
+                cout<<"Please choose 3 points to smooth between.  "<<endl;
 
+                mouse_mode= SELECTVERT;
+            }
             if(ImGui::Button("Confirm smooth", ImVec2(-1, 0))) {
-                if (startAndEnd.size() == 2) {
-                    cout << "Great, you selected " << startAndEnd[0] << " and " << startAndEnd[1]
-                         << ". Let's get to work on smoothing. " << endl;
+                if (startAndEnd.size() == 3) {
+                    cout << "Great, you selected " << startAndEnd[0] << " and " << startAndEnd[2]
+                         << " as endpoints. Let's get to work on smoothing. " << endl;
 
                     smoothBetweenVertices(currPattern, Fg_pattern, startAndEnd);
                 }
@@ -1239,9 +1243,7 @@ bool callback_mouse_down(igl::opengl::glfw::Viewer& viewer, int button, int modi
             int v_id = computeClosestVertexOnMesh(b, fid, Fg_pattern);
             viewer.data().set_points(Vrs.row(v_id), RowVector3d(1.0, 0.0, 0.0));
             cout<<"Selected vertex "<<v_id<<endl;
-            if(startAndEnd.size()>=2){
-                startAndEnd.clear();
-            }
+
             startAndEnd.push_back(v_id);
 
 //            if(startAndEnd.size() == 2) {
@@ -1479,7 +1481,7 @@ bool callback_key_down(igl::opengl::glfw::Viewer& viewer, unsigned char key, int
     }
     if(key== 'W'){
         keyRecognition=true;
-        igl::writeOBJ("writtenPattern"+ to_string(garment_scale)+".obj", Vg_pattern, Fg_pattern);
+        igl::writeOBJ("writtenPattern.obj", currPattern, Fg_pattern);
           std::cout<<" Garment file written"<<endl;
     }
     if(key == 'P'){       // Pattern

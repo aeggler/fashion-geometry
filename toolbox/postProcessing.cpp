@@ -27,85 +27,92 @@ using namespace Eigen;
 void smoothBetweenVertices(MatrixXd& currPattern, MatrixXi& Fg_pattern, vector<int>& startAndEnd){
 
     vector<vector<int>> boundaryL;
-    int patch =-1; int startIdx, endIdx;
+    int patch =-1; int startIdx = -1; int midIdx = -1; int endIdx = -1;
 
     igl::boundary_loop(Fg_pattern, boundaryL);
     vector<vector<int> > vvAdj;
     igl::adjacency_list(Fg_pattern,vvAdj);
     for (int i = 0; i < boundaryL.size(); ++i) {
         for (int j = 0; j < boundaryL[i].size(); ++j) {
-            if(boundaryL[i][j] == startAndEnd[0] || boundaryL[i][j] == startAndEnd[1] ) {
-                if (patch == -1) {
-                    patch = i;
-                    startIdx = j;
-                } else {
-                    endIdx = j;
-                }
+            if(boundaryL[i][j] == startAndEnd[0] ) {
+                patch = i;
+                startIdx = j;
             }
         }
     }
+    if(patch ==-1) cout<<"error vertex not found"<<endl ;
+    bool otherDir= false;
+    vector<int> boundary  = boundaryL[patch];
+    int loopSize = boundary.size();
 
-    auto dist = (endIdx - startIdx);
-    cout<< "dist= "<<dist<<endl;
-
-    if((boundaryL[patch].size() - dist) < dist){
-        cout<<"changed"<<endl;
-        auto tem= startIdx;
-        startIdx = endIdx;
-        endIdx = tem;
-    }
-
-    cout<<"all the ones in between "<<endl;
-    int idx= startIdx;
-    Vector3d R = currPattern.row(boundaryL[patch][startIdx]);
-    Vector3d Q =  currPattern.row(boundaryL[patch][endIdx]);
-    vector<int> furtherChecks;
-    while(idx!= endIdx){
-
-        idx++;
-        idx %= boundaryL[patch].size();
-        int vert = boundaryL[patch][idx];
-
-        // we need to find out if one neighbor of the current vertex is also not on the boundary
-        double t = (R-Q).dot(currPattern.row(vert).transpose()-Q)/((R-Q).dot(R-Q));
-        Vector3d targetPos = Q+t*(R-Q);
-
-        currPattern.row(vert) = targetPos;
-        for(int j =0; j<vvAdj[vert].size(); j++){
-            int neigh = vvAdj[vert][j];
-//            cout<<" "<<neigh<<endl;
-
-            Vector3d C = currPattern.row(neigh);
-            auto sign = ((R(0)-Q(0) )*(Q(1)-C(1))-(R(1)-Q(1))*(Q(0)-C(0)));
-
-            if(sign < -1){
-                double tt = (R-Q).dot(C-Q)/((R-Q).dot(R-Q));
-                Vector3d targetPosNeigh = Q+tt*(R-Q);
-                cout<<neigh<<" Neigh is on on the other side of the boundary "<<sign<<endl;
-                furtherChecks.push_back(neigh);
-                currPattern.row(neigh) = targetPosNeigh;
-
-            }
+    for (int j = startIdx; j < loopSize + startIdx; ++j) {
+        if( boundary[j % loopSize] == startAndEnd[2] ) {
+            otherDir= true;
+            break;
+        }else if(boundary[j % loopSize] == startAndEnd[1] ){
+            midIdx = j;
         }
     }
-    while(furtherChecks.size() > 0){
-        int next = furtherChecks[furtherChecks.size()-1];
-        furtherChecks.pop_back();
-        for(int j =0; j < vvAdj[next].size(); j++){
-            int neigh = vvAdj[next][j];
-            Vector3d C = currPattern.row(neigh);
-            auto sign = ((R(0)-Q(0) )*(Q(1)-C(1))-(R(1)-Q(1))*(Q(0)-C(0)));
-
-            if(sign < -1){
-                double tt = (R-Q).dot(C-Q)/((R-Q).dot(R-Q));
-                Vector3d targetPosNeigh = Q+tt*(R-Q);
-                cout<<neigh<<" iterative neigh is on on the other side of the boundary, maybe creating degenerate triangles! "<<sign<<endl;
-                furtherChecks.push_back(neigh);
-                currPattern.row(neigh) = targetPosNeigh;
-
+    if(!otherDir){
+        for (int j = midIdx; j < loopSize + midIdx; ++j) {
+            if( boundary[j % loopSize] == startAndEnd[2] ) {
+               endIdx = j;
             }
         }
+    }else{
+        // we go in counter direction
+         int j = startIdx;
+        while ( boundary[j] != startAndEnd[2]){
+            if(boundary[j] == startAndEnd[1] ){
+                midIdx = j;
+            }
+            j--;
+            if(j<0) j+= loopSize;
+        }
+        endIdx = j;
+
     }
+    if(startIdx==-1 || midIdx ==-1 || endIdx ==-1){
+        cout<<"Something is -1. stopping here."  <<endl; return ;
+    }
+    double lamda = 0.1;
+    double mu = -0.1;
+    int iterations = 100;
+    for (int i = 0; i < iterations; i++){
+
+        int curr, next, prev;
+        // shirnking wiht lamnda
+        curr = startIdx;
+        next = (otherDir)? (curr-1) : (curr +1)%loopSize;
+        if(next<0)next+= loopSize;
+        while(next!= endIdx){
+            prev= curr;
+            curr= next;
+            next = (!otherDir)? (curr+1 )%loopSize : (curr -1);
+            if(next<0)next+= loopSize;
+
+            VectorXd deltaP= (0.5 * (currPattern.row(boundary[prev]) + currPattern.row(boundary[next])) - currPattern.row(boundary[curr])).transpose();
+            currPattern.row(boundary[curr]) += lamda * deltaP.transpose();
+
+        }
+
+        //enlarging with mu
+        curr = startIdx;
+        next = (!otherDir)? (curr+1 )%loopSize : (curr -1);
+        if(next<0)next+= loopSize;
+        while(next!= endIdx){
+            prev= curr;
+            curr= next;
+            next = (!otherDir)? (curr+1 )%loopSize : (curr -1);
+            if(next<0)next+= loopSize;
+
+            VectorXd deltaP= (0.5*(currPattern.row(boundary[prev])+ currPattern.row(boundary[next])) - currPattern.row(boundary[curr])).transpose();
+            currPattern.row(boundary[curr]) += mu * deltaP.transpose();
+
+        }
+
+    }
+
 
 }
 
