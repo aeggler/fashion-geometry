@@ -23,7 +23,10 @@
 using namespace std;
 using namespace Eigen;
 
-//todo attention this can create degenerate triangles, or it is not even needed
+//Taubin smoothing according to
+//https://graphics.stanford.edu/courses/cs468-12-spring/LectureSlides/06_smoothing.pdf
+// from start to end in direction of the middle vertex
+
 void smoothBetweenVertices(MatrixXd& currPattern, MatrixXi& Fg_pattern, vector<int>& startAndEnd){
 
     vector<vector<int>> boundaryL;

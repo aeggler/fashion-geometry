@@ -21,6 +21,7 @@ using namespace Eigen;
 
 MatrixXd lengthsOrig;
 map<int, cutVertEntry *> cveStartPositionsSet;
+set<int> cutThroughCornerVertices;
 int findWhichEdgeOfFace(int face, int v1, int v2, MatrixXi& Fg){
     int faceidxv1, faceidxv2;
     for(int j=0; j<3; j++){
@@ -39,7 +40,6 @@ int findWhichEdgeOfFace(int face, int v1, int v2, MatrixXi& Fg){
     }
     return whichEdge;
 }
-
 
 void findIndxInBoundaryloop(vector<int> & boundary, int& target,int& idx){
     idx = 0;
@@ -263,7 +263,9 @@ void splitVertexFromCVE( cutVertEntry*& cve,
         cout<<"Handled by other seams already."<<endl;
 
         // if it is a corner (and cut from both sides(,) or a cut position itself, mabe we can still cut
-        bool cornerOrStart = ((cveStartPositionsSet.find(cve->vert) != cveStartPositionsSet.end()) || cornerSet.find(cve->vert) != cornerSet.end());
+        bool cornerOrStart = ((cveStartPositionsSet.find(cve->vert) != cveStartPositionsSet.end()) || cornerSet.find(cve->vert) != cornerSet.end()
+                || cutThroughCornerVertices.find(cve->vert) != cutThroughCornerVertices.end());
+        cout<<(cutThroughCornerVertices.find(cve->vert) != cutThroughCornerVertices.end())<<" in this set? "<<endl;
         if( cornerOrStart && LShapeAllowed){
             cout<<"But it is a corner and we allow L Shapes. Go on."<<endl;
 
@@ -424,6 +426,7 @@ void splitVertexFromCVE( cutVertEntry*& cve,
     }
     // if it's a bridge there is no next and we set fin flag
     if(cve-> bridgeFlag){
+        // todo I guess this is obsolete
         // this is the final cut, we are done after: should look like  ><
         cout<<"cutting the bridge, but better dont for now , it messes up the patches "<<endl;
        // updateWithNewId(Fg, cve->vert, rightFaceId, newVertIdx);
@@ -459,9 +462,7 @@ void splitVertexFromCVE( cutVertEntry*& cve,
     }else{
         A = Vg.row(cve -> leftCorner);
         Btemp = Vg.row(cve -> rightCorner);
-//        cout<<cve -> rightCorner<<" leftcorner "<<cve -> leftCorner<<endl;
     }
-//    cout<<(Btemp-A).transpose()<<" compare line"<<endl;
 
     //(AB,AM), where M(X,Y) is the query point:
     //https://stackoverflow.com/questions/1560492/how-to-tell-whether-a-point-is-to-the-right-or-left-side-of-a-line
@@ -481,12 +482,13 @@ void splitVertexFromCVE( cutVertEntry*& cve,
         }
     }else{
         cout<<"initial!"<<endl;
+        // insert the corner
+
         // if levelone take the side of the other interior vertices
         Vector3d C = Vg.row(cve -> vert).transpose()+ midVec;
         //(AB,AM), where M(X,Y) is the query point:
         //https://stackoverflow.com/questions/1560492/how-to-tell-whether-a-point-is-to-the-right-or-left-side-of-a-line
         auto sign1 =(((Btemp(0)-A(0) )*(A(1)-C(1))-(Btemp(1)-A(1))*(A(0)-C(0))) > 0);
-//        cout<<"side of midvec "<<sign1<<endl;
         // take the side of interior vertices
         for(int j=0; j<vvAdj[cve -> vert].size(); j++) {
             int testInt = vvAdj[cve->vert][j];
@@ -650,6 +652,8 @@ void splitVertexFromCVE( cutVertEntry*& cve,
         releasedVert[newVertIdx] = valPair;
 
     }
+    cveStartPositionsSet[newVertIdx] =cve;
+    cout<<"also inserted into start positions set "<<endl ;
     cout<<insertIdx<<" the inserted index"<<endl;// TODO CASE IT IS NOT RIGHT NEITHER LEFT BUT ACTUALLY ON!!
 
     Eigen::MatrixXi B;
@@ -692,6 +696,9 @@ void splitVertexFromCVE( cutVertEntry*& cve,
         newnewVg.row(newnewVertIdx)= newVg.row(insertIdx);//+ (eps * toRight).transpose();
 
         handledVerticesSet.insert(newnewVertIdx);
+        cutThroughCornerVertices.insert(newnewVertIdx);
+        cout<<"inserted "<<newnewVertIdx<<" and "<<insertIdx<<endl;
+        cutThroughCornerVertices.insert(insertIdx);
 //        cout<<newnewVg.row(insertIdx)<<" old insert idx"<<endl;
 //        cout<<newnewVg.row(newnewVertIdx)<<" new insert idx duplicate "<<endl;
 
