@@ -70,17 +70,29 @@ void updateWithNewId(MatrixXi& Fg, int vert,int rightFaceId, int newVertIdx ){
         Fg(rightFaceId , 2) = newVertIdx;
     }
 }
-void addToDulicateList( cutVertEntry*& cve, vector<seam*>& seamsList,  vector<minusOneSeam*> & minusOneSeams, int newVertIdx){
-
-    if(cve->seamType<0){
-            minusOneSeams[cve->seamIdInList]->duplicates[cve->vert]= newVertIdx;
-    }else{
-        if(cve->seamIdInList >= 0){
-            seamsList[cve-> seamIdInList]-> duplicates[cve->vert]=newVertIdx;
+void addToDulicateList( cutVertEntry*& cve, vector<seam*>& seamsList,  vector<minusOneSeam*> & minusOneSeams, int newVertIdx, bool global){
+    if(global){
+        if(cve->seamType<0){
+            minusOneSeams[cve->seamIdInList]->duplicatesGlob[cve->vert]= newVertIdx;
         }else{
-            seamsList[(cve-> seamIdInList+1)*(-1)]->duplicates2[cve->vert]= newVertIdx;
+            if(cve->seamIdInList >= 0){
+                seamsList[cve-> seamIdInList]-> duplicatesGlob[cve->vert]=newVertIdx;
+            }else{
+                seamsList[(cve-> seamIdInList+1)*(-1)]->duplicatesGlob2[cve->vert]= newVertIdx;
+            }
+        }
+    }else{
+        if(cve->seamType<0){
+            minusOneSeams[cve->seamIdInList]->duplicates[cve->vert]= newVertIdx;
+        }else{
+            if(cve->seamIdInList >= 0){
+                seamsList[cve-> seamIdInList]-> duplicates[cve->vert]=newVertIdx;
+            }else{
+                seamsList[(cve-> seamIdInList+1)*(-1)]->duplicates2[cve->vert]= newVertIdx;
+            }
         }
     }
+
 }
 bool isRight(Vector3d a,Vector3d b,Vector3d c ){
     // right gets  newVertIdx
@@ -817,7 +829,7 @@ void splitVertexFromCVE( cutVertEntry*& cve,
 
     // only the first level i.e. boundary duplicate has to be projected, hence only this one is to be added
     if(cve->levelOne) {
-        addToDulicateList(cve,seamsList, minusOneSeams, newVertIdx );
+        addToDulicateList(cve,seamsList, minusOneSeams, newVertIdx, false );
         toPattern_boundaryVerticesSet.insert(newVertIdx);// the duplicate is also on the boundary, hence insert it
         cve->leftdirection = toLeft;
         cve->rightdirection = toRight;
@@ -825,6 +837,8 @@ void splitVertexFromCVE( cutVertEntry*& cve,
         cve-> rightCorner = newVertIdx;
         cout<<" inserted"<<endl;
     }
+    addToDulicateList(cve,seamsList, minusOneSeams, newVertIdx, true );
+
 
     cve-> vert = insertIdx;
     cve->levelOne = false;

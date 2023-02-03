@@ -556,7 +556,7 @@ int main(int argc, char *argv[])
 //    igl::readOBJ(fromPatternFile, fromPattern, Fg_pattern);
     fromPattern = Vg_pattern_orig;
     string mappedPatternFile = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/patternComputed_maternity_01.obj";
-    igl::readOBJ(mappedPatternFile, toPattern, Fg_pattern);// remove for simulation, add for adaptioin
+    igl::readOBJ(mappedPatternFile, toPattern, Fg_pattern);// remove for simulation, add for adaption
 //    toPattern= Vg_pattern_orig;
 
     viewer.core().animation_max_fps = 200.;
@@ -848,8 +848,14 @@ int main(int argc, char *argv[])
                 currPattern = fromPattern;
                 cout<<endl<<currPattern.rows()<<" curr pattern rows "<<endl;
                 preComputeAdaption();
-                viewer.core().is_animating = true;
-                adaptionFlag = true;
+                initialGuessAdaption(currPattern, toPattern, Fg_pattern);
+
+                viewer.selected_data_index = 0;
+                viewer.data().clear();
+                viewer.data().set_mesh(currPattern, Fg_pattern);
+
+//                viewer.core().is_animating = true;
+//                adaptionFlag = true;
             }
             if(ImGui::Button("Compute first Tear", ImVec2(-1, 0))){
                 simulate = false;
@@ -1984,28 +1990,25 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
     p_adaption.col(2)= Eigen::VectorXd::Ones(currPattern.rows());
     p_adaption.col(2)*= 200;
 
-//    MatrixXd perFaceU_adapt(Fg_pattern.rows(), 2);
-//    MatrixXd perFaceV_adapt(Fg_pattern.rows(), 2);
-//    colPatternU.resize(Fg_pattern.rows(), 3);
-//    colPatternV.resize(Fg_pattern.rows(), 3);
 //    t.printTime(" init ");
     for(int i=0; i<5; i++){
 
         // now we treat the stretch
-//        computePatternStress(perFaceU_adapt, perFaceV_adapt);
 //        t.printTime(" pattern stress ");
         solveStretchAdaptionViaEdgeLength();//perFaceU_adapt, perFaceV_adapt);
+        ensurePairwiseDist(p_adaption, toPattern, Fg_pattern);
+
 //        t.printTime(" solve stretch  ");
 
-//        t.printTime(" corner mapped ");
         // before cutting the boundaries should be the same
         projectBackOnBoundary( toPattern, p_adaption, seamsList,minusOneSeamsList,  Fg_pattern,
                                Fg_pattern_orig, boundaryL_toPattern, releasedVert ,false );
-
+        ensurePairwiseDist(p_adaption, toPattern, Fg_pattern);
 
         solveCornerMappedVertices();
+        ensureAngle(p_adaption, toPattern, Fg_pattern);
+        ensurePairwiseDist(p_adaption, toPattern, Fg_pattern);
 
-//        t.printTime(" project back  ");
     }
 
     currPattern = p_adaption;

@@ -34,6 +34,8 @@ private:
 public:
     std::map<int, int> duplicates;
     std::map<int, int> duplicates2;// other side of the seam
+    std::map<int, int> duplicatesGlob;
+    std::map<int, int> duplicatesGlob2;// other side of the seam
     bool seamSplit1;
     bool seamSplit2;
 
@@ -113,6 +115,8 @@ private:
 
 public:
     std::map<int, int> duplicates;
+    std::map<int, int> duplicatesGlob;
+
     bool seamSplit;
 
 

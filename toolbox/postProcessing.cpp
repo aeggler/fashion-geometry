@@ -720,3 +720,123 @@ void createHalfAvatarMap(MatrixXd& testMorph_V1, MatrixXi& testMorph_F1,
     }
 
 }
+
+void initialGuessAdaption(MatrixXd& currPattern, MatrixXd& toPattern, MatrixXi& Fg_pattern){
+
+    currPattern.block(0, 0,toPattern.rows(), toPattern.cols())= toPattern;
+    cout<<currPattern.row(66)<<" v 66"<<endl ;
+    cout<<currPattern.row(368)<<" v 368"<<endl ;
+
+    if(currPattern.rows()>toPattern.rows()){
+        // we added some vertices already, map the vertices to the duplicates
+        cout<<"add some more. TODO "<<endl;
+    }
+}
+set<int> boundaryVerticesP;
+void ensureAngle(MatrixXd& p, MatrixXd& toPattern, MatrixXi& Fg_pattern){
+    if(boundaryVerticesP.empty()){
+        vector<vector<int>> boundaryVP;
+        igl::boundary_loop(Fg_pattern, boundaryVP);
+        for(int i=0; i<boundaryVP.size(); i++){
+            for(int j=0; j<boundaryVP[i].size(); j++){
+                boundaryVerticesP.insert(boundaryVP[i][j]);
+            }
+        }
+    }
+    for(int i = 0; i < Fg_pattern.rows(); i++){
+        for(int j=0; j<3; j++){
+            Vector3d e1 = p.row(Fg_pattern(i, j))-p.row(Fg_pattern(i, (j+1) % 3));
+            Vector3d e2 = p.row(Fg_pattern(i, (j+2) % 3 ))-p.row(Fg_pattern(i, (j+1) % 3));
+            double newAngle = acos(min(max((e1.normalized()).dot(e2.normalized()), -1.), 1.));
+
+            //https://www.euclideanspace.com/maths/algebra/vectors/angleBetween/ and https://stackoverflow.com/questions/5188561/signed-angle-between-two-3d-vectors-with-same-origin-within-the-same-plane
+//            // praise stackoverflow
+//
+//            auto crossVec = alignFrom.cross(alignTo); // or other way round?
+//            if(oldNormalVec.dot(crossVec)<0){
+//                newAngle = -newAngle;
+//            }
+
+            double newdegree = newAngle*180/M_PI;
+            if(newdegree<10){
+//                cout<<"old degree: "<<newdegree<<endl;
+
+                MatrixXd rot = MatrixXd::Identity(3, 3);
+                double rad =  newAngle; //converting to radian value
+                rot(0,0)= cos(rad);
+                rot(1, 1) = rot(0,0) ;
+                rot(0,1) =  - sin(rad);
+                rot(1,0) = sin(rad);
+                double stiffness = 0.5;
+//                if(boundaryVerticesP.find(Fg_pattern(i, j))!= boundaryVerticesP.end()){
+                    VectorXd e1rot= rot * e1;
+                    VectorXd dir = e1rot - e1;
+                    p.row(Fg_pattern(i, j)) += stiffness * dir;
+
+//                }
+//                if(boundaryVerticesP.find(Fg_pattern(i, (j+2) % 3))!= boundaryVerticesP.end()){
+                    VectorXd e2rot= rot.transpose() * e2;
+                     dir = e2rot - e2;
+                    p.row(Fg_pattern(i, (j+2) % 3)) += stiffness * dir;
+
+//                }
+
+
+                ///ttest
+                e1 = p.row(Fg_pattern(i, j))-p.row(Fg_pattern(i, (j+1) % 3));
+                e2 = p.row(Fg_pattern(i, (j+2) % 3 ))-p.row(Fg_pattern(i, (j+1) % 3));
+                newAngle = acos(min(max((e1.normalized()).dot(e2.normalized()), -1.), 1.));
+                newdegree = newAngle*180/M_PI;
+//                cout<<"new degree: "<<newdegree<<endl;
+
+            }
+
+
+        }
+
+
+    }
+}
+
+void ensurePairwiseDist(MatrixXd& p, MatrixXd& toPattern, MatrixXi& Fg_pattern){
+    vector<vector<int>> faceFaceAdjecencyList;
+
+    createFaceFaceAdjacencyList(Fg_pattern,faceFaceAdjecencyList);
+    for(int i = 0; i < Fg_pattern.rows(); i++){
+        vector<int> neigh = faceFaceAdjecencyList[i];
+        VectorXi face = Fg_pattern.row(i);
+        Vector3d e1 = toPattern.row(Fg_pattern(i, 0))-toPattern.row(Fg_pattern(i, 1));
+        Vector3d e2 = toPattern.row(Fg_pattern(i, 2))-toPattern.row(Fg_pattern(i, 1));
+        auto crossp = e1.cross(e2);
+
+        Vector3d e1old = p.row(Fg_pattern(i, 0))-p.row(Fg_pattern(i, 1));
+        Vector3d e2old = p.row(Fg_pattern(i, 2))-p.row(Fg_pattern(i, 1));
+        auto crosspold = e1old.cross(e2old);
+
+        if(crossp.dot(crosspold)<0){
+            cout<<"face "<<i<<" flipped"<<endl;
+        }
+
+//        for(int j = 0; j < neigh.size(); j++){
+//            VectorXi other = Fg_pattern.row(neigh[j]);
+//            // find the two different vertices
+//            int first=0; int second =0;
+//            while(other(0)== face(first) || other(1)== face(first) || other(2) == face(first) ){
+//                first++; // first is not in the other
+//            }
+//            while(face(0)== other(second) || face(1)== other(second) || face(2) == other(second) ){
+//                second++; // second is not in face
+//            }
+//            VectorXd distOrig = (toPattern.row(face(first)) - toPattern.row(other(second)));
+//            VectorXd distNew = (p.row(face(first)) - p.row(other(second)));
+//            if(i== 2957 && neigh[j]== 2904){
+////                cout<<face(first)<<" vertices " <<other(second)<<endl;
+////                cout<< (p.row(face(first)))<<", "<<endl<<( p.row(other(second)))<<", "<<endl<<(p.row(face(first)) - p.row(other(second)))<<endl;
+//                cout<<"face "<<neigh[j]<<" :"<<distNew.norm()/ distOrig.norm()<<", "<< distNew.norm()<< ", "<<distOrig.norm()<<endl;
+//            }
+//            if(distOrig.dot(distNew) < 0){//|| abs(distNew.norm()/ distOrig.norm()-1 ) < 0.5
+//                cout<<"face "<<i<<" generates a flip with face "<<neigh[j]<<endl;
+//            }
+//        }
+    }
+}

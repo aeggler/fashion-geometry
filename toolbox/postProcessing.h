@@ -32,4 +32,8 @@ void createHalfAvatarMap(MatrixXd& testMorph_V1, MatrixXi& testMorph_F1,
                          MatrixXd& testMorph_V1left, MatrixXi& testMorph_F1left,
                          MatrixXd& testMorph_V1right, MatrixXi& testMorph_F1right,
                          map<int, int>& leftHalfToFullFaceMap,  map<int, int>& rightHalfToFullFaceMap);
+
+void initialGuessAdaption(MatrixXd& currPattern, MatrixXd& toPattern, MatrixXi& Fg_pattern);
+void ensureAngle(MatrixXd& currPattern, MatrixXd& toPattern, MatrixXi& Fg_pattern);
+void ensurePairwiseDist(MatrixXd& currPattern, MatrixXd& toPattern, MatrixXi& Fg_pattern);
 #endif //EXAMPLE_POSTPROCESSING_H
