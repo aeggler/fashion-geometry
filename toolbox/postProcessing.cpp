@@ -781,13 +781,12 @@ void ensureAngle(MatrixXd& p, MatrixXd& toPattern, MatrixXi& Fg_pattern){
 
 //                }
 
-
-                ///ttest
-                e1 = p.row(Fg_pattern(i, j))-p.row(Fg_pattern(i, (j+1) % 3));
-                e2 = p.row(Fg_pattern(i, (j+2) % 3 ))-p.row(Fg_pattern(i, (j+1) % 3));
-                newAngle = acos(min(max((e1.normalized()).dot(e2.normalized()), -1.), 1.));
-                newdegree = newAngle*180/M_PI;
-//                cout<<"new degree: "<<newdegree<<endl;
+//                ///ttest
+//                e1 = p.row(Fg_pattern(i, j))-p.row(Fg_pattern(i, (j+1) % 3));
+//                e2 = p.row(Fg_pattern(i, (j+2) % 3 ))-p.row(Fg_pattern(i, (j+1) % 3));
+//                newAngle = acos(min(max((e1.normalized()).dot(e2.normalized()), -1.), 1.));
+//                newdegree = newAngle*180/M_PI;
+////                cout<<"new degree: "<<newdegree<<endl;
 
             }
 
@@ -814,7 +813,7 @@ void ensurePairwiseDist(MatrixXd& p, MatrixXd& toPattern, MatrixXi& Fg_pattern){
         auto crosspold = e1old.cross(e2old);
 
         if(crossp.dot(crosspold)<0){
-            cout<<"face "<<i<<" flipped"<<endl;
+//            cout<<"face "<<i<<" flipped"<<endl;
         }
 
 //        for(int j = 0; j < neigh.size(); j++){

@@ -389,6 +389,7 @@ void readDataM(string fileName, vector<vector<int>>& matrix ){
     }
 }
 MatrixXd patternEdgeLengths_orig;
+int pos;
 int main(int argc, char *argv[])
 {
     // Init the viewer
@@ -568,6 +569,7 @@ int main(int argc, char *argv[])
     float movePatternX=0; float movePatternY=0;
     bool showPattern= false;
     set<int> handledVerticesSet;
+    pos = -1;
     menu.callback_draw_viewer_menu = [&]() {
         if (ImGui::CollapsingHeader("Garment", ImGuiTreeNodeFlags_OpenOnArrow)) {
 
@@ -854,8 +856,8 @@ int main(int argc, char *argv[])
                 viewer.data().clear();
                 viewer.data().set_mesh(currPattern, Fg_pattern);
 
-//                viewer.core().is_animating = true;
-//                adaptionFlag = true;
+                viewer.core().is_animating = true;
+                adaptionFlag = true;
             }
             if(ImGui::Button("Compute first Tear", ImVec2(-1, 0))){
                 simulate = false;
@@ -863,13 +865,28 @@ int main(int argc, char *argv[])
                 viewer.core().is_animating = false;
 
                 bool fin = false;
-                int pos = computeTear(fromPattern, currPattern, Fg_pattern, patternEdgeLengths_orig, seamsList ,
+                auto copyPattern = fromPattern;
+                 pos = computeTear(fromPattern, currPattern, Fg_pattern, patternEdgeLengths_orig, seamsList ,
                             minusOneSeamsList, boundaryL, fin, cornerPerBoundary, seamIdPerCorner,
                             cornerVertices, cutPositions, releasedVert, toPattern_boundaryVerticesSet, cornerSet,
                             handledVerticesSet,
-                            Vg_pattern, prevTearFinished, LShapeAllowed, Vg_pattern_orig,
+                            Vg_pattern, prevTearFinished, LShapeAllowed, fromPattern,
                             prioInner, prioOuter);
+
+                if( copyPattern != fromPattern){
+                    MatrixXd lengthsOrig;
+                    igl::edge_lengths(fromPattern, Fg_pattern_orig, lengthsOrig);
+                    patternEdgeLengths_orig = lengthsOrig;
+                    cout<<"---------------------"<<endl;
+
+                    cout<<"updated edge lengths"<<endl;
+                    viewer.selected_data_index = 0;
+                    viewer.data().clear();
+                    viewer.data().set_mesh(currPattern, Fg_pattern);
+                }
+
                 if(pos!=-1){
+                    cout<<fromPattern.row(pos)<<" after first tear"<<endl;
                     viewer.selected_data_index = 2;
                     viewer.data().set_points(currPattern.row(pos), RowVector3d(1.0, 0.0, 0.0));
 
@@ -891,11 +908,14 @@ int main(int argc, char *argv[])
                 simulate = false;
                 adaptionFlag = false;
                 viewer.core().is_animating = false;
-
                 auto copyPattern = fromPattern;
-                int pos = tearFurther(cutPositions, currPattern, Fg_pattern, seamsList, minusOneSeamsList, releasedVert,
-                            toPattern_boundaryVerticesSet, boundaryL, cornerSet, handledVerticesSet, prevTearFinished,
-                            preferManySmallCuts, LShapeAllowed, patternEdgeLengths_orig, fromPattern, prioInner, prioOuter);
+                pos = tearFurtherVisIdxHelper(cutPositions, currPattern, Fg_pattern, seamsList, minusOneSeamsList, releasedVert,
+                                                  toPattern_boundaryVerticesSet, boundaryL, cornerSet, handledVerticesSet, prevTearFinished,
+                                                  preferManySmallCuts, LShapeAllowed, patternEdgeLengths_orig, fromPattern, prioInner, prioOuter);
+
+//                pos = tearFurther(cutPositions, currPattern, Fg_pattern, seamsList, minusOneSeamsList, releasedVert,
+//                            toPattern_boundaryVerticesSet, boundaryL, cornerSet, handledVerticesSet, prevTearFinished,
+//                            preferManySmallCuts, LShapeAllowed, patternEdgeLengths_orig, fromPattern, prioInner, prioOuter);
                 if(pos!=-1){
                     viewer.selected_data_index = 2;
                     viewer.data().clear();
@@ -1989,25 +2009,31 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
     p_adaption = currPattern;
     p_adaption.col(2)= Eigen::VectorXd::Ones(currPattern.rows());
     p_adaption.col(2)*= 200;
-
+    if (pos>0) cout<<currPattern.row(pos)<<" status before simulation "<<endl;
 //    t.printTime(" init ");
     for(int i=0; i<5; i++){
 
         // now we treat the stretch
 //        t.printTime(" pattern stress ");
         solveStretchAdaptionViaEdgeLength();//perFaceU_adapt, perFaceV_adapt);
-        ensurePairwiseDist(p_adaption, toPattern, Fg_pattern);
+//        ensurePairwiseDist(p_adaption, toPattern, Fg_pattern);
+        if (pos>0) cout<<p_adaption.row(pos)<<" after edge length "<<endl;
 
 //        t.printTime(" solve stretch  ");
 
         // before cutting the boundaries should be the same
         projectBackOnBoundary( toPattern, p_adaption, seamsList,minusOneSeamsList,  Fg_pattern,
                                Fg_pattern_orig, boundaryL_toPattern, releasedVert ,false );
-        ensurePairwiseDist(p_adaption, toPattern, Fg_pattern);
+        if (pos>0) cout<<p_adaption.row(pos)<<" after back to bound  "<<endl;
+
+//        ensurePairwiseDist(p_adaption, toPattern, Fg_pattern);
 
         solveCornerMappedVertices();
-        ensureAngle(p_adaption, toPattern, Fg_pattern);
-        ensurePairwiseDist(p_adaption, toPattern, Fg_pattern);
+        if (pos>0) cout<<p_adaption.row(pos)<<" after corner mapped.  "<<endl;
+
+
+//        ensureAngle(p_adaption, toPattern, Fg_pattern);
+//        ensurePairwiseDist(p_adaption, toPattern, Fg_pattern);
 
     }
 
