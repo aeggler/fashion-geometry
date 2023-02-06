@@ -28,7 +28,7 @@ using namespace Eigen;
 // from start to end in direction of the middle vertex
 
 void smoothBetweenVertices(MatrixXd& currPattern, MatrixXi& Fg_pattern, vector<int>& startAndEnd){
-
+    cout<<startAndEnd.size()<<" start and end size"<<endl;
     vector<vector<int>> boundaryL;
     int patch =-1; int startIdx = -1; int midIdx = -1; int endIdx = -1;
 
@@ -48,33 +48,27 @@ void smoothBetweenVertices(MatrixXd& currPattern, MatrixXi& Fg_pattern, vector<i
     vector<int> boundary  = boundaryL[patch];
     int loopSize = boundary.size();
 
-    for (int j = startIdx; j < loopSize + startIdx; ++j) {
+    for (int j = 0; j < loopSize ; ++j) {
         if( boundary[j % loopSize] == startAndEnd[2] ) {
-            otherDir= true;
-            break;
+            endIdx = j;
         }else if(boundary[j % loopSize] == startAndEnd[1] ){
             midIdx = j;
         }
     }
-    if(!otherDir){
-        for (int j = midIdx; j < loopSize + midIdx; ++j) {
-            if( boundary[j % loopSize] == startAndEnd[2] ) {
-               endIdx = j;
-            }
+
+    if(startIdx < endIdx){
+        if(midIdx<endIdx && midIdx>startIdx){
+            otherDir= false;
+        }else{
+            otherDir = true;
         }
     }else{
-        // we go in counter direction
-         int j = startIdx;
-        while ( boundary[j] != startAndEnd[2]){
-            if(boundary[j] == startAndEnd[1] ){
-                midIdx = j;
-            }
-            j--;
-            if(j<0) j+= loopSize;
+        //starrt>mid
+        if(midIdx<startIdx && midIdx>endIdx){
+            otherDir = true;
         }
-        endIdx = j;
-
     }
+
     if(startIdx==-1 || midIdx ==-1 || endIdx ==-1){
         cout<<"Something is -1. stopping here."  <<endl; return ;
     }
@@ -86,7 +80,7 @@ void smoothBetweenVertices(MatrixXd& currPattern, MatrixXi& Fg_pattern, vector<i
         int curr, next, prev;
         // shirnking wiht lamnda
         curr = startIdx;
-        next = (otherDir)? (curr-1) : (curr +1)%loopSize;
+        next = (otherDir)? (curr-1) : ((curr +1)%loopSize);
         if(next<0)next+= loopSize;
         while(next!= endIdx){
             prev= curr;
@@ -101,7 +95,7 @@ void smoothBetweenVertices(MatrixXd& currPattern, MatrixXi& Fg_pattern, vector<i
 
         //enlarging with mu
         curr = startIdx;
-        next = (!otherDir)? (curr+1 )%loopSize : (curr -1);
+        next = (!otherDir)? ((curr+1 )%loopSize) : (curr -1);
         if(next<0)next+= loopSize;
         while(next!= endIdx){
             prev= curr;

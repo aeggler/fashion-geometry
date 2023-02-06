@@ -693,16 +693,17 @@ void splitVertexFromCVE( cutVertEntry*& cve,
     input.row(0)= newPos;
     igl::barycentric_coordinates(input, Vg.row(Fg(intersectingFace, 0)), Vg.row(Fg(intersectingFace, 1)),
                                  Vg.row(Fg(intersectingFace, 2)), insertIdxInBary);
-    cout<<newVg.row(insertIdx)<<" old pos"<<endl;
 
     newVg.row(insertIdx) = newPos;
-    cout<<newVg.row(insertIdx)<<" updated pos "<<endl;
+    cout<<newPos<<" new pos"<<endl;
 
     VectorXd updatedRestShapeVertPos = insertIdxInBary(0) * Vg_pattern_orig.row(Fg(intersectingFace, 0)) ;
     updatedRestShapeVertPos += insertIdxInBary(1) * Vg_pattern_orig.row(Fg(intersectingFace, 1)) ;
     updatedRestShapeVertPos += insertIdxInBary(2) * Vg_pattern_orig.row(Fg(intersectingFace, 2) );
     //  upadte all original edge lengths -> in main
+    cout<<  Vg_pattern_orig.row(insertIdx)<<" before restshape "<<endl;
     Vg_pattern_orig.row(insertIdx) = updatedRestShapeVertPos;
+    cout<<  Vg_pattern_orig.row(insertIdx)<<" after restshape"<<endl;
 
     computeOrientationOfFaces(signsAfter, vfAdj[insertIdx], Fg, Vg);
     if(signsAfter != signs){
@@ -759,7 +760,6 @@ void splitVertexFromCVE( cutVertEntry*& cve,
 
     }
     cveStartPositionsSet[newVertIdx] =cve;
-    cout<<"also inserted into start positions set "<<endl ;
     cout<<insertIdx<<" the inserted index"<<endl;// TODO CASE IT IS NOT RIGHT NEITHER LEFT BUT ACTUALLY ON!!
 
     Eigen::MatrixXi B;
@@ -796,7 +796,6 @@ void splitVertexFromCVE( cutVertEntry*& cve,
             }
         }
 
-//        cout<<newnewVertIdx<<" newnew and new "<<newVertIdx<<", check with matrix sizes "<< newVg.rows()<<endl;
         MatrixXd newnewVg(newVg.rows()+1, 3);
         newnewVg.block(0,0, newVg.rows(), 3)= newVg;
         newnewVg.row(newnewVertIdx)= newVg.row(insertIdx);//+ (eps * toRight).transpose();
@@ -811,10 +810,6 @@ void splitVertexFromCVE( cutVertEntry*& cve,
         newVg.resize(newnewVg.rows(), 3);
         newVg = newnewVg;
         cout<<" fin operation"<<endl;
-//        cout<<newVg.row(newnewVertIdx)<<" newnew"<<endl;
-//        cout<<newVg.row(insertIdx)<<" insert"<<endl;
-//        cout<<newVg.row(newVertIdx)<<" new"<<endl;
-//        cout<<newVg.row(cve->vert)<<" vert"<<endl;
 
         cve->finFlag= true;
 
@@ -844,8 +839,6 @@ void splitVertexFromCVE( cutVertEntry*& cve,
 
     cve-> vert = insertIdx;
     cve->levelOne = false;
-    cout<<Vg.row(insertIdx)<<" final position in working shpae "<<endl ;
-
 
 }
 void splitCounterPart(vector<cutVertEntry*>& cutPositions, int idxOfCVE,  cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<vector<int> >& vfAdj,
@@ -1005,9 +998,7 @@ void findCorrespondingCounterCutPosition(vector<cutVertEntry*>& cutPositions, in
         }
         cve-> counterPartIdx = idx;
         cutPositions[idx]-> counterPartIdx = idxOfCVE;
-//        cout<<cve->vert<<" "<< cutPositions[idx]->vert<<" matched"<<endl;
 
-//        cout<<"found counter of middle, it's "<< cve-> vert <<" and "<< cutPositions[cve->counterPartIdx]->vert<<endl;
         return;
     }
 
@@ -1049,7 +1040,6 @@ void findCorrespondingCounterCutPosition(vector<cutVertEntry*>& cutPositions, in
     cve-> counterPartIdx = idx;
     cutPositions[idx]-> counterPartIdx = idxOfCVE;
 
-//    cout<<cve->vert<<" "<< cutPositions[idx]->vert<<" matched"<<endl;
     double stressSum = cve->stress + cutPositions[idx]->stress;
     cve-> stressWithCounter = stressSum;
     cutPositions[idx]->stressWithCounter = stressSum;
@@ -1984,11 +1974,11 @@ int computeTear(Eigen::MatrixXd & fromPattern, MatrixXd&  currPattern, MatrixXi&
         }
         cout<<cutPositions[count]->stress<<" curr stress "<<cutPositions[count]->stressWithCounter<<endl;
         int currVert = cutPositions[count]->vert;
+        returnPosition = cutPositions[count]->vert;
 
         splitVertexFromCVE(cutPositions[count], currPattern, Fg_pattern, vfAdj, boundaryL, seamsList,
                            minusOneSeams, releasedVert, toPattern_boundaryVerticesSet,lengthsCurr, cornerSet, handledVerticesSet, LShapeAllowed, Vg_pattern_orig);
         prevFinished = cutPositions[count] -> finFlag;
-        returnPosition = cutPositions[count]->vert;
 
         if( releasedVertNew.find(currVert) != releasedVertNew.end()){
             // dann können müssen wir ja auch die passende andere seite des cuts öffnen
