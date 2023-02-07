@@ -23,7 +23,7 @@ using namespace Eigen;
 MatrixXd lengthsOrig;
 map<int, cutVertEntry *> cveStartPositionsSet;
 set<int> cutThroughCornerVertices;
-vector<vector<int> > vvAdjProj;
+//vector<vector<int> > vvAdjProj;
 int findWhichEdgeOfFace(int face, int v1, int v2, MatrixXi& Fg){
     int faceidxv1, faceidxv2;
     for(int j=0; j<3; j++){
@@ -1261,7 +1261,8 @@ void setLP(std::vector<std::vector<int> >& boundaryL , vector<vector<int>> & vfA
         MatrixXd& lengthsOrig, MatrixXd& lengthsCurr,const std::vector<std::vector<std::pair<int, int>>>& edgesPerBoundary,
         map<int,
         vector<pair<int, int>>>& seamIdPerCorner, vector<seam*>& seamsList, const vector<minusOneSeam*> & minusOneSeams,
-        double tailor_lazyness, double minConstrained, vector <cutVertEntry*>& cutPositions, VectorXd& cornerVert, MatrixXd& Vg, const bool & LShapeAllowed){
+        double tailor_lazyness, double minConstrained, vector <cutVertEntry*>& cutPositions, VectorXd& cornerVert,
+        MatrixXd& currPattern, const bool & LShapeAllowed){
 
     // Create an environment
     GRBEnv env = GRBEnv(true);
@@ -1306,7 +1307,7 @@ void setLP(std::vector<std::vector<int> >& boundaryL , vector<vector<int>> & vfA
                 GRBLinExpr rSumConstr = 0; // right sum
                 int startVarOfThis = varCount;
                 int count = 0;
-                double distStartToEnd = computeSeamLength(seamId[si], seamsList, minusOneSeams, boundaryL, Vg);
+                double distStartToEnd = computeSeamLength(seamId[si], seamsList, minusOneSeams, boundaryL, currPattern);
                 //todo
                 double widthThereshold = 50;
                 // check for direction
@@ -1536,7 +1537,9 @@ void setLP(std::vector<std::vector<int> >& boundaryL , vector<vector<int>> & vfA
             if(seamId<0) inverted = seamsList[(-1)*(seamId+1)]->inverted;
              getPrevAndNextVertAndStress( seamType, seamId, vert, prevVert, nextVert, prevStress, nextStress,
                                               seamsList, minusOneSeams, boundaryL, Fg_pattern, lengthsOrig, lengthsCurr, vfAdj, inverted );
-
+            if(vert == 788|| vert == 783){
+                cout<<vert<<": "<<prevVert<<" prev, next "<<nextVert<<" "<<prevStress<<" stresses "<<nextStress<<endl;
+            }
             if(cornerVert[vert]==1){
                 cout<<"corner "<<endl;
                 cve->cornerInitial = vert;
@@ -1555,13 +1558,13 @@ void setLP(std::vector<std::vector<int> >& boundaryL , vector<vector<int>> & vfA
                     //experiment
                     if(seamId<0 && !inverted) cve->stress = prevStress;
 
-                    cve->continuedDirection = Vg.row(nextVert)- Vg.row(vert);
+//                    cve->continuedDirection = Vg.row(nextVert)- Vg.row(vert);
                 }else{
                     cve-> endCorner = true;
                     cve->stress = prevStress;
                     //experiment
                     if(seamId<0 &&  !inverted) cve->stress = nextStress;
-                    cve->continuedDirection = Vg.row(prevVert)- Vg.row(vert);
+//                    cve->continuedDirection = Vg.row(prevVert)- Vg.row(vert);
                 }
 
             }else{
@@ -1897,19 +1900,29 @@ void smoothCuts(vector<cutVertEntry*>& cutPositions, MatrixXd&  currPattern, Mat
     }
 }
 
-int computeTear(Eigen::MatrixXd & fromPattern, MatrixXd&  currPattern, MatrixXi& Fg_pattern, MatrixXd& patternlengthsOrig,
+int computeTear(Eigen::MatrixXd & fromPattern, MatrixXd&  currPattern, MatrixXi& Fg_pattern_curr, MatrixXd& patternlengthsOrig,
                  vector<seam*>& seamsList, vector<minusOneSeam*>& minusOneSeams, std::vector<std::vector<int> >& boundaryL, bool & finished,
                  const std::vector<std::vector<std::pair<int, int>>>& cornersPerBoundary, map<int, vector<pair<int, int>>>& seamIdPerCorner,
                  VectorXd& cornerVert, vector<cutVertEntry*>& cutPositions, map<int, pair<int, int>> & releasedVert,
-                 set<int>& toPattern_boundaryVerticesSet, set<int> & cornerSet, set<int>& handledVerticesSet , MatrixXd& Vg,
-                 bool& prevFinished, const bool & LShapeAllowed,MatrixXd& Vg_pattern_orig, bool& prioInner,
-                bool& prioOuter )
+                 set<int>& toPattern_boundaryVerticesSet, set<int> & cornerSet, set<int>& handledVerticesSet ,
+                 bool& prevFinished,
+                 const bool & LShapeAllowed,
+                 bool& prioInner,
+                 bool& prioOuter )
                  {
+    cout<<boundaryL.size()<<" boundaryL size"<<endl;
+    std::vector<std::vector<int> > boundaryLnew;
+    igl::boundary_loop(Fg_pattern_curr, boundaryLnew);
+    boundaryL.clear();
+    boundaryL = boundaryLnew;
+    cout<<boundaryL.size()<<" boundaryL size after"<<endl;
 
-    vector<vector<int> > vfAdj;
-    createVertexFaceAdjacencyList(Fg_pattern, vfAdj);
+
+                     vector<vector<int> > vfAdj;
+    createVertexFaceAdjacencyList(Fg_pattern_curr, vfAdj);
     MatrixXd lengthsCurr;
-    igl::edge_lengths(currPattern, Fg_pattern, lengthsCurr);
+    igl::edge_lengths(currPattern, Fg_pattern_curr, lengthsCurr);
+
     lengthsOrig =  patternlengthsOrig;
 //    igl::edge_lengths(fromPattern, Fg_pattern_orig, lengthsOrig);
 
@@ -1943,12 +1956,12 @@ int computeTear(Eigen::MatrixXd & fromPattern, MatrixXd&  currPattern, MatrixXi&
     // for vertices we need boundary loop
     double tailor_lazyness = 1;
     double minConstrained = 0.25;
-    setLP(boundaryL, vfAdj, Fg_pattern, lengthsOrig, lengthsCurr, cornersPerBoundary, seamIdPerCorner,
+    setLP(boundaryL, vfAdj, Fg_pattern_curr, lengthsOrig, lengthsCurr, cornersPerBoundary, seamIdPerCorner,
           seamsList, minusOneSeams, tailor_lazyness, minConstrained, cutPositions,
-          cornerVert, Vg, LShapeAllowed);
+          cornerVert, currPattern, LShapeAllowed);// Vg= currpattern
 
     //update with the preferences before sorting
-    updateStress( cutPositions, seamsList, minusOneSeams, boundaryL,  Fg_pattern, vfAdj, lengthsCurr,  prioInner, prioOuter);
+    updateStress( cutPositions, seamsList, minusOneSeams, boundaryL,  Fg_pattern_curr, vfAdj, lengthsCurr,  prioInner, prioOuter);
 
 
     //  here we need to sort and check if handled already
@@ -1956,8 +1969,8 @@ int computeTear(Eigen::MatrixXd & fromPattern, MatrixXd&  currPattern, MatrixXi&
 
 
     for(int i =0; i < cutPositions.size(); i++){
-        findCorrespondingCounterCutPosition(cutPositions, i, cutPositions[i], currPattern, Fg_pattern, vfAdj, boundaryL,
-                                            seamsList, minusOneSeams, releasedVert, toPattern_boundaryVerticesSet,lengthsCurr,Fg_pattern, cornerSet, handledVerticesSet );
+        findCorrespondingCounterCutPosition(cutPositions, i, cutPositions[i], currPattern, Fg_pattern_curr, vfAdj, boundaryL,
+                                            seamsList, minusOneSeams, releasedVert, toPattern_boundaryVerticesSet,lengthsCurr,Fg_pattern_curr, cornerSet, handledVerticesSet );
 
     }
 
@@ -1976,8 +1989,9 @@ int computeTear(Eigen::MatrixXd & fromPattern, MatrixXd&  currPattern, MatrixXi&
         int currVert = cutPositions[count]->vert;
         returnPosition = cutPositions[count]->vert;
 
-        splitVertexFromCVE(cutPositions[count], currPattern, Fg_pattern, vfAdj, boundaryL, seamsList,
-                           minusOneSeams, releasedVert, toPattern_boundaryVerticesSet,lengthsCurr, cornerSet, handledVerticesSet, LShapeAllowed, Vg_pattern_orig);
+        splitVertexFromCVE(cutPositions[count], currPattern, Fg_pattern_curr, vfAdj, boundaryL, seamsList,
+                           minusOneSeams, releasedVert, toPattern_boundaryVerticesSet,lengthsCurr,
+                           cornerSet, handledVerticesSet, LShapeAllowed, fromPattern);
         prevFinished = cutPositions[count] -> finFlag;
 
         if( releasedVertNew.find(currVert) != releasedVertNew.end()){
@@ -1987,13 +2001,12 @@ int computeTear(Eigen::MatrixXd & fromPattern, MatrixXd&  currPattern, MatrixXi&
             int parallel = openParallelPosition(cutPositions[count]-> cornerInitial, releasedVertNew[currVert][0], seamsList, cutPositions);
             if(parallel<0) {cout<<"no proper parallel found"<<endl;continue;}
 
-            splitVertexFromCVE(cutPositions[parallel], currPattern, Fg_pattern, vfAdj, boundaryL, seamsList,
+            splitVertexFromCVE(cutPositions[parallel], currPattern, Fg_pattern_curr, vfAdj, boundaryL, seamsList,
                                minusOneSeams, releasedVert, toPattern_boundaryVerticesSet,lengthsCurr,
-                               cornerSet, handledVerticesSet, LShapeAllowed, Vg_pattern_orig);
+                               cornerSet, handledVerticesSet, LShapeAllowed, fromPattern);
             prevFinished = (prevFinished && cutPositions[parallel] -> finFlag);
 
         }
-
 
 
 //        int counterPart = cutPositions[count]->counterPartIdx;
@@ -2058,41 +2071,64 @@ void updatePositionToIntersection(MatrixXd& p,int next, const MatrixXd& Vg_bound
      then for each boundary vertex, project it's current position to the boundary
      update the current position towards the projected
      */
-void projectBackOnBoundary(const MatrixXd & Vg_to, MatrixXd& p, const vector<seam*>& seamsList, const vector<minusOneSeam*> & minusOneSeams,  const MatrixXi& Fg_pattern,
+
+
+void fillMatrixWithBoundaryVert(const vector<int>& boundary, const int& start, const int& end, const MatrixXd& mapToVg, MatrixXd& Vg_seam1to, bool inverted ){
+
+    int countLen = 2;
+    int startIdx = 0;
+    int boundLen = boundary.size();
+
+    while(boundary[startIdx] != start && startIdx <= boundLen){
+        startIdx++;
+        startIdx = startIdx % boundLen ;
+    }
+    if(boundary[startIdx] != start ) cout<<"START NOT FOUND ERROR "<<start<<endl;
+    int endIdx = (inverted)? startIdx-1: startIdx+1;
+
+    while(boundary[endIdx] != end && endIdx != startIdx ){// messy?
+        endIdx = (inverted)? endIdx-1 : endIdx+1;
+        if(endIdx <0) endIdx+= boundLen;
+        endIdx = endIdx % boundLen;
+        countLen++;
+    }
+
+    if(boundary[endIdx] != end ) cout<<"END NOT FOUND ERROR"<<endl;
+
+    Vg_seam1to= MatrixXd(countLen , 3);
+    for(int i=0; i < countLen; i++){
+        int bid = (inverted) ? (startIdx - i)  :  ((startIdx + i) % boundLen);
+        if(bid < 0){
+            bid += boundLen;
+        }
+        int v1_oneSide = boundary[bid ];
+        Vg_seam1to.row(i) = mapToVg.row(v1_oneSide);
+
+    }
+
+}
+void projectBackOnBoundary(const MatrixXd & mapToVg, MatrixXd& p, const vector<seam*>& seamsList, const vector<minusOneSeam*> & minusOneSeams,  const MatrixXi& Fg_pattern,
                            const MatrixXi& Fg_pattern_orig, const std::vector<std::vector<int> >& boundaryL_toPattern, map<int, pair<int, int>> & releasedVert ,bool visFlag){
 
     int numSeams = seamsList.size();
-    vvAdjProj.clear();
-    igl::adjacency_list(Fg_pattern,vvAdjProj);
+//    vvAdjProj.clear();
+//    igl::adjacency_list(Fg_pattern,vvAdjProj);
+//Fg_pattern_orig and Fg_pattern are not even used !!!
 
     for (int j = 0; j<numSeams; j++){
         seam* currSeam  = seamsList[j];
         auto stP1= currSeam-> getStartAndPatch1();
         auto stP2 =  currSeam -> getStartAndPatch2ForCorres(); // attention this is with respect to the original pattern
-        int len  = currSeam -> seamLength();
+//        int len  = currSeam -> seamLength();
         int boundLen1 = boundaryL_toPattern[stP1.second].size();
         int boundLen2 = boundaryL_toPattern[stP2.second].size();
 
         // build the structure for closest search
-        MatrixXd Vg_seam1to(len+1 , 3);
-        MatrixXd Vg_seam2to(len+1 , 3);
+        MatrixXd Vg_seam1to, Vg_seam2to;
+        fillMatrixWithBoundaryVert(boundaryL_toPattern[stP1.second], currSeam-> getStart1(), currSeam->getEndCornerIds().first, mapToVg, Vg_seam1to, false );
+        fillMatrixWithBoundaryVert(boundaryL_toPattern[stP2.second], currSeam-> getStart2(), currSeam->getEndCornerIds().second, mapToVg, Vg_seam2to, true );
+
         bool shoulBeLeft =true; // for 2 case
-        for(int i = 0; i<= len ; i++){
-            int v1_oneSide = boundaryL_toPattern[stP1.second][(stP1.first+i) % boundLen1];
-            int v1_otherSide_idx = (stP2.first-i);// % boundLen2;
-            if(v1_otherSide_idx < 0) {
-                v1_otherSide_idx +=boundLen2;
-            }
-            if(seamsList[j]->inverted) {
-                v1_otherSide_idx = (stP2.first + i) % boundLen2;
-                shoulBeLeft = false;
-            }
-            int v1_otherSide = boundaryL_toPattern[stP2.second][v1_otherSide_idx];
-
-            Vg_seam1to.row(i) = Vg_to.row(v1_oneSide);
-            Vg_seam2to.row(i) = Vg_to.row(v1_otherSide);
-
-        }
 
         // for each interior (=not corner) vertex of the new boundary we need to find the closest position on the polyline and map it there
         // todo never ever cut the corner or change the corner index
@@ -2119,6 +2155,7 @@ void projectBackOnBoundary(const MatrixXd & Vg_to, MatrixXd& p, const vector<sea
             updatePositionToIntersection( p, next,Vg_seam1to, true);
         }
 
+
         int i2 = 0;
         bsize = boundaryL_toPattern[stP2.second].size();
         int nextidx = stP2.first;
@@ -2143,7 +2180,6 @@ void projectBackOnBoundary(const MatrixXd & Vg_to, MatrixXd& p, const vector<sea
         if(releasedVert.find(next) != releasedVert.end() && (std::find(releasedVertNew[next].begin(), releasedVertNew[next].end(), j) == releasedVertNew[next].end())){
             updatePositionToIntersection( p, next,Vg_seam2to, shoulBeLeft);
         }
-
         // also project all duplicates of interior cut vertices
         for(const auto & addedVert : currSeam->duplicates){
 
@@ -2153,6 +2189,7 @@ void projectBackOnBoundary(const MatrixXd & Vg_to, MatrixXd& p, const vector<sea
                 updatePositionToIntersection(p, addedVert.second, Vg_seam1to, true);
             }
         }
+
         for(const auto & addedVert : currSeam->duplicates2){
 
             if(releasedVert.find(addedVert.second) == releasedVert.end() ){
@@ -2165,6 +2202,7 @@ void projectBackOnBoundary(const MatrixXd & Vg_to, MatrixXd& p, const vector<sea
     }
 
     for(int j = 0; j < minusOneSeams.size(); j++){
+
         minusOneSeam* currSeam  = minusOneSeams[j];
         int patch = currSeam -> getPatch();
         int startVert = currSeam -> getStartVert();
@@ -2179,7 +2217,7 @@ void projectBackOnBoundary(const MatrixXd & Vg_to, MatrixXd& p, const vector<sea
 
         for(int i = 0; i<= len ; i++){
             int v1 = boundaryL_toPattern[patch][(startidx+i)% boundLen];
-            Vg_seamto.row(i) = Vg_to.row(v1);
+            Vg_seamto.row(i) = mapToVg.row(v1);
         }
 
         int i1=0;

@@ -17,6 +17,7 @@
 #include <fstream>
 #include <iterator>
 #include <set>
+#include "MathFunctions.h"
 
 
 
@@ -233,17 +234,17 @@ void backTo3Dmapping(MatrixXd& adaptedPattern, MatrixXi& adaptedPattern_faces, M
 
 }
 
-bool vertOnEdge(const VectorXd& R, const VectorXd& Q, VectorXd& p,int v){
+bool vertOnEdge(const VectorXd& R, const VectorXd& Q, VectorXd& p,int v, int v1){
     double eps = 0.5;
     auto QR = Q-R;
     auto Qp = Q-p;
-cout<<"v= "<<v<<endl;
+    cout<<"v= "<<v<<endl;
     VectorXd diff = (Qp).normalized() - (QR).normalized();
-    if(v==2918|| v==2938){
+    if((v==2967 && v1 ==2968) ||(v==2968 && v1 ==2967) ){
         cout<<diff.transpose()<<" diff"<<endl;
         double tt = (p-R)(0)/(QR)(0);
         double t2 =  (p-R)(1)/(QR)(1);
-        cout<<tt<<" = t=  "<<t2<<", and makes "<<endl<<(R+tt*(Q-R)).transpose()<<endl<<p.transpose()<<" =? "<<endl;
+        cout<<tt<<" = t=  "<<t2<<", and makes "<<endl<<(R+tt*(Q-R)).transpose()<<endl<<(R+t2*(Q-R)).transpose()<<endl<<p.transpose()<<" =? "<<endl;
     }
     if (abs(diff(0))+abs(diff(1)) >eps) return false;
     // p is on the line, but also on the segment?
@@ -252,19 +253,27 @@ cout<<"v= "<<v<<endl;
     double t = (p-R)(0)/(QR)(0);
     double tt=  (p-R)(1)/(QR)(1);
 //    if((p-R)(0)-(QR)(0)< 0.01){// numerically instable
+    double finalT;
     if (0 > t || t > 1 ) {// t does not work anyways ,try with tt
-        t =tt;
+        finalT =tt;
     }
-    if (0<=t && t<=1 ) cout<<v<<" : t= "<<t<<", and makes "<<endl<<(R+t*(QR)).transpose()<<endl<<p.transpose()<<" =? "<<endl;
-    if(v==2918|| v==2938){
-        cout<<"  R "<< R.transpose() <<endl;
-        cout<<"Q "<<Q.transpose()<<endl;
-        cout<<"  QR "<< QR.transpose() <<endl;
-
-
+//    if (0<=t && t<=1 ) cout<<v<<" : t= "<<t<<", and makes "<<endl<<(R+t*(QR)).transpose()<<endl<<p.transpose()<<" =? "<<endl;
+//    if(v==2918|| v==2938){
+//        cout<<"  R "<< R.transpose() <<endl;
+//        cout<<"Q "<<Q.transpose()<<endl;
+//        cout<<"  QR "<< QR.transpose() <<endl;
+//
+//
+//    }
+    if (0> finalT || finalT>1 ) return false;
+    // both are possible, choose the better
+    if( ((R+t*(QR))-p).norm()< ((R+tt*(QR))-p).norm())
+    {
+        finalT = t;
+    }else{
+        finalT = tt;
     }
-    if (0>t || t>1 ) return false;
-    VectorXd posdiff = R+t*(Q-R) - p;
+    VectorXd posdiff = R+finalT*(Q-R) - p;
     cout<<"diff from real pos " << abs(posdiff(0)) + abs(posdiff(1)) <<endl;
 //    if(v==1556|| v==1557){
 //        cout<<posdiff.transpose()<<" posdiff"<<endl;
@@ -300,7 +309,7 @@ void computeAllBetweensNew(vector<VectorXd>& polylineSelected,vector<int>& polyl
         for (int k = 0; k < boundaryToSearch[j].size(); k++) {
             int v = boundaryToSearch[j][k];
             int v1 = boundaryToSearch[j][(k+1) % boundaryToSearch[j].size() ];
-            if (vertOnEdge(Vg_to.row(v).transpose(), Vg_to.row(v1).transpose(), polylineSelected[1], v)) {
+            if (vertOnEdge(Vg_to.row(v).transpose(), Vg_to.row(v1).transpose(), polylineSelected[1], v, v1)) {
                 cout << "found vertex 1 on patch " << j<<" between vertices "<<v<<" and "<<v1 << endl;
                 cout<<Vg_to.row(v)<<", " << Vg_to.row(v1)<<", "<< polylineSelected[1].transpose()<<endl;
                 closer1 = k;
@@ -324,7 +333,7 @@ void computeAllBetweensNew(vector<VectorXd>& polylineSelected,vector<int>& polyl
         for (int k = 0; k < boundaryToSearch[j].size(); k++) {
             int v = boundaryToSearch[j][k];
             int v1 = boundaryToSearch[j][k+1 % boundaryToSearch[j].size() ];
-            if (vertOnEdge(Vg_to.row(v).transpose(), Vg_to.row(v1).transpose(), polylineSelected[4], v)) {
+            if (vertOnEdge(Vg_to.row(v).transpose(), Vg_to.row(v1).transpose(), polylineSelected[4], v ,v1)) {
                 cout << "found vertex  4 on patch " << j<<" between vertices "<<v<<" and "<<v1 << endl;
                 cout<<Vg_to.row(v)<<" " << Vg_to.row(v1)<<" "<< polylineSelected[4]<<endl;
                 closer2 = k;
@@ -715,16 +724,39 @@ void createHalfAvatarMap(MatrixXd& testMorph_V1, MatrixXi& testMorph_F1,
 
 }
 
-void initialGuessAdaption(MatrixXd& currPattern, MatrixXd& toPattern, MatrixXi& Fg_pattern){
+void initialGuessAdaption(MatrixXd& currPattern, MatrixXd& mapToVg, MatrixXi& Fg_pattern_curr){
 
-    currPattern.block(0, 0,toPattern.rows(), toPattern.cols())= toPattern;
-    cout<<currPattern.row(66)<<" v 66"<<endl ;
-    cout<<currPattern.row(368)<<" v 368"<<endl ;
 
-    if(currPattern.rows()>toPattern.rows()){
+
+    if(currPattern.rows()>mapToVg.rows()){
         // we added some vertices already, map the vertices to the duplicates
         cout<<"add some more. TODO "<<endl;
+        // we could use local frames to describe them , preferably a face from the same patch?
+        // for now just choose one , no matter which ..
+//        for(int i = mapToVg.rows(); i<currPattern.rows(); i++){
+//            //row (i) in coordinates of another face
+//            int whichFace = 1;
+//            Vector3d v0 = currPattern.row(Fg_pattern_curr(whichFace, 0)).transpose();
+//            Vector3d v1 = currPattern.row(Fg_pattern_curr(whichFace, 1)).transpose();
+//            Vector3d v2 = currPattern.row(Fg_pattern_curr(whichFace, 2)).transpose();
+//
+//            Vector3d bary;
+//            Vector3d u = currPattern.row(i) ;
+//
+//            MathFunctions mathfun;
+//            mathfun.Barycentric3D( u, v0, v1, v2, bary);
+//
+//            Vector3d v0new = mapToVg.row(Fg_pattern_curr(whichFace, 0)).transpose();
+//            Vector3d v1new = mapToVg.row(Fg_pattern_curr(whichFace, 1)).transpose();
+//            Vector3d v2new = mapToVg.row(Fg_pattern_curr(whichFace, 2)).transpose();
+//            cout<<i<<" was: "<<    currPattern.row(i)<<endl;
+//            cout<<i<<" rec: "<< (v0*bary(0) + v1 * bary(1) + v2 * bary(2)).transpose()<<endl;
+////            currPattern.row(i) = (v0new*bary(0) + v1new * bary(1) + v2new * bary(2)).transpose();
+//
+//        }
     }
+    currPattern.block(0, 0,mapToVg.rows(), mapToVg.cols())= mapToVg;
+
 }
 set<int> boundaryVerticesP;
 void ensureAngle(MatrixXd& p, MatrixXd& toPattern, MatrixXi& Fg_pattern){

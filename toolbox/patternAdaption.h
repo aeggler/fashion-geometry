@@ -78,10 +78,8 @@ int computeTear(MatrixXd& fromPatternFile,
                  std::set<int>& toPattern_boundaryVerticesSet,
                  set<int> & cornerSet,
                  set<int>& handledVerticesSet,
-                 MatrixXd& Vg,
                  bool& prevFinished,
                  const bool & LShapeAllowed,
-                MatrixXd& Vg_pattern_orig,
                 bool& prioInner,
                 bool& prioOuter
                  );
