@@ -1195,15 +1195,15 @@ int main(int argc, char *argv[])
             }
             if(ImGui::Button("Add Area to Pattern", ImVec2(-1, 0))) {
                 mouse_mode = NONE;
-                mergeTriagulatedAndPattern(connectedVert, Vg_retri, Fg_retri, currPattern, Fg_pattern);
+                mergeTriagulatedAndPattern(connectedVert, Vg_retri, Fg_retri, currPattern, Fg_pattern_curr);
 
                 viewer.selected_data_index = 1;
                 viewer.data().clear();
                 viewer.selected_data_index = 0;
                 viewer.data().clear();
-                viewer.data().set_mesh(currPattern, Fg_pattern);
-                MatrixXd C = MatrixXd::Zero(Fg_pattern.rows(), 3);
-                C.col(1)=  VectorXd::Ones(Fg_pattern.rows());
+                viewer.data().set_mesh(currPattern, Fg_pattern_curr);
+                MatrixXd C = MatrixXd::Zero(Fg_pattern_curr.rows(), 3);
+                C.col(1)=  VectorXd::Ones(Fg_pattern_curr.rows());
                 C.block(0,0, prevFaces, 1) = VectorXd::Ones(prevFaces);
                 viewer.data().set_colors(C);
 
@@ -1426,7 +1426,7 @@ bool callback_mouse_down(igl::opengl::glfw::Viewer& viewer, int button, int modi
         // it is in the from mesh, thus snap to the closest vertex on the mesh
         if (computePointOnMesh(viewer, Vrs, Fg_pattern_curr, b, fid)) {
             v_id = computeClosestVertexOnMesh(b, fid, Fg_pattern_curr);
-            viewer.data().set_points(Vrs.row(v_id), RowVector3d(1.0, 1.0, 0.0));
+//            viewer.data().set_points(Vrs.row(v_id), RowVector3d(1.0, 1.0, 0.0));
             whichMesh=1;
             cout<<"found on inner mesh"<<endl;
             polylineSelected.push_back(Vrs.row(v_id));
@@ -1441,7 +1441,7 @@ bool callback_mouse_down(igl::opengl::glfw::Viewer& viewer, int button, int modi
                 v_id = computeClosestVertexOnMesh(b, fid, Frs);
                 cout<<"on outer"<<endl;
 
-                viewer.data().set_points(Vrs.row(v_id), RowVector3d(.0, 1.0, 0.0));
+//                viewer.data().set_points(Vrs.row(v_id), RowVector3d(.0, 1.0, 0.0));
                 whichMesh = 2;
                 polylineSelected.push_back(Vrs.row(v_id));
                 polylineIndex.push_back(v_id);
@@ -1450,7 +1450,7 @@ bool callback_mouse_down(igl::opengl::glfw::Viewer& viewer, int button, int modi
 
         polyLineMeshIndicator.push_back(whichMesh);
         if(  polylineSelected.size() % 12 != 0){
-            cout<<"please select"<<12 - (polylineSelected.size() % 12) <<" more points according to the structure "<<endl;
+            cout<<"please select "<<12 - (polylineSelected.size() % 12) <<" more points according to the structure "<<endl;
         }else{
             cout<<"finished, please confirm "<<endl;
         }
@@ -1646,7 +1646,7 @@ bool callback_key_down(igl::opengl::glfw::Viewer& viewer, unsigned char key, int
     }
     if(key== 'W'){
         keyRecognition=true;
-        igl::writeOBJ("writtenPattern.obj", currPattern, Fg_pattern);
+        igl::writeOBJ("writtenPattern.obj", currPattern, Fg_pattern_curr);
           std::cout<<" Garment file written"<<endl;
     }
     if(key == 'P'){       // Pattern

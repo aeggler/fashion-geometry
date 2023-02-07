@@ -284,7 +284,7 @@ bool vertOnEdge(const VectorXd& R, const VectorXd& Q, VectorXd& p,int v, int v1)
  * further v2-4 & 9-11 are on patch c on the vg_to pattern
  * if for some the vertices are the same, there is just not enough between and we're done, no need to traverse
  * */
-bool isAsc(int s, int t, int m){
+bool isAsc(int s, int m, int t){
     if(s< t){
         if (s < m && m < t){
             return true;
@@ -367,6 +367,7 @@ void computeAllBetweensConnectPatches(vector<VectorXd>& polylineSelected,vector<
         //add them
         polyLineInput.push_back(currPattern.row(boundary[currIdx]).transpose());
         currIdx = (leftAsc)? (currIdx+1) % boundary.size() : currIdx-1;
+
         if(currIdx<0) currIdx+= boundary.size();
 
     }// add last
@@ -385,6 +386,7 @@ void computeAllBetweensConnectPatches(vector<VectorXd>& polylineSelected,vector<
     }// add last
     polyLineInput.push_back(Vg_to.row(boundary[currIdx]).transpose());
 
+
     currIdx = idx(6);
     boundary.clear();
     boundary = boundaryL_adaptedFromPattern[patchR];
@@ -396,6 +398,7 @@ void computeAllBetweensConnectPatches(vector<VectorXd>& polylineSelected,vector<
 
     }// add last
     polyLineInput.push_back(currPattern.row(boundary[currIdx]).transpose());
+
 
     // go on on boundary of to pattern
     currIdx = idx(9);
@@ -420,6 +423,7 @@ void computeAllBetweensNew(vector<VectorXd>& polylineSelected,vector<int>& polyl
     if(polylineSelected.size() ==12){
         computeAllBetweensConnectPatches(polylineSelected, polylineIndex, polyLineMeshIndicator,
                                boundaryL_adaptedFromPattern, boundaryL_toPattern, currPattern, Vg_to, polyLineInput, connectedVert);
+        return;
     }
     /* given 6 positions in total
      *   we assume v0 is on the from mesh ,adapted pattern
@@ -723,7 +727,6 @@ void replaceInFaces(int id, int newId, MatrixXi& Fg){
 
 void mergeTriagulatedAndPattern(const vector<int> &connectedVert, MatrixXd& Vg_retri, MatrixXi& Fg_retri, MatrixXd& currPattern, MatrixXi& Fg_pattern){
     int offset = currPattern.rows();
-//    int count = 0;
     MatrixXd newVg (offset+Vg_retri.rows(), 3);
     newVg.block(0,0,offset, 3) = currPattern;
 
