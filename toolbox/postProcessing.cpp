@@ -238,33 +238,23 @@ bool vertOnEdge(const VectorXd& R, const VectorXd& Q, VectorXd& p,int v, int v1)
     double eps = 0.5;
     auto QR = Q-R;
     auto Qp = Q-p;
-    cout<<"v= "<<v<<endl;
+//    cout<<"v= "<<v<<endl;
     VectorXd diff = (Qp).normalized() - (QR).normalized();
-    if((v==2967 && v1 ==2968) ||(v==2968 && v1 ==2967) ){
-        cout<<diff.transpose()<<" diff"<<endl;
-        double tt = (p-R)(0)/(QR)(0);
-        double t2 =  (p-R)(1)/(QR)(1);
-        cout<<tt<<" = t=  "<<t2<<", and makes "<<endl<<(R+tt*(Q-R)).transpose()<<endl<<(R+t2*(Q-R)).transpose()<<endl<<p.transpose()<<" =? "<<endl;
-    }
+//    if((v==2967 && v1 ==2968) ||(v==2968 && v1 ==2967) ){
+//        cout<<diff.transpose()<<" diff"<<endl;
+//        double tt = (p-R)(0)/(QR)(0);
+//        double t2 =  (p-R)(1)/(QR)(1);
+//        cout<<tt<<" = t=  "<<t2<<", and makes "<<endl<<(R+tt*(Q-R)).transpose()<<endl<<(R+t2*(Q-R)).transpose()<<endl<<p.transpose()<<" =? "<<endl;
+//    }
     if (abs(diff(0))+abs(diff(1)) >eps) return false;
-    // p is on the line, but also on the segment?
-    // R + t* (Q-R)= p
-//    double t = (R-Q).dot(p-Q)/((R-Q).dot(R-Q));
+
     double t = (p-R)(0)/(QR)(0);
     double tt=  (p-R)(1)/(QR)(1);
-//    if((p-R)(0)-(QR)(0)< 0.01){// numerically instable
+// numerically instable as quite often the x or y corrdinate is the same... compute both and take better choice
     double finalT;
     if (0 > t || t > 1 ) {// t does not work anyways ,try with tt
         finalT =tt;
     }
-//    if (0<=t && t<=1 ) cout<<v<<" : t= "<<t<<", and makes "<<endl<<(R+t*(QR)).transpose()<<endl<<p.transpose()<<" =? "<<endl;
-//    if(v==2918|| v==2938){
-//        cout<<"  R "<< R.transpose() <<endl;
-//        cout<<"Q "<<Q.transpose()<<endl;
-//        cout<<"  QR "<< QR.transpose() <<endl;
-//
-//
-//    }
     if (0> finalT || finalT>1 ) return false;
     // both are possible, choose the better
     if( ((R+t*(QR))-p).norm()< ((R+tt*(QR))-p).norm())
@@ -282,12 +272,155 @@ bool vertOnEdge(const VectorXd& R, const VectorXd& Q, VectorXd& p,int v, int v1)
 
 
 }
+/*
+ * V0 _________________ v9, v10, v11
+ * |                 |V8
+ * |                 |
+ * |V1               |
+ * |                 |V7
+ * |                 |
+ * |V2___v3___v4__v5_|V6
+ * we assume V0-2 to be on the current pattern (patch 1), and V6-8 patch2
+ * further v2-4 & 9-11 are on patch c on the vg_to pattern
+ * if for some the vertices are the same, there is just not enough between and we're done, no need to traverse
+ * */
+bool isAsc(int s, int t, int m){
+    if(s< t){
+        if (s < m && m < t){
+            return true;
+        }else{
+            return false;
+        }
+    } else{
+        if( s > m && m > t){
+            return false;
+        }else{
+            return true;
+        }
+    }
+}
+void computeAllBetweensConnectPatches(vector<VectorXd>& polylineSelected,vector<int>& polylineIndex, vector<int>& polyLineMeshIndicator,
+                           vector<vector<int>>& boundaryL_adaptedFromPattern, vector<vector<int>>& boundaryL_toPattern,
+                           MatrixXd& currPattern, MatrixXd& Vg_to, vector<VectorXd>& polyLineInput, vector<int>& connectedVert) {
+    VectorXi idx(12);
+    int patchL, patchR, patchTo;
+    for(int i = 0; i < boundaryL_adaptedFromPattern.size(); i++){
+        vector<int> boundary = boundaryL_adaptedFromPattern[i];
+        for(int j = 0; j < boundary.size(); j++){
+            if(boundary[j]== polylineIndex[0]){
+                idx(0) = j;
+                patchL= i;
+            }
+            if(boundary[j]== polylineIndex[1]){
+                idx(1) = j;
+            }
+            if(boundary[j]== polylineIndex[2]){
+                idx(2) = j;
+            }
+
+            if(boundary[j]== polylineIndex[6]){
+                idx(6) = j;
+                patchR= i;
+            }
+            if(boundary[j]== polylineIndex[7]){
+                idx(7) = j;
+            }
+            if(boundary[j]== polylineIndex[8]){
+                idx(8) = j;
+            }
+        }
+    }
+    bool leftAsc = isAsc(idx(0), idx(1), idx(2));
+    bool rightAsc = isAsc(idx(6), idx(7), idx(8));
+
+    for(int i = 0; i < boundaryL_toPattern.size(); i++){
+        vector<int> boundary = boundaryL_toPattern[i];
+        for(int j = 0; j < boundary.size(); j++){
+            if(boundary[j]== polylineIndex[3]){
+                idx(3) = j;
+                patchTo= i;
+            }
+            if(boundary[j]== polylineIndex[4]){
+                idx(4) = j;
+            }
+            if(boundary[j]== polylineIndex[5]){
+                idx(5) = j;
+            }
+
+            if(boundary[j]== polylineIndex[9]){
+                idx(9) = j;
+            }
+            if(boundary[j]== polylineIndex[10]){
+                idx(10) = j;
+            }
+            if(boundary[j]== polylineIndex[11]){
+                idx(11) = j;
+            }
+        }
+    }
+    bool toAsc = isAsc(idx(3), idx(4), idx(5));
+    cout<<idx.transpose()<<endl;
+
+    int currIdx = idx(0);
+    vector<int> boundary = boundaryL_adaptedFromPattern[patchL];
+    while(boundary[currIdx]!= boundary[idx(2)]){
+        //add them
+        polyLineInput.push_back(currPattern.row(boundary[currIdx]).transpose());
+        currIdx = (leftAsc)? (currIdx+1) % boundary.size() : currIdx-1;
+        if(currIdx<0) currIdx+= boundary.size();
+
+    }// add last
+    polyLineInput.push_back(currPattern.row(boundary[currIdx]).transpose());
+
+    // go on on boundary of to pattern
+    currIdx = idx(3);
+    boundary.clear();
+    boundary = boundaryL_toPattern[patchTo];
+    while(boundary[currIdx]!= boundary[idx(5)]){
+        //add them
+        polyLineInput.push_back(Vg_to.row(boundary[currIdx]).transpose());
+        currIdx = (toAsc)? (currIdx+1) % boundary.size() : currIdx-1;
+        if(currIdx<0) currIdx+= boundary.size();
+
+    }// add last
+    polyLineInput.push_back(Vg_to.row(boundary[currIdx]).transpose());
+
+    currIdx = idx(6);
+    boundary.clear();
+    boundary = boundaryL_adaptedFromPattern[patchR];
+    while(boundary[currIdx]!= boundary[idx(8)]){
+        //add them
+        polyLineInput.push_back(currPattern.row(boundary[currIdx]).transpose());
+        currIdx = (rightAsc)? (currIdx+1) % boundary.size() : currIdx-1;
+        if(currIdx<0) currIdx+= boundary.size();
+
+    }// add last
+    polyLineInput.push_back(currPattern.row(boundary[currIdx]).transpose());
+
+    // go on on boundary of to pattern
+    currIdx = idx(9);
+    boundary.clear();
+    boundary = boundaryL_toPattern[patchTo];
+    while(boundary[currIdx]!= boundary[idx(11)]){
+        //add them
+        polyLineInput.push_back(Vg_to.row(boundary[currIdx]).transpose());
+        currIdx = (toAsc)? (currIdx+1) % boundary.size() : currIdx-1;
+        if(currIdx<0) currIdx+= boundary.size();
+
+    }// add last
+    polyLineInput.push_back(Vg_to.row(boundary[currIdx]).transpose());
+
+}
 void computeAllBetweensNew(vector<VectorXd>& polylineSelected,vector<int>& polylineIndex, vector<int>& polyLineMeshIndicator,
                            vector<vector<int>>& boundaryL_adaptedFromPattern, vector<vector<int>>& boundaryL_toPattern,
                            MatrixXd& currPattern, MatrixXd& Vg_to, vector<VectorXd>& polyLineInput, vector<int>& connectedVert) {
     polyLineInput.clear();
     connectedVert.clear();
     cout<<endl<<"Seam Size "<<polylineSelected.size()<<endl<<endl;
+    if(polylineSelected.size() ==12){
+        computeAllBetweensConnectPatches(polylineSelected, polylineIndex, polyLineMeshIndicator,
+                               boundaryL_adaptedFromPattern, boundaryL_toPattern, currPattern, Vg_to, polyLineInput, connectedVert);
+    }
     /* given 6 positions in total
      *   we assume v0 is on the from mesh ,adapted pattern
      *   v1 is a corner that should intersect the to pattern

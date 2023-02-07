@@ -77,7 +77,7 @@ int timestepCounter;
 bool LShapeAllowed = false;
 
 
-enum MouseMode { SELECTPATCH, SELECTBOUNDARY, NONE, SELECTVERT, SELECTAREA };
+enum MouseMode { SELECTPATCH, SELECTBOUNDARY, NONE, SELECTVERT, SELECTAREA, SELECTAREAPATCHES };
 MouseMode mouse_mode = NONE;
 // pre computations
 Eigen::MatrixXi e4list;
@@ -1015,6 +1015,7 @@ int main(int argc, char *argv[])
             bool startSmooth = false;
             bool startTri = false;
             bool choosePatchArea = false;
+            bool choosePatches = false;
             if(ImGui::Checkbox("Start triangulating", &startTri)) {
 //                string modifiedPattern = "/Users/annaeggler/Desktop/mappedPattern.obj"; //
 //                string modifiedPattern = "/Users/annaeggler/Desktop/mappedPatternWithSmoothPCACuts.obj"; //
@@ -1101,6 +1102,57 @@ int main(int argc, char *argv[])
                     }
                 }
                 MatrixXi boundaryOfToPattern(boundVert, 2);
+//                MatrixXd vertPoints (boundVert, 3);
+                int curr = 0;
+                for (int i=0; i< boundaryL_toPattern.size(); i++){
+                    for(int j=0; j<boundaryL_toPattern[i].size(); j++){
+//                        vertPoints.row(curr) = visToPattern.row(boundaryL_toPattern[i][j]);
+                        boundaryOfToPattern(curr, 0) = boundaryL_toPattern[i][j];
+                        boundaryOfToPattern(curr, 1) = boundaryL_toPattern[i][(j + 1) % (boundaryL_toPattern[i].size())];
+                        curr++;
+                    }
+                }
+
+                viewer.data().set_edges(visToPattern, boundaryOfToPattern, Eigen::RowVector3d(0, 0, 1));
+//                viewer.data().point_size = 5.f;
+//                viewer.data().set_points(vertPoints, Eigen::RowVector3d(0, 0, 1));
+                mouse_mode= SELECTAREA;
+            }
+            if(ImGui::Checkbox("Connect patches to triangulate", &choosePatches)){
+                cout<<" V0 _________________ v9, v10, v11"<<endl;
+                cout<<" |                 |V8"<<endl;
+                cout<<" |                 |"<<endl;
+                cout<<" |V1               |"<<endl;
+                cout<<" |                 |V7"<<endl;
+                cout<<" |                 |"<<endl;
+                cout<<" |V2___v3___v4__v5_|V6"<<endl;
+                cout<<" we assume V0-2 to be on the current pattern (patch 1), and V6-8 patch2"<<endl;
+                cout<< "further v2-4 & 9-11 are on patch c on the vg_to pattern"<<endl;
+                cout<< "if for some the vertices are the same, there is just not enough between"<<endl;
+                polylineSelected.clear();
+                polylineIndex.clear();
+                polyLineMeshIndicator.clear();
+                connectedVert.clear();
+                viewer.selected_data_index = 0;
+                viewer.data().clear();
+                viewer.data().show_lines = true;
+                viewer.data().set_mesh(currPattern, Fg_pattern_curr);
+
+                viewer.selected_data_index = 1;
+                viewer.data().clear();
+                viewer.data().show_lines = true;
+
+                MatrixXd visToPattern = mapToVg;
+                MatrixXi Fg_toPattern = mapToFg; // todo not always
+                igl::boundary_loop(Fg_toPattern, boundaryL_toPattern);
+                int boundVert = 0;
+                for(int i = 0; i < boundaryL_toPattern.size(); i++){
+                    boundVert += boundaryL_toPattern[i].size();
+                    for(int j = 0; j < boundaryL_toPattern[i].size(); j++){
+                        toPattern_boundaryVerticesSet.insert(boundaryL_toPattern[i][j]);
+                    }
+                }
+                MatrixXi boundaryOfToPattern(boundVert, 2);
                 MatrixXd vertPoints (boundVert, 3);
                 int curr = 0;
                 for (int i=0; i< boundaryL_toPattern.size(); i++){
@@ -1113,11 +1165,10 @@ int main(int argc, char *argv[])
                 }
 
                 viewer.data().set_edges(visToPattern, boundaryOfToPattern, Eigen::RowVector3d(0, 0, 1));
-//                viewer.data().point_size = 5.f;
+                viewer.data().point_size = 8.f;
                 viewer.data().set_points(vertPoints, Eigen::RowVector3d(0, 0, 1));
-                mouse_mode= SELECTAREA;
+                mouse_mode= SELECTAREAPATCHES;
             }
-
             if(ImGui::Button("Confirm area", ImVec2(-1, 0))){
                 if(polylineSelected.size()<2){
                     cout<<"No, choose at least 2 positions"<<endl;
@@ -1364,6 +1415,42 @@ bool callback_mouse_down(igl::opengl::glfw::Viewer& viewer, int button, int modi
         polyLineMeshIndicator.push_back(whichMesh);
         if(  polylineSelected.size() % 2 != 0){
             cout<<"please select endpoint from same mesh "<<endl;
+        }else{
+            cout<<"finished, please confirm "<<endl;
+        }
+    }
+    if(mouse_mode == SELECTAREAPATCHES){
+        int fid, v_id, whichMesh;
+        Eigen::Vector3d b;
+        MatrixXd Vrs = currPattern;
+        // it is in the from mesh, thus snap to the closest vertex on the mesh
+        if (computePointOnMesh(viewer, Vrs, Fg_pattern_curr, b, fid)) {
+            v_id = computeClosestVertexOnMesh(b, fid, Fg_pattern_curr);
+            viewer.data().set_points(Vrs.row(v_id), RowVector3d(1.0, 1.0, 0.0));
+            whichMesh=1;
+            cout<<"found on inner mesh"<<endl;
+            polylineSelected.push_back(Vrs.row(v_id));
+            polylineIndex.push_back(v_id);
+
+
+            // the vertex is not in our original fromMesh. Locate it in the toMesh and use the exackt mouse chosen position by the barycentric coordinates to set it's position
+        }else{
+            Vrs = mapToVg; // TODO CHANGE
+            MatrixXi Frs = mapToFg;
+            if (computePointOnMesh(viewer, Vrs, Frs, b, fid)) {
+                v_id = computeClosestVertexOnMesh(b, fid, Frs);
+                cout<<"on outer"<<endl;
+
+                viewer.data().set_points(Vrs.row(v_id), RowVector3d(.0, 1.0, 0.0));
+                whichMesh = 2;
+                polylineSelected.push_back(Vrs.row(v_id));
+                polylineIndex.push_back(v_id);
+            }
+        }
+
+        polyLineMeshIndicator.push_back(whichMesh);
+        if(  polylineSelected.size() % 12 != 0){
+            cout<<"please select"<<12 - (polylineSelected.size() % 12) <<" more points according to the structure "<<endl;
         }else{
             cout<<"finished, please confirm "<<endl;
         }
