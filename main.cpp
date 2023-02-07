@@ -567,7 +567,7 @@ int main(int argc, char *argv[])
     setCollisionMesh();
 
     // copy the matrices to not mess with them
-    string fromPatternFile = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/writtenPatternMaternityRetri_Added_duplRem_unrefRem.obj"; //
+    string fromPatternFile = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/writtenPatternSmoothedMaternity_fullyRetri.obj"; //_Added_duplRem_unrefRem
 //    TODO LATER NO MORE
 
     igl::readOBJ(fromPatternFile, mapFromVg, mapFromFg);
