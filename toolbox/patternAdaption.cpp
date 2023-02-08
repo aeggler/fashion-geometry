@@ -1338,7 +1338,7 @@ void setLP(std::vector<std::vector<int> >& boundaryL , vector<vector<int>> & vfA
                         boundSizeOther = boundaryL[startAndPatchOther.second].size();
                         end = seam->getEndCornerIds().first;
                         length = seam->seamLength();
-                        safe falsch!!
+//                        safe falsch!!
 
                     } else if (seamId[si].first < 0) {
                         minusOneSeam *currSeam = minusOneSeams[seamId[si].second];
@@ -2089,7 +2089,12 @@ void fillMatrixWithBoundaryVert(const vector<int>& boundary, const int& start, c
         countLen++;
     }
 
-    if(boundary[endIdx] != end ) cout<<"END NOT FOUND ERROR"<<endl;
+    if(boundary[endIdx] != end ) {
+        cout<<"END NOT FOUND ERROR "<<end<<endl;
+        for(int i=0; i<boundary.size(); i++){
+            cout<<boundary[i]<<endl;
+        }
+    }
 
     Vg_seam1to= MatrixXd(countLen , 3);
     for(int i=0; i < countLen; i++){
@@ -2103,8 +2108,10 @@ void fillMatrixWithBoundaryVert(const vector<int>& boundary, const int& start, c
     }
 
 }
-void projectBackOnBoundary(const MatrixXd & mapToVg, MatrixXd& p, const vector<seam*>& seamsList, const vector<minusOneSeam*> & minusOneSeams,
-                           const std::vector<std::vector<int> >& boundaryL_toPattern, const std::vector<std::vector<int> >& boundaryL, map<int, pair<int, int>> & releasedVert ,bool visFlag){
+void projectBackOnBoundary(const MatrixXd & mapToVg, MatrixXd& p, const vector<seam*>& seamsList
+                           ,const vector<minusOneSeam*> & minusOneSeams,
+                           const std::vector<std::vector<int> >& boundaryL_toPattern, const std::vector<std::vector<int> >& boundaryL,
+                           map<int, pair<int, int>> & releasedVert ,bool visFlag){
 
     int numSeams = seamsList.size();
 
@@ -2113,13 +2120,13 @@ void projectBackOnBoundary(const MatrixXd & mapToVg, MatrixXd& p, const vector<s
         auto stP1= currSeam-> getStartAndPatch1();
         auto stP2 =  currSeam -> getStartAndPatch2ForCorres(); // attention this is with respect to the original pattern
 //        int len  = currSeam -> seamLength();
-        int boundLen1 = boundaryL_toPattern[stP1.second].size();
-        int boundLen2 = boundaryL_toPattern[stP2.second].size();
+//        int boundLen1 = boundaryL_toPattern[stP1.second].size();
+//        int boundLen2 = boundaryL_toPattern[stP2.second].size();
 
         // build the structure for closest search
         MatrixXd Vg_seam1to, Vg_seam2to;
-        fillMatrixWithBoundaryVert(boundaryL_toPattern[stP1.second], currSeam-> getStart1(), currSeam->getEndCornerIds().first, mapToVg, Vg_seam1to, false );
-        fillMatrixWithBoundaryVert(boundaryL_toPattern[stP2.second], currSeam-> getStart2(), currSeam->getEndCornerIds().second, mapToVg, Vg_seam2to, true );
+        fillMatrixWithBoundaryVert(boundaryL_toPattern[currSeam->getStartAndPatch1().second], currSeam-> patch1startCornerIdOld , currSeam-> patch1endCornerIdOld, mapToVg, Vg_seam1to, false );
+        fillMatrixWithBoundaryVert(boundaryL_toPattern[currSeam->getStartAndPatch2().second], currSeam-> patch2startCornerIdOld , currSeam-> patch2endCornerIdOld, mapToVg, Vg_seam2to, true );
 
         bool shoulBeLeft =true; // for 2 case
 
@@ -2180,7 +2187,6 @@ void projectBackOnBoundary(const MatrixXd & mapToVg, MatrixXd& p, const vector<s
 //            if(seamsList[j]->inverted) {nextIdx += 2; nextIdx = nextIdx % bsize;}
             next = boundaryL[stP2.second][nextIdx];
         }
-
         if(releasedVert.find(next) != releasedVert.end() && (std::find(releasedVertNew[next].begin(), releasedVertNew[next].end(), j) == releasedVertNew[next].end())){
             updatePositionToIntersection( p, next,Vg_seam2to, shoulBeLeft);
         }
@@ -2214,7 +2220,7 @@ void projectBackOnBoundary(const MatrixXd & mapToVg, MatrixXd& p, const vector<s
 
         // build the structure for closest search
         MatrixXd Vg_seamto;
-        fillMatrixWithBoundaryVert(boundaryL_toPattern[patch], startVert, endVert,  mapToVg, Vg_seamto, false );
+        fillMatrixWithBoundaryVert(boundaryL_toPattern[patch], currSeam->startVertOld, currSeam->endVertOld,  mapToVg, Vg_seamto, false );
 
        int startidx = 0;
        while ( boundaryL[patch][(startidx)] != startVert && startidx < boundLen+1){
@@ -2223,7 +2229,7 @@ void projectBackOnBoundary(const MatrixXd & mapToVg, MatrixXd& p, const vector<s
        if( boundaryL[patch][(startidx)] != startVert){
            cout<<   "ERROR IN -1 SEAM , WE CANNOT FIND THE START VERT"<<endl ;
        }
-       cout<<startidx<<"start idx init "<<startVert<<endl;
+
 
         int next = startVert;int counter=0;
         while(next != endVert && counter < 1100){

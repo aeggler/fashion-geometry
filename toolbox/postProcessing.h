@@ -9,6 +9,7 @@
 
 #include <Eigen/Dense>
 #include "seam.h"
+#include <set>
 
 using namespace std;
 using namespace Eigen;
@@ -39,4 +40,13 @@ void ensurePairwiseDist(MatrixXd& currPattern, MatrixXd& toPattern, MatrixXi& Fg
 
 void createMapCornersToNewCorner(MatrixXd& currPattern,MatrixXd& mapToVg,vector<vector<pair<int, int>>>& cornerPerBoundary,// first is vert id, second ins loop id, but thats bullshit
                                  map<int, int>& mapCornerToCorner, vector<vector<int>>& boundaryL);
+
+void updateCornerUtils(set<int>& cornerSet, vector<vector<pair<int, int>>>& cornerPerBoundary,
+                       map<int, vector<pair<int, int>>>& seamIdPerCorner, map<int, int>& mapCornerToCorner);
+
+void updateSeamCorner( vector<seam*>& seamsList,  vector<minusOneSeam*> & minusOneSeams, map<int, int>& mapCornerToCorner,
+                       vector<vector<int>>& boundaryL);
+
+
+
 #endif //EXAMPLE_POSTPROCESSING_H

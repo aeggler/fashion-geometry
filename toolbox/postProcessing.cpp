@@ -1192,38 +1192,46 @@ void updateSeamCorner( vector<seam*>& seamsList,  vector<minusOneSeam*> & minusO
         int patch2 = seamsList[i]->getPatch2();
 
         int start1idx=0;
-        while(boundaryL[patch1][start1idx] != mapCornerToCorner[start1]){
+        while(boundaryL[patch1][start1idx] != mapCornerToCorner[start1] && start1idx <= boundaryL[patch1].size()){
             start1idx ++;
-        }
+        } if (boundaryL[patch1][start1idx] != mapCornerToCorner[start1]) { cout<<"start1 not found"<<endl;}
+
         int start2idx=0;
-        while(boundaryL[patch2][start2idx] != mapCornerToCorner[start2]){
+        while(boundaryL[patch2][start2idx] != mapCornerToCorner[start2] && start2idx <= boundaryL[patch2].size() ){
             start2idx ++;
-        }
+        } if(boundaryL[patch2][start2idx] != mapCornerToCorner[start2]){ cout<<"start2 not found"<<endl;}
+
         int end1idx=0;
-        while(boundaryL[patch1][end1idx] != mapCornerToCorner[ends.first]){
+        while(boundaryL[patch1][end1idx] != mapCornerToCorner[ends.first] && end1idx <= boundaryL[patch1].size()){
             end1idx ++;
-        }
+        } if(boundaryL[patch1][end1idx] != mapCornerToCorner[ends.first]){cout<<"end1 not found"<<endl; }
+
         int end2idx=0;
-        while(boundaryL[patch2][end2idx] != mapCornerToCorner[ends.second]){
+        while(boundaryL[patch2][end2idx] != mapCornerToCorner[ends.second] && end2idx <= boundaryL[patch2].size()){
             end2idx ++;
-        }
+        } if(boundaryL[patch2][end2idx] != mapCornerToCorner[ends.second]){ cout<<"end2 not found"<<endl;}
+
+
         seamsList[i]->updateStartEndIdx( start1idx, start2idx, end1idx, end2idx);
 
     }
     for(int i=0; i<minusOneSeams.size(); i++){
         int start =  minusOneSeams[i]->getStartVert();
         int end =  minusOneSeams[i]->getEndVert();
+
         minusOneSeams[i]->updateStartEnd( mapCornerToCorner[start], mapCornerToCorner[end]) ;
+        cout<<"From "<<start<<" "<<end<<" to "<<mapCornerToCorner[start]<<" "<<mapCornerToCorner[end]<<endl;
         int patch = minusOneSeams[i]->getPatch();
         int startidx=0;
-        while(boundaryL[patch][startidx] != mapCornerToCorner[start]){
+        while(boundaryL[patch][startidx] != mapCornerToCorner[start] && startidx <= boundaryL[patch].size()){
             startidx ++;
-        }
+        }if (boundaryL[patch][startidx] != mapCornerToCorner[start] ){ cout<<"start not found" <<endl; }
         int endidx=0;
-        while(boundaryL[patch][endidx] != mapCornerToCorner[end]){
+        while(boundaryL[patch][endidx] != mapCornerToCorner[end] && endidx <= boundaryL[patch].size()){
             endidx ++;
-        }
-        minusOneSeams[i]->updateStartEnd( startidx, endidx) ;
+        } if (boundaryL[patch][endidx] != mapCornerToCorner[end]){ cout<<"end not fond "<<endl ; }
+        minusOneSeams[i]->updateStartEndIdx( startidx, endidx) ;
 
     }
+    cout<<"updated all corners :) "<<endl;
 }

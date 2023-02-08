@@ -21,6 +21,7 @@ private:
     int patch1endCornerId;
     int patch2endCornerId;
 
+
     int patch1startBoundaryLoopIdx;//TODO attention they are wrt the original boundary loop index , not any modified inserted versions!!
     int patch2startBoundaryLoopIdx;
     int patch1endBoundaryLoopIdx;
@@ -32,6 +33,10 @@ private:
 
 
 public:
+    int patch1startCornerIdOld;
+    int patch2startCornerIdOld;
+    int patch1endCornerIdOld;
+    int patch2endCornerIdOld;
     std::map<int, int> duplicates;
     std::map<int, int> duplicates2;// other side of the seam
     std::map<int, int> duplicatesGlob;
@@ -62,10 +67,15 @@ public:
         return updatedPatchId2;
     };
     void updateStartEnd(int start1, int start2, int end1, int end2){
+        patch1startCornerIdOld = patch1startCornerId;
+        patch2startCornerIdOld = patch2startCornerId ;
+        patch1endCornerIdOld = patch1endCornerId ;
+        patch2endCornerIdOld = patch2endCornerId;
+
         patch1startCornerId = start1;
         patch2startCornerId = start2 ;
         patch1endCornerId = end1 ;
-        patch1endCornerId = end2;
+        patch2endCornerId = end2;
     }
     void updateStartEndIdx(int start1, int start2, int end1, int end2){
         patch1startBoundaryLoopIdx = start1;
@@ -128,11 +138,12 @@ private:
     int len;
 
 public:
+    int startVertOld;
+    int endVertOld;
     std::map<int, int> duplicates;
     std::map<int, int> duplicatesGlob;
 
     bool seamSplit;
-
 
     minusOneSeam(int patchId,
     int startVert,
@@ -148,7 +159,9 @@ public:
         updatedPatchId = newPatchId;
     }
     void updateStartEnd(int start, int end){
+        startVertOld = startVert;
         startVert = start;
+        endVertOld = endVert;
         endVert = end;
     }
     void updateStartEndIdx(int start, int end){

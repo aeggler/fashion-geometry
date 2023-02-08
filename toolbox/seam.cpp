@@ -32,6 +32,10 @@ int patch2endBoundaryLoopIdx, int theirDist, bool invertedFlag
     this -> patch2startCornerId = patch2startCornerId;
     this -> patch1endCornerId = patch1endCornerId;
     this -> patch2endCornerId = patch2endCornerId;
+    this -> patch1startCornerIdOld = patch1startCornerId;
+    this -> patch2startCornerIdOld = patch2startCornerId;
+    this -> patch1endCornerIdOld = patch1endCornerId;
+    this -> patch2endCornerIdOld = patch2endCornerId;
     this -> patch1startBoundaryLoopIdx = patch1startBoundaryLoopIdx;
     this -> patch2startBoundaryLoopIdx = patch2startBoundaryLoopIdx;
     this -> patch1endBoundaryLoopIdx = patch1endBoundaryLoopIdx;
@@ -494,6 +498,8 @@ minusOneSeam::minusOneSeam(int patchId, int startVert, int endVert, int startIdI
     this-> updatedPatchId = patchId;
     this -> startVert = startVert;
     this -> endVert = endVert;
+    this -> startVertOld = startVert;
+    this -> endVertOld = endVert;
     this -> startIdInBoundaryLoop = startIdInBoundaryLoop;
     this -> endIdInBoundaryLoop = endIdInBoundaryLoop;
     this -> len = len;
