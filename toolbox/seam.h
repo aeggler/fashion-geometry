@@ -61,6 +61,20 @@ public:
     int getUpdatedPatch2(){
         return updatedPatchId2;
     };
+    void updateStartEnd(int start1, int start2, int end1, int end2){
+        patch1startCornerId = start1;
+        patch2startCornerId = start2 ;
+        patch1endCornerId = end1 ;
+        patch1endCornerId = end2;
+    }
+    void updateStartEndIdx(int start1, int start2, int end1, int end2){
+        patch1startBoundaryLoopIdx = start1;
+        patch2startBoundaryLoopIdx = start2 ;
+        patch1endBoundaryLoopIdx = end1 ;
+        patch2endBoundaryLoopIdx = end2;
+    }
+
+
     void updatePatch1(int newPatchId){
         updatedPatchId1 = newPatchId;
     }
@@ -132,6 +146,14 @@ public:
 
     void updatePatch(int newPatchId){
         updatedPatchId = newPatchId;
+    }
+    void updateStartEnd(int start, int end){
+        startVert = start;
+        endVert = end;
+    }
+    void updateStartEndIdx(int start, int end){
+        startIdInBoundaryLoop = start;
+        endIdInBoundaryLoop = end;
     }
 
     int getUpdatedPatch(){

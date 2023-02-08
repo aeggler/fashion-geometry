@@ -18,6 +18,7 @@
 #include <iterator>
 #include <set>
 #include "MathFunctions.h"
+#include "seam.h"
 #include <igl/vertex_components.h>
 
 
@@ -1123,5 +1124,106 @@ void ensurePairwiseDist(MatrixXd& p, MatrixXd& toPattern, MatrixXi& Fg_pattern){
 //                cout<<"face "<<i<<" generates a flip with face "<<neigh[j]<<endl;
 //            }
 //        }
+    }
+}
+void createMapCornersToNewCorner(MatrixXd& currPattern,MatrixXd& mapToVg, vector<vector<pair<int, int>>>& cornerPerBoundary,// first is vert id, second ins loop id, but thats bullshit
+                                 map<int, int>& mapCornerToCorner, vector<vector<int>>& boundaryL){
+    currPattern.col(2).setConstant(200);
+    mapToVg.col(2).setConstant(200);
+    double eps = 0.1;
+    for(int i = 0; i<cornerPerBoundary.size(); i++){
+        vector<pair<int, int>> cornersOfB = cornerPerBoundary[i];
+        for(int j = 0; j< cornersOfB.size(); j++){
+            int newId;
+            if((currPattern.row(cornersOfB[j].first)- mapToVg.row(cornersOfB[j].first)).norm()> eps){
+                // we need to find it
+                bool found = false;
+                double minDist = (currPattern.row(boundaryL[i][0])- mapToVg.row(cornersOfB[j].first)).norm();
+                for(int ii=0; ii< boundaryL[i].size(); ii++){
+                    if((currPattern.row(boundaryL[i][ii])- mapToVg.row(cornersOfB[j].first)).norm()< minDist){
+                        found = true;
+                        newId= boundaryL[i][ii];
+                        minDist = (currPattern.row(boundaryL[i][ii])- mapToVg.row(cornersOfB[j].first)).norm();
+//                        cout<<"found new corner for "<<cornersOfB[j].first<<" : "<<newId<<endl;
+                    }
+                }
+                if(!found){
+                    cout<<" no alternative corner found!"<<endl ;
+                }else{cout<<"taking "<<newId<<" with dist "<<minDist<<" as heuristic"<<endl; }
+            }else{
+                newId = cornersOfB[j].first;
+                cout<<"nothing new corner for "<<cornersOfB[j].first <<endl;
+
+            }
+            mapCornerToCorner[cornersOfB[j].first] = newId;
+        }
+    }
+
+}
+
+void updateCornerUtils(set<int>& cornerSet , // a set containing all corner vertices
+                       vector<vector<pair<int, int>>>& cornerPerBoundary,
+                       map<int, vector<pair<int, int>>>& seamIdPerCorner,    // contains corner id and a list of which seams start here (max 2),
+ map<int, int>& mapCornerToCorner){
+
+    cornerSet.clear();
+    map<int, vector<pair<int, int>>> newSeamIdPerCorner;
+
+    for(int i=0; i<cornerPerBoundary.size(); i++){
+        for(int j=0; j<cornerPerBoundary[i].size(); j++){
+            newSeamIdPerCorner[mapCornerToCorner[ cornerPerBoundary[i][j].first]] = seamIdPerCorner[cornerPerBoundary[i][j].first];
+            cornerPerBoundary[i][j].first = mapCornerToCorner[ cornerPerBoundary[i][j].first];
+            cornerSet.insert(cornerPerBoundary[i][j].first);
+        }
+    }
+    seamIdPerCorner.clear();
+    seamIdPerCorner = newSeamIdPerCorner;
+}
+
+void updateSeamCorner( vector<seam*>& seamsList,  vector<minusOneSeam*> & minusOneSeams, map<int, int>& mapCornerToCorner,
+                       vector<vector<int>>& boundaryL){
+    for(int i=0; i<seamsList.size(); i++){
+        int start1 =  seamsList[i]->getStart1();
+        int start2 =  seamsList[i]->getStart2();
+        auto ends =  seamsList[i]->getEndCornerIds();
+        seamsList[i]->updateStartEnd( mapCornerToCorner[start1], mapCornerToCorner[start2],
+                                      mapCornerToCorner[ends.first],  mapCornerToCorner[ends.second]) ;
+        int patch1 = seamsList[i]->getPatch1();
+        int patch2 = seamsList[i]->getPatch2();
+
+        int start1idx=0;
+        while(boundaryL[patch1][start1idx] != mapCornerToCorner[start1]){
+            start1idx ++;
+        }
+        int start2idx=0;
+        while(boundaryL[patch2][start2idx] != mapCornerToCorner[start2]){
+            start2idx ++;
+        }
+        int end1idx=0;
+        while(boundaryL[patch1][end1idx] != mapCornerToCorner[ends.first]){
+            end1idx ++;
+        }
+        int end2idx=0;
+        while(boundaryL[patch2][end2idx] != mapCornerToCorner[ends.second]){
+            end2idx ++;
+        }
+        seamsList[i]->updateStartEndIdx( start1idx, start2idx, end1idx, end2idx);
+
+    }
+    for(int i=0; i<minusOneSeams.size(); i++){
+        int start =  minusOneSeams[i]->getStartVert();
+        int end =  minusOneSeams[i]->getEndVert();
+        minusOneSeams[i]->updateStartEnd( mapCornerToCorner[start], mapCornerToCorner[end]) ;
+        int patch = minusOneSeams[i]->getPatch();
+        int startidx=0;
+        while(boundaryL[patch][startidx] != mapCornerToCorner[start]){
+            startidx ++;
+        }
+        int endidx=0;
+        while(boundaryL[patch][endidx] != mapCornerToCorner[end]){
+            endidx ++;
+        }
+        minusOneSeams[i]->updateStartEnd( startidx, endidx) ;
+
     }
 }

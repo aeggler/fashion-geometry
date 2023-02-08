@@ -23,7 +23,6 @@ using namespace Eigen;
 MatrixXd lengthsOrig;
 map<int, cutVertEntry *> cveStartPositionsSet;
 set<int> cutThroughCornerVertices;
-//vector<vector<int> > vvAdjProj;
 int findWhichEdgeOfFace(int face, int v1, int v2, MatrixXi& Fg){
     int faceidxv1, faceidxv2;
     for(int j=0; j<3; j++){
@@ -134,7 +133,6 @@ void computeMidVecBasedOnPCA(VectorXd& midVec, vector<vector<int>>& vvAdj, vecto
     midVec = midVec.normalized();
     cout<<" the newly computed midvec of "<<vert<<" is "<<midVec.transpose()<<endl;
 }
-
 
 void computeMidVecBasedOnStress(VectorXd& midVec, vector<vector<int>>& vfAdj, MatrixXd& Vg ,MatrixXd& Vg_orig ,
                            MatrixXi& Fg, int& vert, double& lenMid){
@@ -337,8 +335,7 @@ void splitVertexFromCVE( cutVertEntry*& cve,
                          set<int> & cornerSet,
                          set<int>& handledVerticesSet ,
                          const bool & LShapeAllowed,
-                         MatrixXd& Vg_pattern_orig
-                         ){
+                         MatrixXd& Vg_pattern_orig){
 
     cout<<" patch "<<cve->patch<<" of "<<boundaryL.size()<<" L Shape allowed? "<<LShapeAllowed <<endl;
 
@@ -1047,8 +1044,6 @@ void findCorrespondingCounterCutPosition(vector<cutVertEntry*>& cutPositions, in
     return;
 }
 
-
-
 int addoncount=0;
 void addVarToModel (int vert, int prevVert, int nextVert, vector<vector<int>> & vfAdj, bool isConstrained, int& varCount, GRBVar* & cutVar,
                       MatrixXi& Fg_pattern,MatrixXd& lengthsOrig, MatrixXd& lengthsCurr, map <int, cutVertEntry*> & mapVarIdToVertId,
@@ -1258,9 +1253,8 @@ void getPrevAndNextVertAndStress(int seamType, int seamId, int vert, int & prevV
 }
 
 void setLP(std::vector<std::vector<int> >& boundaryL , vector<vector<int>> & vfAdj, MatrixXi& Fg_pattern,
-        MatrixXd& lengthsOrig, MatrixXd& lengthsCurr,const std::vector<std::vector<std::pair<int, int>>>& edgesPerBoundary,
-        map<int,
-        vector<pair<int, int>>>& seamIdPerCorner, vector<seam*>& seamsList, const vector<minusOneSeam*> & minusOneSeams,
+        MatrixXd& lengthsOrig, MatrixXd& lengthsCurr,const std::vector<std::vector<std::pair<int, int>>>& cornersPerBoundary,
+        map<int, vector<pair<int, int>>>& seamIdPerCorner, vector<seam*>& seamsList, const vector<minusOneSeam*> & minusOneSeams,
         double tailor_lazyness, double minConstrained, vector <cutVertEntry*>& cutPositions, VectorXd& cornerVert,
         MatrixXd& currPattern, const bool & LShapeAllowed){
 
@@ -1272,8 +1266,8 @@ void setLP(std::vector<std::vector<int> >& boundaryL , vector<vector<int>> & vfA
     GRBModel model = GRBModel(env);
     int varCount =0;
     int numVar=0; // whole boundary and all corners duplicate
-    for(int i=0; i<edgesPerBoundary.size(); i++){
-        numVar += edgesPerBoundary[i].size();
+    for(int i=0; i<cornersPerBoundary.size(); i++){
+        numVar += cornersPerBoundary[i].size();
         numVar += boundaryL[i].size();
     }
     // with the constraints we have for each counterpart another variable
@@ -1286,21 +1280,21 @@ void setLP(std::vector<std::vector<int> >& boundaryL , vector<vector<int>> & vfA
     // a map to track the gurobi id of a corner.  whenever we set a corner we add the corner id, so we know once we set the second and connect them
     GRBVar* cutVar = model.addVars(numVar, GRB_BINARY);
 
-    for(int i = 0; i < edgesPerBoundary.size(); i++) {
+    for(int i = 0; i < cornersPerBoundary.size(); i++) {
         int boundSize = boundaryL[i].size();
         int startVarPatch = varCount;
-        for (int j = 0; j < edgesPerBoundary[i].size(); j++) {
+        for (int j = 0; j < cornersPerBoundary[i].size(); j++) {
 
             // first is the absolute index, second the index wrt the boundary loop
-            auto cornerPair = edgesPerBoundary[i][j];
+            auto cornerPair = cornersPerBoundary[i][j];
             if(seamIdPerCorner.find(cornerPair.first) == seamIdPerCorner.end()) continue;
 
             vector<pair<int, int>> seamId = seamIdPerCorner[cornerPair.first];// all seams that start at this corner, this can be max 2
-
+            cout<<seamId.size()<<" corner "<<cornerPair.first<<" size of seams per corner here"<<endl;
             if(seamId.size()>2) cout<<" something is veryy odd!! we have more than two seams for a corner. impossible."<<endl;
 
             for(int si = 0; si < seamId.size(); si++) {
-                cout<<" info "<<seamId[si].first<<" "<<seamId[si].second<<endl;
+                cout<<"corner "<<cornerPair.first<<" info: "<<seamId[si].first<<" "<<seamId[si].second<<endl;
 
                 GRBLinExpr innerSumConstr = 0; // interior sum
                 GRBLinExpr lSumConstr = 0; // left sum
@@ -1328,6 +1322,7 @@ void setLP(std::vector<std::vector<int> >& boundaryL , vector<vector<int>> & vfA
 
                     if (seamId[si].first >= 0) {
                         seam *seam = seamsList[seamId[si].second];
+                        //gives an index and it is updated -> is it right? to check
                         auto startAndPatch = seam->getStartAndPatch1();
                         startAndPatchOther = seam-> getStartAndPatch2ForCorres();
                         if (startAndPatch.second != i)
@@ -1343,6 +1338,7 @@ void setLP(std::vector<std::vector<int> >& boundaryL , vector<vector<int>> & vfA
                         boundSizeOther = boundaryL[startAndPatchOther.second].size();
                         end = seam->getEndCornerIds().first;
                         length = seam->seamLength();
+                        safe falsch!!
 
                     } else if (seamId[si].first < 0) {
                         minusOneSeam *currSeam = minusOneSeams[seamId[si].second];
@@ -1576,7 +1572,6 @@ void setLP(std::vector<std::vector<int> >& boundaryL , vector<vector<int>> & vfA
     }
     cout<<cutPositions.size()<<" size"<<endl<<endl;
 }
-
 
 void updateStress(vector<cutVertEntry*>& cutPositions, vector<seam*>& seamsList, vector<minusOneSeam*>& minusOneSeams,
                   std::vector<std::vector<int> >& boundaryL, MatrixXi& Fg_pattern, vector<vector<int>> & vfAdj, MatrixXd& lengthsCurr, bool& prioInner,
@@ -1959,6 +1954,7 @@ int computeTear(Eigen::MatrixXd & fromPattern, MatrixXd&  currPattern, MatrixXi&
     setLP(boundaryL, vfAdj, Fg_pattern_curr, lengthsOrig, lengthsCurr, cornersPerBoundary, seamIdPerCorner,
           seamsList, minusOneSeams, tailor_lazyness, minConstrained, cutPositions,
           cornerVert, currPattern, LShapeAllowed);// Vg= currpattern
+          cout<<"finished set lp "<<endl;
 
     //update with the preferences before sorting
     updateStress( cutPositions, seamsList, minusOneSeams, boundaryL,  Fg_pattern_curr, vfAdj, lengthsCurr,  prioInner, prioOuter);
@@ -2208,14 +2204,12 @@ void projectBackOnBoundary(const MatrixXd & mapToVg, MatrixXd& p, const vector<s
         }
 
     }
-    cout<<"got to -1"<<endl;
     for(int j = 0; j < minusOneSeams.size(); j++){
 
         minusOneSeam* currSeam  = minusOneSeams[j];
         int patch = currSeam -> getPatch();
         int startVert = currSeam -> getStartVert();
         int endVert = currSeam -> getEndVert();
-//TODO UPDATE AS FOR NORMAL SEAMS
         int boundLen = boundaryL[patch].size();
 
         // build the structure for closest search
@@ -2244,7 +2238,6 @@ void projectBackOnBoundary(const MatrixXd & mapToVg, MatrixXd& p, const vector<s
             startidx++;
             startidx = startidx % boundLen;
             next = boundaryL[patch][ startidx];
-            cout<<startidx<<" idx and next up "<<next<<" ini search for "<<endVert<<endl ;
         }
         // it is released for another side hence we have to pull it to our side
         if(releasedVert.find(next) != releasedVert.end() && std::find(releasedVertNew[next].begin(), releasedVertNew[next].end(),  (-1)*(j+1)) == releasedVertNew[next].end()){
