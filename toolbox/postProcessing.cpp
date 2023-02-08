@@ -18,6 +18,7 @@
 #include <iterator>
 #include <set>
 #include "MathFunctions.h"
+#include <igl/vertex_components.h>
 
 
 
@@ -755,17 +756,38 @@ void replaceInFaces(int id, int newId, MatrixXi& Fg){
 
 void mergeTriagulatedAndPattern(const vector<int> &connectedVert, MatrixXd& Vg_retri, MatrixXi& Fg_retri, MatrixXd& currPattern, MatrixXi& Fg_pattern){
     int offset = currPattern.rows();
-    MatrixXd newVg (offset+Vg_retri.rows(), 3);
-    newVg.block(0,0,offset, 3) = currPattern;
-
+    currPattern.col(2).setConstant(200);
+    vector<VectorXd> addedVerts;
+    bool insertFalag= false; // TODO THIS IS VERY HACKY!!
+    int count = 0;
     for(int i =0; i< Vg_retri.rows(); i++){
-//        mathcesOne = checkIfMatchesOne(Vg_retri.row(i), connectedVert, currPattern );
-        newVg.row(offset+i) = Vg_retri.row(i);
-//        cout<<newVg.row(offset+i)<<endl;
-        replaceInFaces(i, offset+i, Fg_retri);
+        int newIdx = -1; // offset + count;
+        for(int j=0; j < currPattern.rows(); j++){
+            if(currPattern.row(j ) == Vg_retri.row(i)){
+                newIdx = j;
+                cout<<"located"<<endl;
+                if(j== 3105) insertFalag = true;
+            }
+        }
+
+        if(newIdx == -1 ){
+            cout<<"not located"<<endl ;
+            newIdx = offset+count;
+            // we  didnt find it in the pattern, therefore we need to add it as verted
+            addedVerts.push_back( Vg_retri.row(i).transpose());
+            count++;
+        }
+        replaceInFaces(i, newIdx, Fg_retri);
 
 
     }
+    cout<<"----------"<<endl;
+    MatrixXd newVg (offset + addedVerts.size(), 3);
+    newVg.block(0,0,offset, 3) = currPattern;
+    for(int i= 0; i< addedVerts.size(); i++){
+        newVg.row(i+offset) = addedVerts[i];
+    }
+
 
     MatrixXi newFg (Fg_pattern.rows()+ Fg_retri.rows(), 3);
     newFg.block(0,0,Fg_pattern.rows(), 3) = Fg_pattern;
@@ -775,10 +797,54 @@ void mergeTriagulatedAndPattern(const vector<int> &connectedVert, MatrixXd& Vg_r
     currPattern = newVg;
     Fg_pattern.resize(newFg.rows(), 3);
     Fg_pattern = newFg;
+    MatrixXi Fgfix;
+    if(insertFalag){
+//        Fgfix.resize (Fg_pattern.rows()+3, 3);
+//        Fgfix.block(0,0, Fg_pattern.rows(), 3) = Fg_pattern;
+//
+//        Fgfix.row(Fg_pattern.rows()+1) = Fg_pattern.row(1166) ;
+//        Fgfix(1166,0 )= 3128;
+//        Fgfix(Fg_pattern.rows()+1, 1) = 3128 ;
+//
+//        Fgfix.row(Fg_pattern.rows()+2)=  Fg_pattern.row(1144) ;
+//        Fgfix(Fg_pattern.rows()+2, 1) =3130;
+//
+//        Fgfix(1144,2 )= 3129;
+//        Fgfix(1166,0 )= 3128;
+//
+//        Fgfix.row(Fg_pattern.rows()+0)= Fg_pattern.row(1144);
+//        Fgfix(Fg_pattern.rows()+0,1 ) = 3129;
+//        Fgfix(Fg_pattern.rows()+0,2 ) = 3130;
+//
+//        Fg_pattern.resize(Fgfix.rows(), 3);
+//        Fg_pattern = Fgfix;
+
+        // another round
+        Fgfix.resize (Fg_pattern.rows()+1, 3);
+        Fgfix.block(0,0, Fg_pattern.rows(), 3) = Fg_pattern;
+
+        Fgfix.row(Fg_pattern.rows()) = Fg_pattern.row(1683) ;
+        Fgfix(1683,2 )= 3138;
+        Fgfix(Fg_pattern.rows(), 0) = 3138 ;
+
+//        Fgfix.row(Fg_pattern.rows()+2) = Fg_pattern.row(2412) ;
+//        Fgfix(2412,0 )= 3132;
+//        Fgfix(Fg_pattern.rows()+2, 2) = 3132 ;
+//
+//        Fgfix.row(Fg_pattern.rows()+1) = Fg_pattern.row(2045) ;
+//        Fgfix(2045,2 )= 3134;
+//        Fgfix(Fg_pattern.rows()+1, 1) = 3134 ;
+
+        Fg_pattern.resize(Fgfix.rows(), 3);
+        Fg_pattern = Fgfix;
+
+    }
 
     vector<vector<int>> newBound;
     igl::boundary_loop(Fg_pattern, newBound);
-    cout<<"We now have "<<newBound.size()<<" patches. "<<endl;
+    vector<vector<int>> newnewBound;
+    igl::boundary_loop(Fgfix, newnewBound);
+    cout<<"We now have "<<newBound.size()<< newnewBound.size()<<" patches. "<<endl;
 
 }
 
@@ -888,38 +954,65 @@ void createHalfAvatarMap(MatrixXd& testMorph_V1, MatrixXi& testMorph_F1,
 
 }
 
-void initialGuessAdaption(MatrixXd& currPattern, MatrixXd& mapToVg, MatrixXi& Fg_pattern_curr){
-
-
-
-    if(currPattern.rows()>mapToVg.rows()){
-        // we added some vertices already, map the vertices to the duplicates
-        cout<<"add some more. TODO "<<endl;
-        // we could use local frames to describe them , preferably a face from the same patch?
-        // for now just choose one , no matter which ..
-//        for(int i = mapToVg.rows(); i<currPattern.rows(); i++){
-//            //row (i) in coordinates of another face
-//            int whichFace = 1;
-//            Vector3d v0 = currPattern.row(Fg_pattern_curr(whichFace, 0)).transpose();
-//            Vector3d v1 = currPattern.row(Fg_pattern_curr(whichFace, 1)).transpose();
-//            Vector3d v2 = currPattern.row(Fg_pattern_curr(whichFace, 2)).transpose();
-//
-//            Vector3d bary;
-//            Vector3d u = currPattern.row(i) ;
-//
-//            MathFunctions mathfun;
-//            mathfun.Barycentric3D( u, v0, v1, v2, bary);
-//
-//            Vector3d v0new = mapToVg.row(Fg_pattern_curr(whichFace, 0)).transpose();
-//            Vector3d v1new = mapToVg.row(Fg_pattern_curr(whichFace, 1)).transpose();
-//            Vector3d v2new = mapToVg.row(Fg_pattern_curr(whichFace, 2)).transpose();
-//            cout<<i<<" was: "<<    currPattern.row(i)<<endl;
-//            cout<<i<<" rec: "<< (v0*bary(0) + v1 * bary(1) + v2 * bary(2)).transpose()<<endl;
-////            currPattern.row(i) = (v0new*bary(0) + v1new * bary(1) + v2new * bary(2)).transpose();
-//
-//        }
+void initialGuessAdaption(MatrixXd& currPattern_nt, MatrixXd& mapToVg_nt, MatrixXd& perfectPattern_nt,  MatrixXi& Fg_pattern_curr, MatrixXi& mapToFg){
+//perfect pattern is the initial perfect pattern for the new shape, and curr is the existing adapted to the perfect, thus is has more faces and its own Fg
+// note that mapToVg was the one we started with, and it has face correspondance with perfect pattern, therefore they both use mapToFg
+    Eigen::VectorXi componentIdPerVert_curr, componentIdPerVert_other;
+    igl::vertex_components(mapToFg, componentIdPerVert_other);
+    igl::vertex_components(Fg_pattern_curr,componentIdPerVert_curr );
+    MatrixXd currPattern = currPattern_nt;
+    for(int i=0; i < currPattern_nt.rows(); i++){
+        if(componentIdPerVert_curr(i)== 1 ||componentIdPerVert_curr(i)== 5){
+            currPattern(i, 0) += 100;
+        }
+        else if(componentIdPerVert_curr(i)== 3 ||componentIdPerVert_curr(i)== 6){
+            currPattern(i, 0) -= 100;
+        }
     }
-    currPattern.block(0, 0,mapToVg.rows(), mapToVg.cols())= mapToVg;
+
+    MatrixXd mapToVg = mapToVg_nt;
+    MatrixXd perfectPattern = perfectPattern_nt;
+    for(int i=0; i < mapToVg.rows(); i++){
+        if(componentIdPerVert_other(i)== 1 ||componentIdPerVert_other(i)== 5){
+            mapToVg(i, 0) += 100;
+            perfectPattern(i, 0) += 100;
+        }
+        else if(componentIdPerVert_other(i)== 3 ||componentIdPerVert_other(i)== 6){
+            mapToVg(i, 0) -= 100;
+            perfectPattern(i, 0) -= 100;
+
+        }
+    }
+
+    VectorXd S;
+    VectorXi I;//face index of smallest distance
+    MatrixXd C,N, initGuess;
+    cout<<"Starting with signed distance "<<endl;
+    igl::signed_distance(currPattern, perfectPattern, mapToFg, igl::SIGNED_DISTANCE_TYPE_UNSIGNED, S, I, C, N);
+//    cout<<"Finished signed distance "<<endl;
+
+    MatrixXd B(currPattern.rows(), 3); // contains all barycentric coordinates
+    for(int i = 0; i < currPattern.rows(); i++){
+        VectorXd bary;
+        auto face = mapToFg.row(I(i));
+        igl::barycentric_coordinates(currPattern.row(i), perfectPattern.row(face(0)), perfectPattern.row(face(1)),
+                                     perfectPattern.row(face(2)), bary);
+        B.row(i) = bary;
+    }
+    cout<<"Got all barycentric coords"<<endl;
+    igl::barycentric_interpolation(mapToVg, mapToFg, B, I, initGuess);
+    cout<<"Got interpolation "<<initGuess.rows()<<" and before we had "<<currPattern.rows()<<endl;
+    currPattern  = initGuess;
+    //undo the transposition
+    currPattern_nt = currPattern;
+    for(int i=0; i < currPattern_nt.rows(); i++){
+        if(componentIdPerVert_curr(i)== 1 ||componentIdPerVert_curr(i)== 5){
+            currPattern_nt(i, 0) -= 100;
+        }
+        else if(componentIdPerVert_curr(i)== 3 ||componentIdPerVert_curr(i)== 6){
+            currPattern_nt(i, 0) += 100;
+        }
+    }
 
 }
 set<int> boundaryVerticesP;

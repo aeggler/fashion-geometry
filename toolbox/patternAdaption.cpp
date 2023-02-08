@@ -2107,13 +2107,10 @@ void fillMatrixWithBoundaryVert(const vector<int>& boundary, const int& start, c
     }
 
 }
-void projectBackOnBoundary(const MatrixXd & mapToVg, MatrixXd& p, const vector<seam*>& seamsList, const vector<minusOneSeam*> & minusOneSeams,  const MatrixXi& Fg_pattern,
-                           const MatrixXi& Fg_pattern_orig, const std::vector<std::vector<int> >& boundaryL_toPattern, map<int, pair<int, int>> & releasedVert ,bool visFlag){
+void projectBackOnBoundary(const MatrixXd & mapToVg, MatrixXd& p, const vector<seam*>& seamsList, const vector<minusOneSeam*> & minusOneSeams,
+                           const std::vector<std::vector<int> >& boundaryL_toPattern, const std::vector<std::vector<int> >& boundaryL, map<int, pair<int, int>> & releasedVert ,bool visFlag){
 
     int numSeams = seamsList.size();
-//    vvAdjProj.clear();
-//    igl::adjacency_list(Fg_pattern,vvAdjProj);
-//Fg_pattern_orig and Fg_pattern are not even used !!!
 
     for (int j = 0; j<numSeams; j++){
         seam* currSeam  = seamsList[j];
@@ -2133,10 +2130,16 @@ void projectBackOnBoundary(const MatrixXd & mapToVg, MatrixXd& p, const vector<s
         // for each interior (=not corner) vertex of the new boundary we need to find the closest position on the polyline and map it there
         // todo never ever cut the corner or change the corner index
         pair<int, int> ends = currSeam->getEndCornerIds();
-        int i1=0;
-        int bsize = boundaryL_toPattern[stP1.second].size();
-        int next = boundaryL_toPattern[stP1.second][stP1.first];
-        pair<int, int> compPair = make_pair(1,j );
+
+        int bsize = boundaryL[stP1.second].size();
+        int next = currSeam -> getStart1();
+        int nextIdx = 0 ;
+        while(boundaryL[stP1.second][nextIdx] != next && nextIdx<bsize){
+            nextIdx ++;
+        }
+        if(boundaryL[stP1.second][nextIdx] != next){
+            cout<<"PROJECTION ERROR we dont find the index "<<endl;
+        }
 
         while( next!= ends.first ){
             // it is not released, project on boundary
@@ -2147,20 +2150,26 @@ void projectBackOnBoundary(const MatrixXd & mapToVg, MatrixXd& p, const vector<s
             else if( std::find(releasedVertNew[next].begin(), releasedVertNew[next].end(), j) == releasedVertNew[next].end()){
                updatePositionToIntersection( p, next,Vg_seam1to, true);
             }
-            i1++;
-            next = boundaryL_toPattern[stP1.second][(stP1.first + i1) % bsize];
+            nextIdx++;
+            next = boundaryL[stP1.second][(nextIdx) % bsize];
         }
         // the last corner. Again if it is constrained from another side pull it to boundary, else ignore since handled by corner
         if(releasedVert.find(next) != releasedVert.end() && (std::find(releasedVertNew[next].begin(), releasedVertNew[next].end(), j) == releasedVertNew[next].end())){
             updatePositionToIntersection( p, next,Vg_seam1to, true);
         }
 
+        /**********  second side  *********/
+//        int i2 = 0;
+        bsize = boundaryL[stP2.second].size();
+        nextIdx = 0;
+        next = currSeam -> getStart2();
+        while (boundaryL[stP2.second][nextIdx] != next && nextIdx < bsize ){
+            nextIdx ++;
+        }
+        if(boundaryL[stP2.second][nextIdx] != next){
+            cout<<"PROJECTION ERROR 2 we dont find the index "<<next<<" should be on patch "<<stP2.second<<endl;
+        }
 
-        int i2 = 0;
-        bsize = boundaryL_toPattern[stP2.second].size();
-        int nextidx = stP2.first;
-        next = boundaryL_toPattern[stP2.second][nextidx];
-        compPair = make_pair(1,-j-1 );
         while( next!= ends.second ){
             // general case an interior vertex , if it is not constrained pull it to boundary
             if(releasedVert.find(next) == releasedVert.end() ){
@@ -2169,12 +2178,11 @@ void projectBackOnBoundary(const MatrixXd & mapToVg, MatrixXd& p, const vector<s
                 updatePositionToIntersection( p, next,Vg_seam2to, shoulBeLeft);
             }
 
-            i2++;
-            nextidx = (stP2.first - i2) % (bsize);
+            nextIdx -=1;// (nextidx - i2) % (bsize);
 
-            if(nextidx < 0) {nextidx += bsize;}
-            if(seamsList[j]->inverted) nextidx = (stP2.first + i2) % bsize;
-            next = boundaryL_toPattern[stP2.second][nextidx];
+            if(nextIdx < 0) {nextIdx += bsize;}
+//            if(seamsList[j]->inverted) {nextIdx += 2; nextIdx = nextIdx % bsize;}
+            next = boundaryL[stP2.second][nextIdx];
         }
 
         if(releasedVert.find(next) != releasedVert.end() && (std::find(releasedVertNew[next].begin(), releasedVertNew[next].end(), j) == releasedVertNew[next].end())){
@@ -2208,7 +2216,7 @@ void projectBackOnBoundary(const MatrixXd & mapToVg, MatrixXd& p, const vector<s
         int startVert = currSeam -> getStartVert();
         int startidx = currSeam -> getStartIdx();
         int endVert = currSeam -> getEndVert();
-
+//TODO UPDATE AS FOR NORMAL SEAMS
         int len = currSeam -> getLength();
         int boundLen = boundaryL_toPattern[patch].size();
 
@@ -2222,7 +2230,6 @@ void projectBackOnBoundary(const MatrixXd & mapToVg, MatrixXd& p, const vector<s
 
         int i1=0;
         int next = boundaryL_toPattern[patch][(startidx+i1) % boundLen];
-        pair<int, int> compPair = make_pair(-1,j );
         while(next != endVert){
             // general case, it is not released hence pull it to the boundary
             if(releasedVert.find(next) == releasedVert.end()){

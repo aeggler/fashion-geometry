@@ -567,8 +567,9 @@ int main(int argc, char *argv[])
     setCollisionMesh();
 
     // copy the matrices to not mess with them
-    string fromPatternFile = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/writtenPatternSmoothedMaternity_fullyRetri.obj"; //_Added_duplRem_unrefRem
+//    string fromPatternFile = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/writtenPatternSmoothedMaternity_fullyRetri.obj"; //_Added_duplRem_unrefRem
 //    TODO LATER NO MORE
+    string fromPatternFile = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/writtenPattern_fullyRetri.obj"; //_Added_duplRem_unrefRem
 
     igl::readOBJ(fromPatternFile, mapFromVg, mapFromFg);
     Fg_pattern_curr = mapFromFg;
@@ -866,14 +867,29 @@ int main(int argc, char *argv[])
         }
         if (ImGui::CollapsingHeader("Pattern adaption", ImGuiTreeNodeFlags_OpenOnArrow)){
             if(ImGui::Button("Compute adaptation", ImVec2(-1, 0))){
+
+                string perfPatternFile = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/patternComputed_maternity_01.obj"; //_Added_duplRem_unrefRem
+                MatrixXd perfPattVg;
+                MatrixXi perfPattFg;
+                igl::readOBJ(perfPatternFile, perfPattVg, perfPattFg);
+
                 currPattern = mapFromVg;
                 cout<<endl<<currPattern.rows()<<" curr pattern rows "<<endl;
                 preComputeAdaption();
-                initialGuessAdaption(currPattern, mapToVg, Fg_pattern_curr);
+                initialGuessAdaption(currPattern, mapToVg, perfPattVg, Fg_pattern_curr, perfPattFg);
 
                 viewer.selected_data_index = 0;
                 viewer.data().clear();
                 viewer.data().set_mesh(currPattern, mapFromFg);
+
+                std::vector<std::vector<int> > boundaryLnew;
+                igl::boundary_loop(Fg_pattern_curr, boundaryLnew);
+//                if(boundaryLnew.size() != boundaryL.size()){
+//                    // TODO CHECK
+//                    updatePatchId(cutPositions, boundaryLnew , seamsList, minusOneSeamsList);
+//                }
+                boundaryL.clear();
+                boundaryL = boundaryLnew;
 
 //                pos = 2280;
 //                viewer.selected_data_index = 2;
@@ -1020,7 +1036,7 @@ int main(int argc, char *argv[])
 //                string modifiedPattern = "/Users/annaeggler/Desktop/mappedPattern.obj"; //
 //                string modifiedPattern = "/Users/annaeggler/Desktop/mappedPatternWithSmoothPCACuts.obj"; //
 //                string modifiedPattern = "/Users/annaeggler/Desktop/mappedTri.obj"; //
-                string modifiedPattern  = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/writtenPatternMaternitySmoothedFractures.obj"; //
+                string modifiedPattern  = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/writtenPattern_retriIntermediat.obj";//writtenPatternMaternitySmoothedFractures.obj"; //
                 igl::readOBJ(modifiedPattern, currPattern, Fg_pattern_curr);
 
                 string targetPattern  = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/patternComputed_maternity_01.obj"; //
@@ -2155,8 +2171,8 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
         t.printTime(" edge lengths ");
 
         // before cutting the boundaries should be the same
-        projectBackOnBoundary( mapToVg, p_adaption, seamsList,minusOneSeamsList,  Fg_pattern,
-                               Fg_pattern_orig, boundaryL_toPattern, releasedVert ,false );
+        projectBackOnBoundary( mapToVg, p_adaption, seamsList,minusOneSeamsList,boundaryL_toPattern,
+                                boundaryL, releasedVert ,false );
         t.printTime(" project boundary  ");
 
 //        ensurePairwiseDist(p_adaption, toPattern, Fg_pattern);
