@@ -1164,9 +1164,11 @@ void createMapCornersToNewCorner(MatrixXd& currPattern,MatrixXd& mapToVg, vector
 void updateCornerUtils(set<int>& cornerSet , // a set containing all corner vertices
                        vector<vector<pair<int, int>>>& cornerPerBoundary,
                        map<int, vector<pair<int, int>>>& seamIdPerCorner,    // contains corner id and a list of which seams start here (max 2),
- map<int, int>& mapCornerToCorner){
+                        map<int, int>& mapCornerToCorner,  VectorXd&   cornerVertices // 1 for each corner, 0 for all other vertices
+){
 
     cornerSet.clear();
+
     map<int, vector<pair<int, int>>> newSeamIdPerCorner;
 
     for(int i=0; i<cornerPerBoundary.size(); i++){
@@ -1174,6 +1176,7 @@ void updateCornerUtils(set<int>& cornerSet , // a set containing all corner vert
             newSeamIdPerCorner[mapCornerToCorner[ cornerPerBoundary[i][j].first]] = seamIdPerCorner[cornerPerBoundary[i][j].first];
             cornerPerBoundary[i][j].first = mapCornerToCorner[ cornerPerBoundary[i][j].first];
             cornerSet.insert(cornerPerBoundary[i][j].first);
+            cornerVertices(cornerPerBoundary[i][j].first) = 1;
         }
     }
     seamIdPerCorner.clear();

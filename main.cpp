@@ -107,8 +107,9 @@ MatrixXd perFaceU, perFaceV;
 int whichStressVisualize= 0;
 
 garment_adaption* gar_adapt;
-vector<seam*> seamsList;
-vector<minusOneSeam*> minusOneSeamsList;
+vector<seam*> seamsList,seamsListOld ;
+vector<minusOneSeam*> minusOneSeamsList, minusOneSeamsListOld;
+map<int, int> mapCornerToCorner;// a map between the corners of the original pattern and the one after retriangulation
 
 vector<int> constrainedVertexIds;
 VectorXi closestFaceId;
@@ -878,24 +879,20 @@ int main(int argc, char *argv[])
                 preComputeAdaption();
                 initialGuessAdaption(currPattern, mapToVg, perfPattVg, Fg_pattern_curr, perfPattFg);
 
+
                 viewer.selected_data_index = 0;
                 viewer.data().clear();
                 viewer.data().set_mesh(currPattern, mapFromFg);
 
                 std::vector<std::vector<int> > boundaryLnew;
                 igl::boundary_loop(Fg_pattern_curr, boundaryLnew);
-//                if(boundaryLnew.size() != boundaryL.size()){
-//                    // TODO CHECK
-//                    updatePatchId(cutPositions, boundaryLnew , seamsList, minusOneSeamsList);
-//                }
                 boundaryL.clear();
                 boundaryL = boundaryLnew;
 
-//                pos = 2280;
-//                viewer.selected_data_index = 2;
-//                viewer.data().set_points(currPattern.row(pos), RowVector3d(1.0, 0.0, 0.0));
-//                viewer.data().uniform_colors(ambient, diffuse, specular);
-
+                createMapCornersToNewCorner(currPattern, mapToVg, cornerPerBoundary, mapCornerToCorner, boundaryL);
+                cornerVertices= VectorXd::Zero(currPattern.rows());
+                updateCornerUtils(cornerSet, cornerPerBoundary, seamIdPerCorner, mapCornerToCorner, cornerVertices);
+                updateSeamCorner( seamsList, minusOneSeamsList, mapCornerToCorner, boundaryL);
 //                viewer.core().is_animating = true;
 //                adaptionFlag = true;
             }
@@ -907,7 +904,8 @@ int main(int argc, char *argv[])
                 bool fin = false;
                 auto copyPattern = mapFromVg;
                  pos = computeTear(mapFromVg, currPattern, Fg_pattern_curr, patternEdgeLengths_orig, seamsList ,
-                            minusOneSeamsList, boundaryL, fin, cornerPerBoundary, seamIdPerCorner,
+                            minusOneSeamsList, boundaryL, fin, cornerPerBoundary, // updated in adaption
+                            seamIdPerCorner,
                             cornerVertices, cutPositions, releasedVert, toPattern_boundaryVerticesSet, cornerSet,
                             handledVerticesSet, prevTearFinished, LShapeAllowed,
                             prioInner, prioOuter);
@@ -2171,7 +2169,7 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
         t.printTime(" edge lengths ");
 
         // before cutting the boundaries should be the same
-        projectBackOnBoundary( mapToVg, p_adaption, seamsList,minusOneSeamsList,boundaryL_toPattern,
+        projectBackOnBoundary( mapToVg, p_adaption, seamsList, minusOneSeamsList, boundaryL_toPattern,
                                 boundaryL, releasedVert ,false );
         t.printTime(" project boundary  ");
 

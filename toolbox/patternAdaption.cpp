@@ -1577,7 +1577,9 @@ void updateStress(vector<cutVertEntry*>& cutPositions, vector<seam*>& seamsList,
                   std::vector<std::vector<int> >& boundaryL, MatrixXi& Fg_pattern, vector<vector<int>> & vfAdj, MatrixXd& lengthsCurr, bool& prioInner,
                   bool& prioOuter
                   ){
+    cout<<"Updating the stress"<<endl;
     for(int i=0; i< cutPositions.size(); i++){
+        cout<<"updating "<< i<<"/"<<cutPositions.size() <<endl;
 
         cutVertEntry* cve = cutPositions[i];
         int nextVert, prevVert;
@@ -1588,7 +1590,11 @@ void updateStress(vector<cutVertEntry*>& cutPositions, vector<seam*>& seamsList,
         }
         getPrevAndNextVertAndStress(cve -> seamType, cve -> seamIdInList, cve -> vert, prevVert, nextVert, prevStress, nextStress,
                                      seamsList, minusOneSeams, boundaryL, Fg_pattern, lengthsOrig, lengthsCurr, vfAdj, inverted );
-        // it is a start corner and it still is!
+        cout<<"got stress "<< i <<endl;
+        cout<<prevVert<< "," <<nextVert<<endl;
+        cout<<cve->startCorner <<" "<< cve->vert <<" "<< cve->cornerInitial <<" "<< cve->stress <<" "<< nextStress <<" "<<cve->seamIdInList <<" "<<inverted<<" "<<cve->endCorner <<endl;
+
+                // it is a start corner and it still is!
         if(cve->startCorner && (cve->vert == cve->cornerInitial)){
             cve->stress = nextStress;
             if(cve->seamIdInList < 0 && ! inverted ) cve->stress = prevStress;
@@ -1954,17 +1960,19 @@ int computeTear(Eigen::MatrixXd & fromPattern, MatrixXd&  currPattern, MatrixXi&
     setLP(boundaryL, vfAdj, Fg_pattern_curr, lengthsOrig, lengthsCurr, cornersPerBoundary, seamIdPerCorner,
           seamsList, minusOneSeams, tailor_lazyness, minConstrained, cutPositions,
           cornerVert, currPattern, LShapeAllowed);// Vg= currpattern
-          cout<<"finished set lp "<<endl;
 
+    cout<<"finished set lp "<<endl;
     //update with the preferences before sorting
     updateStress( cutPositions, seamsList, minusOneSeams, boundaryL,  Fg_pattern_curr, vfAdj, lengthsCurr,  prioInner, prioOuter);
+    cout<<"update stress"<<endl;
 
 
     //  here we need to sort and check if handled already
     sort(cutPositions.begin(), cutPositions.end(), []( cutVertEntry* &a,  cutVertEntry* &b) { return a->stress > b-> stress; });
 
 
-    for(int i =0; i < cutPositions.size(); i++){
+    for(int i = 0; i < cutPositions.size(); i++){
+        cout<<"finiding correspo of "<<i<<endl;
         findCorrespondingCounterCutPosition(cutPositions, i, cutPositions[i], currPattern, Fg_pattern_curr, vfAdj, boundaryL,
                                             seamsList, minusOneSeams, releasedVert, toPattern_boundaryVerticesSet,lengthsCurr,Fg_pattern_curr, cornerSet, handledVerticesSet );
 
