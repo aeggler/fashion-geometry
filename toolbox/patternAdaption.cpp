@@ -2208,29 +2208,32 @@ void projectBackOnBoundary(const MatrixXd & mapToVg, MatrixXd& p, const vector<s
         }
 
     }
-
+    cout<<"got to -1"<<endl;
     for(int j = 0; j < minusOneSeams.size(); j++){
 
         minusOneSeam* currSeam  = minusOneSeams[j];
         int patch = currSeam -> getPatch();
         int startVert = currSeam -> getStartVert();
-        int startidx = currSeam -> getStartIdx();
         int endVert = currSeam -> getEndVert();
 //TODO UPDATE AS FOR NORMAL SEAMS
-        int len = currSeam -> getLength();
         int boundLen = boundaryL_toPattern[patch].size();
 
         // build the structure for closest search
-        MatrixXd Vg_seamto(len+1 , 3);
+        MatrixXd Vg_seamto;
+        fillMatrixWithBoundaryVert(boundaryL_toPattern[patch], startVert, endVert,  mapToVg, Vg_seamto, false );
 
-        for(int i = 0; i<= len ; i++){
-            int v1 = boundaryL_toPattern[patch][(startidx+i)% boundLen];
-            Vg_seamto.row(i) = mapToVg.row(v1);
-        }
-
-        int i1=0;
-        int next = boundaryL_toPattern[patch][(startidx+i1) % boundLen];
-        while(next != endVert){
+       int startidx = 0;
+       while ( boundaryL[patch][(startidx)] != startVert && startidx < boundLen+1){
+           startidx++;
+       }
+       if( boundaryL[patch][(startidx)] != startVert){
+           cout<<   "ERROR IN -1 SEAM , WE CANNOT FIND THE START VERT"<<endl ;
+       }
+       cout<<startidx<<"start idx init "<<startVert<<endl;
+error
+        int next = startVert;int counter=0;
+        while(next != endVert && counter < 1100){
+            counter++;
             // general case, it is not released hence pull it to the boundary
             if(releasedVert.find(next) == releasedVert.end()){
                 updatePositionToIntersection( p, next,Vg_seamto , true);
@@ -2238,8 +2241,10 @@ void projectBackOnBoundary(const MatrixXd & mapToVg, MatrixXd& p, const vector<s
                 // it is released but not from this seam,thus it has to stay on the projection
                 updatePositionToIntersection( p, next,Vg_seamto, true);
             }
-            i1++;
-            next = boundaryL_toPattern[patch][( startidx + i1) % boundLen];
+            startidx++;
+            startidx = startidx % boundLen;
+            next = boundaryL[patch][ startidx];
+            cout<<startidx<<" idx and next up "<<next<<" ini search for "<<endVert<<endl ;
         }
         // it is released for another side hence we have to pull it to our side
         if(releasedVert.find(next) != releasedVert.end() && std::find(releasedVertNew[next].begin(), releasedVertNew[next].end(),  (-1)*(j+1)) == releasedVertNew[next].end()){
