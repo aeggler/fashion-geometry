@@ -2180,7 +2180,7 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
 
         t.printTime(" solve corner  ");
 //todo add!!
-//        ensureAngle(p_adaption, toPattern, Fg_pattern);
+        ensureAngle(p_adaption, mapFromVg, Fg_pattern_curr);
         t.printTime(" ensure angle ");
 
 //        ensurePairwiseDist(p_adaption, toPattern, Fg_pattern);

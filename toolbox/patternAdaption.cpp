@@ -2216,7 +2216,7 @@ void projectBackOnBoundary(const MatrixXd & mapToVg, MatrixXd& p, const vector<s
         int startVert = currSeam -> getStartVert();
         int endVert = currSeam -> getEndVert();
 //TODO UPDATE AS FOR NORMAL SEAMS
-        int boundLen = boundaryL_toPattern[patch].size();
+        int boundLen = boundaryL[patch].size();
 
         // build the structure for closest search
         MatrixXd Vg_seamto;
@@ -2230,7 +2230,7 @@ void projectBackOnBoundary(const MatrixXd & mapToVg, MatrixXd& p, const vector<s
            cout<<   "ERROR IN -1 SEAM , WE CANNOT FIND THE START VERT"<<endl ;
        }
        cout<<startidx<<"start idx init "<<startVert<<endl;
-error
+
         int next = startVert;int counter=0;
         while(next != endVert && counter < 1100){
             counter++;

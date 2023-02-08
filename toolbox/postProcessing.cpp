@@ -1016,7 +1016,7 @@ void initialGuessAdaption(MatrixXd& currPattern_nt, MatrixXd& mapToVg_nt, Matrix
 
 }
 set<int> boundaryVerticesP;
-void ensureAngle(MatrixXd& p, MatrixXd& toPattern, MatrixXi& Fg_pattern){
+void ensureAngle(MatrixXd& p, MatrixXd& fromPattern, MatrixXi& Fg_pattern){
     if(boundaryVerticesP.empty()){
         vector<vector<int>> boundaryVP;
         igl::boundary_loop(Fg_pattern, boundaryVP);
@@ -1034,15 +1034,18 @@ void ensureAngle(MatrixXd& p, MatrixXd& toPattern, MatrixXi& Fg_pattern){
 
             //https://www.euclideanspace.com/maths/algebra/vectors/angleBetween/ and https://stackoverflow.com/questions/5188561/signed-angle-between-two-3d-vectors-with-same-origin-within-the-same-plane
 //            // praise stackoverflow
-//
 //            auto crossVec = alignFrom.cross(alignTo); // or other way round?
 //            if(oldNormalVec.dot(crossVec)<0){
 //                newAngle = -newAngle;
 //            }
 
             double newdegree = newAngle*180/M_PI;
-            if(newdegree<10){
-//                cout<<"old degree: "<<newdegree<<endl;
+            if(newdegree<10){//only an issue if the original angle was better
+                Vector3d oe1 = fromPattern.row(Fg_pattern(i, j))-fromPattern.row(Fg_pattern(i, (j+1) % 3));
+                Vector3d oe2 = fromPattern.row(Fg_pattern(i, (j+2) % 3 ))-fromPattern.row(Fg_pattern(i, (j+1) % 3));
+                double oldAngle = acos(min(max((oe1.normalized()).dot(oe2.normalized()), -1.), 1.));
+                double olddegree = oldAngle*180/M_PI;
+                if(newdegree/olddegree > 0.75) continue;
 
                 MatrixXd rot = MatrixXd::Identity(3, 3);
                 double rad =  newAngle; //converting to radian value
