@@ -189,7 +189,7 @@ bool checkIfTearIsUseful(int vert, Vector3d& cutDirection,  vector<vector<int>>&
     // if the dot product for at least one adjacent vertex of the one we are going to cut is large enough we allow to cut further
     // todo 3.1. maybe a better option is not to ignore ones with wrong direction but to actually clamp the stess
 
-    double thereshold = 1.051;// todo fix this!! it cuts pretty mich always
+    double thereshold = 1.051;// todo fix this!! it cuts pretty much always
     double thW = 1.1; double thDot = 0.3;
     bool flag = false;
     if(!preComputed) ws.resize(vvAdj[vert].size());
@@ -527,19 +527,7 @@ void splitVertexFromCVE( cutVertEntry*& cve,
     double lenMidVec;
     VectorXd ws, newMidVec, stressMidVec;
     MatrixXd dirs;
-//    if(cve->levelOne){
-//        preComputePath(cve,  Vg, // this is the current pattern we modify
-//                        Fg, // this will be modified and have entries that are not in the original pattern
-//                        vfAdj,
-//                        boundaryL,
-//                        seamsList,
-//                        minusOneSeams,
-//                        releasedVert,
-//                        toPattern_boundaryVerticesSet,
-//                        lengthsCurr,
-//                        cornerSet,
-//                        Vg_pattern_orig);
-//    }
+
     computeMidVecBasedOnStress(stressMidVec, vfAdj, Vg, Vg_pattern_orig, Fg, cve->vert, lenMidVec );
 
     computeMidVecBasedOnPCA(newMidVec, vvAdj, vfAdj, Vg, lengthsCurr, lengthsOrig, Fg, cve->vert, ws, dirs, lenMidVec );
@@ -549,9 +537,9 @@ void splitVertexFromCVE( cutVertEntry*& cve,
 
     Vector3d cutDirection = midVec;
     if(!checkIfTearIsUseful(cve-> vert, cutDirection, vvAdj, vfAdj, Vg, lengthsCurr, lengthsOrig, Fg, ws, true)){
-        cve-> finFlag = true;
-        cout<<"stopping now with new condition "<<endl;
-        return;
+        cout<<"stopping now with new condition, but test and go on  "<<endl;
+        //        cve-> finFlag = true;
+//        return;
     }
 
     //  we have the midvec direction, but don't know for sure if adding or subtract. Take the direction that has longer distance to the existing boundary to not go backwards.
@@ -633,6 +621,7 @@ void splitVertexFromCVE( cutVertEntry*& cve,
                                                                             Vg.row(Fg(adjFace, j)).leftCols(2), mid2,
                                                                             lengthsOrig(adjFace, 0)*100, intersectPosition)){
 //            cout<<Fg.row(adjFace)<<", face id "<<adjFace<<" k="<<k<<" j="<<j<<endl;
+
             intersectingFace = adjFace;
             newPos(0)= intersectPosition(0);
             newPos(1)= intersectPosition(1);
@@ -693,6 +682,36 @@ void splitVertexFromCVE( cutVertEntry*& cve,
 
     newVg.row(insertIdx) = newPos;
     cout<<newPos<<" new pos"<<endl;
+
+
+    /* TEST IF IT IS ACTUALLY USEFUL*/
+    VectorXd distThen = (Vg_pattern_orig.row(Fg(intersectingFace, 0))+
+            Vg_pattern_orig.row(Fg(intersectingFace, 1))+
+            Vg_pattern_orig.row(Fg(intersectingFace, 2))).transpose();
+    distThen /= 3;
+    distThen(0) += -mid2(1);
+    distThen(1) += mid2(0); // perp to midvec measure stress
+    MatrixXd distB;
+
+    input.row(0)= distThen;
+    igl::barycentric_coordinates(input, Vg_pattern_orig.row(Fg(intersectingFace, 0)), Vg_pattern_orig.row(Fg(intersectingFace, 1)),
+                                 Vg_pattern_orig.row(Fg(intersectingFace, 2)), distB);
+    double lenThen = mid2.norm();
+    VectorXd distNow = (Vg.row(Fg(intersectingFace, 0)) * distB(0)+
+            Vg.row(Fg(intersectingFace, 1)) * distB(1) +
+            Vg.row(Fg(intersectingFace, 2))* distB(2)).transpose();
+    distNow -= (Vg.row(Fg(intersectingFace, 0)) * (1./3)+
+                Vg.row(Fg(intersectingFace, 1)) *  (1./3) +
+                Vg.row(Fg(intersectingFace, 2))*  (1./3) ).transpose();
+    double lenNow = distNow.norm();
+    cout<<lenNow<<" dist now and then "<<lenThen<<" ratio is "<<lenNow/lenThen<<endl;
+    cout<<"pos now "<<distNow<<" and then"<<distThen<<endl;
+    double checkIfTearIsUsefulThereshold = 1.051;
+    if(lenNow/lenThen <checkIfTearIsUsefulThereshold ){
+        cve->finFlag = true;
+        return;
+    }
+    /*END TEST IF USEFUL*/
 
     VectorXd updatedRestShapeVertPos = insertIdxInBary(0) * Vg_pattern_orig.row(Fg(intersectingFace, 0)) ;
     updatedRestShapeVertPos += insertIdxInBary(1) * Vg_pattern_orig.row(Fg(intersectingFace, 1)) ;
@@ -1579,8 +1598,6 @@ void updateStress(vector<cutVertEntry*>& cutPositions, vector<seam*>& seamsList,
                   ){
     cout<<"Updating the stress"<<endl;
     for(int i=0; i< cutPositions.size(); i++){
-        cout<<"updating "<< i<<"/"<<cutPositions.size() <<endl;
-
         cutVertEntry* cve = cutPositions[i];
         int nextVert, prevVert;
         double nextStress, prevStress;
@@ -1590,9 +1607,6 @@ void updateStress(vector<cutVertEntry*>& cutPositions, vector<seam*>& seamsList,
         }
         getPrevAndNextVertAndStress(cve -> seamType, cve -> seamIdInList, cve -> vert, prevVert, nextVert, prevStress, nextStress,
                                      seamsList, minusOneSeams, boundaryL, Fg_pattern, lengthsOrig, lengthsCurr, vfAdj, inverted );
-        cout<<"got stress "<< i <<endl;
-        cout<<prevVert<< "," <<nextVert<<endl;
-        cout<<cve->startCorner <<" "<< cve->vert <<" "<< cve->cornerInitial <<" "<< cve->stress <<" "<< nextStress <<" "<<cve->seamIdInList <<" "<<inverted<<" "<<cve->endCorner <<endl;
 
                 // it is a start corner and it still is!
         if(cve->startCorner && (cve->vert == cve->cornerInitial)){
@@ -1688,7 +1702,8 @@ int tearFurtherVisIdxHelper(vector<cutVertEntry*>& cutPositions, MatrixXd&  curr
     }
 }
 
-int tearFurther(vector<cutVertEntry*>& cutPositions, MatrixXd&  currPattern, MatrixXi& Fg_pattern,vector<seam*>& seamsList, vector<minusOneSeam*>& minusOneSeams,
+int tearFurther(vector<cutVertEntry*>& cutPositions, MatrixXd&  currPattern, MatrixXi& Fg_pattern,
+                vector<seam*>& seamsList, vector<minusOneSeam*>& minusOneSeams,
                  map<int, pair<int, int>> & releasedVert, set<int>& toPattern_boundaryVerticesSet,  std::vector<std::vector<int> >& boundaryL,
                  set<int> & cornerSet, set<int>& handledVerticesSet,  bool& prevFinished, const bool & preferManySmallCuts, const bool & LShapeAllowed,
                  MatrixXd& patternEdgeLengths_orig, MatrixXd& Vg_pattern_orig, bool& prioInner,
@@ -1972,7 +1987,7 @@ int computeTear(Eigen::MatrixXd & fromPattern, MatrixXd&  currPattern, MatrixXi&
 
 
     for(int i = 0; i < cutPositions.size(); i++){
-        cout<<"finiding correspo of "<<i<<endl;
+        cout<<"finding correspo of "<<i<<endl;
         findCorrespondingCounterCutPosition(cutPositions, i, cutPositions[i], currPattern, Fg_pattern_curr, vfAdj, boundaryL,
                                             seamsList, minusOneSeams, releasedVert, toPattern_boundaryVerticesSet,lengthsCurr,Fg_pattern_curr, cornerSet, handledVerticesSet );
 
