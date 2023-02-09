@@ -608,7 +608,7 @@ void splitVertexFromCVE( cutVertEntry*& cve,
     int intersectingFace = -1 ;
     Vector2d intersectPosition;
     VectorXd newPos = Vg.row(cve->vert);
-
+    bool tearIsUseful = false;
     for(int i=0; i < vfAdj[cve->vert].size(); i++){
         int adjFace = vfAdj[cve->vert][i];
         int k=0;
@@ -617,10 +617,39 @@ void splitVertexFromCVE( cutVertEntry*& cve,
         int j = k+1;
         if(Fg(adjFace, j) == cve->vert) j++;
 
+
+        /* TEST IF IT IS ACTUALLY USEFUL*/
+        VectorXd distThen = (Vg_pattern_orig.row(Fg(adjFace, 0))+
+                             Vg_pattern_orig.row(Fg(adjFace, 1))+
+                             Vg_pattern_orig.row(Fg(adjFace, 2))).transpose();
+        distThen /= 3;
+        distThen(0) -= mid2(1);
+        distThen(1) += mid2(0); // perp to midvec measure stress
+        MatrixXd distB;
+        MatrixXd input(1, 3);
+        input.row(0)= distThen;
+        igl::barycentric_coordinates(input, Vg_pattern_orig.row(Fg(adjFace, 0)), Vg_pattern_orig.row(Fg(adjFace, 1)),
+                                     Vg_pattern_orig.row(Fg(adjFace, 2)), distB);
+        double lenThen = mid2.norm();
+        VectorXd distNow = (Vg.row(Fg(adjFace, 0)) * distB(0)+
+                            Vg.row(Fg(adjFace, 1)) * distB(1) +
+                            Vg.row(Fg(adjFace, 2))* distB(2)).transpose();
+        distNow -= (Vg.row(Fg(adjFace, 0)) * (1./3)+
+                    Vg.row(Fg(adjFace, 1)) *  (1./3) +
+                    Vg.row(Fg(adjFace, 2))*  (1./3) ).transpose();
+        double lenNow = distNow.norm();
+        cout<<"Face: "<<adjFace<<" "<<lenNow<<" dist now and then "<<lenThen<<" ratio is "<<lenNow/lenThen<<endl;
+//        cout<<"pos now "<<distNow.transpose() <<" and normed"<<distNow.normalized().transpose() <<endl;//it has to be for any of the adjacent ones, not just this single one
+
+        double checkIfTearIsUsefulThereshold = 1.051;
+        if(lenNow/lenThen >checkIfTearIsUsefulThereshold ){
+            tearIsUseful= true;
+        }
+        /*END TEST IF USEFUL*/
+
         if(raySegmentIntersection(Vg.row(cve->vert).leftCols(2), Vg.row(Fg(adjFace, k)).leftCols(2),
                                                                             Vg.row(Fg(adjFace, j)).leftCols(2), mid2,
                                                                             lengthsOrig(adjFace, 0)*100, intersectPosition)){
-//            cout<<Fg.row(adjFace)<<", face id "<<adjFace<<" k="<<k<<" j="<<j<<endl;
 
             intersectingFace = adjFace;
             newPos(0)= intersectPosition(0);
@@ -631,10 +660,15 @@ void splitVertexFromCVE( cutVertEntry*& cve,
 
             insertIdx = (dist1<dist2) ? Fg(adjFace, k): Fg(adjFace, j);
             cout<< insertIdx <<" the insert idx is found "<<endl;
-            break; // it intersects only one
+//            break; // it intersects only one
         }
 
     }
+    if(!tearIsUseful){
+            cve->finFlag = true;
+            return;
+    }
+
     // todo no face found, maybe one is exactly on the intersection? might be! in that case we have to search again...
     if(intersectingFace == -1 || insertIdx ==-1){
         cout<<"ERRRROR WE FOUND NO FACE!!! "<<endl;
@@ -681,37 +715,7 @@ void splitVertexFromCVE( cutVertEntry*& cve,
                                  Vg.row(Fg(intersectingFace, 2)), insertIdxInBary);
 
     newVg.row(insertIdx) = newPos;
-    cout<<newPos<<" new pos"<<endl;
-
-
-    /* TEST IF IT IS ACTUALLY USEFUL*/
-    VectorXd distThen = (Vg_pattern_orig.row(Fg(intersectingFace, 0))+
-            Vg_pattern_orig.row(Fg(intersectingFace, 1))+
-            Vg_pattern_orig.row(Fg(intersectingFace, 2))).transpose();
-    distThen /= 3;
-    distThen(0) += -mid2(1);
-    distThen(1) += mid2(0); // perp to midvec measure stress
-    MatrixXd distB;
-
-    input.row(0)= distThen;
-    igl::barycentric_coordinates(input, Vg_pattern_orig.row(Fg(intersectingFace, 0)), Vg_pattern_orig.row(Fg(intersectingFace, 1)),
-                                 Vg_pattern_orig.row(Fg(intersectingFace, 2)), distB);
-    double lenThen = mid2.norm();
-    VectorXd distNow = (Vg.row(Fg(intersectingFace, 0)) * distB(0)+
-            Vg.row(Fg(intersectingFace, 1)) * distB(1) +
-            Vg.row(Fg(intersectingFace, 2))* distB(2)).transpose();
-    distNow -= (Vg.row(Fg(intersectingFace, 0)) * (1./3)+
-                Vg.row(Fg(intersectingFace, 1)) *  (1./3) +
-                Vg.row(Fg(intersectingFace, 2))*  (1./3) ).transpose();
-    double lenNow = distNow.norm();
-    cout<<lenNow<<" dist now and then "<<lenThen<<" ratio is "<<lenNow/lenThen<<endl;
-    cout<<"pos now "<<distNow<<" and then"<<distThen<<endl;
-    double checkIfTearIsUsefulThereshold = 1.051;
-    if(lenNow/lenThen <checkIfTearIsUsefulThereshold ){
-        cve->finFlag = true;
-        return;
-    }
-    /*END TEST IF USEFUL*/
+    cout<<newPos.transpose()<<" new pos"<<endl;
 
     VectorXd updatedRestShapeVertPos = insertIdxInBary(0) * Vg_pattern_orig.row(Fg(intersectingFace, 0)) ;
     updatedRestShapeVertPos += insertIdxInBary(1) * Vg_pattern_orig.row(Fg(intersectingFace, 1)) ;
@@ -843,6 +847,7 @@ void splitVertexFromCVE( cutVertEntry*& cve,
     // only the first level i.e. boundary duplicate has to be projected, hence only this one is to be added
     if(cve->levelOne) {
         addToDulicateList(cve,seamsList, minusOneSeams, newVertIdx, false );
+//        cout<<minusOneSeams[cve->seamIdInList]->duplicates[cve->vert]<<" check if new is in duplicate list "<<endl ;
         toPattern_boundaryVerticesSet.insert(newVertIdx);// the duplicate is also on the boundary, hence insert it
         cve->leftdirection = toLeft;
         cve->rightdirection = toRight;
@@ -2091,7 +2096,6 @@ void updatePositionToIntersection(MatrixXd& p,int next, const MatrixXd& Vg_bound
      update the current position towards the projected
      */
 
-
 void fillMatrixWithBoundaryVert(const vector<int>& boundary, const int& start, const int& end, const MatrixXd& mapToVg, MatrixXd& Vg_seam1to, bool inverted ){
 
     int countLen = 2;
@@ -2215,7 +2219,6 @@ void projectBackOnBoundary(const MatrixXd & mapToVg, MatrixXd& p, const vector<s
         }
         // also project all duplicates of interior cut vertices
         for(const auto & addedVert : currSeam->duplicates){
-
             if(releasedVert.find(addedVert.second) == releasedVert.end() ){
                 updatePositionToIntersection(p, addedVert.second, Vg_seam1to, true);
             } else if( std::find(releasedVertNew[next].begin(), releasedVertNew[next].end(), j) == releasedVertNew[next].end()){
