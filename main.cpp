@@ -404,6 +404,8 @@ void readDataM(string fileName, vector<vector<int>>& matrix ){
 MatrixXd patternEdgeLengths_orig;
 MatrixXi mapFromFg, mapToFg, Fg_pattern_curr; //from  = the rest shape of the garment
 MatrixXd mapFromVg, mapToVg; //to = the target shape
+int changedPos;
+vector<vector<int>> boundaryLFrom;
 int main(int argc, char *argv[])
 {
     // Init the viewer
@@ -584,7 +586,7 @@ int main(int argc, char *argv[])
     viewer.core().animation_max_fps = 200.;
     viewer.core().is_animating = false;
     int whichSeam = 0;
-
+    changedPos = -1;
     //additional menu items
     int whichBound=0;
     float movePatternX=0; float movePatternY=0;
@@ -888,13 +890,17 @@ int main(int argc, char *argv[])
                 igl::boundary_loop(Fg_pattern_curr, boundaryLnew);
                 boundaryL.clear();
                 boundaryL = boundaryLnew;
+                boundaryLFrom.clear();
+                igl::boundary_loop(mapFromFg, boundaryLFrom);
+
 
                 createMapCornersToNewCorner(currPattern, mapToVg, cornerPerBoundary, mapCornerToCorner, boundaryL);
                 cornerVertices= VectorXd::Zero(currPattern.rows());
                 updateCornerUtils(cornerSet, cornerPerBoundary, seamIdPerCorner, mapCornerToCorner, cornerVertices);
                 updateSeamCorner( seamsList, minusOneSeamsList, mapCornerToCorner, boundaryL);
-//                viewer.core().is_animating = true;
-//                adaptionFlag = true;
+
+                viewer.core().is_animating = true;
+                adaptionFlag = true;
             }
             if(ImGui::Button("Compute first Tear", ImVec2(-1, 0))){
                 simulate = false;
@@ -923,8 +929,6 @@ int main(int argc, char *argv[])
                     viewer.data().uniform_colors(ambient, diffuse, specular);
 
                 }
-
-
                 if(pos!=-1){
                     viewer.selected_data_index = 2;
                     viewer.data().uniform_colors(ambient, diffuse, specular);
@@ -950,14 +954,14 @@ int main(int argc, char *argv[])
                 simulate = false;
                 adaptionFlag = false;
                 viewer.core().is_animating = false;
-                auto copyPattern = fromPattern;
+                auto copyPattern = mapFromVg;
 //                pos = tearFurtherVisIdxHelper(cutPositions, currPattern, Fg_pattern, seamsList, minusOneSeamsList, releasedVert,
 //                                                  toPattern_boundaryVerticesSet, boundaryL, cornerSet, handledVerticesSet, prevTearFinished,
 //                                                  preferManySmallCuts, LShapeAllowed, patternEdgeLengths_orig, fromPattern, prioInner, prioOuter);
 
-                pos = tearFurther(cutPositions, currPattern, Fg_pattern, seamsList, minusOneSeamsList, releasedVert,
+                pos = tearFurther(cutPositions, currPattern, Fg_pattern_curr, seamsList, minusOneSeamsList, releasedVert,
                             toPattern_boundaryVerticesSet, boundaryL, cornerSet, handledVerticesSet, prevTearFinished,
-                            preferManySmallCuts, LShapeAllowed, patternEdgeLengths_orig, fromPattern, prioInner, prioOuter);
+                            preferManySmallCuts, LShapeAllowed, patternEdgeLengths_orig, mapFromVg, prioInner, prioOuter);
 
                 if(pos!=-1){
                     viewer.selected_data_index = 2;
@@ -966,7 +970,7 @@ int main(int argc, char *argv[])
                 }
 
                 std::vector<std::vector<int> > boundaryLnew;
-                igl::boundary_loop(Fg_pattern, boundaryLnew);
+                igl::boundary_loop(Fg_pattern_curr, boundaryLnew);
 
                 if(boundaryLnew.size() != boundaryL.size()){
                     updatePatchId(cutPositions, boundaryLnew,seamsList, minusOneSeamsList );
@@ -976,9 +980,16 @@ int main(int argc, char *argv[])
 
                 // also adapt the new edge lengths since we might have changed the rest position when cutting in middl
                 bool changeFlag = false;
-                if( copyPattern != fromPattern){
+                if( copyPattern != mapFromVg){// rest shape changes if we insert middle cuts
+                    vector<vector<int> > vvAdjCurr;
+                    igl::adjacency_list( Fg_pattern_curr, vvAdjCurr);
+                    for(int i=0; i < vvAdjCurr[pos].size(); i++){
+                        if(copyPattern.row(vvAdjCurr[pos][i]) != mapFromVg.row(vvAdjCurr[pos][i])){
+                            changedPos= vvAdjCurr[pos][i];
+                        }
+                    }
                     MatrixXd lengthsOrig;
-                    igl::edge_lengths(fromPattern, Fg_pattern_orig, lengthsOrig);
+                    igl::edge_lengths(mapFromVg, mapFromFg, lengthsOrig);
                     patternEdgeLengths_orig = lengthsOrig;
                     cout<<"---------------------"<<endl;
 
@@ -986,10 +997,12 @@ int main(int argc, char *argv[])
                     changeFlag= true;
                     viewer.selected_data_index = 0;
                     viewer.data().clear();
-                    viewer.data().set_mesh(currPattern, Fg_pattern);
+                    viewer.data().set_mesh(currPattern, Fg_pattern_curr);
                 }
-                viewer.core().is_animating = true;
-                adaptionFlag = true;
+                if(!changeFlag){
+                    viewer.core().is_animating = true;
+                    adaptionFlag = true;
+                }
 
             }
             if(ImGui::Button("Smooth cuts", ImVec2(-1, 0))){
@@ -1222,7 +1235,6 @@ int main(int argc, char *argv[])
                 viewer.data().set_colors(C);
 
             }
-
             if(ImGui::Button("End Area", ImVec2(-1, 0))) {
                 cout<<"End area selection"<<endl;
                 mouse_mode = NONE;
@@ -1252,6 +1264,43 @@ int main(int argc, char *argv[])
                 C.block(0,0, prevFaces, 1) = VectorXd::Ones(prevFaces);
                 viewer.data().set_colors(C);
 
+
+            }
+
+        }
+        if (ImGui::CollapsingHeader("Inverse direction: remove fractures  ", ImGuiTreeNodeFlags_DefaultOpen)) {
+            if(ImGui::Button("Map back   ", ImVec2(-1, 0))){
+                string fracturedInverse  = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/writtenPattern_inverseMapped.obj";//writtenPatternMaternitySmoothedFractures.obj"; //
+                MatrixXd fracturedInverseVg; MatrixXi fracturedInverseFg;
+                igl::readOBJ(fracturedInverse, fracturedInverseVg, fracturedInverseFg);
+
+                string targetPattern  = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/patternComputed_maternity_01.obj"; // what shape it should have
+                MatrixXd mapToV; MatrixXi mapToF;
+                igl::readOBJ(targetPattern, mapToV, mapToF);
+
+                string patternInit = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/leggins_2d/leggins_2d.obj"; // what shape it has now
+                MatrixXd mapFromV; MatrixXi mapFromF;
+                igl::readOBJ(patternInit, mapFromV, mapFromF);
+
+                string helperToLocate = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/writtenPattern_fullyRetri.obj";
+                MatrixXd helperV, finalV;
+                MatrixXi helperF, finalF;
+                igl::readOBJ(helperToLocate, helperV, helperF);
+                igl::readOBJ(helperToLocate, finalV, finalF);
+
+                // helper is localized in mapToV (= the perfect pattern), and mapped to mapFromV (= the shape we start with)
+//            initialGuessAdaption( helperV,  mapFromV,  mapToV, helperF,  mapToF);
+
+                // facturedInverse is localized in helper(could also be mapFromV) , and mapped to mapTo (= the target shape, ,could also be final but who cares)
+                initialGuessAdaption( fracturedInverseVg,  mapToV,  mapFromV, fracturedInverseFg,  mapToF);
+
+                prevFaces = Fg_pattern_curr.rows();
+                viewer.selected_data_index = 1;
+                viewer.data().clear();
+                viewer.selected_data_index = 0;
+                viewer.data().clear();
+                viewer.data().show_lines = true;
+                viewer.data().set_mesh(fracturedInverseVg, fracturedInverseFg);
 
             }
 
@@ -2034,12 +2083,12 @@ void solveConstrainedVertices(){
 }
 void solveStretchAdaptionViaEdgeLength(){
 
- for(int i=0; i<mapFromFg.rows(); i++){
+ for(int i=0; i<Fg_pattern_curr.rows(); i++){
         for(int j=0; j<3; j++){
             Vector3r corr0, corr1;
 
-            Vector3d p0 =  p_adaption.row(mapFromFg(i,j));
-            Vector3d p1 =  p_adaption.row(mapFromFg(i,(j+1)%3));
+            Vector3d p0 =  p_adaption.row(Fg_pattern_curr(i,j));
+            Vector3d p1 =  p_adaption.row(Fg_pattern_curr(i,(j+1)%3));
             double mass0 = 1;
 
             // idea: we should allow less stretch if it is on the original boundary, stronger edge length preservation force
@@ -2051,8 +2100,8 @@ void solveStretchAdaptionViaEdgeLength(){
 //            }
 
             PBD.solve_DistanceConstraint(p0, mass0, p1, 1, patternEdgeLengths_orig(i, (j+2) % 3),stiffnessUsed, corr0, corr1);
-            p_adaption.row(mapFromFg(i,j)) += corr0;
-            p_adaption.row(mapFromFg(i,(j+1) % 3 )) += corr1;
+            p_adaption.row(Fg_pattern_curr(i,j)) += corr0;
+            p_adaption.row(Fg_pattern_curr(i,(j+1) % 3 )) += corr1;
 
         }
     }
@@ -2161,26 +2210,28 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
     p_adaption = currPattern;
     p_adaption.col(2)= Eigen::VectorXd::Ones(currPattern.rows());
     p_adaption.col(2)*= 200;
+
 //    t.printTime(" init ");
     for(int i=0; i<5; i++){
-        t.printTime(" pattern stress ");
+//        t.printTime(" pattern stress ");
         solveStretchAdaptionViaEdgeLength();//perFaceU_adapt, perFaceV_adapt);
 //        ensurePairwiseDist(p_adaption, toPattern, Fg_pattern);
-        t.printTime(" edge lengths ");
+//        t.printTime(" edge lengths ");
 
         // before cutting the boundaries should be the same
         projectBackOnBoundary( mapToVg, p_adaption, seamsList, minusOneSeamsList, boundaryL_toPattern,
-                                boundaryL, releasedVert ,false );
-        t.printTime(" project boundary  ");
+                                boundaryLFrom, releasedVert ,false );
+//        t.printTime(" project boundary  ");
 
 //        ensurePairwiseDist(p_adaption, toPattern, Fg_pattern);
         solveCornerMappedVertices();
 
-        t.printTime(" solve corner  ");
-//todo add!!
+//        t.printTime(" solve corner  ");
         ensureAngle(p_adaption, mapFromVg, Fg_pattern_curr);
-        t.printTime(" ensure angle ");
-
+//        t.printTime(" ensure angle ");
+//        if(changedPos != -1){
+//            cout<<p_adaption.row(changedPos)<<" angle "<<endl;
+//        }
 //        ensurePairwiseDist(p_adaption, toPattern, Fg_pattern);
     }
 

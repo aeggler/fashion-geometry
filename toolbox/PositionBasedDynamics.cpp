@@ -128,6 +128,9 @@ bool PositionBasedDynamics::solve_DistanceConstraint(
     n.normalize();
 
     Vector3r corr;
+    /* trial  no elongation, just shortening */
+//    double clampElongation = max(-3.,(d - restLength) );
+//    corr = stiffness * n * (clampElongation) / wSum;
     corr = stiffness * n * (d - restLength) / wSum;
 
     corr0 =  corr;

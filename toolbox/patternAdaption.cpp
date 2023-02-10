@@ -203,9 +203,12 @@ bool checkIfTearIsUseful(int vert, Vector3d& cutDirection,  vector<vector<int>>&
             if(faces.first!= -1){
                 int whichEdgeLeft = findWhichEdgeOfFace(faces.first, vert, otherVert, Fg_pattern);
                 w += lengthsCurr(faces.first, whichEdgeLeft)/lengthsOrig(faces.first, whichEdgeLeft);
+                cout<<otherVert<<" Length now:"<<lengthsCurr(faces.first, whichEdgeLeft)<<" and orig"<<lengthsOrig(faces.first, whichEdgeLeft)<<endl;
             }else if(faces.second!= -1){
                 int whichEdgeRight = findWhichEdgeOfFace(faces.second, vert, otherVert, Fg_pattern);
                 w += lengthsCurr(faces.second, whichEdgeRight)/lengthsOrig(faces.second, whichEdgeRight);
+                cout<<otherVert<<" Length now:"<< lengthsCurr(faces.second, whichEdgeRight) <<" and orig"<< lengthsOrig(faces.second, whichEdgeRight) <<endl;
+
             }
             ws(i) = w;
         }else{
@@ -432,7 +435,6 @@ void splitVertexFromCVE( cutVertEntry*& cve,
 
     double thereshold = 1.05;
 
-
     Vector3d toLeft = Vg.row(boundaryL[cve->patch][plusOneId]) - Vg.row(cve->vert);
     Vector3d toRight = Vg.row(boundaryL[cve->patch][minusOneId])- Vg.row(cve->vert);
 
@@ -449,12 +451,56 @@ void splitVertexFromCVE( cutVertEntry*& cve,
 
         }
         VectorXd ws;
-        if(! checkIfTearIsUseful(cve-> vert, cutDirection, vvAdj, vfAdj, Vg, lengthsCurr, lengthsOrig, Fg, ws, false)){
-            cve-> finFlag = true;
-            cout<<"stopping now bc tearing is not useful anymore "<<endl;
+        vector<int> fn = vfAdj[cve->vert]; // the face neighbors
+        bool tearIsUseful = false;
+       for(int faceIdx =0; faceIdx <fn.size(); faceIdx++){
+           int adjFace = fn[faceIdx];
+           VectorXd faceBary = (Vg_pattern_orig.row(Fg(adjFace, 0))+
+                                Vg_pattern_orig.row(Fg(adjFace, 1))+
+                                Vg_pattern_orig.row(Fg(adjFace, 2))).transpose();
+           faceBary /= 3;
 
-            return;
+           //90* angle to cut direrction is where we measure the stress
+           faceBary(0) -= cutDirection(1);
+           faceBary(1) += cutDirection(0); // perp to midvec measure stress
+           MatrixXd distB;
+           MatrixXd input(1, 3);
+           input.row(0)= faceBary;
+           // is the face elongated in cut direction compared to its original shape ? (=> rest shape)
+           igl::barycentric_coordinates(input, Vg_pattern_orig.row(Fg(adjFace, 0)), Vg_pattern_orig.row(Fg(adjFace, 1)),
+                                        Vg_pattern_orig.row(Fg(adjFace, 2)), distB);
+           double lenThen = cutDirection.norm();
+
+           VectorXd distNow = (Vg.row(Fg(adjFace, 0)) * distB(0)+
+                               Vg.row(Fg(adjFace, 1)) * distB(1) +
+                               Vg.row(Fg(adjFace, 2))* distB(2)).transpose();
+           distNow -= (Vg.row(Fg(adjFace, 0)) * (1./3)+
+                       Vg.row(Fg(adjFace, 1)) *  (1./3) +
+                       Vg.row(Fg(adjFace, 2))*  (1./3) ).transpose();
+           double lenNow = distNow.norm();
+           cout<<"Face: "<<adjFace<<" "<<lenNow<<" dist now and then "<<lenThen<<" ratio is "<<lenNow/lenThen<<endl;
+//        cout<<"pos now "<<distNow.transpose() <<" and normed"<<distNow.normalized().transpose() <<endl;//it has to be for any of the adjacent ones, not just this single one
+
+           double checkIfTearIsUsefulThereshold = 1.051;
+           if(lenNow/lenThen >checkIfTearIsUsefulThereshold ){
+               tearIsUseful= true;
+           }
+           /*END TEST IF USEFUL*/
+
+       }
+
+        if(! checkIfTearIsUseful(cve-> vert, cutDirection, vvAdj, vfAdj, Vg, lengthsCurr, lengthsOrig, Fg, ws, false)){
+
+            cout<<"stopping now bc tearing is not useful anymore. but we have the new check so let it decide  "<<endl;
+//            cve-> finFlag = true;
+//            return;
         }
+        if(!tearIsUseful){
+            cout<<"stopping now because of adj face stress condition  "<<endl;
+
+            cve->finFlag = true;
+            return;
+        } cout<<" Confirmed tear is useful! "<<endl;
 
         // set of extra cases
         pair<int, int> valPair = make_pair(cve->seamType, cve ->seamIdInList);
@@ -470,7 +516,7 @@ void splitVertexFromCVE( cutVertEntry*& cve,
         }
         // this is the seam in which we make the decision to release,(!) not from this seam but from the subsequent
         releasedVert[cve->vert]= valPair;
-
+        cout<<"released from seam "<<valPair.first<<" "<<valPair.second<<endl;
         // now we need to find the seam from which we release.
         // each corner is adjacent to two seams. If one is the one we make the decision from, then the other is the one from which it is released
         if(cornerToSeams[cve->cornerInitial][0] == seamComp ){
@@ -1599,8 +1645,7 @@ void setLP(std::vector<std::vector<int> >& boundaryL , vector<vector<int>> & vfA
 
 void updateStress(vector<cutVertEntry*>& cutPositions, vector<seam*>& seamsList, vector<minusOneSeam*>& minusOneSeams,
                   std::vector<std::vector<int> >& boundaryL, MatrixXi& Fg_pattern, vector<vector<int>> & vfAdj, MatrixXd& lengthsCurr, bool& prioInner,
-                  bool& prioOuter
-                  ){
+                  bool& prioOuter){
     cout<<"Updating the stress"<<endl;
     for(int i=0; i< cutPositions.size(); i++){
         cutVertEntry* cve = cutPositions[i];
@@ -1992,7 +2037,6 @@ int computeTear(Eigen::MatrixXd & fromPattern, MatrixXd&  currPattern, MatrixXi&
 
 
     for(int i = 0; i < cutPositions.size(); i++){
-        cout<<"finding correspo of "<<i<<endl;
         findCorrespondingCounterCutPosition(cutPositions, i, cutPositions[i], currPattern, Fg_pattern_curr, vfAdj, boundaryL,
                                             seamsList, minusOneSeams, releasedVert, toPattern_boundaryVerticesSet,lengthsCurr,Fg_pattern_curr, cornerSet, handledVerticesSet );
 
@@ -2141,6 +2185,18 @@ void projectBackOnBoundary(const MatrixXd & mapToVg, MatrixXd& p, const vector<s
                            map<int, pair<int, int>> & releasedVert ,bool visFlag){
 
     int numSeams = seamsList.size();
+    int count =0;
+//    if(releasedVert.size()>0){
+//        auto iter = releasedVertNew.begin();
+//        cout<<"Released vert: "<<endl;
+//        while (iter != releasedVertNew.end()) {
+//            cout << count<<" [" << iter->first << ","
+//                 << iter->second[0] << "]\n";
+//            ++iter;
+//            count++;
+//        }
+//    }
+
 
     for (int j = 0; j<numSeams; j++){
         seam* currSeam  = seamsList[j];
@@ -2184,7 +2240,10 @@ void projectBackOnBoundary(const MatrixXd & mapToVg, MatrixXd& p, const vector<s
             next = boundaryL[stP1.second][(nextIdx) % bsize];
         }
         // the last corner. Again if it is constrained from another side pull it to boundary, else ignore since handled by corner
-        if(releasedVert.find(next) != releasedVert.end() && (std::find(releasedVertNew[next].begin(), releasedVertNew[next].end(), j) == releasedVertNew[next].end())){
+        if(releasedVert.find(next) == releasedVert.end()){
+            updatePositionToIntersection( p, next,Vg_seam1to, true);
+
+        } else if (std::find(releasedVertNew[next].begin(), releasedVertNew[next].end(), j) == releasedVertNew[next].end())){
             updatePositionToIntersection( p, next,Vg_seam1to, true);
         }
 
@@ -2207,16 +2266,17 @@ void projectBackOnBoundary(const MatrixXd & mapToVg, MatrixXd& p, const vector<s
             } else if( std::find(releasedVertNew[next].begin(), releasedVertNew[next].end(), j) == releasedVertNew[next].end()){
                 updatePositionToIntersection( p, next,Vg_seam2to, shoulBeLeft);
             }
-
             nextIdx -=1;// (nextidx - i2) % (bsize);
 
             if(nextIdx < 0) {nextIdx += bsize;}
-//            if(seamsList[j]->inverted) {nextIdx += 2; nextIdx = nextIdx % bsize;}
             next = boundaryL[stP2.second][nextIdx];
         }
-        if(releasedVert.find(next) != releasedVert.end() && (std::find(releasedVertNew[next].begin(), releasedVertNew[next].end(), j) == releasedVertNew[next].end())){
+        if(releasedVert.find(next) == releasedVert.end()){
+            updatePositionToIntersection( p, next,Vg_seam2to, shoulBeLeft);
+        }else if (std::find(releasedVertNew[next].begin(), releasedVertNew[next].end(), j) == releasedVertNew[next].end()){
             updatePositionToIntersection( p, next,Vg_seam2to, shoulBeLeft);
         }
+
         // also project all duplicates of interior cut vertices
         for(const auto & addedVert : currSeam->duplicates){
             if(releasedVert.find(addedVert.second) == releasedVert.end() ){
@@ -2256,7 +2316,6 @@ void projectBackOnBoundary(const MatrixXd & mapToVg, MatrixXd& p, const vector<s
            cout<<   "ERROR IN -1 SEAM , WE CANNOT FIND THE START VERT"<<endl ;
        }
 
-
         int next = startVert;int counter=0;
         while(next != endVert && counter < 1100){
             counter++;
@@ -2278,7 +2337,13 @@ void projectBackOnBoundary(const MatrixXd & mapToVg, MatrixXd& p, const vector<s
         }
         // also map all projections
         for(const auto & addedVert : currSeam -> duplicates){
-            updatePositionToIntersection(p, addedVert.second, Vg_seamto, true);
+
+            if(releasedVert.find(addedVert.second) == releasedVert.end() ){
+                updatePositionToIntersection(p, addedVert.second, Vg_seamto, true);
+            } else if( std::find(releasedVertNew[next].begin(), releasedVertNew[next].end(), j) == releasedVertNew[next].end()){
+                updatePositionToIntersection(p, addedVert.second, Vg_seamto, true);
+            }
+//            updatePositionToIntersection(p, addedVert.second, Vg_seamto, true);
 
         }
 

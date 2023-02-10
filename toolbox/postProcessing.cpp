@@ -1016,6 +1016,30 @@ void initialGuessAdaption(MatrixXd& currPattern_nt, MatrixXd& mapToVg_nt, Matrix
     }
 
 }
+void initialGuessAdaptionWithoutT(MatrixXd& currPattern, MatrixXd& mapToVg, MatrixXd& perfectPattern,  MatrixXi& Fg_pattern_curr, MatrixXi& mapToFg){
+//perfect pattern is the initial perfect pattern for the new shape, and curr is the existing adapted to the perfect, thus is has more faces and its own Fg
+// note that mapToVg was the one we started with, and it has face correspondance with perfect pattern, therefore they both use mapToFg
+    VectorXd S;
+    VectorXi I;//face index of smallest distance
+    MatrixXd C,N, initGuess;
+    cout<<"Starting with signed distance "<<endl;
+    igl::signed_distance(currPattern, perfectPattern, mapToFg, igl::SIGNED_DISTANCE_TYPE_UNSIGNED, S, I, C, N);
+
+    MatrixXd B(currPattern.rows(), 3); // contains all barycentric coordinates
+    for(int i = 0; i < currPattern.rows(); i++){
+        VectorXd bary;
+        auto face = mapToFg.row(I(i));
+        igl::barycentric_coordinates(currPattern.row(i), perfectPattern.row(face(0)), perfectPattern.row(face(1)),
+                                     perfectPattern.row(face(2)), bary);
+        B.row(i) = bary;
+    }
+    cout<<"Got all barycentric coords"<<endl;
+    igl::barycentric_interpolation(mapToVg, mapToFg, B, I, initGuess);
+    cout<<"Got interpolation "<<initGuess.rows()<<" and before we had "<<currPattern.rows()<<endl;
+    currPattern  = initGuess;
+
+}
+
 set<int> boundaryVerticesP;
 void ensureAngle(MatrixXd& p, MatrixXd& fromPattern, MatrixXi& Fg_pattern){
     if(boundaryVerticesP.empty()){
@@ -1237,4 +1261,68 @@ void updateSeamCorner( vector<seam*>& seamsList,  vector<minusOneSeam*> & minusO
 
     }
     cout<<"updated all corners :) "<<endl;
+}
+
+void stitchSeam(vector<int>& startAndEnd, MatrixXd& currPattern, MatrixXi& Fg_pattern_curr){
+    Eigen::VectorXi componentIdPerVert;
+    igl::vertex_components(Fg_pattern_curr, componentIdPerVert);
+    vector<vector<int>> boundaryLCurr ;
+    igl::boundary_loop(Fg_pattern_curr, boundaryLCurr);
+    if(startAndEnd.size() != 6) {
+        cout<<" Sorry you should select 6 vertices, 4 corners and 4 intermediate.  "<<endl;
+    }
+    VectorXi idxOf(6);
+    int patch1 = componentIdPerVert(startAndEnd[0]);
+    int patch2 = componentIdPerVert(startAndEnd[3]);
+    // search for the indices of start and end elements
+
+    for(int l = 0; l < boundaryLCurr.size(); l++){
+        for (int m = 0; m < boundaryLCurr[l].size(); m++){
+            for(int i = 0; i < startAndEnd.size(); i++) {
+                if (startAndEnd[i] == boundaryLCurr[l][m] ){
+                    idxOf(i) = m;
+
+                }
+            }
+        }
+    }
+
+    bool patch2Asc = isAsc(idxOf(3), idxOf(4), idxOf(5));
+    bool patch1Asc = isAsc(idxOf(0), idxOf(1), idxOf(2));
+
+    // we need to translate the whole component
+    VectorXd offset = currPattern.row(startAndEnd[0])-currPattern.row(startAndEnd[3]);
+    int componentOfOne = componentIdPerVert(startAndEnd[3]);
+    for(int i =0; i<currPattern.rows(); i++){
+        if(componentIdPerVert(i) == componentOfOne){
+            currPattern.row(i)+= offset.transpose();
+        }
+    }
+    cout<<"For now we assume the number of vertices on both sides is the same. Maybe this has to be adapted later"<<endl;
+
+    vector<vector<int>> vfAdj;
+    createVertexFaceAdjacencyList(Fg_pattern_curr, vfAdj);
+
+    int i=0;
+    int currIdx1 = idxOf(0);
+    int currIdx2 = idxOf(3);
+
+    while (boundaryLCurr[patch1][currIdx1] != boundaryLCurr[patch1][idxOf(2)]){
+        // do I need to remove it fully or unreference it or just move the posititions
+        currPattern.row(boundaryLCurr[patch2][currIdx2]) = currPattern.row(boundaryLCurr[patch1][currIdx1]);
+        i++;
+        if(patch1Asc){
+            currIdx1 = (idxOf(0)+ i) % boundaryLCurr[patch1].size();
+        }else{
+            currIdx1 = ((idxOf(0)- i)>= 0) ?(idxOf(0)- i) : (idxOf(0)- i)+boundaryLCurr[patch1].size() ;
+        }
+
+        if(patch2Asc){
+            currIdx2 = (idxOf(3)+ i) % boundaryLCurr[patch2].size();
+        }else{
+            currIdx2 = ((idxOf(3)- i)>= 0) ?(idxOf(3)- i) : (idxOf(3)- i)+boundaryLCurr[patch2].size() ;
+        }
+    }
+    currPattern.row(boundaryLCurr[patch2][currIdx2]) = currPattern.row(boundaryLCurr[patch1][currIdx1]);
+
 }

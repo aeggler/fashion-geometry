@@ -35,6 +35,7 @@ void createHalfAvatarMap(MatrixXd& testMorph_V1, MatrixXi& testMorph_F1,
                          map<int, int>& leftHalfToFullFaceMap,  map<int, int>& rightHalfToFullFaceMap);
 
 void initialGuessAdaption(MatrixXd& currPattern, MatrixXd& mapToVg, MatrixXd& perfectPattern,  MatrixXi& Fg_pattern_curr, MatrixXi& mapToFg);
+void initialGuessAdaptionWithoutT(MatrixXd& currPattern, MatrixXd& mapToVg, MatrixXd& perfectPattern,  MatrixXi& Fg_pattern_curr, MatrixXi& mapToFg);
 void ensureAngle(MatrixXd& currPattern, MatrixXd& toPattern, MatrixXi& Fg_pattern);
 void ensurePairwiseDist(MatrixXd& currPattern, MatrixXd& toPattern, MatrixXi& Fg_pattern);
 
@@ -47,6 +48,6 @@ void updateCornerUtils(set<int>& cornerSet, vector<vector<pair<int, int>>>& corn
 void updateSeamCorner( vector<seam*>& seamsList,  vector<minusOneSeam*> & minusOneSeams, map<int, int>& mapCornerToCorner,
                        vector<vector<int>>& boundaryL);
 
-
+void stitchSeam(vector<int>& startAndEnd, MatrixXd& currPattern, MatrixXi& Fg_pattern_curr);
 
 #endif //EXAMPLE_POSTPROCESSING_H
