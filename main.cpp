@@ -2154,37 +2154,59 @@ void solveStretchAdaptionViaEdgeLength(){
     }
 }
 void solveStretchAdaption(MatrixXd& perFaceU_adapt,MatrixXd& perFaceV_adapt){
+//    PBD.solveUVSimple( Fg_pattern_curr,  mapFromFg,  p_adaption,  mapFromVg, stretchStiffnessU);
+//    return;
+
     // force that pulls back to the original position in fromPattern
     // it does not quite work after tthe 3rd cut. Jacobian seems to be fine but it messes up
-    for(int i=0; i< Fg_pattern.rows(); i++){
+    for(int i=0; i< Fg_pattern_curr.rows(); i++){
         Eigen::MatrixXd patternCoords(2, 3);
-        patternCoords.col(0) = fromPattern.row(Fg_pattern_orig(i, 0)).leftCols(2).transpose();
-        patternCoords.col(1) = fromPattern.row(Fg_pattern_orig(i, 1)).leftCols(2).transpose();
-        patternCoords.col(2) = fromPattern.row(Fg_pattern_orig(i, 2)).leftCols(2).transpose();
+        patternCoords.col(0) = mapFromVg.row(mapFromFg(i, 0)).leftCols(2).transpose();
+        patternCoords.col(1) = mapFromVg.row(mapFromFg(i, 1)).leftCols(2).transpose();
+        patternCoords.col(2) = mapFromVg.row(mapFromFg(i, 2)).leftCols(2).transpose();
 
         // where they would go to if no stretch in u
         Vector2r tarUV0, tarUV1 , tarUV2;
 
         Eigen::MatrixXd targetPositions(2, 3);
-        targetPositions.col(0)=  p_adaption.row(Fg_pattern(i, 0)).leftCols(2).transpose() ;
-        targetPositions.col(1)=  p_adaption.row(Fg_pattern(i, 1)).leftCols(2).transpose() ;
-        targetPositions.col(2)=  p_adaption.row(Fg_pattern(i, 2)).leftCols(2).transpose() ;
+        targetPositions.col(0)=  p_adaption.row(Fg_pattern_curr(i, 0)).leftCols(2).transpose() ;
+        targetPositions.col(1)=  p_adaption.row(Fg_pattern_curr(i, 1)).leftCols(2).transpose() ;
+        targetPositions.col(2)=  p_adaption.row(Fg_pattern_curr(i, 2)).leftCols(2).transpose() ;
 
         int uOrv = 1;
-        if( boundaryL[4].size()==27 ) uOrv = 11;
+
+//        VectorXd fromBary = ( patternCoords.col(0) +  patternCoords.col(1) +  patternCoords.col(2))/3;
+//        VectorXd nowBary = (targetPositions.col(0) + targetPositions.col(1) + targetPositions.col(2))/3;
+//        VectorXd u = fromBary; u(0)+= 1;
+//        VectorXd v = fromBary; v(1)+= 1;
+//
+//        VectorXd uBary, vBary;
+//        igl::barycentric_coordinates(u.transpose(), patternCoords.col(0).transpose(), patternCoords.col(1).transpose(), patternCoords.col(2).transpose(), uBary);
+//        igl::barycentric_coordinates(v.transpose(), patternCoords.col(0).transpose(), patternCoords.col(1).transpose(), patternCoords.col(2).transpose(), vBary);
+//        VectorXd recon =  uBary(0)*patternCoords.col(0) + uBary(1)*patternCoords.col(1) + uBary(2)*patternCoords.col(2);
+//        if((u -recon).norm() > 0.001)cout<<u.transpose()<<" recon error "<< recon <<endl;
+//        VectorXd uNow = uBary(0) * targetPositions.col(0) + uBary(1) * targetPositions.col(1) + uBary(2) * targetPositions.col(2);
+//        VectorXd vNow = vBary(0) * targetPositions.col(0) + vBary(1) * targetPositions.col(1) + vBary(2) * targetPositions.col(2);
+//
+//        VectorXd uDiff = (uNow-nowBary);
+//        VectorXd vDiff = (vNow-nowBary);
+//
+//        Vector2d uPerFace; uPerFace(0) = uDiff(0); uPerFace(1) = uDiff(1);
+//        Vector2d vPerFace; vPerFace(0) = vDiff(0); vPerFace(1) = vDiff(1);
+
 //        TODO STIFFNESS PARAMETER
 
 // in the third iteration some strange artifacts arise form here
-        PBD_adaption.init_UVStretchPattern( perFaceU_adapt.row(i),  perFaceV_adapt.row(i), patternCoords,targetPositions,
+        PBD_adaption.init_UVStretchPattern( baryCoordsUPattern.row(i),  baryCoordsVPattern.row(i), patternCoords,targetPositions,
                                                 tarUV0, tarUV1,tarUV2, uOrv,  stretchStiffnessD);
 //
-        Vector2d dir0 = tarUV0 - p_adaption.row(Fg_pattern(i, 0)).leftCols(2).transpose() ;
-        Vector2d dir1 = tarUV1 - p_adaption.row(Fg_pattern(i, 1)).leftCols(2).transpose() ;
-        Vector2d dir2 = tarUV2 - p_adaption.row(Fg_pattern(i, 2)).leftCols(2).transpose() ;
-//  TODO STIFFNESS PARAMETER
-        p_adaption.row(Fg_pattern(i,0)).leftCols(2) += ( stretchStiffnessU * dir0);
-        p_adaption.row(Fg_pattern(i,1)).leftCols(2) += ( stretchStiffnessU * dir1);
-        p_adaption.row(Fg_pattern(i,2)).leftCols(2) += ( stretchStiffnessU * dir2);
+        Vector2d dir0 = tarUV0 - p_adaption.row(Fg_pattern_curr(i, 0)).leftCols(2).transpose() ;
+        Vector2d dir1 = tarUV1 - p_adaption.row(Fg_pattern_curr(i, 1)).leftCols(2).transpose() ;
+        Vector2d dir2 = tarUV2 - p_adaption.row(Fg_pattern_curr(i, 2)).leftCols(2).transpose() ;
+
+        p_adaption.row(Fg_pattern_curr(i,0)).leftCols(2) += ( stretchStiffnessU * dir0);
+        p_adaption.row(Fg_pattern_curr(i,1)).leftCols(2) += ( stretchStiffnessU * dir1);
+        p_adaption.row(Fg_pattern_curr(i,2)).leftCols(2) += ( stretchStiffnessU * dir2);
 //
     }
 }
@@ -2247,6 +2269,8 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
     Timer t(" Adaption time step ");
 
     adaptioncount++;
+    cout<<adaptioncount<<endl<<endl;
+//    if(adaptioncount>2)return;
 
  //   std::cout<<"-------------- Time Step ------------"<<adaptioncount<<endl;
     // we have no velocity or collision, but we do have stretch, constrainedStretch and bending
@@ -2264,7 +2288,9 @@ changedPos = -1;
 //    t.printTime(" init ");
     for(int i=0; i<5; i++){
 //        t.printTime(" pattern stress ");
-        solveStretchAdaptionViaEdgeLength();//perFaceU_adapt, perFaceV_adapt);
+        MatrixXd perFaceU_adapt, perFaceV_adapt;
+        solveStretchAdaption(perFaceU_adapt, perFaceV_adapt);
+//        solveStretchAdaptionViaEdgeLength();//
 //        ensurePairwiseDist(p_adaption, toPattern, Fg_pattern);
 //        t.printTime(" edge lengths ");
         if(changedPos != -1){
