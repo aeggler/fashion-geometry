@@ -231,8 +231,11 @@ bool PositionBasedDynamics::init_UVStretchPattern( const Vector2r& perFaceU, con
 // J ist für original auf current, dh auch pattern coords muss aus original sein
 
     if(uORv==1|| uORv==11){// we want to relax u stretch, hence go in direction where u is not stretched i.e it is normalized
-        Jnorm.col(0) = Jnorm.col(0).normalized();
-        Jnorm.col(1) = Jnorm.col(1).normalized();
+        Jnorm.col(0) = Jn_0;
+        Jnorm.col(1) = Jn_1;
+    }
+    if(uORv ==11){
+        cout<<Jnorm<< " jnorm" <<endl;
     }
 
     double angle = acos((Jn_0).dot(Jn_1));
@@ -257,7 +260,7 @@ bool PositionBasedDynamics::init_UVStretchPattern( const Vector2r& perFaceU, con
     }
 
     Eigen::MatrixXd jacobiStretchedPattern = Jnorm * patternCoords;
-//    if(uORv ==11) cout<<endl<<patternCoords<<" pattern coords"<<endl ;
+    if(uORv ==11) cout<<endl<<patternCoords<<" pattern coords"<<endl ;
 //    if(uORv ==11) cout<<endl<<jacobiStretchedPattern<<" jacobi coords"<<endl ;
 //    if(uORv ==11) cout<<endl<<Jnorm<<" jacobian norm coords after angle spread"<<endl ;
 
@@ -269,7 +272,7 @@ bool PositionBasedDynamics::init_UVStretchPattern( const Vector2r& perFaceU, con
 
     Eigen::MatrixXd rotTargetPos =   R_est* jacobiStretchedPattern ;
     Eigen::MatrixXd refTargetPos = rotTargetPos.colwise() + T_est;
-//    if(uORv ==11) cout<<endl<<refTargetPos<<" rot trans coords"<<endl ;
+    if(uORv ==11) cout<<endl<<refTargetPos<<" rot trans coords"<<endl ;
     if( uORv ==11){
 //        refTargetPos =  targetPositions;
 //        tarUV1 =  targetPositions.col(1);
