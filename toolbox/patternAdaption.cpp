@@ -2243,7 +2243,7 @@ void projectBackOnBoundary(const MatrixXd & mapToVg, MatrixXd& p, const vector<s
         if(releasedVert.find(next) == releasedVert.end()){
             updatePositionToIntersection( p, next,Vg_seam1to, true);
 
-        } else if (std::find(releasedVertNew[next].begin(), releasedVertNew[next].end(), j) == releasedVertNew[next].end())){
+        } else if (std::find(releasedVertNew[next].begin(), releasedVertNew[next].end(), j) == releasedVertNew[next].end()){
             updatePositionToIntersection( p, next,Vg_seam1to, true);
         }
 

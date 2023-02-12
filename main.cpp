@@ -77,7 +77,7 @@ int timestepCounter;
 bool LShapeAllowed = false;
 
 
-enum MouseMode { SELECTPATCH, SELECTBOUNDARY, NONE, SELECTVERT, SELECTAREA, SELECTAREAPATCHES };
+enum MouseMode { SELECTPATCH, SELECTBOUNDARY, NONE, SELECTVERT, SELECTAREA, SELECTAREAPATCHES, FINALSTITCH };
 MouseMode mouse_mode = NONE;
 // pre computations
 Eigen::MatrixXi e4list;
@@ -916,6 +916,7 @@ int main(int argc, char *argv[])
                             handledVerticesSet, prevTearFinished, LShapeAllowed,
                             prioInner, prioOuter);
 
+                 changedPos = pos;
                 if( copyPattern != mapFromVg){
                     MatrixXd lengthsOrig;
                     igl::edge_lengths(mapFromVg, mapFromFg, lengthsOrig);
@@ -985,7 +986,7 @@ int main(int argc, char *argv[])
                     igl::adjacency_list( Fg_pattern_curr, vvAdjCurr);
                     for(int i=0; i < vvAdjCurr[pos].size(); i++){
                         if(copyPattern.row(vvAdjCurr[pos][i]) != mapFromVg.row(vvAdjCurr[pos][i])){
-                            changedPos= vvAdjCurr[pos][i];
+                            changedPos = vvAdjCurr[pos][i];
                         }
                     }
                     MatrixXd lengthsOrig;
@@ -1270,6 +1271,7 @@ int main(int argc, char *argv[])
         }
         if (ImGui::CollapsingHeader("Inverse direction: remove fractures  ", ImGuiTreeNodeFlags_DefaultOpen)) {
             if(ImGui::Button("Map back   ", ImVec2(-1, 0))){
+                mouse_mode = NONE;
                 string fracturedInverse  = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/writtenPattern_inverseMapped.obj";//writtenPatternMaternitySmoothedFractures.obj"; //
                 MatrixXd fracturedInverseVg; MatrixXi fracturedInverseFg;
                 igl::readOBJ(fracturedInverse, fracturedInverseVg, fracturedInverseFg);
@@ -1283,25 +1285,56 @@ int main(int argc, char *argv[])
                 igl::readOBJ(patternInit, mapFromV, mapFromF);
 
                 string helperToLocate = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/writtenPattern_fullyRetri.obj";
-                MatrixXd helperV, finalV;
-                MatrixXi helperF, finalF;
+                MatrixXd helperV;MatrixXi helperF;
+                MatrixXd oneDirMapV; MatrixXi oneDirMapF;
                 igl::readOBJ(helperToLocate, helperV, helperF);
-                igl::readOBJ(helperToLocate, finalV, finalF);
-
+                igl::readOBJ(helperToLocate, oneDirMapV, oneDirMapF);
                 // helper is localized in mapToV (= the perfect pattern), and mapped to mapFromV (= the shape we start with)
-//            initialGuessAdaption( helperV,  mapFromV,  mapToV, helperF,  mapToF);
+                initialGuessAdaption( helperV,  mapFromV,  mapToV, helperF,  mapToF);
 
                 // facturedInverse is localized in helper(could also be mapFromV) , and mapped to mapTo (= the target shape, ,could also be final but who cares)
-                initialGuessAdaption( fracturedInverseVg,  mapToV,  mapFromV, fracturedInverseFg,  mapToF);
-
-                prevFaces = Fg_pattern_curr.rows();
+                // note: translation does not work well here becuase the fracture might have introduced more components, then the translation is off ;(
+                initialGuessAdaptionWithoutT( fracturedInverseVg,  oneDirMapV,  helperV, fracturedInverseFg,  helperF);
+                currPattern.resize(fracturedInverseVg.rows(), fracturedInverseVg.cols());
+                currPattern = fracturedInverseVg;
+                Fg_pattern_curr.resize(fracturedInverseFg.rows(), fracturedInverseFg.cols());
+                Fg_pattern_curr = fracturedInverseFg;
                 viewer.selected_data_index = 1;
                 viewer.data().clear();
                 viewer.selected_data_index = 0;
                 viewer.data().clear();
                 viewer.data().show_lines = true;
-                viewer.data().set_mesh(fracturedInverseVg, fracturedInverseFg);
+                viewer.data().set_mesh(currPattern, Fg_pattern_curr);
+//                viewer.data().set_mesh(helperV, helperF);
 
+            }
+            if(ImGui::Button("Select stitching seams ", ImVec2(-1, 0))){
+                cout<<"Please choose seams to stitch. Attention, the following order is required "<<endl;
+                cout<<"                         "<<endl;
+                cout<<"   -- v2         v5 --   "<<endl;
+                cout<<"      |           |      "<<endl;
+                cout<<"      v1         v4      "<<endl;
+                cout<<"      |           |      "<<endl;
+                cout<<"   -- v0         v3 --   "<<endl;
+
+                cout<<"Note that all vertices should be inside the original mesh i.e yellow area. Click on the area within the mesh to get the closest point. "<<endl;
+//todo just needed for visualization
+                cout<<"Ensure that v0 & v3 as well as v2 & v5 correspond to each other. "<<endl<<endl;
+
+                startAndEnd.clear();
+                viewer.selected_data_index = 0;
+                viewer.data().clear();
+                viewer.data().show_lines = true;
+                viewer.data().set_mesh(currPattern, Fg_pattern_curr);
+                mouse_mode = FINALSTITCH;
+            }
+            if(ImGui::Button("Stitching seams ", ImVec2(-1, 0))){
+                mouse_mode = NONE;
+//                stitchSeam(startAndEnd, currPattern, Fg_pattern_curr);
+                viewer.selected_data_index = 0;
+                viewer.data().clear();
+                viewer.data().show_lines = true;
+                viewer.data().set_mesh(currPattern, Fg_pattern_curr);
             }
 
         }
@@ -1517,6 +1550,20 @@ bool callback_mouse_down(igl::opengl::glfw::Viewer& viewer, int button, int modi
         }else{
             cout<<"finished, please confirm "<<endl;
         }
+    }
+    if(mouse_mode == FINALSTITCH){
+        int fid;
+        Eigen::Vector3d b;
+        MatrixXd Vrs = currPattern;
+        if (computePointOnMesh(viewer, Vrs, Fg_pattern_curr, b, fid)) {
+            int v_id = computeClosestVertexOnMesh(b, fid, Fg_pattern_curr);
+            viewer.data().set_points(Vrs.row(v_id), RowVector3d(1.0, 0.0, 0.0));
+            cout<<"Selected vertex "<<v_id<<endl;
+
+            startAndEnd.push_back(v_id);
+            return true;
+        }
+
     }
     return false;
 }
@@ -2177,12 +2224,15 @@ void computePatternStress(MatrixXd& perFaceU_adapt,MatrixXd& perFaceV_adapt ){
     }
 
 }
+int adaptioncount =0;
 void solveCornerMappedVertices(){
+
     for(int i=0; i< cornerPerBoundary.size(); i++){
         for(int j=0; j< cornerPerBoundary[i].size(); j++){
 
             int vertIdx = get<0>(cornerPerBoundary[i][j]);
             if(releasedVert.find(vertIdx)!= releasedVert.end()){
+                if(adaptioncount%20==0) cout<<vertIdx<<" released"<<endl;
                 continue;
             }
             Vector2d newSuggestedPos = mapToVg.row(vertIdx).leftCols(2);
@@ -2193,7 +2243,6 @@ void solveCornerMappedVertices(){
     }
 
 }
-int adaptioncount = 0 ;
 void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
     Timer t(" Adaption time step ");
 
@@ -2211,27 +2260,37 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
     p_adaption.col(2)= Eigen::VectorXd::Ones(currPattern.rows());
     p_adaption.col(2)*= 200;
 
+changedPos = -1;
 //    t.printTime(" init ");
     for(int i=0; i<5; i++){
 //        t.printTime(" pattern stress ");
         solveStretchAdaptionViaEdgeLength();//perFaceU_adapt, perFaceV_adapt);
 //        ensurePairwiseDist(p_adaption, toPattern, Fg_pattern);
 //        t.printTime(" edge lengths ");
+        if(changedPos != -1){
+            cout<<p_adaption.row(changedPos)<<" edge "<<endl;
+        }
 
         // before cutting the boundaries should be the same
         projectBackOnBoundary( mapToVg, p_adaption, seamsList, minusOneSeamsList, boundaryL_toPattern,
                                 boundaryLFrom, releasedVert ,false );
+        if(changedPos != -1){
+            cout<<p_adaption.row(changedPos)<<" bound "<<endl;
+        }
 //        t.printTime(" project boundary  ");
 
 //        ensurePairwiseDist(p_adaption, toPattern, Fg_pattern);
-        solveCornerMappedVertices();
+//        solveCornerMappedVertices();
+        if(changedPos != -1){
+            cout<<p_adaption.row(changedPos)<<" corner "<<endl;
+        }
 
 //        t.printTime(" solve corner  ");
         ensureAngle(p_adaption, mapFromVg, Fg_pattern_curr);
 //        t.printTime(" ensure angle ");
-//        if(changedPos != -1){
-//            cout<<p_adaption.row(changedPos)<<" angle "<<endl;
-//        }
+        if(changedPos != -1){
+            cout<<p_adaption.row(changedPos)<<" angle "<<endl;
+        }
 //        ensurePairwiseDist(p_adaption, toPattern, Fg_pattern);
     }
 
@@ -2287,14 +2346,28 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
         vPerEdge.row(i) = (vbary(0) * v0new + vbary(1) * v1new + vbary(2) * v2new).transpose() -  startPerEdge.row(i);
         double ulen = uPerEdge.row(i).norm();
         int incrFact = 5;
-        double y = incrFact * abs(1-ulen);
-        uPerEdge.row(i) = uPerEdge.row(i).normalized()*(ulen+(ulen-1)*4);
-        coluPerEdge.row(i) = Vector3d(1.0 + y, 1. - y, 0.0);
+        double y = min(ulen*ulen*ulen, 2.);
+        y/= 1.5; //incrFact * abs(1-ulen);
+        uPerEdge.row(i) = uPerEdge.row(i).normalized()*(ulen*ulen);
+//        coluPerEdge.row(i) = Vector3d(1.0 + y, 1. - y, 0.0);
+//y=0;
+        coluPerEdge.row(i) = Vector3d( y, 1. - y, 0.0);
+//        ulen -= 0.5;
+//        ulen = max(0., ulen);
+//        ulen = min(ulen*0.4, 1.);
+//        RowVector3d a, b;
+//        a<<0.5, 1, 1;
+//        b<<1, 0, 0;
+//        coluPerEdge.row(i)= a*(1-y)+ b*y;
+
 
         double vlen = vPerEdge.row(i).norm();
-        y = incrFact * abs(1-vlen);
-        vPerEdge.row(i) = vPerEdge.row(i).normalized()*(vlen+(vlen-1)*4);
-        colvPerEdge.row(i) = Vector3d(1.0 + y, 1. - y, 0.0);
+//        if(i==5417) cout<<"Face 5417  v elon "<<vlen<<" "<< ulen<<" "<<(ulen*ulen)<<endl;
+
+        y = min(vlen*vlen*vlen, 2.); y/=1.5;//incrFact * abs(1-vlen);
+        vPerEdge.row(i) = vPerEdge.row(i).normalized()*(vlen*vlen);
+//        colvPerEdge.row(i) = Vector3d(1.0 + y, 1. - y, 0.0);
+        colvPerEdge.row(i) = Vector3d( y, 1. - y, 0.0);
 
     }
 
