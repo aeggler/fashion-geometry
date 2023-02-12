@@ -4,7 +4,7 @@
 #include <Eigen/Dense>
 
 typedef double Real;
-
+using namespace Eigen;
 using Vector3r = Eigen::Matrix<Real, 3, 1, Eigen::DontAlign>;
 using Vector2r = Eigen::Matrix<Real, 2, 1, Eigen::DontAlign>;
 
@@ -50,6 +50,7 @@ public:
             const Real restLength,
             const Real stiffness,
             Vector3r &corr0, Vector3r &corr1);
+    bool solveUVSimple(MatrixXi& Fg_pattern_curr, MatrixXi& mapFromFg, MatrixXd& p_adaption, MatrixXd& mapFromVg, double stiffness);
 
     bool init_UVStretch(const  Vector3r& perFaceU,const Vector3r& perFaceV,
                                                const Eigen::MatrixXd& patternCoords, const Eigen::Matrix3d& targetPositions,
