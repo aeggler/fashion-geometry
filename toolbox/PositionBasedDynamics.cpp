@@ -15,8 +15,8 @@ using namespace Eigen;
 using Vector2r = Eigen::Matrix<Real, 2, 1, Eigen::DontAlign>;
 
 using Vector3r = Eigen::Matrix<Real, 3, 1, Eigen::DontAlign>;
-using Matrix2r = Eigen::Matrix<Real, 2, 2, Eigen::DontAlign>;
-using Matrix3r = Eigen::Matrix<Real, 3, 3, Eigen::DontAlign>;
+//using Matrix2r = Eigen::Matrix<Real, 2, 2, Eigen::DontAlign>;
+//using Matrix3r = Eigen::Matrix<Real, 3, 3, Eigen::DontAlign>;
 using Matrix4r = Eigen::Matrix<Real, 4, 4, Eigen::DontAlign>;
 
 // ------------------------------------------------------------------------------------
@@ -142,84 +142,6 @@ bool PositionBasedDynamics::solve_DistanceConstraint(
     return true;
 }
 // ----------------------------------------------------------------------------------------------
-bool PositionBasedDynamics::solveUVSimple(MatrixXi& Fg_pattern_curr, MatrixXi& mapFromFg, MatrixXd& p_adaption, MatrixXd& mapFromVg, double stiffness){
-    for(int i=0; i<Fg_pattern_curr.rows(); i++){
-        VectorXd from0 = mapFromVg.row(mapFromFg(i, 0));
-        VectorXd from1 = mapFromVg.row(mapFromFg(i, 1));
-        VectorXd from2 = mapFromVg.row(mapFromFg(i, 2));
-
-        VectorXd now0 = p_adaption.row(Fg_pattern_curr(i, 0));
-        VectorXd now1 = p_adaption.row(Fg_pattern_curr(i, 1));
-        VectorXd now2 = p_adaption.row(Fg_pattern_curr(i, 2)).transpose();
-
-        VectorXd fromBary = (from0 + from1 + from2)/3;
-        VectorXd nowBary = (now0 + now1 + now2)/3;
-
-        VectorXd u = fromBary; u(0)+= 1;
-        VectorXd v = fromBary; v(1)+= 1;
-
-        VectorXd uBary, vBary;
-        igl::barycentric_coordinates(u.transpose(), from0.transpose(), from1.transpose(), from2.transpose(), uBary);
-        igl::barycentric_coordinates(v.transpose(), from0.transpose(), from1.transpose(), from2.transpose(), vBary);
-
-        VectorXd uNow = uBary(0) * now0 + uBary(1) * now1 + uBary(2) * now2;
-        VectorXd vNow = vBary(0) * now0 + vBary(1) * now1 + vBary(2) * now2;
-
-        double uDiff = (uNow-nowBary).norm();
-        double vDiff = (vNow-nowBary).norm();
-        if(i==0) cout<<now0.transpose() <<endl<<now1.transpose() <<endl<<now2.transpose()<<endl<<from2.transpose()<<" vert "<<Fg_pattern_curr(i, 2)<<endl ;
-        if(i==0)cout<<"uDiff: "<<uDiff<<endl;
-        double diff0 = abs(now0(0) - now1(0)) * (1 / uDiff - 1) ;
-        double diff1 = abs(now1(0) - now2(0)) * (1 / uDiff - 1);
-        double diff2 = abs(now2(0) - now0(0)) * (1 / uDiff - 1);
-
-        if(i==0)cout<<diff0<<" "<<diff1<<" "<<diff2<<" the diffs" <<endl;
-        double diffMax = max(max(diff0, diff1),diff2);
-        if(diffMax == diff0){
-            if (now0(0) < now1(0)){
-                now0(0) -= diff0 / 2;
-                now1(0) += diff0 / 2;
-
-            } else{
-                now1(0) -= diff0 / 2;
-                now0(0) += diff0 / 2;
-            }
-        }else if (diffMax == diff1){
-            if (now2(0) < now1(0)){
-                now2(0) -= diff1 / 2;
-                now1(0) += diff1 / 2;
-
-            } else{
-                now1(0) -= diff1 / 2;
-                now0(0) += diff1 / 2;
-            }
-        }else{
-            if (now0(0) < now2(0)){
-                now0(0) -= diff2 / 2;
-                now2(0) += diff2 / 2;
-
-            } else{
-                now2(0) -= diff2 / 2;
-                now0(0) += diff2 / 2;
-            }
-        }
-
-
-
-
-
-        if(i==0)cout<<now0<<" "<<now1<<" "<<now2<<" the nows" <<endl;
-        if(i==0) cout<< "update vec "<<now0.transpose() - p_adaption.row(Fg_pattern_curr(i, 0))<<endl;
-
-        p_adaption.row(Fg_pattern_curr(i, 0)) += stiffness * (now0.transpose() - p_adaption.row(Fg_pattern_curr(i, 0)));
-        p_adaption.row(Fg_pattern_curr(i, 1)) += stiffness * (now1.transpose() - p_adaption.row(Fg_pattern_curr(i, 1)));
-        p_adaption.row(Fg_pattern_curr(i, 2)) += stiffness * (now2.transpose()- p_adaption.row(Fg_pattern_curr(i, 2)));
-        if(i==0) cout<< p_adaption.row(Fg_pattern_curr(i, 0))<<" is vert 0 "<<endl;
-        if(i==0)cout<< p_adaption.row(Fg_pattern_curr(i, 1))<<" is vert 1 "<<endl;
-        if(i==0)cout<< p_adaption.row(Fg_pattern_curr(i, 2))<<" is vert 2 "<<endl;
-
-    }
-}
 
 bool PositionBasedDynamics::init_UVStretchPattern( const Vector2r& perFaceU, const Vector2r& perFaceV,
                                             const Eigen::MatrixXd& patternCoords,const Eigen::MatrixXd& targetPositions,
@@ -241,6 +163,8 @@ bool PositionBasedDynamics::init_UVStretchPattern( const Vector2r& perFaceU, con
     double angle = acos((Jn_0).dot(Jn_1));
     double deg = angle*180/M_PI;
     double delta = abs(90-deg)/2;
+     delta = delta/180 * M_PI;
+    DiagStiffness = 0.91;
 
     Eigen::Matrix2d newRot= Eigen::MatrixXd::Identity(2, 2);
     newRot(0, 0)= cos(DiagStiffness * delta);
@@ -248,9 +172,7 @@ bool PositionBasedDynamics::init_UVStretchPattern( const Vector2r& perFaceU, con
     newRot(0, 1) = - sin (DiagStiffness * delta);
     newRot(1, 0) =  sin ( DiagStiffness * delta);
 
-    if(uORv ==11){
-//        cout<<" deg"<<deg<<endl;
-    }
+
     if(deg<=90){
         Jnorm.col(0) = newRot.transpose() * Jnorm.col(0);
         Jnorm.col(1) = newRot * Jnorm.col(1);

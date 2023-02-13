@@ -44,7 +44,7 @@ Eigen::MatrixXd Vg, Vm, testMorph_V1; // mesh for the garment and mannequin
 MatrixXd testMorph_V1left, testMorph_V1right;
 Eigen::MatrixXi Fg, Fm, Fg_pattern,Fg_pattern_orig, testMorph_F1;
 MatrixXi testMorph_F1left, testMorph_F1right; // separate for case of wider legs
-map<int, int> leftHalfToFullFaceMap, rightHalfToFullFaceMap; // when wider legs we need two different collision detectiosn
+map<int, int> leftHalfToFullFaceMap, rightHalfToFullFaceMap; // when wider legs we need two different collision detection
 Eigen::MatrixXd Vg_orig, Vm_orig; // original mesh for the garment and mannequin, restore for translation
 Eigen::MatrixXd Vg_pattern, Vg_pattern_orig; // the pattern for the rest shape, we might change this
 Eigen::MatrixXi Fg_orig, Fm_orig;
@@ -95,7 +95,7 @@ Eigen::MatrixXi E_m;				// triangles = faces of the garment mesh / faces of the 
 Eigen::VectorXi EMAP_m;
 Eigen::VectorXd w; // the particle weights
 Eigen::MatrixXd p; // the proposed new positions
-MatrixXd u1, u2; // precomputation for stretch
+MatrixXd u1, u2; // pre computation for stretch
 PositionBasedDynamics PBD, PBD_adaption;
 
 // colouring
@@ -107,9 +107,9 @@ MatrixXd perFaceU, perFaceV;
 int whichStressVisualize= 0;
 
 garment_adaption* gar_adapt;
-vector<seam*> seamsList,seamsListOld ;
-vector<minusOneSeam*> minusOneSeamsList, minusOneSeamsListOld;
-map<int, int> mapCornerToCorner;// a map between the corners of the original pattern and the one after retriangulation
+vector<seam*> seamsList ;
+vector<minusOneSeam*> minusOneSeamsList;
+map<int, int> mapCornerToCorner;// a map between the corners of the original pattern and the one after re triangulation
 
 vector<int> constrainedVertexIds;
 VectorXi closestFaceId;
@@ -149,22 +149,22 @@ vector<vector<pair<int, int>>> cornerPerBoundary;// for each patch, for each cor
 MatrixXd patternPreInterpol,patternPreInterpol_temp ;
 MatrixXd garmentPreInterpol,garmentPreInterpol_temp ;
 MatrixXd mannequinPreInterpol, mannequinPreInterpol_temp;
-Eigen::VectorXi componentIdPerFace,componentIdPerFaceNew, componentIdPerVert;
+Eigen::VectorXi componentIdPerFace, componentIdPerVert;
 vector<VectorXd> polylineSelected;
 vector<int> polylineIndex;
 vector<int> polyLineMeshIndicator;
 //test
 //Eigen::SparseMatrix<double> L;
-MatrixXd perFaceD2, perFaceD1;
-MatrixXd Vg_retri;// retriangulated area
-MatrixXi Fg_retri;// retriangulated face
+MatrixXd Vg_retri;// re triangulated area
+MatrixXi Fg_retri;// re triangulated face
 vector<int> connectedVert; int prevFaces;// initial umber of faces (for coloring), and boundary vertices that are now duplicated (not used now)
 
 VectorXd cornerVertices;
 vector<cutVertEntry*> cutPositions;
 map<int, pair<int, int>>  releasedVert; // all positions that need not be mapped to the boundary anymore from at least one side. keep track which side is released
-set<int> toPattern_boundaryVerticesSet; // the boudary vertices of the toPattern, for visualization purposes
+set<int> toPattern_boundaryVerticesSet; // the boundary vertices of the toPattern, for visualization purposes
 vector<int> startAndEnd; // start and end to do the smoothing
+double taylor_lazyness = 1;
 
 void preComputeAdaption();
 void computeBaryCoordsGarOnNewMannequin(igl::opengl::glfw::Viewer& viewer);
@@ -190,7 +190,7 @@ void computeStress(igl::opengl::glfw::Viewer& viewer);
 void solveStretchUV();
 
 // nice clicky interface
-bool computePointOnMesh(igl::opengl::glfw::Viewer& viewer, Eigen::MatrixXd& Vuse, Eigen::MatrixXi& Fuse, Eigen::Vector3d& position, int& fid);
+bool computePointOnMesh(igl::opengl::glfw::Viewer& viewer, Eigen::MatrixXd& V, Eigen::MatrixXi& Fuse, Eigen::Vector3d& position, int& fid);
 int computeClosestVertexOnMesh(Vector3d& b, int& fid, MatrixXi& F);
 bool callback_mouse_down(igl::opengl::glfw::Viewer& viewer, int button, int modifier);
 int pos;
@@ -235,172 +235,6 @@ bool pre_draw(igl::opengl::glfw::Viewer& viewer){
 
     return false;
 }
-void saveData(string fileName, VectorXi  matrix)
-{
-    //https://eigen.tuxfamily.org/dox/structEigen_1_1IOFormat.html
-    const static IOFormat CSVFormat(FullPrecision, DontAlignCols, ", ", "\n");
-
-    ofstream file(fileName);
-    if (file.is_open())
-    {
-        file << matrix.format(CSVFormat);
-        file.close();
-    }
-}
-void saveData(string fileName, MatrixXi  matrix)
-{
-    //https://eigen.tuxfamily.org/dox/structEigen_1_1IOFormat.html
-    const static IOFormat CSVFormat(FullPrecision, DontAlignCols, ", ", "\n");
-
-    ofstream file(fileName);
-    if (file.is_open())
-    {
-        file << matrix.format(CSVFormat);
-        file.close();
-    }
-}
-void saveData(string fileName, MatrixXd  matrix)
-{
-    //https://eigen.tuxfamily.org/dox/structEigen_1_1IOFormat.html
-    const static IOFormat CSVFormat(FullPrecision, DontAlignCols, ", ", "\n");
-
-    ofstream file(fileName);
-    if (file.is_open())
-    {
-        file << matrix.format(CSVFormat);
-        file.close();
-    }
-}
-MatrixXi openData(string fileToOpen)
-{
-
-    // the inspiration for creating this function was drawn from here (I did NOT copy and paste the code)
-    // https://stackoverflow.com/questions/34247057/how-to-read-csv-file-and-assign-to-eigen-matrix
-
-    // the input is the file: "fileToOpen.csv":
-    // a,b,c
-    // d,e,f
-    // This function converts input file data into the Eigen matrix format
-
-
-
-    // the matrix entries are stored in this variable row-wise. For example if we have the matrix:
-    // M=[a b c
-    //    d e f]
-    // the entries are stored as matrixEntries=[a,b,c,d,e,f], that is the variable "matrixEntries" is a row vector
-    // later on, this vector is mapped into the Eigen matrix format
-    vector<int> matrixEntries;
-
-    // in this object we store the data from the matrix
-    ifstream matrixDataFile(fileToOpen);
-
-    // this variable is used to store the row of the matrix that contains commas
-    string matrixRowString;
-
-    // this variable is used to store the matrix entry;
-    string matrixEntry;
-
-    // this variable is used to track the number of rows
-    int matrixRowNumber = 0;
-
-
-    while (getline(matrixDataFile, matrixRowString)) // here we read a row by row of matrixDataFile and store every line into the string variable matrixRowString
-    {
-        stringstream matrixRowStringStream(matrixRowString); //convert matrixRowString that is a string to a stream variable.
-
-        while (getline(matrixRowStringStream, matrixEntry, ',')) // here we read pieces of the stream matrixRowStringStream until every comma, and store the resulting character into the matrixEntry
-        {
-            matrixEntries.push_back(stod(matrixEntry));   //here we convert the string to double and fill in the row vector storing all the matrix entries
-        }
-        matrixRowNumber++; //update the column numbers
-    }
-
-    // here we convet the vector variable into the matrix and return the resulting object,
-    // note that matrixEntries.data() is the pointer to the first memory location at which the entries of the vector matrixEntries are stored;
-    return Map<Matrix<int, Dynamic, Dynamic, RowMajor>>(matrixEntries.data(), matrixRowNumber, matrixEntries.size() / matrixRowNumber);
-
-}
-MatrixXd openDataD(string fileToOpen)
-{
-
-    // the inspiration for creating this function was drawn from here (I did NOT copy and paste the code)
-    // https://stackoverflow.com/questions/34247057/how-to-read-csv-file-and-assign-to-eigen-matrix
-
-    // the input is the file: "fileToOpen.csv":
-    // a,b,c
-    // d,e,f
-    // This function converts input file data into the Eigen matrix format
-
-
-
-    // the matrix entries are stored in this variable row-wise. For example if we have the matrix:
-    // M=[a b c
-    //    d e f]
-    // the entries are stored as matrixEntries=[a,b,c,d,e,f], that is the variable "matrixEntries" is a row vector
-    // later on, this vector is mapped into the Eigen matrix format
-    vector<double> matrixEntries;
-
-    // in this object we store the data from the matrix
-    ifstream matrixDataFile(fileToOpen);
-
-    // this variable is used to store the row of the matrix that contains commas
-    string matrixRowString;
-
-    // this variable is used to store the matrix entry;
-    string matrixEntry;
-
-    // this variable is used to track the number of rows
-    int matrixRowNumber = 0;
-
-
-    while (getline(matrixDataFile, matrixRowString)) // here we read a row by row of matrixDataFile and store every line into the string variable matrixRowString
-    {
-        stringstream matrixRowStringStream(matrixRowString); //convert matrixRowString that is a string to a stream variable.
-
-        while (getline(matrixRowStringStream, matrixEntry, ',')) // here we read pieces of the stream matrixRowStringStream until every comma, and store the resulting character into the matrixEntry
-        {
-            matrixEntries.push_back(stod(matrixEntry));   //here we convert the string to double and fill in the row vector storing all the matrix entries
-        }
-        matrixRowNumber++; //update the column numbers
-    }
-
-    // here we convet the vector variable into the matrix and return the resulting object,
-    // note that matrixEntries.data() is the pointer to the first memory location at which the entries of the vector matrixEntries are stored;
-    return Map<Matrix<double, Dynamic, Dynamic, RowMajor>>(matrixEntries.data(), matrixRowNumber, matrixEntries.size() / matrixRowNumber);
-
-}
-
-void saveDataM(string fileName, vector<vector<int>>&  matrix)
-{
-    fstream file;
-    file.open(fileName,ios_base::out);
-
-    file<<matrix.size()<<endl;
-
-    for(int i=0;i<matrix.size();i++)
-    {
-        file<<matrix[i].size()<<endl;
-        for(int j=0; j< matrix[i].size(); j++){
-            file<<matrix[i][j]<<endl;
-        }
-    }
-
-    file.close();
-
-}
-void readDataM(string fileName, vector<vector<int>>& matrix ){
-    fstream file;
-    file.open(fileName,ios_base::in);
-    int rows; file>> rows;
-    matrix.resize(rows);
-    for(int i=0; i<rows; i++){
-        int cols; file>>cols;
-        matrix[i].resize(cols);
-        for(int j=0; j<cols; j++){
-            file>>matrix[i][j];
-        }
-    }
-}
 MatrixXd patternEdgeLengths_orig;
 MatrixXi mapFromFg, mapToFg, Fg_pattern_curr; //from  = the rest shape of the garment
 MatrixXd mapFromVg, mapToVg; //to = the target shape
@@ -433,9 +267,9 @@ int main(int argc, char *argv[])
 //    string garment_file_name = igl::file_dialog_open();
 //    cout<<garment_file_name<<" chosen file, thanks. "<<endl;
 
-//    string garment_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/retriBackIn3d.obj"; //smaller collision thereshold to make sure it is not "eaten" after intiial step , 3.5 instead of 4.5
-    string garment_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/leggins_3d/leggins_3d_merged.obj"; //smaller collision thereshold to make sure it is not "eaten" after intiial step , 3.5 instead of 4.5
-//    string garment_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/patternComputed3D_converged.obj";// smaller collision thereshold to make sure it is not "eaten" after intiial step , 3.5 instead of 4.5 is ok
+//    string garment_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/retriBackIn3d.obj"; //smaller collision thereshold to make sure it is not "eaten" after intial step , 3.5 instead of 4.5
+    string garment_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/leggins_3d/leggins_3d_merged.obj"; //smaller collision thereshold to make sure it is not "eaten" after intial step , 3.5 instead of 4.5
+//    string garment_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/patternComputed3D_converged.obj";// smaller collision thereshold to make sure it is not "eaten" after intial step , 3.5 instead of 4.5 is ok
 //    string garment_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/dress_2/dress_3d_lowres/dress_3d_lowres_merged_inlay.obj";// for the dress
 //    string garment_file_name =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/moreGarments/dress_4/dress_3d.obj";// for the dress
 
@@ -541,10 +375,9 @@ int main(int argc, char *argv[])
 
     set<int> cornerSet;// a set containing all corner vertices
 
-    for(int i=0; i < cornerPerBoundary.size(); i++){
-        for(int j=0; j < cornerPerBoundary[i].size(); j++){
-            cornerSet.insert(cornerPerBoundary[i][j].first);
-            //cornerVertices
+    for(auto cpbi : cornerPerBoundary){
+        for(auto cpbij : cpbi){
+            cornerSet.insert(cpbij.first);
         }
     }
 
@@ -733,8 +566,8 @@ int main(int argc, char *argv[])
                 ImGui::InputInt("Which Bound vis  ", &(whichBound),  0, 0);
                 if(ImGui::Button("Vis Bound ", ImVec2(-1, 0))){
                     MatrixXd testCol= MatrixXd::Zero(Vg_pattern.rows(), 3);
-                    for(int i=0; i<boundaryL[whichBound].size(); i++){
-                            testCol(boundaryL[whichBound][i],0)=1;
+                    for(auto bli: boundaryL[whichBound]){
+                            testCol(bli,0)=1;
                     }
                     viewer.selected_data_index = 0;
                     viewer.data().clear();
@@ -902,6 +735,7 @@ int main(int argc, char *argv[])
                 viewer.core().is_animating = true;
                 adaptionFlag = true;
             }
+            ImGui::InputDouble("Taylor Lazyness ", &(taylor_lazyness),  0, 0, "%0.4f");
             if(ImGui::Button("Compute first Tear", ImVec2(-1, 0))){
                 simulate = false;
                 adaptionFlag = false;
@@ -914,7 +748,7 @@ int main(int argc, char *argv[])
                             seamIdPerCorner,
                             cornerVertices, cutPositions, releasedVert, toPattern_boundaryVerticesSet, cornerSet,
                             handledVerticesSet, prevTearFinished, LShapeAllowed,
-                            prioInner, prioOuter);
+                            prioInner, prioOuter, taylor_lazyness, mapFromFg);
 
                  changedPos = pos;
                 if( copyPattern != mapFromVg){
@@ -962,7 +796,7 @@ int main(int argc, char *argv[])
 
                 pos = tearFurther(cutPositions, currPattern, Fg_pattern_curr, seamsList, minusOneSeamsList, releasedVert,
                             toPattern_boundaryVerticesSet, boundaryL, cornerSet, handledVerticesSet, prevTearFinished,
-                            preferManySmallCuts, LShapeAllowed, patternEdgeLengths_orig, mapFromVg, prioInner, prioOuter);
+                            preferManySmallCuts, LShapeAllowed, patternEdgeLengths_orig, mapFromVg, mapFromFg, prioInner, prioOuter);
 
                 if(pos!=-1){
                     viewer.selected_data_index = 2;
@@ -984,9 +818,9 @@ int main(int argc, char *argv[])
                 if( copyPattern != mapFromVg){// rest shape changes if we insert middle cuts
                     vector<vector<int> > vvAdjCurr;
                     igl::adjacency_list( Fg_pattern_curr, vvAdjCurr);
-                    for(int i=0; i < vvAdjCurr[pos].size(); i++){
-                        if(copyPattern.row(vvAdjCurr[pos][i]) != mapFromVg.row(vvAdjCurr[pos][i])){
-                            changedPos = vvAdjCurr[pos][i];
+                    for(auto adjPosi: vvAdjCurr[pos]){
+                        if(copyPattern.row(adjPosi) != mapFromVg.row(adjPosi)){
+                            changedPos = adjPosi;
                         }
                     }
                     MatrixXd lengthsOrig;
@@ -1035,7 +869,6 @@ int main(int argc, char *argv[])
                 prioInner = false;
                 prioOuter = false;
             }
-            if(ImGui::Checkbox("Prefer many small cuts", &preferManySmallCuts)){};
 
         }
         if (ImGui::CollapsingHeader("Modify adapted Pattern ", ImGuiTreeNodeFlags_DefaultOpen)){
@@ -1123,20 +956,20 @@ int main(int argc, char *argv[])
                 MatrixXi Fg_toPattern = mapToFg; // todo not always
                 igl::boundary_loop(Fg_toPattern, boundaryL_toPattern);
                 int boundVert = 0;
-                for(int i = 0; i < boundaryL_toPattern.size(); i++){
-                    boundVert += boundaryL_toPattern[i].size();
-                    for(int j = 0; j < boundaryL_toPattern[i].size(); j++){
-                        toPattern_boundaryVerticesSet.insert(boundaryL_toPattern[i][j]);
+                for(auto bl: boundaryL_toPattern){
+                    boundVert += bl.size();
+                    for(auto  blj : bl){
+                        toPattern_boundaryVerticesSet.insert(blj);
                     }
                 }
                 MatrixXi boundaryOfToPattern(boundVert, 2);
 //                MatrixXd vertPoints (boundVert, 3);
                 int curr = 0;
-                for (int i=0; i< boundaryL_toPattern.size(); i++){
-                    for(int j=0; j<boundaryL_toPattern[i].size(); j++){
+                for (auto bli:  boundaryL_toPattern){
+                    for(int j=0; j<bli.size(); j++){
 //                        vertPoints.row(curr) = visToPattern.row(boundaryL_toPattern[i][j]);
-                        boundaryOfToPattern(curr, 0) = boundaryL_toPattern[i][j];
-                        boundaryOfToPattern(curr, 1) = boundaryL_toPattern[i][(j + 1) % (boundaryL_toPattern[i].size())];
+                        boundaryOfToPattern(curr, 0) = bli [j];
+                        boundaryOfToPattern(curr, 1) = bli [(j + 1) % (bli.size())];
                         curr++;
                     }
                 }
@@ -1174,20 +1007,20 @@ int main(int argc, char *argv[])
                 MatrixXi Fg_toPattern = mapToFg; // todo not always
                 igl::boundary_loop(Fg_toPattern, boundaryL_toPattern);
                 int boundVert = 0;
-                for(int i = 0; i < boundaryL_toPattern.size(); i++){
-                    boundVert += boundaryL_toPattern[i].size();
-                    for(int j = 0; j < boundaryL_toPattern[i].size(); j++){
-                        toPattern_boundaryVerticesSet.insert(boundaryL_toPattern[i][j]);
+                for(auto bli : boundaryL_toPattern){
+                    boundVert += bli.size();
+                    for(auto blij : bli){
+                        toPattern_boundaryVerticesSet.insert(blij);
                     }
                 }
                 MatrixXi boundaryOfToPattern(boundVert, 2);
                 MatrixXd vertPoints (boundVert, 3);
                 int curr = 0;
-                for (int i=0; i< boundaryL_toPattern.size(); i++){
-                    for(int j=0; j<boundaryL_toPattern[i].size(); j++){
-                        vertPoints.row(curr) = visToPattern.row(boundaryL_toPattern[i][j]);
-                        boundaryOfToPattern(curr, 0) = boundaryL_toPattern[i][j];
-                        boundaryOfToPattern(curr, 1) = boundaryL_toPattern[i][(j + 1) % (boundaryL_toPattern[i].size())];
+                for(auto bli : boundaryL_toPattern){
+                    for(int j=0; j<bli.size(); j++){
+                        vertPoints.row(curr) = visToPattern.row(bli[j]);
+                        boundaryOfToPattern(curr, 0) = bli[j];
+                        boundaryOfToPattern(curr, 1) = bli[(j + 1) % (bli.size())];
                         curr++;
                     }
                 }
@@ -1361,7 +1194,7 @@ void preComputeAdaption(){
 
     cout<<" ***** start pattern adaptation ****** "<<endl;
     cout<<"mapping the original to the computed pattern "<<endl;
-    if(cornerPerBoundary.size()==0){
+    if(cornerPerBoundary.empty()){
         cout<<" there are no corners to map"<<endl;
     }
     if(currPattern.rows()!= toPattern.rows()){
@@ -1372,18 +1205,18 @@ void preComputeAdaption(){
 
     igl::boundary_loop(mapToFg, boundaryL_toPattern);
     int boundVert = 0;
-    for(int i = 0; i < boundaryL_toPattern.size(); i++){
-        boundVert += boundaryL_toPattern[i].size();
-        for(int j = 0; j < boundaryL_toPattern[i].size(); j++){
-            toPattern_boundaryVerticesSet.insert(boundaryL_toPattern[i][j]);
+    for(auto bli : boundaryL_toPattern){
+        boundVert += bli.size();
+        for(auto blij : bli){
+            toPattern_boundaryVerticesSet.insert(blij);
         }
     }
     EdgesVisFromPattern.resize(boundVert, 2);
     int curr = 0;
-    for (int i=0; i< boundaryL_toPattern.size(); i++){
-        for(int j=0; j<boundaryL_toPattern[i].size(); j++){
-            EdgesVisFromPattern(curr, 0) = boundaryL_toPattern[i][j];
-            EdgesVisFromPattern(curr, 1) = boundaryL_toPattern[i][(j + 1) % (boundaryL_toPattern[i].size())];
+    for (auto bli: boundaryL_toPattern){
+        for(int j=0; j<bli.size(); j++){
+            EdgesVisFromPattern(curr, 0) = bli[j];
+            EdgesVisFromPattern(curr, 1) = bli[(j + 1) % (bli.size())];
             curr++;
         }
     }
@@ -1391,7 +1224,7 @@ void preComputeAdaption(){
     // use with PBD_adaption
     baryCoordsUPattern.resize(mapFromFg.rows(), 3);
     baryCoordsVPattern.resize(mapFromFg.rows(), 3);
-    for(int i=0; i<Fg_pattern.rows(); i++){
+    for(int i=0; i<Fg_pattern_curr.rows(); i++){
         int id0 = mapFromFg(i, 0);
         int id1 = mapFromFg(i, 1);
         int id2 = mapFromFg(i, 2);
@@ -1481,11 +1314,11 @@ bool callback_mouse_down(igl::opengl::glfw::Viewer& viewer, int button, int modi
             viewer.data().set_points(Vrs.row(v_id), RowVector3d(1.0, 1.0, 0.0));
             whichMesh=1;
             cout<<"found on inner mesh"<<endl;
-            polylineSelected.push_back(Vrs.row(v_id));
+            polylineSelected.emplace_back(Vrs.row(v_id));
             polylineIndex.push_back(v_id);
 
 
-            // the vertex is not in our original fromMesh. Locate it in the toMesh and use the exackt mouse chosen position by the barycentric coordinates to set it's position
+            // the vertex is not in our original fromMesh. Locate it in the toMesh and use the exackt mouse chosen position by the barycentric coordinates to set its position
         }else{
             Vrs = mapToVg; // TODO CHANGE
             MatrixXi Frs = mapToFg;
@@ -1525,11 +1358,11 @@ bool callback_mouse_down(igl::opengl::glfw::Viewer& viewer, int button, int modi
 //            viewer.data().set_points(Vrs.row(v_id), RowVector3d(1.0, 1.0, 0.0));
             whichMesh=1;
             cout<<"found on inner mesh"<<endl;
-            polylineSelected.push_back(Vrs.row(v_id));
+            polylineSelected.emplace_back(Vrs.row(v_id));
             polylineIndex.push_back(v_id);
 
 
-            // the vertex is not in our original fromMesh. Locate it in the toMesh and use the exackt mouse chosen position by the barycentric coordinates to set it's position
+            // the vertex is not in our original fromMesh. Locate it in the toMesh and use the exackt mouse chosen position by the barycentric coordinates to set its position
         }else{
             Vrs = mapToVg; // TODO CHANGE
             MatrixXi Frs = mapToFg;
@@ -1539,7 +1372,7 @@ bool callback_mouse_down(igl::opengl::glfw::Viewer& viewer, int button, int modi
 
 //                viewer.data().set_points(Vrs.row(v_id), RowVector3d(.0, 1.0, 0.0));
                 whichMesh = 2;
-                polylineSelected.push_back(Vrs.row(v_id));
+                polylineSelected.emplace_back(Vrs.row(v_id));
                 polylineIndex.push_back(v_id);
             }
         }
@@ -1862,11 +1695,8 @@ void setCollisionMesh(){
 vector<VectorXd> CleftRight, NleftRight;
 void setupCollisionConstraints(){
 //    igl::writeOBJ("garment3DonNewAvatar.obj", p, Fg);
-//    cout<<"collConCall"<<endl;
     setupCollisionConstraintsCall( collisionVert, pureCollVert, testMorph_V1left, testMorph_F1left, testMorph_V1right, testMorph_F1right,p, numVert, coll_EPS,
                                leftHalfToFullFaceMap, rightHalfToFullFaceMap,CleftRight, NleftRight, closestFaceId, Vm, Fm, Fg);
-//    cout<<"after call"<<endl;
-    return;
 }
 void solveBendingConstraint(){
     // for each pair of adjacent triangles, precomputed from restshape (2D pattern TODO)
@@ -2174,29 +2004,9 @@ void solveStretchAdaption(MatrixXd& perFaceU_adapt,MatrixXd& perFaceV_adapt){
         targetPositions.col(2)=  p_adaption.row(Fg_pattern_curr(i, 2)).leftCols(2).transpose() ;
 
         int uOrv = 1;
-
-//        VectorXd fromBary = ( patternCoords.col(0) +  patternCoords.col(1) +  patternCoords.col(2))/3;
-//        VectorXd nowBary = (targetPositions.col(0) + targetPositions.col(1) + targetPositions.col(2))/3;
-//        VectorXd u = fromBary; u(0)+= 1;
-//        VectorXd v = fromBary; v(1)+= 1;
-//
-//        VectorXd uBary, vBary;
-//        igl::barycentric_coordinates(u.transpose(), patternCoords.col(0).transpose(), patternCoords.col(1).transpose(), patternCoords.col(2).transpose(), uBary);
-//        igl::barycentric_coordinates(v.transpose(), patternCoords.col(0).transpose(), patternCoords.col(1).transpose(), patternCoords.col(2).transpose(), vBary);
-//        VectorXd recon =  uBary(0)*patternCoords.col(0) + uBary(1)*patternCoords.col(1) + uBary(2)*patternCoords.col(2);
-//        if((u -recon).norm() > 0.001)cout<<u.transpose()<<" recon error "<< recon <<endl;
-//        VectorXd uNow = uBary(0) * targetPositions.col(0) + uBary(1) * targetPositions.col(1) + uBary(2) * targetPositions.col(2);
-//        VectorXd vNow = vBary(0) * targetPositions.col(0) + vBary(1) * targetPositions.col(1) + vBary(2) * targetPositions.col(2);
-//
-//        VectorXd uDiff = (uNow-nowBary);
-//        VectorXd vDiff = (vNow-nowBary);
-//
-//        Vector2d uPerFace; uPerFace(0) = uDiff(0); uPerFace(1) = uDiff(1);
-//        Vector2d vPerFace; vPerFace(0) = vDiff(0); vPerFace(1) = vDiff(1);
-
+//        if(i== 5536) uOrv = 11;
 //        TODO STIFFNESS PARAMETER
 
-// in the third iteration some strange artifacts arise form here
         PBD_adaption.init_UVStretchPattern( baryCoordsUPattern.row(i),  baryCoordsVPattern.row(i), patternCoords,targetPositions,
                                                 tarUV0, tarUV1,tarUV2, uOrv,  stretchStiffnessD);
 //
@@ -2207,7 +2017,7 @@ void solveStretchAdaption(MatrixXd& perFaceU_adapt,MatrixXd& perFaceV_adapt){
         p_adaption.row(Fg_pattern_curr(i,0)).leftCols(2) += ( stretchStiffnessU * dir0);
         p_adaption.row(Fg_pattern_curr(i,1)).leftCols(2) += ( stretchStiffnessU * dir1);
         p_adaption.row(Fg_pattern_curr(i,2)).leftCols(2) += ( stretchStiffnessU * dir2);
-//
+
     }
 }
 MatrixXd colPatternU, colPatternV;
@@ -2233,12 +2043,12 @@ void computePatternStress(MatrixXd& perFaceU_adapt,MatrixXd& perFaceV_adapt ){
 
         perFaceV_adapt.row(j) = (Gv - G).transpose();
 
-        double normU = perFaceU_adapt.row(j).norm();
-        double normV = perFaceV_adapt.row(j).norm();
+        double uNorm = perFaceU_adapt.row(j).norm();
+        double vNorm = perFaceV_adapt.row(j).norm();
 
         double differenceIncrementFactor = 5.;
-        double y = (normU-1) * differenceIncrementFactor; // to increase differences
-        double yV = (normV-1) * differenceIncrementFactor; // to increase differences
+        double y = (uNorm-1) * differenceIncrementFactor; // to increase differences
+        double yV = (vNorm-1) * differenceIncrementFactor; // to increase differences
 
         colPatternU.row(j) = Vector3d((1.0 + y), (1. - y), 0.0);
         colPatternV.row(j) = Vector3d((1.0 + yV), (1. - yV), 0.0);
@@ -2249,12 +2059,11 @@ void computePatternStress(MatrixXd& perFaceU_adapt,MatrixXd& perFaceV_adapt ){
 int adaptioncount =0;
 void solveCornerMappedVertices(){
 
-    for(int i=0; i< cornerPerBoundary.size(); i++){
-        for(int j=0; j< cornerPerBoundary[i].size(); j++){
-
-            int vertIdx = get<0>(cornerPerBoundary[i][j]);
+    for(auto cpb: cornerPerBoundary){
+        for(auto cpbj :  cpb ){
+            int vertIdx = get<0>(cpbj);
             if(releasedVert.find(vertIdx)!= releasedVert.end()){
-                if(adaptioncount%20==0) cout<<vertIdx<<" released"<<endl;
+//                if(adaptioncount%20==0) cout<<vertIdx<<" released"<<endl;
                 continue;
             }
             Vector2d newSuggestedPos = mapToVg.row(vertIdx).leftCols(2);
@@ -2269,7 +2078,7 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
     Timer t(" Adaption time step ");
 
     adaptioncount++;
-    cout<<adaptioncount<<endl<<endl;
+//    cout<<adaptioncount<<endl<<endl;
 //    if(adaptioncount>2)return;
 
  //   std::cout<<"-------------- Time Step ------------"<<adaptioncount<<endl;
@@ -2306,7 +2115,7 @@ changedPos = -1;
 //        t.printTime(" project boundary  ");
 
 //        ensurePairwiseDist(p_adaption, toPattern, Fg_pattern);
-//        solveCornerMappedVertices();
+        solveCornerMappedVertices();
         if(changedPos != -1){
             cout<<p_adaption.row(changedPos)<<" corner "<<endl;
         }

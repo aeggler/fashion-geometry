@@ -50,13 +50,12 @@ public:
             const Real restLength,
             const Real stiffness,
             Vector3r &corr0, Vector3r &corr1);
-    bool solveUVSimple(MatrixXi& Fg_pattern_curr, MatrixXi& mapFromFg, MatrixXd& p_adaption, MatrixXd& mapFromVg, double stiffness);
 
     bool init_UVStretch(const  Vector3r& perFaceU,const Vector3r& perFaceV,
                                                const Eigen::MatrixXd& patternCoords, const Eigen::Matrix3d& targetPositions,
                         Vector3r &tarUV0, Vector3r &tarUV1, Vector3r &tarUV2, int uORv, double DiagStiffness);
 
-    bool init_UVStretchPattern( const Vector2r& perFaceU, const Vector2r& perFaceV,
+    static bool init_UVStretchPattern( const Vector2r& perFaceU, const Vector2r& perFaceV,
                                                        const Eigen::MatrixXd& patternCoords,const Eigen::MatrixXd& targetPositions,
                                                        Vector2r &tarUV0, Vector2r &tarUV1, Vector2r &tarUV2, int uORv, double DiagStiffness );
 

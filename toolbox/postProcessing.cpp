@@ -1168,7 +1168,6 @@ void createMapCornersToNewCorner(MatrixXd& currPattern,MatrixXd& mapToVg, vector
                         found = true;
                         newId= boundaryL[i][ii];
                         minDist = (currPattern.row(boundaryL[i][ii])- mapToVg.row(cornersOfB[j].first)).norm();
-//                        cout<<"found new corner for "<<cornersOfB[j].first<<" : "<<newId<<endl;
                     }
                 }
                 if(!found){
@@ -1176,13 +1175,10 @@ void createMapCornersToNewCorner(MatrixXd& currPattern,MatrixXd& mapToVg, vector
                 }else{cout<<"taking "<<newId<<" with dist "<<minDist<<" as heuristic"<<endl; }
             }else{
                 newId = cornersOfB[j].first;
-                cout<<"nothing new corner for "<<cornersOfB[j].first <<endl;
-
             }
             mapCornerToCorner[cornersOfB[j].first] = newId;
         }
     }
-
 }
 
 void updateCornerUtils(set<int>& cornerSet , // a set containing all corner vertices

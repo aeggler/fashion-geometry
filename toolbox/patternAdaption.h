@@ -80,8 +80,9 @@ int computeTear(MatrixXd& fromPatternFile,
                  set<int>& handledVerticesSet,
                  bool& prevFinished,
                  const bool & LShapeAllowed,
-                bool& prioInner,
-                bool& prioOuter
+                 bool& prioInner,
+                 bool& prioOuter, double tailor_lazyness,
+                 const MatrixXi& mapFromFg
                  );
 
 
@@ -100,7 +101,7 @@ int tearFurther(vector<cutVertEntry*>& cutPositions, MatrixXd&  currPattern, Mat
                  const bool & LShapeAllowed ,
                 MatrixXd& patternEdgeLengths_orig,
                 MatrixXd& Vg_pattern_orig,
-                bool& prioInner,
+                MatrixXi& Fg_pattern_orig, bool& prioInner,
                 bool& prioOuter
 );
 int tearFurtherVisIdxHelper(vector<cutVertEntry*>& cutPositions, MatrixXd&  currPattern, MatrixXi& Fg_pattern,vector<seam*>& seamsList, vector<minusOneSeam*>& minusOneSeams,
