@@ -478,8 +478,7 @@ void splitVertexFromCVE( cutVertEntry*& cve,
                        Vg.row(Fg(adjFace, 1)) *  (1./3) +
                        Vg.row(Fg(adjFace, 2))*  (1./3) ).transpose();
            double lenNow = distNow.norm();
-           cout<<"Corner Face: "<<adjFace<<" "<<lenNow<<" dist now and then "<<lenThen<<" ratio is "<<lenNow/lenThen<<endl;
-           cout<<cutDirection<<" cut direction "<<distNow<<endl;
+
 //        cout<<"pos now "<<distNow.transpose() <<" and normed"<<distNow.normalized().transpose() <<endl;//it has to be for any of the adjacent ones, not just this single one
 
             faceBaryKeep(0) += 1;
@@ -1192,7 +1191,8 @@ int addoncount=0;
 void addVarToModel (int vert, int prevVert, int nextVert, vector<vector<int>> & vfAdj, bool isConstrained, int& varCount, GRBVar* & cutVar,
                       MatrixXi& Fg_pattern,MatrixXd& lengthsOrig, MatrixXd& lengthsCurr, map <int, cutVertEntry*> & mapVarIdToVertId,
                       int seamType, int seamIdInList, double tailor_lazyness, bool corner, map<pair<int,int>, int>& mapVertAndSeamToVar, int counterpart, GRBModel& model, const MatrixXd& currPattern ){
-
+    bool inverseMap = true;
+    // idea: when inverse mapping allow only cuts from the boundary, but L shapes should be ok ! 
     double w_init = 0;
     int count = 0;
     VectorXd nextDir= VectorXd::Zero(3);

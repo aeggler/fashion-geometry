@@ -958,7 +958,7 @@ void createHalfAvatarMap(MatrixXd& testMorph_V1, MatrixXi& testMorph_F1,
 
 void initialGuessAdaption(MatrixXd& currPattern_nt, MatrixXd& mapToVg_nt, MatrixXd& perfectPattern_nt,  MatrixXi& Fg_pattern_curr, MatrixXi& mapToFg){
 //perfect pattern is the initial perfect pattern for the new shape, and curr is the existing adapted to the perfect, thus is has more faces and its own Fg
-// note that mapToVg was the one we started with, and it has face correspondance with perfect pattern, therefore they both use mapToFg
+// note that mapToVg was the one we started with, and it has face correspondence with perfect pattern, therefore they both use mapToFg
     Eigen::VectorXi componentIdPerVert_curr, componentIdPerVert_other;
     igl::vertex_components(mapToFg, componentIdPerVert_other);
     igl::vertex_components(Fg_pattern_curr,componentIdPerVert_curr );

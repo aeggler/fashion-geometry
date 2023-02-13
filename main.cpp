@@ -1411,12 +1411,14 @@ void computeBaryCoordsGarOnNewMannequin(igl::opengl::glfw::Viewer& viewer){
     int boundarycount = 0;
 
     igl::signed_distance_pseudonormal(Vg, Vm, Fm, col_tree, FN_m, VN_m, EN_m, EMAP_m, distVec, closestFaceId, C, N);
+//    MatrixXd newManeqNormals;
+//    igl::per_face_normals(testMorph_V1, Fm, newManeqNormals);
     for(int i=0; i<Vg.rows(); i++){
         int closestFace = closestFaceId(i);
         Vector3d a = Vm.row(Fm(closestFace, 0));
         Vector3d b = Vm.row(Fm(closestFace, 1));
         Vector3d c = Vm.row(Fm(closestFace, 2));
-
+//don't quite understand why it is not the normal of the new mannequin
         Vector3d normalVec = N.row(i);
         Vector3d currVert = C.row(i);
 
@@ -2158,55 +2160,21 @@ changedPos = -1;
     MatrixXd coluPerEdge(Fg_pattern_curr.rows(), 3);
 
     for(int i=0; i<Fg_pattern_curr.rows(); i++){
-        // we use bary to left and bary to top +1 of the old and compue in bary coords
-        // get the same of the new, check the new length
-        //start form from pattern, that is the rest shape of the shape we have
-        Vector3d v0 = mapFromVg.row(mapFromFg(i, 0)).transpose();
-        Vector3d v1 = mapFromVg.row(mapFromFg(i, 1)).transpose();
-        Vector3d v2 = mapFromVg.row(mapFromFg(i, 2)).transpose();
-
-        Vector3d bary = (v0 + v1 + v2)/3;
-        Vector3d u = bary; u(0)+= 1;
-        Vector3d v = bary; v(1)+= 1;
-        Vector3d ubary, vbary;
-
-        MathFunctions mathfun;
-        mathfun.Barycentric3D( u, v0, v1, v2, ubary);
-        mathfun.Barycentric3D( v, v0, v1, v2, vbary);
-
         Vector3d v0new = currPattern.row(Fg_pattern_curr(i, 0)).transpose();
         Vector3d v1new = currPattern.row(Fg_pattern_curr(i, 1)).transpose();
         Vector3d v2new = currPattern.row(Fg_pattern_curr(i, 2)).transpose();
         startPerEdge.row(i) = ( (v0new + v1new + v2new)/3).transpose();
+        Vector3d ubary = baryCoordsUPattern.row(i);
+        Vector3d vbary = baryCoordsVPattern.row(i);
 
         uPerEdge.row(i) = (ubary(0) * v0new + ubary(1) * v1new + ubary(2) * v2new).transpose() -  startPerEdge.row(i);
         vPerEdge.row(i) = (vbary(0) * v0new + vbary(1) * v1new + vbary(2) * v2new).transpose() -  startPerEdge.row(i);
         double ulen = uPerEdge.row(i).norm();
-        int incrFact = 5;
-        double y = min(ulen*ulen*ulen, 2.);
-        y/= 1.5; //incrFact * abs(1-ulen);
         uPerEdge.row(i) = uPerEdge.row(i).normalized()*(ulen*ulen);
-//        coluPerEdge.row(i) = Vector3d(1.0 + y, 1. - y, 0.0);
-
-
-//y=0;
-        coluPerEdge.row(i) = Vector3d( y, 1. - y, 0.0);
-//        ulen -= 0.5;
-//        ulen = max(0., ulen);
-//        ulen = min(ulen*0.4, 1.);
-//        RowVector3d a, b;
-//        a<<0.5, 1, 1;
-//        b<<1, 0, 0;
-//        coluPerEdge.row(i)= a*(1-y)+ b*y;
-
 
         double vlen = vPerEdge.row(i).norm();
-//        if(i==5417) cout<<"Face 5417  v elon "<<vlen<<" "<< ulen<<" "<<(ulen*ulen)<<endl;
-
-        y = min(vlen*vlen*vlen, 2.); y/=1.5;//incrFact * abs(1-vlen);
         vPerEdge.row(i) = vPerEdge.row(i).normalized()*(vlen*vlen);
-//        colvPerEdge.row(i) = Vector3d(1.0 + y, 1. - y, 0.0);
-        colvPerEdge.row(i) = Vector3d( y, 1. - y, 0.0);
+
         coluPerEdge(i,0) = ulen;
         coluPerEdge(i, 1) = vlen;
 
@@ -2221,8 +2189,6 @@ changedPos = -1;
 
     viewer.data().add_edges(startPerEdge, startPerEdge + 3 * vPerEdge, colvPerEdge);
     viewer.data().add_edges(startPerEdge, startPerEdge - 3 * vPerEdge, colvPerEdge);
-//    const RowVector3d red(0.8,0.2,0.2),blue(0.2,0.2,0.8);
-//    viewer.data().set_colors(colPatternU);
 
 }
 void dotimeStep(igl::opengl::glfw::Viewer& viewer){
