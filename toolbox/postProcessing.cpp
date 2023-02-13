@@ -20,6 +20,7 @@
 #include "MathFunctions.h"
 #include "seam.h"
 #include <igl/vertex_components.h>
+#include <igl/internal_angles.h>
 
 
 
@@ -1041,7 +1042,8 @@ void initialGuessAdaptionWithoutT(MatrixXd& currPattern, MatrixXd& mapToVg, Matr
 }
 
 set<int> boundaryVerticesP;
-void ensureAngle(MatrixXd& p, MatrixXd& fromPattern, MatrixXi& Fg_pattern){
+MatrixXd internalAngles;
+void ensureAngle(MatrixXd& p, MatrixXd& fromPattern, MatrixXi& Fg_pattern, MatrixXi& fromPatternFg){
     if(boundaryVerticesP.empty()){
         vector<vector<int>> boundaryVP;
         igl::boundary_loop(Fg_pattern, boundaryVP);
@@ -1051,48 +1053,43 @@ void ensureAngle(MatrixXd& p, MatrixXd& fromPattern, MatrixXi& Fg_pattern){
             }
         }
     }
+    if(internalAngles.rows() != fromPatternFg.rows()){
+        igl::internal_angles(fromPattern, fromPatternFg, internalAngles);
+
+    }
+    MatrixXd internalAngleCurr;
+    igl::internal_angles(p, Fg_pattern, internalAngleCurr);
     for(int i = 0; i < Fg_pattern.rows(); i++){
         for(int j=0; j<3; j++){
-            Vector3d e1 = p.row(Fg_pattern(i, j))-p.row(Fg_pattern(i, (j+1) % 3));
-            Vector3d e2 = p.row(Fg_pattern(i, (j+2) % 3 ))-p.row(Fg_pattern(i, (j+1) % 3));
-            double newAngle = acos(min(max((e1.normalized()).dot(e2.normalized()), -1.), 1.));
 
-            //https://www.euclideanspace.com/maths/algebra/vectors/angleBetween/ and https://stackoverflow.com/questions/5188561/signed-angle-between-two-3d-vectors-with-same-origin-within-the-same-plane
-//            // praise stackoverflow
-//            auto crossVec = alignFrom.cross(alignTo); // or other way round?
-//            if(oldNormalVec.dot(crossVec)<0){
-//                newAngle = -newAngle;
-//            }
-
+            double newAngle = internalAngleCurr(i,j);
             double newdegree = newAngle*180/M_PI;
+
             if(newdegree<10){//only an issue if the original angle was better
-                Vector3d oe1 = fromPattern.row(Fg_pattern(i, j))-fromPattern.row(Fg_pattern(i, (j+1) % 3));
-                Vector3d oe2 = fromPattern.row(Fg_pattern(i, (j+2) % 3 ))-fromPattern.row(Fg_pattern(i, (j+1) % 3));
-                double oldAngle = acos(min(max((oe1.normalized()).dot(oe2.normalized()), -1.), 1.));
+
+                double oldAngle = internalAngles(i,j);
                 double olddegree = oldAngle*180/M_PI;
                 if(newdegree/olddegree > 0.75) continue;
 
                 MatrixXd rot = MatrixXd::Identity(3, 3);
-                double rad =  newAngle; //converting to radian value
+                double damp = (15-newdegree)/15;
+                double rad =  ((olddegree-newdegree) / 2) / 180 *M_PI; //converting to radian value
                 rot(0,0)= cos(rad);
                 rot(1, 1) = rot(0,0) ;
                 rot(0,1) =  - sin(rad);
                 rot(1,0) = sin(rad);
                 double stiffness = 0.5;
-//                if(boundaryVerticesP.find(Fg_pattern(i, j))!= boundaryVerticesP.end()){
-                    VectorXd e1rot= rot * e1;
-                    VectorXd dir = e1rot - e1;
-                    p.row(Fg_pattern(i, j)) += stiffness * dir;
 
-//                }
-//                if(boundaryVerticesP.find(Fg_pattern(i, (j+2) % 3))!= boundaryVerticesP.end()){
-                    VectorXd e2rot= rot.transpose() * e2;
-                     dir = e2rot - e2;
-                    p.row(Fg_pattern(i, (j+2) % 3)) += stiffness * dir;
+                Vector3d e2 = p.row(Fg_pattern(i, (j + 1) % 3))-p.row(Fg_pattern(i, (j) % 3));
+                Vector3d e1 = p.row(Fg_pattern(i, (j + 2) % 3 ))-p.row(Fg_pattern(i, (j) % 3));
+                VectorXd e1rot= rot * e1;
+                VectorXd dir = e1rot - e1;
+                p.row(Fg_pattern(i, j)) += damp*stiffness * dir;
 
-//                }
+                VectorXd e2rot= rot.transpose() * e2;
+                dir = e2rot - e2;
+                p.row(Fg_pattern(i, (j+2) % 3)) += damp* stiffness * dir;
 
-//                ///ttest
 //                e1 = p.row(Fg_pattern(i, j))-p.row(Fg_pattern(i, (j+1) % 3));
 //                e2 = p.row(Fg_pattern(i, (j+2) % 3 ))-p.row(Fg_pattern(i, (j+1) % 3));
 //                newAngle = acos(min(max((e1.normalized()).dot(e2.normalized()), -1.), 1.));

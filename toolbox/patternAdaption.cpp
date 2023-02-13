@@ -459,7 +459,7 @@ void splitVertexFromCVE( cutVertEntry*& cve,
                                 Vg_pattern_orig.row(Fg_pattern_orig(adjFace, 1))+
                                 Vg_pattern_orig.row(Fg_pattern_orig(adjFace, 2))).transpose();
            faceBary /= 3;
-
+           VectorXd faceBaryKeep = faceBary;
            //90* angle to cut direrction is where we measure the stress
            faceBary(0) -= cutDirection(1);
            faceBary(1) += cutDirection(0); // perp to midvec measure stress
@@ -482,42 +482,48 @@ void splitVertexFromCVE( cutVertEntry*& cve,
            cout<<cutDirection<<" cut direction "<<distNow<<endl;
 //        cout<<"pos now "<<distNow.transpose() <<" and normed"<<distNow.normalized().transpose() <<endl;//it has to be for any of the adjacent ones, not just this single one
 
-            if(adjFace == 180) {
-                faceBary = (Vg_pattern_orig.row(Fg_pattern_orig(adjFace, 0))+
-                            Vg_pattern_orig.row(Fg_pattern_orig(adjFace, 1))+
-                            Vg_pattern_orig.row(Fg_pattern_orig(adjFace, 2))).transpose()/3;
-                faceBary(0) += 1;
-                input.row(0)= faceBary;
-                VectorXd baryUcurr;
-                igl::barycentric_coordinates(input, Vg_pattern_orig.row(Fg(adjFace, 0)), Vg_pattern_orig.row(Fg(adjFace, 1)),
+            faceBaryKeep(0) += 1;
+            input.row(0)= faceBary;
+            VectorXd baryUcurr;
+            igl::barycentric_coordinates(input, Vg_pattern_orig.row(Fg(adjFace, 0)), Vg_pattern_orig.row(Fg(adjFace, 1)),
                                              Vg_pattern_orig.row(Fg(adjFace, 2)), baryUcurr);
-                distNow = (Vg.row(Fg(adjFace, 0)) * baryUcurr(0)+
+            distNow = (Vg.row(Fg(adjFace, 0)) * baryUcurr(0)+
                                     Vg.row(Fg(adjFace, 1)) * baryUcurr(1) +
                                     Vg.row(Fg(adjFace, 2))* baryUcurr(2)).transpose();
-                cout<<distNow<<" abs pos"<<endl;
-                distNow -= (Vg.row(Fg(adjFace, 0)) * (1./3)+
+
+            distNow -= (Vg.row(Fg(adjFace, 0)) * (1./3)+
                             Vg.row(Fg(adjFace, 1)) *  (1./3) +
                             Vg.row(Fg(adjFace, 2))*  (1./3) ).transpose();
-                cout<<" U dist now rel pos : "<<distNow.transpose()<<" norm "<<distNow.norm()<<endl;
+           VectorXd cutPerp= cutDirection; cutPerp(1)=cutDirection(0); cutPerp(0)= cutDirection(1);
+           auto dotH = cutPerp.normalized().dot(distNow.normalized());
+           if(distNow.norm() * dotH > 1.01){
+               tearIsUseful= true;
+           }
 
-                faceBary(1) += 1; faceBary(0) -= 1;
-                input.row(0)= faceBary;
-                VectorXd baryVcurr;
-                igl::barycentric_coordinates(input, Vg_pattern_orig.row(Fg(adjFace, 0)), Vg_pattern_orig.row(Fg(adjFace, 1)),
+//                cout<<" U dist now rel pos : "<<distNow.transpose()<<" norm "<<distNow.norm()<<endl;
+
+            faceBary(1) += 1; faceBary(0) -= 1;
+            input.row(0)= faceBary;
+            VectorXd baryVcurr;
+            igl::barycentric_coordinates(input, Vg_pattern_orig.row(Fg(adjFace, 0)), Vg_pattern_orig.row(Fg(adjFace, 1)),
                                              Vg_pattern_orig.row(Fg(adjFace, 2)), baryVcurr);
-                distNow = (Vg.row(Fg(adjFace, 0)) * baryVcurr(0)+
+            distNow = (Vg.row(Fg(adjFace, 0)) * baryVcurr(0)+
                            Vg.row(Fg(adjFace, 1)) * baryVcurr(1) +
                            Vg.row(Fg(adjFace, 2))* baryVcurr(2)).transpose();
-                distNow -= (Vg.row(Fg(adjFace, 0)) * (1./3)+
+            distNow -= (Vg.row(Fg(adjFace, 0)) * (1./3)+
                             Vg.row(Fg(adjFace, 1)) *  (1./3) +
                             Vg.row(Fg(adjFace, 2))*  (1./3) ).transpose();
-                cout<<" V dist now: "<<distNow.transpose()<<" norm "<<distNow.norm()<<endl;
-                VectorXd cutPerp= cutDirection; cutPerp(1)=cutDirection(0); cutPerp(0)= cutDirection(1);
-                auto dotH = cutPerp.normalized().dot(distNow.normalized());
-                cout<<dotH<<" the dot product and the computed influence "<<distNow.norm() * dotH <<endl ;
+//                cout<<" V dist now: "<<distNow.transpose()<<" norm "<<distNow.norm()<<endl;
+
+           dotH = cutPerp.normalized().dot(distNow.normalized());
+           if(distNow.norm() * dotH > 1.01){
+               tearIsUseful= true;
+           }
+//                cout<<dotH<<" the dot product and the computed influence "<<distNow.norm() * dotH <<endl ;
+//TODO
                 // we could use fiber direction dot product with perp cut direction
-//idea a lower thereshold for the last one? better to cut through immeditely 
-            }
+                //idea a lower thereshold for the last one? better to cut through immediately
+
 
            double checkIfTearIsUsefulThereshold = 1.051;
            if(lenNow/lenThen >checkIfTearIsUsefulThereshold ){

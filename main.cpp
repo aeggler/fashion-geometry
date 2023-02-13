@@ -12,6 +12,7 @@
 #include <igl/unproject.h>
 #include <igl/unproject_onto_mesh.h>
 #include <igl/boundary_loop.h>
+#include <igl/jet.h>
 #include <iostream>
 #include <Eigen/Dense>
 #include "toolbox/PositionBasedDynamics.h"
@@ -2004,7 +2005,7 @@ void solveStretchAdaption(MatrixXd& perFaceU_adapt,MatrixXd& perFaceV_adapt){
         targetPositions.col(2)=  p_adaption.row(Fg_pattern_curr(i, 2)).leftCols(2).transpose() ;
 
         int uOrv = 1;
-//        if(i== 5536) uOrv = 11;
+//        if(i== 5545 || i == 5549 ||i == 5544 ) uOrv = 11;
 //        TODO STIFFNESS PARAMETER
 
         PBD_adaption.init_UVStretchPattern( baryCoordsUPattern.row(i),  baryCoordsVPattern.row(i), patternCoords,targetPositions,
@@ -2121,7 +2122,8 @@ changedPos = -1;
         }
 
 //        t.printTime(" solve corner  ");
-        ensureAngle(p_adaption, mapFromVg, Fg_pattern_curr);
+// this causes the weired ange issue
+//        ensureAngle(p_adaption, mapFromVg, Fg_pattern_curr, mapFromFg);
 //        t.printTime(" ensure angle ");
         if(changedPos != -1){
             cout<<p_adaption.row(changedPos)<<" angle "<<endl;
@@ -2185,6 +2187,8 @@ changedPos = -1;
         y/= 1.5; //incrFact * abs(1-ulen);
         uPerEdge.row(i) = uPerEdge.row(i).normalized()*(ulen*ulen);
 //        coluPerEdge.row(i) = Vector3d(1.0 + y, 1. - y, 0.0);
+
+
 //y=0;
         coluPerEdge.row(i) = Vector3d( y, 1. - y, 0.0);
 //        ulen -= 0.5;
@@ -2203,8 +2207,14 @@ changedPos = -1;
         vPerEdge.row(i) = vPerEdge.row(i).normalized()*(vlen*vlen);
 //        colvPerEdge.row(i) = Vector3d(1.0 + y, 1. - y, 0.0);
         colvPerEdge.row(i) = Vector3d( y, 1. - y, 0.0);
+        coluPerEdge(i,0) = ulen;
+        coluPerEdge(i, 1) = vlen;
 
     }
+    VectorXd uHelp = coluPerEdge.col(0);
+    VectorXd vHelp = coluPerEdge.col(1);
+    igl::jet(uHelp, 0.5, 1.5, coluPerEdge);
+    igl::jet(vHelp, 0.5, 1.5, colvPerEdge);
 
     viewer.data().add_edges(startPerEdge, startPerEdge + 3 * uPerEdge, coluPerEdge);
     viewer.data().add_edges(startPerEdge, startPerEdge - 3 * uPerEdge, coluPerEdge);
