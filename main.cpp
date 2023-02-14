@@ -1244,6 +1244,7 @@ void preComputeAdaption(){
         MathFunctions mathFun;
         mathFun.Barycentric(Gu, p0, p1, p2, uInBary);
         mathFun.Barycentric(Gv, p0, p1, p2, vInBary);
+        if(i== 5549)cout<<vInBary.transpose()<<" uv barys "<<vInBary.transpose()<<endl;
 
         baryCoordsUPattern.row(i) = uInBary;
         baryCoordsVPattern.row(i) = vInBary;
@@ -2007,10 +2008,12 @@ void solveStretchAdaption(MatrixXd& perFaceU_adapt,MatrixXd& perFaceV_adapt){
         targetPositions.col(2)=  p_adaption.row(Fg_pattern_curr(i, 2)).leftCols(2).transpose() ;
 
         int uOrv = 1;
-//        if(i== 5545 || i == 5549 ||i == 5544 ) uOrv = 11;
+//        if( i == 5549  ) uOrv = 11;
 //        TODO STIFFNESS PARAMETER
-
-        PBD_adaption.init_UVStretchPattern( baryCoordsUPattern.row(i),  baryCoordsVPattern.row(i), patternCoords,targetPositions,
+        VectorXd thisFaceU = baryCoordsUPattern(i,0) * patternCoords.col(0) +  baryCoordsUPattern(i,1) * patternCoords.col(1) + baryCoordsUPattern(i,2) * patternCoords.col(2) ;
+        VectorXd thisFaceV = baryCoordsVPattern(i,0) * patternCoords.col(0) +  baryCoordsVPattern(i,1) * patternCoords.col(1) + baryCoordsVPattern(i,2) * patternCoords.col(2) ;
+        VectorXd bary = (patternCoords.col(0) + patternCoords.col(1) + patternCoords.col(2)) / 3;
+        PBD_adaption.init_UVStretchPattern( thisFaceU- bary,  thisFaceV - bary, patternCoords,targetPositions,
                                                 tarUV0, tarUV1,tarUV2, uOrv,  stretchStiffnessD);
 //
         Vector2d dir0 = tarUV0 - p_adaption.row(Fg_pattern_curr(i, 0)).leftCols(2).transpose() ;

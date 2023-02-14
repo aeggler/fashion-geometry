@@ -157,7 +157,7 @@ bool PositionBasedDynamics::init_UVStretchPattern( const Vector2r& perFaceU, con
         Jnorm.col(1) = Jn_1;
     }
     if(uORv ==11){
-        cout<<Jnorm<< " jnorm" <<endl;
+        cout<<endl<<" new face: "<<endl<<Jnorm<< " jnorm" <<endl;
     }
 
     double angle = acos((Jn_0).dot(Jn_1));
@@ -172,7 +172,7 @@ bool PositionBasedDynamics::init_UVStretchPattern( const Vector2r& perFaceU, con
     newRot(0, 1) = - sin (DiagStiffness * delta);
     newRot(1, 0) =  sin ( DiagStiffness * delta);
 
-    if(uORv==11)cout<<deg<<" the deg and rotated by  "<<DiagStiffness * delta*180/ M_PI <<endl;
+    if(uORv==11)cout<<deg<<" "<<angle<<" the deg and rotated by  "<<DiagStiffness * delta*180/ M_PI <<endl;
     if(deg<=90){
         Jnorm.col(0) = newRot.transpose() * Jnorm.col(0);
         Jnorm.col(1) = newRot * Jnorm.col(1);
@@ -183,27 +183,29 @@ bool PositionBasedDynamics::init_UVStretchPattern( const Vector2r& perFaceU, con
 
     Eigen::MatrixXd jacobiStretchedPattern = Jnorm * patternCoords;
 //    if(uORv ==11) cout<<endl<<patternCoords<<" pattern coords"<<endl ;
-//    if(uORv ==11) cout<<endl<<jacobiStretchedPattern<<" jacobi coords"<<endl ;
+    if(uORv ==11) cout<<endl<<jacobiStretchedPattern<<" jacobi coords"<<endl ;
 //    if(uORv ==11) cout<<endl<<Jnorm<<" jacobian norm coords after angle spread"<<endl ;
 
     // compute rotation and translation of that matrix to best fit the original
     Eigen::MatrixXd R_est;
     Eigen::VectorXd T_est;
 
-    procrustesWORef(jacobiStretchedPattern.transpose(), targetPositions.transpose(), R_est, T_est);
+    Eigen::VectorXd pb = jacobiStretchedPattern.rowwise().mean();
+    Eigen::VectorXd qb = targetPositions.rowwise().mean();
 
+    R_est = MatrixXd::Identity(2, 2);
+    T_est = qb - R_est * pb;
+
+
+//    procrustesWORef(jacobiStretchedPattern.transpose(), targetPositions.transpose(), R_est, T_est);
+//
     Eigen::MatrixXd rotTargetPos =   R_est* jacobiStretchedPattern ;
     Eigen::MatrixXd refTargetPos = rotTargetPos.colwise() + T_est;
-//    if(uORv ==11) cout<<endl<<refTargetPos<<" rot trans coords"<<endl ;
-    if( uORv ==11){
-//        refTargetPos =  targetPositions;
-//        tarUV1 =  targetPositions.col(1);
-//        tarUV2 =  targetPositions.col(2);
-    }
+    if(uORv ==11) cout<<endl<<refTargetPos<<" rot trans coords"<<endl ;
+
     tarUV0 = refTargetPos.col(0);
     tarUV1 = refTargetPos.col(1);
     tarUV2 = refTargetPos.col(2);
-
 
     return true;
 

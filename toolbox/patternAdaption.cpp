@@ -495,9 +495,9 @@ void splitVertexFromCVE( cutVertEntry*& cve,
                             Vg.row(Fg(adjFace, 2))*  (1./3) ).transpose();
            VectorXd cutPerp= cutDirection; cutPerp(1)=cutDirection(0); cutPerp(0)= cutDirection(1);
            auto dotH = cutPerp.normalized().dot(distNow.normalized());
-           if(distNow.norm() * dotH > 1.01){
-               tearIsUseful= true;
-           }
+//           if(distNow.norm() * dotH > 1.01){
+//               tearIsUseful= true;
+//           }
 
 //                cout<<" U dist now rel pos : "<<distNow.transpose()<<" norm "<<distNow.norm()<<endl;
 
@@ -515,9 +515,9 @@ void splitVertexFromCVE( cutVertEntry*& cve,
 //                cout<<" V dist now: "<<distNow.transpose()<<" norm "<<distNow.norm()<<endl;
 
            dotH = cutPerp.normalized().dot(distNow.normalized());
-           if(distNow.norm() * dotH > 1.01){
-               tearIsUseful= true;
-           }
+//           if(distNow.norm() * dotH > 1.01){
+//               tearIsUseful= true;
+//           }
 //                cout<<dotH<<" the dot product and the computed influence "<<distNow.norm() * dotH <<endl ;
 //TODO
                 // we could use fiber direction dot product with perp cut direction
@@ -1192,7 +1192,7 @@ void addVarToModel (int vert, int prevVert, int nextVert, vector<vector<int>> & 
                       MatrixXi& Fg_pattern,MatrixXd& lengthsOrig, MatrixXd& lengthsCurr, map <int, cutVertEntry*> & mapVarIdToVertId,
                       int seamType, int seamIdInList, double tailor_lazyness, bool corner, map<pair<int,int>, int>& mapVertAndSeamToVar, int counterpart, GRBModel& model, const MatrixXd& currPattern ){
     bool inverseMap = true;
-    // idea: when inverse mapping allow only cuts from the boundary, but L shapes should be ok ! 
+    // idea: when inverse mapping allow only cuts from the boundary, but L shapes should be ok !
     double w_init = 0;
     int count = 0;
     VectorXd nextDir= VectorXd::Zero(3);
@@ -1250,27 +1250,52 @@ void addVarToModel (int vert, int prevVert, int nextVert, vector<vector<int>> & 
 //TODO SPECIAL CASE IF PREV -1
 //
 //    if(count>1) w_init/=count;
+    if(!inverseMap) {
+        if(isConstrained){
+            try {
+                cutVar[varCount].set(GRB_DoubleAttr_Obj, 0);
+            }catch(GRBException e){
+                cout << "Error code = " << e.getErrorCode() << endl;
+                cout << e.getMessage() << endl;
+                cout<<varCount<<endl;
+            }
+        }else{
 
-    if(isConstrained){
-        try {
-            cutVar[varCount].set(GRB_DoubleAttr_Obj, 0);
-        }catch(GRBException e){
-            cout << "Error code = " << e.getErrorCode() << endl;
-            cout << e.getMessage() << endl;
-            cout<<varCount<<endl;
+            int tailorLazyFactor = 1; if(corner) tailorLazyFactor*= tailor_lazyness;
+            cout<<tailorLazyFactor<<" taylor lazy factor and weight "<<w_init<< " "<<count<<endl;
+            try{
+                cutVar[varCount].set(GRB_DoubleAttr_Obj, tailorLazyFactor * w_init);
+
+            }catch(GRBException e){
+                cout << "Error code = " << e.getErrorCode() << endl;
+                cout << e.getMessage() << endl;
+                cout<<varCount<<endl;
+
+            }
         }
-    }else{
+    }else {
+        if (!corner) {
+            try {
+                cutVar[varCount].set(GRB_DoubleAttr_Obj, 0);
+            } catch (GRBException e) {
+                cout << "Error code = " << e.getErrorCode() << endl;
+                cout << e.getMessage() << endl;
+                cout << varCount << endl;
+            }
+        } else {
 
-        int tailorLazyFactor = 1; if(corner) tailorLazyFactor*= tailor_lazyness;
-        cout<<tailorLazyFactor<<" taylor lazy factor and weight "<<w_init<< " "<<count<<endl;
-        try{
-            cutVar[varCount].set(GRB_DoubleAttr_Obj, tailorLazyFactor * w_init);
+            int tailorLazyFactor = 1;
+            if (corner) tailorLazyFactor *= tailor_lazyness;
+            cout << tailorLazyFactor << " taylor lazy factor and weight " << w_init << " " << count << endl;
+            try {
+                cutVar[varCount].set(GRB_DoubleAttr_Obj, tailorLazyFactor * w_init);
 
-        }catch(GRBException e){
-            cout << "Error code = " << e.getErrorCode() << endl;
-            cout << e.getMessage() << endl;
-            cout<<varCount<<endl;
+            } catch (GRBException e) {
+                cout << "Error code = " << e.getErrorCode() << endl;
+                cout << e.getMessage() << endl;
+                cout << varCount << endl;
 
+            }
         }
     }
 
@@ -1442,7 +1467,7 @@ void setLP(std::vector<std::vector<int> >& boundaryL , vector<vector<int>> & vfA
         MatrixXd& currPattern, const bool & LShapeAllowed, const MatrixXd & fromPattern, const MatrixXi mapFromFg ){
 
     computePerFaceUV(Fg_pattern, mapFromFg, fromPattern, currPattern);
-
+    bool inverseMap = true;
     // Create an environment
     GRBEnv env = GRBEnv(true);
     env.set("LogFile", "mip1.log");
@@ -1524,7 +1549,6 @@ void setLP(std::vector<std::vector<int> >& boundaryL , vector<vector<int>> & vfA
                         boundSizeOther = boundaryL[startAndPatchOther.second].size();
                         end = seam->getEndCornerIds().first;
                         length = seam->seamLength();
-//                        safe falsch!!
 
                     } else if (seamId[si].first < 0) {
                         minusOneSeam *currSeam = minusOneSeams[seamId[si].second];
@@ -1543,10 +1567,12 @@ void setLP(std::vector<std::vector<int> >& boundaryL , vector<vector<int>> & vfA
 
                     // check if the corners exist already. If so then connect with corner, else add the indices
                     // todo for L cutting allowance
-                    if(trackCornerIds.find(vert) != trackCornerIds.end()){
-                        model.addConstr(cutVar[ trackCornerIds[vert]] + cutVar[varCount] <= 1);
-                    }else{
-                        trackCornerIds[vert] = varCount;
+                    if(!inverseMap){
+                        if(trackCornerIds.find(vert) != trackCornerIds.end()){
+                            model.addConstr(cutVar[ trackCornerIds[vert]] + cutVar[varCount] <= 1);
+                        }else{
+                            trackCornerIds[vert] = varCount;
+                        }
                     }
 
                     int prevVert = -1;
@@ -1679,7 +1705,7 @@ void setLP(std::vector<std::vector<int> >& boundaryL , vector<vector<int>> & vfA
                 model.addConstr(innerSumConstr <= 1);
                 model.addConstr(lSumConstr <= 1);
                 model.addConstr(rSumConstr <= 1);
-                model.addConstr(totalSum >= 1);
+//                model.addConstr(totalSum >= 1);
             }
         }
 
@@ -1723,9 +1749,7 @@ void setLP(std::vector<std::vector<int> >& boundaryL , vector<vector<int>> & vfA
             if(seamId<0) inverted = seamsList[(-1)*(seamId+1)]->inverted;
              getPrevAndNextVertAndStress( seamType, seamId, vert, prevVert, nextVert, prevStress, nextStress,
                                               seamsList, minusOneSeams, boundaryL, Fg_pattern, lengthsOrig, lengthsCurr, vfAdj, inverted );
-            if(vert == 788|| vert == 783){
-                cout<<vert<<": "<<prevVert<<" prev, next "<<nextVert<<" "<<prevStress<<" stresses "<<nextStress<<endl;
-            }
+
             if(cornerVert[vert]==1){
                 cout<<"corner "<<endl;
                 cve->cornerInitial = vert;
