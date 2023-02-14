@@ -882,11 +882,15 @@ int main(int argc, char *argv[])
 //                string modifiedPattern = "/Users/annaeggler/Desktop/mappedPattern.obj"; //
 //                string modifiedPattern = "/Users/annaeggler/Desktop/mappedPatternWithSmoothPCACuts.obj"; //
 //                string modifiedPattern = "/Users/annaeggler/Desktop/mappedTri.obj"; //
-                string modifiedPattern  = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/writtenPattern_retriIntermediat.obj";//writtenPatternMaternitySmoothedFractures.obj"; //
+//                string modifiedPattern  = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/writtenPattern_retriIntermediat.obj";//writtenPatternMaternitySmoothedFractures.obj"; //
+                string modifiedPattern  = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/final_with_removedFabric.obj";
+
                 igl::readOBJ(modifiedPattern, currPattern, Fg_pattern_curr);
 
-                string targetPattern  = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/patternComputed_maternity_01.obj"; //
-               MatrixXd mapToV; MatrixXi mapToF;
+//                string targetPattern  = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/patternComputed_maternity_01.obj"; //
+                string targetPattern  = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/leggins_2d/leggins_2d.obj"; //
+
+                MatrixXd mapToV; MatrixXi mapToF;
                 igl::readOBJ(targetPattern, mapToV, mapToF);
                 cout<<mapToVg.rows()<<"rows check "<<mapToV.rows()<<endl;
                 mapToVg.resize(mapToV.rows(), mapToV.rows());
@@ -1103,7 +1107,7 @@ int main(int argc, char *argv[])
             }
 
         }
-        if (ImGui::CollapsingHeader("Inverse direction: remove fractures  ", ImGuiTreeNodeFlags_DefaultOpen)) {
+        if (ImGui::CollapsingHeader("Inverse direction: remove fractures  ", ImGuiTreeNodeFlags_OpenOnArrow)) {
             if(ImGui::Button("Map back   ", ImVec2(-1, 0))){
                 mouse_mode = NONE;
                 string fracturedInverse  = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/writtenPattern_inverseMapped.obj";//writtenPatternMaternitySmoothedFractures.obj"; //
@@ -1170,6 +1174,176 @@ int main(int argc, char *argv[])
                 viewer.data().show_lines = true;
                 viewer.data().set_mesh(currPattern, Fg_pattern_curr);
             }
+
+        }
+        if (ImGui::CollapsingHeader("Final Visualization  ", ImGuiTreeNodeFlags_OpenOnArrow)){
+            bool initPattern= false;
+            bool toRemove= false;
+            bool toAdd = false;
+            bool toAddShow = false;
+            bool addedFinal = false;
+            if(ImGui::Checkbox("Initial Pattern" , &initPattern)){
+                string modifiedPattern  = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/final_with_removedFabric_transl.obj";
+                MatrixXd showPatternVg; MatrixXi showPatternFg;
+                igl::readOBJ(modifiedPattern, showPatternVg, showPatternFg);
+                viewer.selected_data_index = 1;
+                viewer.data().clear();
+                viewer.selected_data_index = 2;
+                viewer.data().clear();
+                viewer.selected_data_index = 0;
+                viewer.data().clear();
+                viewer.data().set_mesh(showPatternVg, showPatternFg);
+
+                viewer.data().show_lines = false;
+                viewer.data().set_colors(RowVector3d(0.4, 0.57, 0.86));
+
+            }
+            if(ImGui::Checkbox("Fabric to be removed" , &toRemove)){
+                string modifiedPattern  = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/final_with_removedFabric_transl.obj";
+                MatrixXd showPatternVg; MatrixXi showPatternFg;
+                igl::readOBJ(modifiedPattern, showPatternVg, showPatternFg);
+                viewer.selected_data_index = 1;
+                viewer.data().clear();
+                viewer.selected_data_index = 0;
+
+                viewer.data().clear();
+                viewer.data().set_mesh(showPatternVg, showPatternFg);
+                viewer.data().show_lines = false;
+                MatrixXd colourSet= MatrixXd::Ones(showPatternFg.rows(), 3);
+                colourSet.col(0) *= 0.4;
+                colourSet.col(1) *= 0.57;
+                colourSet.col(2) *= 0.86;
+                RowVector3d red; red<< 0.8, 0.1, 0.1;
+                for(int i = 2803; i< showPatternFg.rows(); i++){
+                    colourSet.row(i) = red;
+                }
+                viewer.data().set_colors(colourSet);
+
+            }
+//            if(ImGui::Checkbox("Show to be added" , &toAddShow)){
+//                string modifiedPattern  = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/final_with_removedFabric_transl.obj";
+//                MatrixXd showPatternVg; MatrixXi showPatternFg;
+//                igl::readOBJ(modifiedPattern, showPatternVg, showPatternFg);
+//                viewer.selected_data_index = 1;
+//                viewer.data().clear();
+//                viewer.selected_data_index = 0;
+//
+//                viewer.data().clear();
+//                viewer.data().set_mesh(showPatternVg, showPatternFg);
+//                viewer.data().show_lines = false;
+//                MatrixXd colourSet= MatrixXd::Ones(showPatternFg.rows(), 3);
+//                colourSet.col(0) *= 0.4;
+//                colourSet.col(1) *= 0.57;
+//                colourSet.col(2) *= 0.86;
+//                RowVector3d red; red<< 0.8, 0.1, 0.1;
+//                for(int i = 2803; i< showPatternFg.rows(); i++){
+//                    colourSet.row(i) = red;
+//                }
+//                viewer.data().set_colors(colourSet);
+//
+//                modifiedPattern  = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/writtenPattern_fullyRetri_transl.obj";
+//                MatrixXd showPatternVg2; MatrixXi showPatternFg2;
+//                igl::readOBJ(modifiedPattern, showPatternVg2, showPatternFg2);
+//                viewer.selected_data_index = 1;
+//                viewer.data().clear();
+//                MatrixXi showDartFg(showPatternFg2.rows()-2747, 3);
+//                showDartFg = showPatternFg2.block(2747, 0, showPatternFg2.rows()-2747, 3);
+//                set<int> vertAff;
+//                for(int i=2772; i<=2785; i++){
+//                    for(int j=0; j<3; j++){
+//                        if(vertAff.find(showPatternFg2(i,j)== vertAff.end())){
+//                            showPatternVg2(i, 0) -= 50;
+//                            vertAff.insert(showPatternFg2(i,j);
+//                        }
+//                    }
+//                }
+//                for(int i=2786; i<=2796; i++){
+//                    for(int j=0; j<3; j++){
+//                        if(vertAff.find(showPatternFg2(i,j)== vertAff.end())){
+//                            showPatternVg2(i, 0) -= 50;
+//                            vertAff.insert(showPatternFg2(i,j);
+//                        }
+//                    }                }
+//                for(int i=2765; i<=2771; i++){
+//                    for(int j=0; j<3; j++){
+//                        if(vertAff.find(showPatternFg2(i,j)== vertAff.end())){
+//                            showPatternVg2(i, 0) += 50;
+//                            vertAff.insert(showPatternFg2(i,j);
+//                        }
+//                    }                }
+//                for(int i=2747; i<=2762; i++){
+//                    for(int j=0; j<3; j++){
+//                        if(vertAff.find(showPatternFg2(i,j)== vertAff.end())){
+//                            showPatternVg2(i, 0) -= 50;
+//                            vertAff.insert(showPatternFg2(i,j);
+//                        }
+//                    }                }
+//                for(int i=2798; i<=2802; i++){
+//                    for(int j=0; j<3; j++){
+//                        if(vertAff.find(showPatternFg2(i,j)== vertAff.end())){
+//                            showPatternVg2(i, 0) -= 50;
+//                            vertAff.insert(showPatternFg2(i,j);
+//                        }
+//                    }
+//                }
+//                viewer.data().set_mesh(showPatternVg2, showDartFg);
+//
+//                viewer.data().show_lines = false;
+//                viewer.data().set_colors(RowVector3d(0.1, 0.8, 0.1));
+//
+//            }
+            if(ImGui::Checkbox("Fabric to be added" , &toAdd)){
+                string modifiedPattern  = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/writtenPattern_fullyRetri_transl.obj";
+                MatrixXd showPatternVg; MatrixXi showPatternFg;
+                igl::readOBJ(modifiedPattern, showPatternVg, showPatternFg);
+                viewer.selected_data_index = 1;
+                viewer.data().clear();
+                VectorXd componentIdPerVert_vis;
+                igl::vertex_components(showPatternFg, componentIdPerVert_vis);
+                for(int i=0 ; i< componentIdPerVert_vis.size(); i++){
+                    if(componentIdPerVert_vis(i)==0 ||componentIdPerVert_vis(i)==3){
+                        showPatternVg(i, 0)+= 50;
+                    }else{
+                        showPatternVg(i, 0) -= 50;
+                    }
+                }
+                viewer.selected_data_index = 0;
+                viewer.data().clear();
+                viewer.data().set_mesh(showPatternVg, showPatternFg);
+                viewer.data().show_lines = false;
+                MatrixXd colourSet= MatrixXd::Ones(showPatternFg.rows(), 3);
+                colourSet.col(0) *= 0.4;
+                colourSet.col(1) *= 0.57;
+                colourSet.col(2) *= 0.86;
+                RowVector3d green; green<< 0.1, 0.8, 0.1;
+                for(int i = 2747; i< showPatternFg.rows(); i++){
+                    colourSet.row(i) = green;
+                }
+                viewer.data().set_colors(colourSet);
+            }
+            if(ImGui::Checkbox("Altered Pattern" , &addedFinal)){
+                string modifiedPattern  = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/writtenPattern_fullyRetri_transl.obj";
+                MatrixXd showPatternVg; MatrixXi showPatternFg;
+                igl::readOBJ(modifiedPattern, showPatternVg, showPatternFg);
+                viewer.selected_data_index = 1;
+                viewer.data().clear();
+                viewer.selected_data_index = 0;
+                viewer.data().clear();
+                VectorXd componentIdPerVert_vis;
+                igl::vertex_components(showPatternFg, componentIdPerVert_vis);
+                for(int i=0 ; i< componentIdPerVert_vis.size(); i++){
+                    if(componentIdPerVert_vis(i)==0 ||componentIdPerVert_vis(i)==3){
+                        showPatternVg(i, 0)+= 50;
+                    }else{
+                        showPatternVg(i, 0) -= 50;
+                    }
+                }
+                viewer.data().set_mesh(showPatternVg, showPatternFg);
+
+                viewer.data().show_lines = false;
+                viewer.data().set_colors(RowVector3d(0.4, 0.57, 0.86));
+            }
+
 
         }
         menu.draw_viewer_menu();
@@ -1244,7 +1418,6 @@ void preComputeAdaption(){
         MathFunctions mathFun;
         mathFun.Barycentric(Gu, p0, p1, p2, uInBary);
         mathFun.Barycentric(Gv, p0, p1, p2, vInBary);
-        if(i== 5549)cout<<vInBary.transpose()<<" uv barys "<<vInBary.transpose()<<endl;
 
         baryCoordsUPattern.row(i) = uInBary;
         baryCoordsVPattern.row(i) = vInBary;
@@ -1987,10 +2160,12 @@ void solveStretchAdaptionViaEdgeLength(){
         }
     }
 }
-void solveStretchAdaption(MatrixXd& perFaceU_adapt,MatrixXd& perFaceV_adapt){
+
+void solveStretchAdaption(){
 //    PBD.solveUVSimple( Fg_pattern_curr,  mapFromFg,  p_adaption,  mapFromVg, stretchStiffnessU);
 //    return;
-
+    MatrixXd correctionTerm = MatrixXd::Zero(currPattern.rows(), 3);
+    VectorXd itemCount = VectorXd::Zero(currPattern.rows());
     // force that pulls back to the original position in fromPattern
     // it does not quite work after tthe 3rd cut. Jacobian seems to be fine but it messes up
     for(int i=0; i< Fg_pattern_curr.rows(); i++){
@@ -2020,10 +2195,16 @@ void solveStretchAdaption(MatrixXd& perFaceU_adapt,MatrixXd& perFaceV_adapt){
         Vector2d dir1 = tarUV1 - p_adaption.row(Fg_pattern_curr(i, 1)).leftCols(2).transpose() ;
         Vector2d dir2 = tarUV2 - p_adaption.row(Fg_pattern_curr(i, 2)).leftCols(2).transpose() ;
 
-        p_adaption.row(Fg_pattern_curr(i,0)).leftCols(2) += ( stretchStiffnessU * dir0);
-        p_adaption.row(Fg_pattern_curr(i,1)).leftCols(2) += ( stretchStiffnessU * dir1);
-        p_adaption.row(Fg_pattern_curr(i,2)).leftCols(2) += ( stretchStiffnessU * dir2);
+        correctionTerm.row(Fg_pattern_curr(i,0)).leftCols(2) += ( stretchStiffnessU * dir0);
+        correctionTerm.row(Fg_pattern_curr(i,1)).leftCols(2) += ( stretchStiffnessU * dir1);
+        correctionTerm.row(Fg_pattern_curr(i,2)).leftCols(2) += ( stretchStiffnessU * dir2);
+        itemCount(Fg_pattern_curr(i,0))++;
+        itemCount(Fg_pattern_curr(i,1))++;
+        itemCount(Fg_pattern_curr(i,2))++;
 
+    }
+    for(int i=0; i<p_adaption.rows(); i++){
+        p_adaption.row(i) += (correctionTerm.row(i))/itemCount(i);
     }
 }
 MatrixXd colPatternU, colPatternV;
@@ -2084,8 +2265,8 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
     Timer t(" Adaption time step ");
 
     adaptioncount++;
+
 //    cout<<adaptioncount<<endl<<endl;
-//    if(adaptioncount>2)return;
 
  //   std::cout<<"-------------- Time Step ------------"<<adaptioncount<<endl;
     // we have no velocity or collision, but we do have stretch, constrainedStretch and bending
@@ -2099,15 +2280,13 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
     p_adaption.col(2)= Eigen::VectorXd::Ones(currPattern.rows());
     p_adaption.col(2)*= 200;
 
-changedPos = -1;
+    changedPos = -1;
 //    t.printTime(" init ");
     for(int i=0; i<5; i++){
 //        t.printTime(" pattern stress ");
-        MatrixXd perFaceU_adapt, perFaceV_adapt;
-        solveStretchAdaption(perFaceU_adapt, perFaceV_adapt);
+
+        solveStretchAdaption();
 //        solveStretchAdaptionViaEdgeLength();//
-//        ensurePairwiseDist(p_adaption, toPattern, Fg_pattern);
-//        t.printTime(" edge lengths ");
         if(changedPos != -1){
             cout<<p_adaption.row(changedPos)<<" edge "<<endl;
         }
@@ -2118,7 +2297,6 @@ changedPos = -1;
         if(changedPos != -1){
             cout<<p_adaption.row(changedPos)<<" bound "<<endl;
         }
-//        t.printTime(" project boundary  ");
 
 //        ensurePairwiseDist(p_adaption, toPattern, Fg_pattern);
         solveCornerMappedVertices();
@@ -2126,14 +2304,11 @@ changedPos = -1;
             cout<<p_adaption.row(changedPos)<<" corner "<<endl;
         }
 
-//        t.printTime(" solve corner  ");
-// this causes the weired ange issue
+        // this causes the weired ange issue
 //        ensureAngle(p_adaption, mapFromVg, Fg_pattern_curr, mapFromFg);
-//        t.printTime(" ensure angle ");
         if(changedPos != -1){
             cout<<p_adaption.row(changedPos)<<" angle "<<endl;
         }
-//        ensurePairwiseDist(p_adaption, toPattern, Fg_pattern);
     }
 
     currPattern = p_adaption;

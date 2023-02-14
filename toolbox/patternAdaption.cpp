@@ -2279,17 +2279,6 @@ void projectBackOnBoundary(const MatrixXd & mapToVg, MatrixXd& p, const vector<s
 
     int numSeams = seamsList.size();
     int count =0;
-//    if(releasedVert.size()>0){
-//        auto iter = releasedVertNew.begin();
-//        cout<<"Released vert: "<<endl;
-//        while (iter != releasedVertNew.end()) {
-//            cout << count<<" [" << iter->first << ","
-//                 << iter->second[0] << "]\n";
-//            ++iter;
-//            count++;
-//        }
-//    }
-
 
     for (int j = 0; j<numSeams; j++){
         seam* currSeam  = seamsList[j];
