@@ -62,7 +62,8 @@ public:
 
 };
 
-int computeTear(MatrixXd& fromPatternFile,
+int computeTear(bool inverseMap,
+                MatrixXd& fromPatternFile,
                  MatrixXd& currPattern, // the current vertex positions
                  MatrixXi& Fg_pattern, // faces, can change as we insert new vertices
                  MatrixXd& lengthsOrig, // not to be changed, original faces, matches with Vg and fromPatternFile

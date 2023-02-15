@@ -25,3 +25,6 @@ void setupCollisionConstraintsCall(Eigen::MatrixXi& collisionVert, vector<int> &
                                    MatrixXd& p, int& numVert, double coll_EPS,
                                std::map<int, int> & leftHalfToFullFaceMap, std::map<int, int> & rightHalfToFullFaceMap, vector<VectorXd> & CleftRight , vector<VectorXd>& NleftRight, VectorXi& closestFaceId,
                                MatrixXd& Vm, MatrixXi& Fm, MatrixXi& Fg);
+
+
+//void oneShotLengthSolve(MatrixXd& p_adaption, MatrixXi& Fg_pattern_curr, MatrixXd& baryCoordsUPattern, MatrixXd& baryCoordsVPattern, MatrixXd& mapFromVg, MatrixXi& mapFromFg);

@@ -55,6 +55,7 @@ garment_adaption::garment_adaption(Eigen::MatrixXd &Vg, Eigen::MatrixXi& Fg, Eig
             if(neigh[j]== -1){
                 continue;
             }
+
             tripletList.push_back(T(3 * rowCount, 3 * i, 1));
             tripletList.push_back(T(3 * rowCount + 1, 3 * i + 1, 1));
             tripletList.push_back(T(3 * rowCount + 2, 3 * i + 2, 1));

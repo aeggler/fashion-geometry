@@ -1188,10 +1188,10 @@ int addoncount=0;
 
      }
  }
-void addVarToModel (int vert, int prevVert, int nextVert, vector<vector<int>> & vfAdj, bool isConstrained, int& varCount, GRBVar* & cutVar,
+void addVarToModel (bool inverseMap, int vert, int prevVert, int nextVert, vector<vector<int>> & vfAdj, bool isConstrained, int& varCount, GRBVar* & cutVar,
                       MatrixXi& Fg_pattern,MatrixXd& lengthsOrig, MatrixXd& lengthsCurr, map <int, cutVertEntry*> & mapVarIdToVertId,
                       int seamType, int seamIdInList, double tailor_lazyness, bool corner, map<pair<int,int>, int>& mapVertAndSeamToVar, int counterpart, GRBModel& model, const MatrixXd& currPattern ){
-    bool inverseMap = true;
+
     // idea: when inverse mapping allow only cuts from the boundary, but L shapes should be ok !
     double w_init = 0;
     int count = 0;
@@ -1460,14 +1460,14 @@ void getPrevAndNextVertAndStress(int seamType, int seamId, int vert, int & prevV
     }
 }
 
-void setLP(std::vector<std::vector<int> >& boundaryL , vector<vector<int>> & vfAdj, MatrixXi& Fg_pattern,
+void setLP(bool inverseMap, std::vector<std::vector<int> >& boundaryL , vector<vector<int>> & vfAdj, MatrixXi& Fg_pattern,
         MatrixXd& lengthsOrig, MatrixXd& lengthsCurr,const std::vector<std::vector<std::pair<int, int>>>& cornersPerBoundary,
         map<int, vector<pair<int, int>>>& seamIdPerCorner, vector<seam*>& seamsList, const vector<minusOneSeam*> & minusOneSeams,
         double tailor_lazyness, double minConstrained, vector <cutVertEntry*>& cutPositions, VectorXd& cornerVert,
         MatrixXd& currPattern, const bool & LShapeAllowed, const MatrixXd & fromPattern, const MatrixXi mapFromFg ){
 
     computePerFaceUV(Fg_pattern, mapFromFg, fromPattern, currPattern);
-    bool inverseMap = true;
+
     // Create an environment
     GRBEnv env = GRBEnv(true);
     env.set("LogFile", "mip1.log");
@@ -1592,7 +1592,7 @@ void setLP(std::vector<std::vector<int> >& boundaryL , vector<vector<int>> & vfA
                         }
                         int currVar = varCount;
 
-                        addVarToModel(vert, prevVert, boundaryL[i][(idx + 1) % boundSize], vfAdj, isConstrained, varCount, cutVar,
+                        addVarToModel(inverseMap, vert, prevVert, boundaryL[i][(idx + 1) % boundSize], vfAdj, isConstrained, varCount, cutVar,
                                       Fg_pattern, lengthsOrig, lengthsCurr, mapVarIdToVertId, seamId[si].first, seamId[si].second,
                                       tailor_lazyness,corner,mapVertAndSeamToVar, vertOther, model, currPattern );
 
@@ -1623,7 +1623,7 @@ void setLP(std::vector<std::vector<int> >& boundaryL , vector<vector<int>> & vfA
                     }
                     rSumConstr += cutVar[varCount];
                     totalSum = lSumConstr + cutVar[varCount];
-                    addVarToModel(vert, prevVert , -1, vfAdj, false, varCount, cutVar, Fg_pattern,
+                    addVarToModel(inverseMap, vert, prevVert , -1, vfAdj, false, varCount, cutVar, Fg_pattern,
                                   lengthsOrig, lengthsCurr, mapVarIdToVertId, seamId[si].first, seamId[si].second,
                                   tailor_lazyness, true, mapVertAndSeamToVar, vertOther, model, currPattern );
                 } else {
@@ -1666,7 +1666,7 @@ void setLP(std::vector<std::vector<int> >& boundaryL , vector<vector<int>> & vfA
                         }else{
                             model.addConstr(cutVar[varCount] == 0);
                         }
-                        addVarToModel(vert, prevVert, nextvert, vfAdj, isConstrained, varCount, cutVar, Fg_pattern, lengthsOrig,
+                        addVarToModel(inverseMap, vert, prevVert, nextvert, vfAdj, isConstrained, varCount, cutVar, Fg_pattern, lengthsOrig,
                                       lengthsCurr, mapVarIdToVertId, seamId[si].first, seamId[si].second, tailor_lazyness, corner,
                                       mapVertAndSeamToVar, otherVert, model, currPattern );
                         if (!isConstrained) {
@@ -1694,7 +1694,7 @@ void setLP(std::vector<std::vector<int> >& boundaryL , vector<vector<int>> & vfA
                     rSumConstr += cutVar[varCount];
                     totalSum = lSumConstr + cutVar[varCount];
 
-                    addVarToModel(vert, prevVert, -1, vfAdj, false, varCount,
+                    addVarToModel(inverseMap, vert, prevVert, -1, vfAdj, false, varCount,
                                   cutVar, Fg_pattern, lengthsOrig, lengthsCurr, mapVarIdToVertId,
                                   seamId[si].first, seamId[si].second, tailor_lazyness, true,
                                   mapVertAndSeamToVar, otherVert, model, currPattern);
@@ -2059,7 +2059,7 @@ void smoothCuts(vector<cutVertEntry*>& cutPositions, MatrixXd&  currPattern, Mat
     }
 }
 
-int computeTear(Eigen::MatrixXd & fromPattern, MatrixXd&  currPattern, MatrixXi& Fg_pattern_curr, MatrixXd& patternlengthsOrig,
+int computeTear(bool inverseMap, Eigen::MatrixXd & fromPattern, MatrixXd&  currPattern, MatrixXi& Fg_pattern_curr, MatrixXd& patternlengthsOrig,
                  vector<seam*>& seamsList, vector<minusOneSeam*>& minusOneSeams, std::vector<std::vector<int> >& boundaryL, bool & finished,
                  const std::vector<std::vector<std::pair<int, int>>>& cornersPerBoundary, map<int, vector<pair<int, int>>>& seamIdPerCorner,
                  VectorXd& cornerVert, vector<cutVertEntry*>& cutPositions, map<int, pair<int, int>> & releasedVert,
@@ -2115,7 +2115,7 @@ int computeTear(Eigen::MatrixXd & fromPattern, MatrixXd&  currPattern, MatrixXi&
     // for vertices we need boundary loop
 
     double minConstrained = 0.25;
-    setLP(boundaryL, vfAdj, Fg_pattern_curr, lengthsOrig, lengthsCurr, cornersPerBoundary, seamIdPerCorner,
+    setLP(inverseMap, boundaryL, vfAdj, Fg_pattern_curr, lengthsOrig, lengthsCurr, cornersPerBoundary, seamIdPerCorner,
           seamsList, minusOneSeams, tailor_lazyness, minConstrained, cutPositions,
           cornerVert, currPattern, LShapeAllowed, fromPattern, mapFromFg);
 

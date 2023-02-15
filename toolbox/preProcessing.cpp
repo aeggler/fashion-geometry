@@ -12,10 +12,16 @@
 #include <igl/AABB.h>
 #include <igl/exact_geodesic.h>
 #include <map>
-
+#include<Eigen/SparseCholesky>
 
 using namespace std;
 using namespace Eigen;
+
+typedef Eigen::SparseMatrix<double, RowMajor> SpMat; // declares a column-major sparse matrix type of double
+typedef Eigen::Triplet<double> T;
+Eigen::SparseMatrix<double, RowMajor> A;
+Eigen::SimplicialLDLT<Eigen::SparseMatrix<double>> cholSolver;
+int numVertPattern =0;
 
 MatrixXd FN_mleft,FN_mright, FN_gar, EN_mleft, EN_mright, VN_mleft,VN_mright, VN_gar;
 MatrixXi EMAP_mleft, E_mleft, E_mright, EMAP_mright;
@@ -129,3 +135,147 @@ void setupCollisionConstraintsCall(Eigen::MatrixXi& collisionVert, vector<int> &
         cout<<" size problem"<<endl;
     }
 }
+//
+//void oneShotLengthOpt(MatrixXi& Fg, int verts ){
+//    cout<<endl<<endl<<endl;
+//
+//    int rowCount = 0;
+//    std::vector<T> tripletList;
+//    //UPDATE 2.12.22 we add a weighting , see https://online.stat.psu.edu/stat501/lesson/13/13.1
+//    // we force the symmetry by having weight 1, the jacobian to have weight 0.5 as intial guess
+//
+//    for(int i =0; i<1; i++){//Fg.rows()
+//        for(int j=0; j<3; j++){
+//            int v0 = Fg(i, j);
+//            v0=j;
+//            tripletList.push_back(T(rowCount, 3 * v0, 1));
+//            tripletList.push_back(T(rowCount+1, 3 * v0 + 1, 1));
+//            tripletList.push_back(T(rowCount+2, 3 * v0 + 2, 1));
+//
+//            rowCount+=3;
+//            if(i == 0) cout<<3 * v0<<" vert of face "<<v0<<" "<<rowCount-3<<endl;
+//        }
+//    }
+//    A.resize( 1*9, 3* 4 );//Fg.rows()verts
+//    A.setFromTriplets(tripletList.begin(), tripletList.end());
+//    cout<<MatrixXd(A)<<endl;
+////    cout<<MatrixXd(A)(1, 424) <<endl;
+////    cout<<MatrixXd(A)(2, 425) <<endl;
+////
+//    SpMat LHS = (A.transpose() * A);
+//    MatrixXd LHSd= MatrixXd(LHS);
+//    for(int i=0; i<LHSd.rows(); i++){
+//        for(int j=0; j<LHSd.cols(); j++){
+//            if(LHSd(i,j)!=0){
+//                cout<<i<<" i "<<j<<") = "<<LHSd(i,j)<<endl;
+//            }
+//        }
+//    }
+//    cholSolver.analyzePattern(LHS);
+//    cholSolver.factorize(LHS);
+//
+//
+//}
+//
+//void oneShotLengthSolve(MatrixXd& p_adaption, MatrixXi& Fg_pattern_curr, MatrixXd& baryCoordsUPattern, MatrixXd& baryCoordsVPattern, MatrixXd& mapFromVg, MatrixXi& mapFromFg){
+//    int rowCounter = 0;
+//
+//    if(numVertPattern!= p_adaption.rows()){
+//        numVertPattern = p_adaption.rows();
+//        oneShotLengthOpt( Fg_pattern_curr, p_adaption.rows());
+//    }
+//
+//    VectorXd b(1 * 9);
+//    for(int i=0; i<1; i++){
+//        Eigen::MatrixXd targetPositions(2, 3);
+//        targetPositions.col(0)=  p_adaption.row(Fg_pattern_curr(i, 0)).leftCols(2).transpose() ;
+//        targetPositions.col(1)=  p_adaption.row(Fg_pattern_curr(i, 1)).leftCols(2).transpose() ;
+//        targetPositions.col(2)=  p_adaption.row(Fg_pattern_curr(i, 2)).leftCols(2).transpose() ;
+//
+//        VectorXd thisFaceU = baryCoordsUPattern(i,0) * targetPositions.col(0) +  baryCoordsUPattern(i,1) * targetPositions.col(1) + baryCoordsUPattern(i,2) * targetPositions.col(2) ;
+//        VectorXd thisFaceV = baryCoordsVPattern(i,0) * targetPositions.col(0) +  baryCoordsVPattern(i,1) * targetPositions.col(1) + baryCoordsVPattern(i,2) * targetPositions.col(2) ;
+//        VectorXd bary = targetPositions.rowwise().mean();
+//
+//        Eigen::MatrixXd Jnorm(2, 2);
+//        Jnorm.col(0)= (thisFaceU - bary).normalized();
+//        Jnorm.col(1)= (thisFaceV - bary).normalized();
+//
+//        double angle = acos((Jnorm.col(0)).dot(Jnorm.col(1)));
+//        double deg = angle*180/M_PI;
+//        double delta = abs(90-deg)/2;
+//        delta = delta/180 * M_PI;
+//        double DiagStiffness = abs(90-deg)/90;
+//        Eigen::Matrix2d newRot= Eigen::MatrixXd::Identity(2, 2);
+//        newRot(0, 0) = cos(DiagStiffness * delta);
+//        newRot(1, 1) = newRot(0, 0);
+//        newRot(0, 1) = - sin(DiagStiffness * delta);
+//        newRot(1, 0) = sin( DiagStiffness * delta);
+//
+//        if(deg<=90){
+//            Jnorm.col(0) = newRot.transpose() * Jnorm.col(0);
+//            Jnorm.col(1) = newRot * Jnorm.col(1);
+//        }else{
+//            Jnorm.col(1) = newRot.transpose() * Jnorm.col(1);
+//            Jnorm.col(0) = newRot * Jnorm.col(0);
+//        }
+//
+//        Eigen::MatrixXd patternCoords(2, 3);
+//        patternCoords.col(0) = mapFromVg.row(mapFromFg(i, 0)).leftCols(2).transpose();
+//        patternCoords.col(1) = mapFromVg.row(mapFromFg(i, 1)).leftCols(2).transpose();
+//        patternCoords.col(2) = mapFromVg.row(mapFromFg(i, 2)).leftCols(2).transpose();
+//
+//        if(rowCounter != 9*i) cout<<rowCounter<<" i "<<i<<endl;
+//        Eigen::MatrixXd jacobiStretchedPattern = Jnorm * patternCoords;
+//        Eigen::VectorXd pb = jacobiStretchedPattern.rowwise().mean();
+//        Eigen::VectorXd qb = targetPositions.rowwise().mean();
+//
+//        VectorXd T_est = qb - pb;
+//        Eigen::MatrixXd refTargetPos = jacobiStretchedPattern.colwise() + T_est;
+//
+//        b.block(rowCounter, 0, 2, 1) = refTargetPos.col(0);
+//        rowCounter += 2;
+//        b(rowCounter) =  mapFromVg(mapFromFg(i, 0), 2);
+//        rowCounter++;
+//
+//        b.block(rowCounter, 0, 2, 1) = refTargetPos.col(1);
+//        rowCounter += 2;
+//        b(rowCounter) =  mapFromVg(mapFromFg(i, 0), 2);
+//        rowCounter++;
+//
+//        b.block(rowCounter, 0, 2, 1) = refTargetPos.col(2);
+//        rowCounter += 2;
+//        b(rowCounter) =  mapFromVg(mapFromFg(i, 0), 2);
+//        rowCounter++;
+//    }
+//
+//
+////    b= VectorXd::Ones(1 * 9);
+//    MatrixXd RHS = A.transpose() * b;
+//    for(int i=0; i<RHS.rows(); i++){
+//        for(int j=0; j<RHS.cols(); j++){
+//            if(RHS(i,j)!=0){
+//                cout<<i<<" i "<<" = "<<RHS(i,j)<<endl;
+//            }
+//        }
+//    }
+//    cout<<RHS.rows()<<" RHS rows and cols "<<RHS.cols()<<endl;
+//
+//    auto p_asVec = cholSolver.solve(RHS);
+//    if(A.transpose()*A*p_asVec != A.transpose()*b){
+//        cout<<"solution wrong"<<endl ;
+//    }
+//    cout<<"  after solver "<<p_asVec.rows() <<endl ;
+//    cout<<p_asVec(423)<<endl;
+//    for(int i=0; i<p_asVec.rows(); i++){
+//        if(p_asVec(i)!=0){
+//            cout<<i<<" "<<p_asVec(i)<<endl ;
+//        }
+//    }
+//
+////    for(int i=0; i<p_adaption.rows(); i++){
+////        p_adaption.row(i) = p_asVec.block(3*i, 0, 3, 1).transpose();
+////        if(i> 161 && i<164) cout<<p_adaption.row(i)<<" i after "<<i <<" "<<p_asVec(3*i)<<endl ;
+////        if(i==141) cout<<p_adaption.row(i)<<" i after "<< i<<endl ;
+////
+////    }
+//}

@@ -407,7 +407,7 @@ int main(int argc, char *argv[])
 //    string fromPatternFile = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/writtenPatternSmoothedMaternity_fullyRetri.obj"; //_Added_duplRem_unrefRem
 //    TODO LATER NO MORE
     string fromPatternFile = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/writtenPattern_fullyRetri.obj"; //_Added_duplRem_unrefRem
-
+    bool inverseMap = true;
     igl::readOBJ(fromPatternFile, mapFromVg, mapFromFg);
     Fg_pattern_curr = mapFromFg;
     mapToVg =  Vg_pattern_orig ;// curr = the current shape of the garment, something in between
@@ -715,10 +715,14 @@ int main(int argc, char *argv[])
                 preComputeAdaption();
                 initialGuessAdaption(currPattern, mapToVg, perfPattVg, Fg_pattern_curr, perfPattFg);
 
-
                 viewer.selected_data_index = 0;
                 viewer.data().clear();
                 viewer.data().set_mesh(currPattern, mapFromFg);
+                viewer.data().uniform_colors(ambient, diffuse, specular);
+                viewer.data().show_texture = false;
+                viewer.data().set_face_based(false);
+                //remove wireframe
+                viewer.data().show_lines = true;
 
                 std::vector<std::vector<int> > boundaryLnew;
                 igl::boundary_loop(Fg_pattern_curr, boundaryLnew);
@@ -733,10 +737,10 @@ int main(int argc, char *argv[])
                 updateCornerUtils(cornerSet, cornerPerBoundary, seamIdPerCorner, mapCornerToCorner, cornerVertices);
                 updateSeamCorner( seamsList, minusOneSeamsList, mapCornerToCorner, boundaryL);
 
-                viewer.core().is_animating = true;
-                adaptionFlag = true;
+//                viewer.core().is_animating = true;
+//                adaptionFlag = true;
             }
-            ImGui::InputDouble("Taylor Lazyness ", &(taylor_lazyness),  0, 0, "%0.4f");
+            ImGui::InputDouble("Taylor Lazyness ", &(taylor_lazyness),  0, 0, "%0.2f");
             if(ImGui::Button("Compute first Tear", ImVec2(-1, 0))){
                 simulate = false;
                 adaptionFlag = false;
@@ -744,7 +748,7 @@ int main(int argc, char *argv[])
 
                 bool fin = false;
                 auto copyPattern = mapFromVg;
-                 pos = computeTear(mapFromVg, currPattern, Fg_pattern_curr, patternEdgeLengths_orig, seamsList ,
+                 pos = computeTear(inverseMap, mapFromVg, currPattern, Fg_pattern_curr, patternEdgeLengths_orig, seamsList ,
                             minusOneSeamsList, boundaryL, fin, cornerPerBoundary, // updated in adaption
                             seamIdPerCorner,
                             cornerVertices, cutPositions, releasedVert, toPattern_boundaryVerticesSet, cornerSet,
@@ -2162,11 +2166,12 @@ void solveStretchAdaptionViaEdgeLength(){
 }
 
 void solveStretchAdaption(){
-//    PBD.solveUVSimple( Fg_pattern_curr,  mapFromFg,  p_adaption,  mapFromVg, stretchStiffnessU);
-//    return;
+
     MatrixXd correctionTerm = MatrixXd::Zero(currPattern.rows(), 3);
     VectorXd itemCount = VectorXd::Zero(currPattern.rows());
-    // force that pulls back to the original position in fromPattern
+
+//    oneShotLengthSolve( p_adaption,  Fg_pattern_curr, baryCoordsUPattern, baryCoordsVPattern, mapFromVg, mapFromFg);
+        // force that pulls back to the original position in fromPattern
     // it does not quite work after tthe 3rd cut. Jacobian seems to be fine but it messes up
     for(int i=0; i< Fg_pattern_curr.rows(); i++){
         Eigen::MatrixXd patternCoords(2, 3);
@@ -2185,9 +2190,10 @@ void solveStretchAdaption(){
         int uOrv = 1;
 //        if( i == 5549  ) uOrv = 11;
 //        TODO STIFFNESS PARAMETER
-        VectorXd thisFaceU = baryCoordsUPattern(i,0) * patternCoords.col(0) +  baryCoordsUPattern(i,1) * patternCoords.col(1) + baryCoordsUPattern(i,2) * patternCoords.col(2) ;
-        VectorXd thisFaceV = baryCoordsVPattern(i,0) * patternCoords.col(0) +  baryCoordsVPattern(i,1) * patternCoords.col(1) + baryCoordsVPattern(i,2) * patternCoords.col(2) ;
-        VectorXd bary = (patternCoords.col(0) + patternCoords.col(1) + patternCoords.col(2)) / 3;
+        VectorXd thisFaceU = baryCoordsUPattern(i,0) * targetPositions.col(0) +  baryCoordsUPattern(i,1) * targetPositions.col(1) + baryCoordsUPattern(i,2) * targetPositions.col(2) ;
+        VectorXd thisFaceV = baryCoordsVPattern(i,0) * targetPositions.col(0) +  baryCoordsVPattern(i,1) * targetPositions.col(1) + baryCoordsVPattern(i,2) * targetPositions.col(2) ;
+        VectorXd bary = (targetPositions.col(0) + targetPositions.col(1) + targetPositions.col(2)) / 3;
+
         PBD_adaption.init_UVStretchPattern( thisFaceU- bary,  thisFaceV - bary, patternCoords,targetPositions,
                                                 tarUV0, tarUV1,tarUV2, uOrv,  stretchStiffnessD);
 //
@@ -2206,6 +2212,7 @@ void solveStretchAdaption(){
     for(int i=0; i<p_adaption.rows(); i++){
         p_adaption.row(i) += (correctionTerm.row(i))/itemCount(i);
     }
+
 }
 MatrixXd colPatternU, colPatternV;
 void computePatternStress(MatrixXd& perFaceU_adapt,MatrixXd& perFaceV_adapt ){
@@ -2265,7 +2272,7 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
     Timer t(" Adaption time step ");
 
     adaptioncount++;
-
+//    if(adaptioncount>1)return;
 //    cout<<adaptioncount<<endl<<endl;
 
  //   std::cout<<"-------------- Time Step ------------"<<adaptioncount<<endl;
@@ -2282,7 +2289,7 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
 
     changedPos = -1;
 //    t.printTime(" init ");
-    for(int i=0; i<5; i++){
+    for(int i=0; i<8; i++){
 //        t.printTime(" pattern stress ");
 
         solveStretchAdaption();
@@ -2290,6 +2297,7 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
         if(changedPos != -1){
             cout<<p_adaption.row(changedPos)<<" edge "<<endl;
         }
+
 
         // before cutting the boundaries should be the same
         projectBackOnBoundary( mapToVg, p_adaption, seamsList, minusOneSeamsList, boundaryL_toPattern,
