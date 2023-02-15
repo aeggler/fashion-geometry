@@ -406,16 +406,28 @@ int main(int argc, char *argv[])
     // copy the matrices to not mess with them
 //    string fromPatternFile = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/writtenPatternSmoothedMaternity_fullyRetri.obj"; //_Added_duplRem_unrefRem
 //    TODO LATER NO MORE
-    string fromPatternFile = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/writtenPattern_fullyRetri.obj"; //_Added_duplRem_unrefRem
-    bool inverseMap = true;
-    igl::readOBJ(fromPatternFile, mapFromVg, mapFromFg);
-    Fg_pattern_curr = mapFromFg;
-    mapToVg =  Vg_pattern_orig ;// curr = the current shape of the garment, something in between
-    mapToFg = Fg_pattern_orig ;// the stress is computed between the rest shape and the current, ie mapFromVg and currPattern
+//    string fromPatternFile = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/writtenPattern_fullyRetri.obj"; //_Added_duplRem_unrefRem
+//    bool inverseMap = true;
+//    igl::readOBJ(fromPatternFile, mapFromVg, mapFromFg);
+//    Fg_pattern_curr = mapFromFg;
+//    mapToVg =  Vg_pattern_orig ;// curr = the current shape of the garment, something in between
+//    mapToFg = Fg_pattern_orig ;// the stress is computed between the rest shape and the current, ie mapFromVg and currPattern
+    string perfPatternFile = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/patternComputed_maternity_01.obj"; //_Added_duplRem_unrefRem
+    MatrixXd perfPattVg;
+    MatrixXi perfPattFg;
+    igl::readOBJ(perfPatternFile, perfPattVg, perfPattFg);//
+
 //    fromPattern = Vg_pattern_orig;
 //    string mappedPatternFile = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/patternComputed_maternity_01.obj";
 //    igl::readOBJ(mappedPatternFile, toPattern, Fg_pattern);// remove for simulation, add for adaption
 //    toPattern= Vg_pattern_orig;
+
+    bool inverseMap = false;
+    string mappedPatternFile = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/patternComputed_maternity_01.obj";
+    igl::readOBJ(mappedPatternFile, mapToVg, mapToFg);
+    mapFromVg = Vg_pattern;
+    mapFromFg =Fg_pattern;
+
 
     viewer.core().animation_max_fps = 200.;
     viewer.core().is_animating = false;
@@ -705,15 +717,15 @@ int main(int argc, char *argv[])
         if (ImGui::CollapsingHeader("Pattern adaption", ImGuiTreeNodeFlags_OpenOnArrow)){
             if(ImGui::Button("Compute adaptation", ImVec2(-1, 0))){
 
-                string perfPatternFile = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/patternComputed_maternity_01.obj"; //_Added_duplRem_unrefRem
-                MatrixXd perfPattVg;
-                MatrixXi perfPattFg;
-                igl::readOBJ(perfPatternFile, perfPattVg, perfPattFg);
-
                 currPattern = mapFromVg;
+                Fg_pattern_curr = mapFromFg;
                 cout<<endl<<currPattern.rows()<<" curr pattern rows "<<endl;
                 preComputeAdaption();
-                initialGuessAdaption(currPattern, mapToVg, perfPattVg, Fg_pattern_curr, perfPattFg);
+                if(inverseMap){
+                    initialGuessAdaption(currPattern, mapToVg, perfPattVg, Fg_pattern_curr, perfPattFg);
+                }else{
+                    currPattern= mapToVg;
+                }
 
                 viewer.selected_data_index = 0;
                 viewer.data().clear();
@@ -731,12 +743,13 @@ int main(int argc, char *argv[])
                 boundaryLFrom.clear();
                 igl::boundary_loop(mapFromFg, boundaryLFrom);
 
-
-                createMapCornersToNewCorner(currPattern, mapToVg, cornerPerBoundary, mapCornerToCorner, boundaryL);
-                cornerVertices= VectorXd::Zero(currPattern.rows());
-                updateCornerUtils(cornerSet, cornerPerBoundary, seamIdPerCorner, mapCornerToCorner, cornerVertices);
-                updateSeamCorner( seamsList, minusOneSeamsList, mapCornerToCorner, boundaryL);
-
+                cout<<"interim"<<endl;
+                if(inverseMap) {
+                    createMapCornersToNewCorner(currPattern, mapToVg, cornerPerBoundary, mapCornerToCorner, boundaryL);
+                    cornerVertices = VectorXd::Zero(currPattern.rows());
+                    updateCornerUtils(cornerSet, cornerPerBoundary, seamIdPerCorner, mapCornerToCorner, cornerVertices);
+                    updateSeamCorner(seamsList, minusOneSeamsList, mapCornerToCorner, boundaryL);
+                }
 //                viewer.core().is_animating = true;
 //                adaptionFlag = true;
             }
@@ -1376,9 +1389,7 @@ void preComputeAdaption(){
     if(cornerPerBoundary.empty()){
         cout<<" there are no corners to map"<<endl;
     }
-    if(currPattern.rows()!= toPattern.rows()){
-        cout<<currPattern.rows()<<" the number of vertices does not match ! We inserted vertices already "<< toPattern.rows()<<endl;
-    }
+
 //    patternEdgeLengths.resize(Fg_pattern.rows() ,3);
     igl::edge_lengths(mapFromVg,mapFromFg, patternEdgeLengths_orig);
 
@@ -2169,7 +2180,6 @@ void solveStretchAdaption(){
 
     MatrixXd correctionTerm = MatrixXd::Zero(currPattern.rows(), 3);
     VectorXd itemCount = VectorXd::Zero(currPattern.rows());
-
 //    oneShotLengthSolve( p_adaption,  Fg_pattern_curr, baryCoordsUPattern, baryCoordsVPattern, mapFromVg, mapFromFg);
         // force that pulls back to the original position in fromPattern
     // it does not quite work after tthe 3rd cut. Jacobian seems to be fine but it messes up
@@ -2178,7 +2188,6 @@ void solveStretchAdaption(){
         patternCoords.col(0) = mapFromVg.row(mapFromFg(i, 0)).leftCols(2).transpose();
         patternCoords.col(1) = mapFromVg.row(mapFromFg(i, 1)).leftCols(2).transpose();
         patternCoords.col(2) = mapFromVg.row(mapFromFg(i, 2)).leftCols(2).transpose();
-
         // where they would go to if no stretch in u
         Vector2r tarUV0, tarUV1 , tarUV2;
 
@@ -2193,14 +2202,12 @@ void solveStretchAdaption(){
         VectorXd thisFaceU = baryCoordsUPattern(i,0) * targetPositions.col(0) +  baryCoordsUPattern(i,1) * targetPositions.col(1) + baryCoordsUPattern(i,2) * targetPositions.col(2) ;
         VectorXd thisFaceV = baryCoordsVPattern(i,0) * targetPositions.col(0) +  baryCoordsVPattern(i,1) * targetPositions.col(1) + baryCoordsVPattern(i,2) * targetPositions.col(2) ;
         VectorXd bary = (targetPositions.col(0) + targetPositions.col(1) + targetPositions.col(2)) / 3;
-
         PBD_adaption.init_UVStretchPattern( thisFaceU- bary,  thisFaceV - bary, patternCoords,targetPositions,
                                                 tarUV0, tarUV1,tarUV2, uOrv,  stretchStiffnessD);
 //
         Vector2d dir0 = tarUV0 - p_adaption.row(Fg_pattern_curr(i, 0)).leftCols(2).transpose() ;
         Vector2d dir1 = tarUV1 - p_adaption.row(Fg_pattern_curr(i, 1)).leftCols(2).transpose() ;
         Vector2d dir2 = tarUV2 - p_adaption.row(Fg_pattern_curr(i, 2)).leftCols(2).transpose() ;
-
         correctionTerm.row(Fg_pattern_curr(i,0)).leftCols(2) += ( stretchStiffnessU * dir0);
         correctionTerm.row(Fg_pattern_curr(i,1)).leftCols(2) += ( stretchStiffnessU * dir1);
         correctionTerm.row(Fg_pattern_curr(i,2)).leftCols(2) += ( stretchStiffnessU * dir2);
@@ -2298,6 +2305,7 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
             cout<<p_adaption.row(changedPos)<<" edge "<<endl;
         }
 
+//        t.printTime("after pattern stress ");
 
         // before cutting the boundaries should be the same
         projectBackOnBoundary( mapToVg, p_adaption, seamsList, minusOneSeamsList, boundaryL_toPattern,
@@ -2305,9 +2313,13 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
         if(changedPos != -1){
             cout<<p_adaption.row(changedPos)<<" bound "<<endl;
         }
+//        t.printTime("after proj  ");
+
 
 //        ensurePairwiseDist(p_adaption, toPattern, Fg_pattern);
         solveCornerMappedVertices();
+//        t.printTime("after corner stress ");
+
         if(changedPos != -1){
             cout<<p_adaption.row(changedPos)<<" corner "<<endl;
         }
