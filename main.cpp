@@ -194,6 +194,7 @@ void solveStretchUV();
 bool computePointOnMesh(igl::opengl::glfw::Viewer& viewer, Eigen::MatrixXd& V, Eigen::MatrixXi& Fuse, Eigen::Vector3d& position, int& fid);
 int computeClosestVertexOnMesh(Vector3d& b, int& fid, MatrixXi& F);
 bool callback_mouse_down(igl::opengl::glfw::Viewer& viewer, int button, int modifier);
+void updateChangedBaryCoordinates(int changedPosition, vector<vector<int>>& vfFromPatt);
 int pos;
 
 bool pre_draw(igl::opengl::glfw::Viewer& viewer){
@@ -726,7 +727,10 @@ int main(int argc, char *argv[])
                 }else{
                     currPattern= mapToVg;
                 }
-
+                viewer.selected_data_index = 2;
+                viewer.data().clear();
+                viewer.selected_data_index = 1;
+                viewer.data().clear();
                 viewer.selected_data_index = 0;
                 viewer.data().clear();
                 viewer.data().set_mesh(currPattern, mapFromFg);
@@ -743,7 +747,6 @@ int main(int argc, char *argv[])
                 boundaryLFrom.clear();
                 igl::boundary_loop(mapFromFg, boundaryLFrom);
 
-                cout<<"interim"<<endl;
                 if(inverseMap) {
                     createMapCornersToNewCorner(currPattern, mapToVg, cornerPerBoundary, mapCornerToCorner, boundaryL);
                     cornerVertices = VectorXd::Zero(currPattern.rows());
@@ -808,9 +811,6 @@ int main(int argc, char *argv[])
                 adaptionFlag = false;
                 viewer.core().is_animating = false;
                 auto copyPattern = mapFromVg;
-//                pos = tearFurtherVisIdxHelper(cutPositions, currPattern, Fg_pattern, seamsList, minusOneSeamsList, releasedVert,
-//                                                  toPattern_boundaryVerticesSet, boundaryL, cornerSet, handledVerticesSet, prevTearFinished,
-//                                                  preferManySmallCuts, LShapeAllowed, patternEdgeLengths_orig, fromPattern, prioInner, prioOuter);
 
                 pos = tearFurther(cutPositions, currPattern, Fg_pattern_curr, seamsList, minusOneSeamsList, releasedVert,
                             toPattern_boundaryVerticesSet, boundaryL, cornerSet, handledVerticesSet, prevTearFinished,
@@ -834,11 +834,17 @@ int main(int argc, char *argv[])
                 // also adapt the new edge lengths since we might have changed the rest position when cutting in middl
                 bool changeFlag = false;
                 if( copyPattern != mapFromVg){// rest shape changes if we insert middle cuts
-                    vector<vector<int> > vvAdjCurr;
-                    igl::adjacency_list( Fg_pattern_curr, vvAdjCurr);
-                    for(auto adjPosi: vvAdjCurr[pos]){
+                    vector<vector<int> > vvAdjPatt;
+                    igl::adjacency_list( mapFromFg, vvAdjPatt);
+                    vector<vector<int>> vfAdjPatternFrom;
+                    createVertexFaceAdjacencyList(mapFromFg,vfAdjPatternFrom );
+                    for(auto adjPosi: vvAdjPatt[pos]){
                         if(copyPattern.row(adjPosi) != mapFromVg.row(adjPosi)){
                             changedPos = adjPosi;
+                            cout<<copyPattern.row(adjPosi)<<" old one "<<changedPos <<endl<< mapFromVg.row(adjPosi)<<" new pos"<<endl;
+                            updateChangedBaryCoordinates(changedPos, vfAdjPatternFrom);
+                            // todo uvv should also change
+
                         }
                     }
                     MatrixXd lengthsOrig;
@@ -1376,6 +1382,34 @@ int main(int argc, char *argv[])
     viewer.launch();
 }
 MatrixXi EdgesVisFromPattern;
+void updateChangedBaryCoordinates(int changedPosition, vector<vector<int>>& vfFromPatt){
+    vector<int> adjFace = vfFromPatt[changedPosition];
+    for (auto i: adjFace){
+        cout<<"updating face "<<i<<endl ;
+        int id0 = mapFromFg(i, 0);
+        int id1 = mapFromFg(i, 1);
+        int id2 = mapFromFg(i, 2);
+
+        Vector2d Gu, Gv, G;
+        Vector2d p0, p1, p2;
+        p0 = mapFromVg.block(id0, 0, 1, 2).transpose();
+        p1 = mapFromVg.block(id1, 0, 1, 2).transpose();
+        p2 = mapFromVg.block(id2, 0, 1, 2).transpose();
+
+        G = (1./3.) * p0 + (1./3.) * p1 + (1./3.) * p2;
+
+        Gu = G; Gu(0) += 1;
+        Gv = G; Gv(1) += 1;
+        Vector3d uInBary, vInBary;
+        MathFunctions mathFun;
+        mathFun.Barycentric(Gu, p0, p1, p2, uInBary);
+        mathFun.Barycentric(Gv, p0, p1, p2, vInBary);
+
+        baryCoordsUPattern.row(i) = uInBary;
+        baryCoordsVPattern.row(i) = vInBary;
+    }
+
+}
 void preComputeAdaption(){
     simulate = false;
     stretchStiffnessU = 0.08;

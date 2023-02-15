@@ -806,9 +806,9 @@ void splitVertexFromCVE( cutVertEntry*& cve,
     newVg.row(insertIdx) = newPos;
     cout<<newPos.transpose()<<" new pos"<<endl;
 
-    VectorXd updatedRestShapeVertPos = insertIdxInBary(0) * Vg_pattern_orig.row(Fg(intersectingFace, 0)) ;
-    updatedRestShapeVertPos += insertIdxInBary(1) * Vg_pattern_orig.row(Fg(intersectingFace, 1)) ;
-    updatedRestShapeVertPos += insertIdxInBary(2) * Vg_pattern_orig.row(Fg(intersectingFace, 2) );
+    VectorXd updatedRestShapeVertPos = insertIdxInBary(0) * Vg_pattern_orig.row(Fg_pattern_orig(intersectingFace, 0)) ;
+    updatedRestShapeVertPos += insertIdxInBary(1) * Vg_pattern_orig.row(Fg_pattern_orig(intersectingFace, 1)) ;
+    updatedRestShapeVertPos += insertIdxInBary(2) * Vg_pattern_orig.row(Fg_pattern_orig(intersectingFace, 2) );
     //  upadte all original edge lengths -> in main
     cout<<  Vg_pattern_orig.row(insertIdx)<<" before restshape "<<endl;
     Vg_pattern_orig.row(insertIdx) = updatedRestShapeVertPos;
