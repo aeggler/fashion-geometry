@@ -805,18 +805,26 @@ void mergeTriagulatedAndPatternNew(const vector<vector<int>>& connectedVertVec, 
         for(int j=1; j < connectedVertVec[i].size(); j++){
             int nextVertId, nextVertIdInserted;
             if(isAscVec[i]){
-                nextVertId = (vertId+j) % patchSize;
+                nextVertId = (garIdx+j) % patchSize;
                 nextVertIdInserted = (insertIdx+j) % patchSizeIns;
             }else{
-                nextVertId = (vertId-j) ;
+                nextVertId = (garIdx-j) ;
                 if(nextVertId < 0) nextVertId+= patchSize;
 
                 nextVertIdInserted = (insertIdx-j) ;
                 if(nextVertIdInserted < 0) nextVertIdInserted += patchSizeIns;
             }
 
-            if(Vg_retri.row(bondaryIns[nextVertIdInserted]) != currPattern(boundary[nextVertId])){
-                cout<<" We have to insert something. It does not work that way "<<endl ; 
+            if(Vg_retri.row(boundaryIns[nextVertIdInserted]) != currPattern.row(boundary[nextVertId])){
+                cout<<" We have to insert something. It does not work that way "<<endl ;
+                find the adjacent face
+                duplicate it
+                once rermove upper and replace by new inserted
+                once remove lower and replavce by new inserted
+                ensure lovwer is the first one in traversal direction
+                replace the vertex id in the added face
+                remove it from the vertices to be added -> keep track of which vertices not to add to the final pattern
+                keep track of the added faces (to make them colourable later) 
             }
 
         }
