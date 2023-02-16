@@ -321,7 +321,7 @@ bool isAsc(int s, int m, int t){
 }
 void computeAllBetweensConnectPatches(vector<VectorXd>& polylineSelected,vector<int>& polylineIndex, vector<int>& polyLineMeshIndicator,
                            vector<vector<int>>& boundaryL_adaptedFromPattern, vector<vector<int>>& boundaryL_toPattern,
-                           MatrixXd& currPattern, MatrixXd& Vg_to, vector<VectorXd>& polyLineInput, vector<int>& connectedVert) {
+                           MatrixXd& currPattern, MatrixXd& Vg_to, vector<VectorXd>& polyLineInput, vector<vector<int>>& connectedVertVec, vector<int>& patchId, vector<bool>& isAscVec) {
     VectorXi idx(12);
     int patchL, patchR, patchTo;
     for(int i = 0; i < boundaryL_adaptedFromPattern.size(); i++){
@@ -447,13 +447,13 @@ void computeAllBetweensConnectPatches(vector<VectorXd>& polylineSelected,vector<
 }
 void computeAllBetweensNew(vector<VectorXd>& polylineSelected,vector<int>& polylineIndex, vector<int>& polyLineMeshIndicator,
                            vector<vector<int>>& boundaryL_adaptedFromPattern, vector<vector<int>>& boundaryL_toPattern,
-                           MatrixXd& currPattern, MatrixXd& Vg_to, vector<VectorXd>& polyLineInput, vector<int>& connectedVert) {
+                           MatrixXd& currPattern, MatrixXd& Vg_to, vector<VectorXd>& polyLineInput, vector<vector<int>>& connectedVertVec, vector<int>& patchId, vector<bool>& isAscVec) {
     polyLineInput.clear();
-    connectedVert.clear();
+    connectedVertVec.clear();
     cout<<endl<<"Seam Size "<<polylineSelected.size()<<endl<<endl;
     if(polylineSelected.size() ==12){
         computeAllBetweensConnectPatches(polylineSelected, polylineIndex, polyLineMeshIndicator,
-                               boundaryL_adaptedFromPattern, boundaryL_toPattern, currPattern, Vg_to, polyLineInput, connectedVert);
+                               boundaryL_adaptedFromPattern, boundaryL_toPattern, currPattern, Vg_to, polyLineInput, connectedVertVec, patchId, isAscVec);
         return;
     }
     /* given 6 positions in total
@@ -622,21 +622,23 @@ void computeAllBetweensNew(vector<VectorXd>& polylineSelected,vector<int>& polyl
 }
 void computeAllBetweens(vector<VectorXd>& polylineSelected,vector<int>& polylineIndex, vector<int>& polyLineMeshIndicator,
                    vector<vector<int>>& boundaryL_adaptedFromPattern, vector<vector<int>>& boundaryL_toPattern,
-                   MatrixXd& currPattern, MatrixXd& Vg_pattern_orig, vector<VectorXd>& polyLineInput, vector<int>& connectedVert){
+                   MatrixXd& currPattern, MatrixXd& Vg_pattern_orig, vector<VectorXd>& polyLineInput, vector<vector<int>>& connectedVertVec, vector<int>& patchId, vector<bool>& isAscVec){
     if(polylineSelected.size()>2){
         computeAllBetweensNew(polylineSelected, polylineIndex, polyLineMeshIndicator,
                               boundaryL_adaptedFromPattern, boundaryL_toPattern,
-                              currPattern,  Vg_pattern_orig, polyLineInput, connectedVert);
+                              currPattern,  Vg_pattern_orig, polyLineInput, connectedVertVec, patchId, isAscVec);
         return;
     }
 
 
     polyLineInput.clear();
-    connectedVert.clear();
+    connectedVertVec.clear();
+    vector<int> connectedVert; int p; bool inverted;
 
     for(int i=0; i< polylineIndex.size(); i++){
         //add the current one
         polyLineInput.push_back(polylineSelected[i]);
+
         if(i+1 == polylineIndex.size()) continue; // there is no after
         if(polyLineMeshIndicator[i] ==2 || polyLineMeshIndicator[i+1]==2 ){
            // check if there are ot be inserted vertices on the other boundary line
@@ -669,7 +671,7 @@ void computeAllBetweens(vector<VectorXd>& polylineSelected,vector<int>& polyline
                 }
                 // we have both start and end , their absolute distance should be
                 int smaller = (endIdx > startIdx) ? startIdx : endIdx;
-                bool inverted = false;
+                inverted = false;
                 if(smaller == endIdx) {
                     inverted = true;
                 }
@@ -678,27 +680,34 @@ void computeAllBetweens(vector<VectorXd>& polylineSelected,vector<int>& polyline
                 int dist = (greater - smaller);
                 int otherdist = boundaryToSearch[j].size()-greater + smaller;
                 cout<<otherdist<<" betweens "<<dist<<endl;
-
+                p = j;
 
                 if(dist<otherdist){
                     if(!inverted){
+                        connectedVert.push_back(boundaryToSearch[j][smaller]);
                         for(int k = smaller+1; k < greater; k++){
                             polyLineInput.push_back(v_used.row(boundaryToSearch[j][k]));
                             cout<<v_used.row(boundaryToSearch[j][k])<<endl;
-//                            connectedVert.push_back(boundaryToSearch[j][k]);
+                            connectedVert.push_back(boundaryToSearch[j][k]);
 
                         }
+                        connectedVert.push_back(boundaryToSearch[j][greater]);
+
                     }else{
+                        connectedVert.push_back(boundaryToSearch[j][greater]);
                         for(int k= greater-1; k> smaller ; k--){
                             polyLineInput.push_back(v_used.row(boundaryToSearch[j][k]));
                             cout<<v_used.row(boundaryToSearch[j][k])<<endl;
-//                            connectedVert.push_back(boundaryToSearch[j][k]);
+                            connectedVert.push_back(boundaryToSearch[j][k]);
 
                         }
+                        connectedVert.push_back(boundaryToSearch[j][smaller]);
+
                     }
 
                 }else{
                     if(!inverted){
+                        connectedVert.push_back(boundaryToSearch[j][smaller]);
                         int k= smaller; k--;
                         if(k<0) k += boundaryToSearch[j].size();
                         while( k != greater ){
@@ -713,28 +722,38 @@ void computeAllBetweens(vector<VectorXd>& polylineSelected,vector<int>& polyline
                         }// and one more
 //                        polyLineInput.push_back(v_used.row(boundaryToSearch[j][k]));
 //                        cout<<v_used.row(boundaryToSearch[j][k])<<"w-i"<<endl;
-//                        connectedVert.push_back(boundaryToSearch[j][k]);
+                        connectedVert.push_back(boundaryToSearch[j][k]);
                     }else{
+                        connectedVert.push_back(boundaryToSearch[j][greater]);
                         int k = greater; k++;
                         k = k % boundaryToSearch[j].size();
                         while (k!= smaller){
                             polyLineInput.push_back(v_used.row(boundaryToSearch[j][k]));
                             cout<<v_used.row(boundaryToSearch[j][k])<<endl;
-//                            connectedVert.push_back(boundaryToSearch[j][k]);
+                            connectedVert.push_back(boundaryToSearch[j][k]);
                             k++;
                             k = k % boundaryToSearch[j].size();
                         }// last one k==greater
 //                        polyLineInput.push_back(v_used.row(boundaryToSearch[j][k]));
 //                        cout<<v_used.row(boundaryToSearch[j][k])<<"wi"<<endl;
-//                        connectedVert.push_back(boundaryToSearch[j][k]);
+                        connectedVert.push_back(boundaryToSearch[j][k]);
                     }
-
                 }
             }
-
         }
-
-
+    }
+    connectedVertVec.push_back(connectedVert);
+    isAscVec.push_back(!inverted);
+    patchId.push_back(p);
+    for(int i=0; i<isAscVec.size(); i++){
+        cout<<isAscVec[i]<<" asc ? "<<endl ;
+    }
+    for(int i=0; i<patchId.size(); i++){
+        cout<<patchId[i]<<" patch ID "<<endl ;
+    }
+    cout<<polyLineInput.size()<<" =?= "<<connectedVert.size()<<endl;
+    for(int i=0; i<connectedVert.size(); i++){
+        cout<< connectedVert[i] <<" is index i="<<i<<endl;
     }
 }
 
@@ -755,8 +774,60 @@ void replaceInFaces(int id, int newId, MatrixXi& Fg){
         }
     }
 }
+void mergeTriagulatedAndPatternNew(const vector<vector<int>>& connectedVertVec, const vector<int>& patchId,const vector<bool>& isAscVec,
+                           MatrixXd& Vg_retri, MatrixXi& Fg_retri, MatrixXd& currPattern, MatrixXi& Fg_pattern){
 
-void mergeTriagulatedAndPattern(const vector<int> &connectedVert, MatrixXd& Vg_retri, MatrixXi& Fg_retri, MatrixXd& currPattern, MatrixXi& Fg_pattern){
+    vector<vector<int>> boundaryLinsert, boundaryLGar;
+    igl::boundary_loop(Fg_retri, boundaryLinsert);
+    igl::boundary_loop(Fg_pattern, boundaryLGar);
+    // insertion on each pattern individually
+    for(int i=0; i<isAscVec.size(); i++){
+        int vertId = connectedVertVec[i][0];
+        auto boundary = boundaryLGar[patchId[i]];
+        auto boundaryIns = boundaryLinsert[0];
+        int patchSize = boundaryLGar[patchId[i]].size();
+        int patchSizeIns = boundaryLinsert[0].size();
+
+        int garIdx =0;
+        while(boundary[garIdx] != vertId && garIdx <= patchSize){
+            garIdx++;
+        }
+        if(boundary[garIdx] != vertId){cout<<"Something went wrong, index not found. "<< endl; }
+
+        int insertIdx=0;
+        while(Vg_retri.row(boundaryIns[insertIdx]) != currPattern.row(vertId) && insertIdx <= patchSizeIns){
+            insertIdx++;
+        }
+        if(Vg_retri.row(boundaryIns[insertIdx]) != currPattern.row(vertId)) cout<<"Something went wrong. Not found in insert patch. "<<endl ;
+        cout<<" we've found the two indices "<< garIdx <<" and " << insertIdx << endl ;
+
+
+        for(int j=1; j < connectedVertVec[i].size(); j++){
+            int nextVertId, nextVertIdInserted;
+            if(isAscVec[i]){
+                nextVertId = (vertId+j) % patchSize;
+                nextVertIdInserted = (insertIdx+j) % patchSizeIns;
+            }else{
+                nextVertId = (vertId-j) ;
+                if(nextVertId < 0) nextVertId+= patchSize;
+
+                nextVertIdInserted = (insertIdx-j) ;
+                if(nextVertIdInserted < 0) nextVertIdInserted += patchSizeIns;
+            }
+
+            if(Vg_retri.row(bondaryIns[nextVertIdInserted]) != currPattern(boundary[nextVertId])){
+                cout<<" We have to insert something. It does not work that way "<<endl ; 
+            }
+
+        }
+
+    }
+}
+
+void mergeTriagulatedAndPattern(const vector<vector<int>>& connectedVertVec, const vector<int>& patchId,const vector<bool>& isAscVec,
+                                MatrixXd& Vg_retri, MatrixXi& Fg_retri, MatrixXd& currPattern, MatrixXi& Fg_pattern){
+    mergeTriagulatedAndPatternNew(connectedVertVec, patchId, isAscVec, Vg_retri, Fg_retri, currPattern, Fg_pattern);
+    return;
     int offset = currPattern.rows();
     currPattern.col(2).setConstant(200);
     vector<VectorXd> addedVerts;

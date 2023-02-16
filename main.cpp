@@ -158,8 +158,8 @@ vector<int> polyLineMeshIndicator;
 //Eigen::SparseMatrix<double> L;
 MatrixXd Vg_retri;// re triangulated area
 MatrixXi Fg_retri;// re triangulated face
-vector<int> connectedVert; int prevFaces;// initial umber of faces (for coloring), and boundary vertices that are now duplicated (not used now)
-
+vector<vector<int>> connectedVert; int prevFaces;// initial umber of faces (for coloring), and boundary vertices that are now duplicated (not used now)
+vector<int> isAscVert; vector<bool> isAscMerge;
 VectorXd cornerVertices;
 vector<cutVertEntry*> cutPositions;
 map<int, pair<int, int>>  releasedVert; // all positions that need not be mapped to the boundary anymore from at least one side. keep track which side is released
@@ -904,18 +904,17 @@ int main(int argc, char *argv[])
             if(ImGui::Checkbox("Start triangulating", &startTri)) {
 //                string modifiedPattern = "/Users/annaeggler/Desktop/mappedPattern.obj"; //
 //                string modifiedPattern = "/Users/annaeggler/Desktop/mappedPatternWithSmoothPCACuts.obj"; //
-//                string modifiedPattern = "/Users/annaeggler/Desktop/mappedTri.obj"; //
+                string modifiedPattern = "/Users/annaeggler/Desktop/writtenPatternMat.obj"; //
 //                string modifiedPattern  = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/writtenPattern_retriIntermediat.obj";//writtenPatternMaternitySmoothedFractures.obj"; //
-                string modifiedPattern  = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/final_with_removedFabric.obj";
+//                string modifiedPattern  = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/final_with_removedFabric.obj";
 
                 igl::readOBJ(modifiedPattern, currPattern, Fg_pattern_curr);
 
-//                string targetPattern  = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/patternComputed_maternity_01.obj"; //
-                string targetPattern  = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/leggins_2d/leggins_2d.obj"; //
+                string targetPattern  = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/patternComputed_maternity_01.obj"; //
+//                string targetPattern  = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/leggins_2d/leggins_2d.obj"; //
 
                 MatrixXd mapToV; MatrixXi mapToF;
                 igl::readOBJ(targetPattern, mapToV, mapToF);
-                cout<<mapToVg.rows()<<"rows check "<<mapToV.rows()<<endl;
                 mapToVg.resize(mapToV.rows(), mapToV.rows());
                 mapToVg= mapToV;
                 mapToFg.resize(mapToF.rows(), mapToF.rows());
@@ -924,6 +923,8 @@ int main(int argc, char *argv[])
 
                 prevFaces = Fg_pattern_curr.rows();
                 viewer.selected_data_index = 1;
+                viewer.data().clear();
+                viewer.selected_data_index = 2;
                 viewer.data().clear();
                 viewer.selected_data_index = 0;
                 viewer.data().clear();
@@ -971,6 +972,9 @@ int main(int argc, char *argv[])
                 polylineIndex.clear();
                 polyLineMeshIndicator.clear();
                 connectedVert.clear();
+                isAscVert.clear();
+                isAscMerge.clear();
+
                 viewer.selected_data_index = 0;
                 viewer.data().clear();
                 viewer.data().show_lines = true;
@@ -1069,7 +1073,7 @@ int main(int argc, char *argv[])
 
                 //todo changes with mesh, maybe constrain the boundary vertices
                 computeAllBetweens( polylineSelected, polylineIndex,polyLineMeshIndicator, boundaryL_adaptedFromPattern,
-                                    boundaryL_toPattern, currPattern, mapToVg ,polyLineInput, connectedVert );
+                                    boundaryL_toPattern, currPattern, mapToVg ,polyLineInput, connectedVert, isAscVert, isAscMerge );
 
 
                 startRetriangulation(polyLineInput, Vg_retri, Fg_retri);
@@ -1084,7 +1088,7 @@ int main(int argc, char *argv[])
             }
             if(ImGui::Button("Add Area to Pattern", ImVec2(-1, 0))) {
                 mouse_mode = NONE;
-                mergeTriagulatedAndPattern(connectedVert, Vg_retri, Fg_retri, currPattern, Fg_pattern_curr);
+                mergeTriagulatedAndPattern(connectedVert, isAscVert, isAscMerge, Vg_retri, Fg_retri, currPattern, Fg_pattern_curr);
 
                 viewer.selected_data_index = 1;
                 viewer.data().clear();
