@@ -885,33 +885,36 @@ void mergeTriagulatedAndPatternNew(const vector<vector<int>>& connectedVertVec, 
         }
 
     }
-//    int count = 0;
-//    VectorXi newId(Vg_retri.rows());
-//    MatrixXd Vg_help (Vg_retri.rows(), 3);
-//    for (int i=0 ; i<Vg_retri.rows(); i++){
-//        if(mergedIds(i) == -1){
-//            newId(i) = count;
-//            Vg_help.row(count) = Vg_retri.row(i);
-//            count++;
-//        }
-//    }
-//    int offset = currPattern.rows();
-//    for (int i = 0; i < Fg_retri.rows(); i++){
-//        for(int j=0; j<3; j++){
-//            if(mergedIds(Fg_retri(i, j)) != -1){
-//                Fg_retri(i, j) = mergedIds(Fg_retri(i, j));
-//            }else {
-//                Fg_retri(i, j) = newId(Fg_retri(i,j)) + offset;
-//            }
-//        }
-//    }
-//
-//    MatrixXi Fg_new (Fg_pattern.rows()+ Fg_retri.rows(), 3);
-//    MatrixXd currPattern_new (offset + count, 3);
-//    Fg_new.block(0,0,Fg_pattern.rows(), 3 ) = Fg_pattern;
-//    Fg_new.block(Fg_pattern.rows(), 0, Fg_retri.rows(), 3) = Fg_retri;
-//    currPattern_new.block(0,0,currPattern.rows(), 3 ) = currPattern;
-//    currPattern_new.block(offset, 0,count, 3 ) = Vg_help.block(0,0, count, 3);
+    int count = 0;
+    VectorXi newId(Vg_retri.rows());
+    MatrixXd Vg_help (Vg_retri.rows(), 3);
+    for (int i=0 ; i<Vg_retri.rows(); i++){
+        if(mergedIds(i) == -1){
+            newId(i) = count;
+            Vg_help.row(count) = Vg_retri.row(i);
+            count++;
+        }
+    }
+    int offset = currPattern.rows();
+    for (int i = 0; i < Fg_retri.rows(); i++){
+        for(int j=0; j<3; j++){
+            if(mergedIds(Fg_retri(i, j)) != -1){
+                Fg_retri(i, j) = mergedIds(Fg_retri(i, j));
+            }else {
+                Fg_retri(i, j) = newId(Fg_retri(i,j)) + offset;
+            }
+        }
+    }
+
+    MatrixXi Fg_new (Fg_pattern.rows()+ Fg_retri.rows(), 3);
+    MatrixXd currPattern_new (offset + count, 3);
+    Fg_new.block(0,0,Fg_pattern.rows(), 3 ) = Fg_pattern;
+    Fg_new.block(Fg_pattern.rows(), 0, Fg_retri.rows(), 3) = Fg_retri;
+    currPattern_new.block(0,0,currPattern.rows(), 3 ) = currPattern;
+    currPattern_new.block(offset, 0,count, 3 ) = Vg_help.block(0,0, count, 3);
+
+    Fg_pattern.resize(Fg_new.rows(), 3); Fg_pattern = Fg_new;
+    currPattern.resize(currPattern_new.rows(), 3); currPattern = currPattern_new;
 
 }
 
