@@ -464,7 +464,7 @@ void computeAllBetweensNew(vector<VectorXd>& polylineSelected,vector<int>& polyl
     polyLineInput.clear();
     connectedVertVec.clear();
     cout<<endl<<"Seam Size "<<polylineSelected.size()<<endl<<endl;
-    if(polylineSelected.size() ==12){
+    if(polylineSelected.size() == 12){
         computeAllBetweensConnectPatches(polylineSelected, polylineIndex, polyLineMeshIndicator,
                                boundaryL_adaptedFromPattern, boundaryL_toPattern, currPattern, Vg_to, polyLineInput, connectedVertVec, patchId, isAscVec);
         return;
@@ -614,32 +614,43 @@ void computeAllBetweensNew(vector<VectorXd>& polylineSelected,vector<int>& polyl
     bool asc = (idx5>idx4);
     if(idx4==0) asc = (idx5>(idx4+boundaryToSearch[patchFrom].size() ));
     cout<<"asc? "<<asc<<endl;
+
+    connectedVertVec.clear();
+    vector<int> connVec;
+    patchId.clear(); patchId.push_back(patchFrom);
+    isAscVec.clear(); isAscVec.push_back(asc);
     if(asc){// ascending
         int i = idx4;
         int count = 0;
         while(i !=idx1 && count < boundaryToSearch[patchFrom].size()){
             polyLineInput.push_back(currPattern.row(boundaryToSearch[patchFrom][i]).transpose());
+            connVec.push_back(boundaryToSearch[patchFrom][i]);
             cout<<boundaryToSearch[patchFrom][i]<<" 2, asc"<<currPattern.row(boundaryToSearch[patchFrom][i])<<endl;
             i++; count++;
             i = i %boundaryToSearch[patchFrom].size();
         }
         polyLineInput.push_back(currPattern.row(boundaryToSearch[patchFrom][i]).transpose());
         cout<<boundaryToSearch[patchFrom][i]<<" "<<currPattern.row(boundaryToSearch[patchFrom][i])<<endl;
+        connVec.push_back(boundaryToSearch[patchFrom][i]);
+
 
     }else{
         int i = idx4;
         int count = 0;
         while(i !=idx1 && count < boundaryToSearch[patchFrom].size()){
             polyLineInput.push_back(currPattern.row(boundaryToSearch[patchFrom][i]).transpose());
+            connVec.push_back(boundaryToSearch[patchFrom][i]);
             cout<<boundaryToSearch[patchFrom][i]<<" 2, desc "<<currPattern.row(boundaryToSearch[patchFrom][i])<<endl;
             i--; count++;
             if(i <0) i+= boundaryToSearch[patchFrom].size();
         }
         polyLineInput.push_back(currPattern.row(boundaryToSearch[patchFrom][i]).transpose());
         cout<<boundaryToSearch[patchFrom][i]<<" "<<currPattern.row(boundaryToSearch[patchFrom][i])<<endl;
+        connVec.push_back(boundaryToSearch[patchFrom][i]);
+
 
     }
-
+    connectedVertVec.push_back(connVec);
 
 
 }
@@ -802,8 +813,6 @@ void mergeTriagulatedAndPattern(const vector<vector<int>>& connectedVertVec, con
     currPattern.col(2).setConstant(200);
     vector<vector<int>> boundaryLinsert, boundaryLGar;
     igl::boundary_loop(Fg_retri, boundaryLinsert);
-    cout<<boundaryLinsert.size()<<" number of patches"<<endl ;
-    cout<<currPattern.rows() <<" rows "<<endl ;
     igl::boundary_loop(Fg_pattern, boundaryLGar);
     VectorXi mergedIds(Vg_retri.rows());
     mergedIds.setConstant(-1);
@@ -813,7 +822,6 @@ void mergeTriagulatedAndPattern(const vector<vector<int>>& connectedVertVec, con
         int vertId = connectedVertVec[i][0];
         vector<int> boundary = boundaryLGar[patchId[i]];
         vector<int> boundaryIns = boundaryLinsert[0];
-        cout <<boundaryIns.size()<<" number of verts on boundary of tri and searching for "<< vertId <<endl;
         int patchSize = boundaryLGar[patchId[i]].size();
         int patchSizeIns = boundaryLinsert[0].size();
 
@@ -821,20 +829,14 @@ void mergeTriagulatedAndPattern(const vector<vector<int>>& connectedVertVec, con
         while(boundary[garIdx] != vertId && garIdx < patchSize){
             garIdx++;
         }
-        if(boundary[garIdx] != vertId){cout<<"Something went wrong, index not found. "<< endl; return; }else{
-            cout<<"Index on garment loop is "<<garIdx<<endl;
-        }
-
+        if(boundary[garIdx] != vertId){cout<<"Something went wrong, index not found. "<< endl; return; }
         int insertIdx=0;
         while(Vg_retri.row(boundaryIns[insertIdx]) != currPattern.row(vertId) && insertIdx < patchSizeIns){
-//            cout<<Vg_retri.row(boundaryIns[insertIdx]) <<" for "<<boundaryIns[insertIdx]<<" and" << currPattern.row(vertId)<<endl;
             insertIdx++;
         }
         if(Vg_retri.row(boundaryIns[insertIdx]) != currPattern.row(vertId)){
             cout<<"Something went wrong. Not found in insert patch. "<<endl; return;
         }
-        cout<<" we've found the two indices "<< garIdx <<" and " << insertIdx << endl ;
-        cout<<" we've found the two indices "<< boundary[garIdx ]<<" and " <<boundaryIns[ insertIdx] << endl ;
 
         mergedIds(boundaryIns[insertIdx])= boundary[garIdx];
 
@@ -842,9 +844,7 @@ void mergeTriagulatedAndPattern(const vector<vector<int>>& connectedVertVec, con
         int currVertIdInsert = boundaryIns[insertIdx];
         int jcounter = 1; int j=1;
         for(int jj=1; jj < connectedVertVec[i].size(); jj++){//
-            cout<<"begin "<<j<<"/"<< connectedVertVec[i].size()<<endl;
             int nextVertId, nextVertIdInserted;
-            cout<<" is ascending "<<isAscVec[i]<<endl ;
             if(isAscVec[i]){
                 nextVertId = boundary[ (garIdx + jcounter) % patchSize];
                 nextVertIdInserted = (insertIdx - j) ;
@@ -858,13 +858,11 @@ void mergeTriagulatedAndPattern(const vector<vector<int>>& connectedVertVec, con
                 nextVertIdInserted = boundaryIns[(insertIdx + j) % patchSizeIns];
 
             }
-            cout<<nextVertId<<" next vert and on retri "<< nextVertIdInserted<<endl;
             if((Vg_retri.row(nextVertIdInserted) - currPattern.row(nextVertId )).norm() >0.0001){
-                cout<<Vg_retri.row(nextVertIdInserted)<<" We have to insert something. It does not work that way "<<currPattern.row(nextVertId )<<endl ;
+                cout<<" We have to insert a vertex "<<endl ;
                 vector<vector<int>> vfAdj;
                 createVertexFaceAdjacencyList(Fg_pattern, vfAdj);
                 int faceToDupl = adjacentFaceToEdge(nextVertId,currVertIdGar, -1, vfAdj);
-                cout<<faceToDupl<<" Face to duplicate "<<Fg_pattern.row(faceToDupl)<<endl;
                 MatrixXi Fg_new (Fg_pattern.rows()+1, 3);
                 MatrixXd currPattern_new (currPattern.rows()+1, 3);
                 Fg_new.block(0,0,Fg_pattern.rows(), 3 ) = Fg_pattern;
@@ -887,19 +885,18 @@ void mergeTriagulatedAndPattern(const vector<vector<int>>& connectedVertVec, con
                     Fg_new(faceToDupl, 2) = currPattern.rows();
                 }
 
-                cout<<   Fg_new.row(faceToDupl)<<" orig face changed"<<endl;
-                cout<<   Fg_new.row(Fg_pattern.rows())<<" new face"<<endl;
                 mergedIds(nextVertIdInserted) = currPattern.rows();
                 Fg_pattern.resize(Fg_new.rows(), 3); Fg_pattern = Fg_new;
                 currPattern.resize(currPattern_new.rows(), 3); currPattern = currPattern_new;
                 jj--;
+                currVertIdGar = currPattern.rows()-1;//  nextVertId;
             }else{
-                cout<<"all good for index "<<nextVertIdInserted<<" which is in full picture "<<nextVertId<<endl;
                 mergedIds(nextVertIdInserted)= nextVertId;
                 jcounter++;
+                currVertIdGar = nextVertId;
             }
             j++;
-            currVertIdGar = nextVertId;
+
             currVertIdInsert = nextVertIdInserted;
 
         }
