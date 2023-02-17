@@ -122,6 +122,8 @@ Eigen::MatrixXd tarU, tarV;// tarD1;
 Eigen::MatrixXd baryCoords1, baryCoords2;
 Eigen::MatrixXd baryCoordsd1, baryCoordsd2;
 std::vector<std::vector<int> > boundaryL, boundaryL_toPattern;
+double setTheresholdlMid = 1.05;// 5% stress level allowed
+double setTheresholdBound = 1.05;
 
 
 static bool noStress = true;
@@ -158,7 +160,7 @@ vector<int> polyLineMeshIndicator;
 //Eigen::SparseMatrix<double> L;
 MatrixXd Vg_retri;// re triangulated area
 MatrixXi Fg_retri;// re triangulated face
-vector<vector<int>> connectedVert; int prevFaces;// initial umber of faces (for coloring), and boundary vertices that are now duplicated (not used now)
+vector<vector<int>> connectedVert; vector<int> newFaces;// indices of new faces (for coloring), and boundary vertices that are now duplicated
 vector<int> isAscVert; vector<bool> isAscMerge;
 VectorXd cornerVertices;
 vector<cutVertEntry*> cutPositions;
@@ -757,6 +759,9 @@ int main(int argc, char *argv[])
 //                adaptionFlag = true;
             }
             ImGui::InputDouble("Taylor Lazyness ", &(taylor_lazyness),  0, 0, "%0.2f");
+            ImGui::InputDouble("Thereshold Mid  ", &(setTheresholdlMid),  0, 0, "%0.4f");
+            ImGui::InputDouble("Thereshold Boundary  ", &(setTheresholdBound),  0, 0, "%0.4f");
+
             if(ImGui::Button("Compute first Tear", ImVec2(-1, 0))){
                 simulate = false;
                 adaptionFlag = false;
@@ -769,7 +774,8 @@ int main(int argc, char *argv[])
                             seamIdPerCorner,
                             cornerVertices, cutPositions, releasedVert, toPattern_boundaryVerticesSet, cornerSet,
                             handledVerticesSet, prevTearFinished, LShapeAllowed,
-                            prioInner, prioOuter, taylor_lazyness, mapFromFg);
+                            prioInner, prioOuter, taylor_lazyness, mapFromFg, setTheresholdlMid,
+                                 setTheresholdBound);
 
                  changedPos = pos;
                 if( copyPattern != mapFromVg){
@@ -814,7 +820,7 @@ int main(int argc, char *argv[])
 
                 pos = tearFurther(cutPositions, currPattern, Fg_pattern_curr, seamsList, minusOneSeamsList, releasedVert,
                             toPattern_boundaryVerticesSet, boundaryL, cornerSet, handledVerticesSet, prevTearFinished,
-                            preferManySmallCuts, LShapeAllowed, patternEdgeLengths_orig, mapFromVg, mapFromFg, prioInner, prioOuter);
+                            preferManySmallCuts, LShapeAllowed, patternEdgeLengths_orig, mapFromVg, mapFromFg, prioInner, prioOuter, setTheresholdlMid, setTheresholdBound);
 
                 if(pos!=-1){
                     viewer.selected_data_index = 2;
@@ -921,7 +927,7 @@ int main(int argc, char *argv[])
                 mapToFg= mapToF;
 
 
-                prevFaces = Fg_pattern_curr.rows();
+//                vector<int> newFaces ;
                 viewer.selected_data_index = 1;
                 viewer.data().clear();
                 viewer.selected_data_index = 2;
@@ -1088,7 +1094,7 @@ int main(int argc, char *argv[])
             }
             if(ImGui::Button("Add Area to Pattern", ImVec2(-1, 0))) {
                 mouse_mode = NONE;
-                mergeTriagulatedAndPattern(connectedVert, isAscVert, isAscMerge, Vg_retri, Fg_retri, currPattern, Fg_pattern_curr);
+                mergeTriagulatedAndPattern(connectedVert, isAscVert, isAscMerge, Vg_retri, Fg_retri, currPattern, Fg_pattern_curr, newFaces);
 
                 viewer.selected_data_index = 1;
                 viewer.data().clear();
@@ -1096,8 +1102,11 @@ int main(int argc, char *argv[])
                 viewer.data().clear();
                 viewer.data().set_mesh(currPattern, Fg_pattern_curr);
                 MatrixXd C = MatrixXd::Zero(Fg_pattern_curr.rows(), 3);
-                C.col(1)=  VectorXd::Ones(Fg_pattern_curr.rows());
-                C.block(0,0, prevFaces, 1) = VectorXd::Ones(prevFaces);
+                C.col(1).setConstant(1);
+                C.col(0).setConstant(1);
+                for(auto i: newFaces){
+                    C(i, 0) =0;
+                }
                 viewer.data().set_colors(C);
 
             }
@@ -1127,7 +1136,9 @@ int main(int argc, char *argv[])
                         igl::writeOBJ("retriBackIn3d.obj", adaptedPatternIn3d, Fg_pattern);
                 MatrixXd C = MatrixXd::Zero(Fg_pattern.rows(), 3);
                 C.col(1)=  VectorXd::Ones(Fg_pattern.rows());
-                C.block(0,0, prevFaces, 1) = VectorXd::Ones(prevFaces);
+                for(auto i: newFaces){
+                    C(i, 0)= 1;
+                }
                 viewer.data().set_colors(C);
 
 
