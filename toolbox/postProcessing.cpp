@@ -324,6 +324,10 @@ void computeAllBetweensConnectPatches(vector<VectorXd>& polylineSelected,vector<
                            vector<vector<int>>& boundaryL_adaptedFromPattern, vector<vector<int>>& boundaryL_toPattern,
                            MatrixXd& currPattern, MatrixXd& Vg_to, vector<VectorXd>& polyLineInput, vector<vector<int>>& connectedVertVec, vector<int>& patchId, vector<bool>& isAscVec) {
     VectorXi idx(12);
+    patchId.clear();
+    isAscVec.clear();
+    connectedVertVec.clear();
+
     int patchL, patchR, patchTo;
     for(int i = 0; i < boundaryL_adaptedFromPattern.size(); i++){
         vector<int> boundary = boundaryL_adaptedFromPattern[i];
@@ -353,7 +357,9 @@ void computeAllBetweensConnectPatches(vector<VectorXd>& polylineSelected,vector<
     }
     bool leftAsc = isAsc(idx(0), idx(1), idx(2));
     bool rightAsc = isAsc(idx(6), idx(7), idx(8));
-
+    patchId.push_back(patchL); patchId.push_back(patchR);
+    isAscVec.push_back(leftAsc);
+    isAscVec.push_back(rightAsc);
     for(int i = 0; i < boundaryL_toPattern.size(); i++){
         vector<int> boundary = boundaryL_toPattern[i];
         for(int j = 0; j < boundary.size(); j++){
@@ -384,9 +390,11 @@ void computeAllBetweensConnectPatches(vector<VectorXd>& polylineSelected,vector<
 
     int currIdx = idx(0);
     vector<int> boundary = boundaryL_adaptedFromPattern[patchL];
+    vector<int> connVert;
     while(boundary[currIdx]!= boundary[idx(2)]){
         //add them
         polyLineInput.push_back(currPattern.row(boundary[currIdx]).transpose());
+        connVert.push_back(boundary[currIdx]);
         cout<<boundary[currIdx]<<" first"<<endl;
 
         currIdx = (leftAsc)? (currIdx+1) % boundary.size() : currIdx-1;
@@ -394,6 +402,8 @@ void computeAllBetweensConnectPatches(vector<VectorXd>& polylineSelected,vector<
 
     }// add last
     polyLineInput.push_back(currPattern.row(boundary[currIdx]).transpose());
+    connVert.push_back(boundary[currIdx]);
+    connectedVertVec.push_back(connVert);
     cout<<boundary[currIdx]<<" first"<<endl;
 
     // go on on boundary of to pattern
@@ -412,20 +422,22 @@ void computeAllBetweensConnectPatches(vector<VectorXd>& polylineSelected,vector<
     polyLineInput.push_back(Vg_to.row(boundary[currIdx]).transpose());
     cout<<boundary[currIdx]<<" sec"<<endl;
 
-
     currIdx = idx(6);
     boundary.clear();
     boundary = boundaryL_adaptedFromPattern[patchR];
+    connVert.clear();
     while(boundary[currIdx]!= boundary[idx(8)]){
         //add them
         polyLineInput.push_back(currPattern.row(boundary[currIdx]).transpose());
         cout<<boundary[currIdx]<<" third"<<endl;
-
+        connVert.push_back(boundary[currIdx]);
         currIdx = (rightAsc)? (currIdx+1) % boundary.size() : currIdx-1;
         if(currIdx<0) currIdx+= boundary.size();
 
     }// add last
     polyLineInput.push_back(currPattern.row(boundary[currIdx]).transpose());
+    connVert.push_back(boundary[currIdx]);
+    connectedVertVec.push_back(connVert);
     cout<<boundary[currIdx]<<" third"<<endl;
 
 
@@ -457,6 +469,16 @@ void computeAllBetweensNew(vector<VectorXd>& polylineSelected,vector<int>& polyl
                                boundaryL_adaptedFromPattern, boundaryL_toPattern, currPattern, Vg_to, polyLineInput, connectedVertVec, patchId, isAscVec);
         return;
     }
+    cout<<"--------------------- -------------------------"<<endl;
+    cout<<"--------------------- -------------------------"<<endl;
+    cout<<"--------------------- -------------------------"<<endl;
+    cout<<"--------------------- -------------------------"<<endl;
+    cout<<" WE ARE IN THE CASE OF NOT HAVING not 12 nor 2. WHAT TO DO NOW IS UNCLEAR"<<endl;
+    cout<<"--------------------- -------------------------"<<endl;
+    cout<<"--------------------- -------------------------"<<endl;
+    cout<<"--------------------- -------------------------"<<endl;
+    cout<<"--------------------- -------------------------"<<endl;
+
     /* given 6 positions in total
      *   we assume v0 is on the from mesh ,adapted pattern
      *   v1 is a corner that should intersect the to pattern
@@ -775,8 +797,8 @@ void replaceInFaces(int id, int newId, MatrixXi& Fg){
         }
     }
 }
-void mergeTriagulatedAndPatternNew(const vector<vector<int>>& connectedVertVec, const vector<int>& patchId,const vector<bool>& isAscVec,
-                           MatrixXd& Vg_retri, MatrixXi& Fg_retri, MatrixXd& currPattern, MatrixXi& Fg_pattern){
+void mergeTriagulatedAndPattern(const vector<vector<int>>& connectedVertVec, const vector<int>& patchId,const vector<bool>& isAscVec,
+                           MatrixXd& Vg_retri, MatrixXi& Fg_retri, MatrixXd& currPattern, MatrixXi& Fg_pattern, vector<int> & newFaces){
     currPattern.col(2).setConstant(200);
     vector<vector<int>> boundaryLinsert, boundaryLGar;
     igl::boundary_loop(Fg_retri, boundaryLinsert);
@@ -805,7 +827,7 @@ void mergeTriagulatedAndPatternNew(const vector<vector<int>>& connectedVertVec, 
 
         int insertIdx=0;
         while(Vg_retri.row(boundaryIns[insertIdx]) != currPattern.row(vertId) && insertIdx < patchSizeIns){
-            cout<<Vg_retri.row(boundaryIns[insertIdx]) <<" for "<<boundaryIns[insertIdx]<<" and" << currPattern.row(vertId)<<endl;
+//            cout<<Vg_retri.row(boundaryIns[insertIdx]) <<" for "<<boundaryIns[insertIdx]<<" and" << currPattern.row(vertId)<<endl;
             insertIdx++;
         }
         if(Vg_retri.row(boundaryIns[insertIdx]) != currPattern.row(vertId)){
@@ -818,8 +840,9 @@ void mergeTriagulatedAndPatternNew(const vector<vector<int>>& connectedVertVec, 
 
         int currVertIdGar = boundary[garIdx];
         int currVertIdInsert = boundaryIns[insertIdx];
-        int jcounter = 1;
-        for(int j=1; j < connectedVertVec[i].size(); j++){//
+        int jcounter = 1; int j=1;
+        for(int jj=1; jj < connectedVertVec[i].size(); jj++){//
+            cout<<"begin "<<j<<"/"<< connectedVertVec[i].size()<<endl;
             int nextVertId, nextVertIdInserted;
             cout<<" is ascending "<<isAscVec[i]<<endl ;
             if(isAscVec[i]){
@@ -869,22 +892,21 @@ void mergeTriagulatedAndPatternNew(const vector<vector<int>>& connectedVertVec, 
                 mergedIds(nextVertIdInserted) = currPattern.rows();
                 Fg_pattern.resize(Fg_new.rows(), 3); Fg_pattern = Fg_new;
                 currPattern.resize(currPattern_new.rows(), 3); currPattern = currPattern_new;
-
-//                once remove upper and replace by new inserted
-//                once remove lower and replace by new inserted
-//                ensure lovwer is the first one in traversal direction
-
+                jj--;
             }else{
                 cout<<"all good for index "<<nextVertIdInserted<<" which is in full picture "<<nextVertId<<endl;
                 mergedIds(nextVertIdInserted)= nextVertId;
                 jcounter++;
             }
+            j++;
             currVertIdGar = nextVertId;
             currVertIdInsert = nextVertIdInserted;
 
         }
 
     }
+    cout<<"starting the merger"<<endl;
+    //merging part
     int count = 0;
     VectorXi newId(Vg_retri.rows());
     MatrixXd Vg_help (Vg_retri.rows(), 3);
@@ -906,113 +928,19 @@ void mergeTriagulatedAndPatternNew(const vector<vector<int>>& connectedVertVec, 
         }
     }
 
-    MatrixXi Fg_new (Fg_pattern.rows()+ Fg_retri.rows(), 3);
+    int faceOffset = Fg_pattern.rows();
+    MatrixXi Fg_new (faceOffset+ Fg_retri.rows(), 3);
     MatrixXd currPattern_new (offset + count, 3);
     Fg_new.block(0,0,Fg_pattern.rows(), 3 ) = Fg_pattern;
-    Fg_new.block(Fg_pattern.rows(), 0, Fg_retri.rows(), 3) = Fg_retri;
+    Fg_new.block(faceOffset, 0, Fg_retri.rows(), 3) = Fg_retri;
     currPattern_new.block(0,0,currPattern.rows(), 3 ) = currPattern;
     currPattern_new.block(offset, 0,count, 3 ) = Vg_help.block(0,0, count, 3);
 
     Fg_pattern.resize(Fg_new.rows(), 3); Fg_pattern = Fg_new;
     currPattern.resize(currPattern_new.rows(), 3); currPattern = currPattern_new;
-
-}
-
-void mergeTriagulatedAndPattern(const vector<vector<int>>& connectedVertVec, const vector<int>& patchId,const vector<bool>& isAscVec,
-                                MatrixXd& Vg_retri, MatrixXi& Fg_retri, MatrixXd& currPattern, MatrixXi& Fg_pattern){
-    mergeTriagulatedAndPatternNew(connectedVertVec, patchId, isAscVec, Vg_retri, Fg_retri, currPattern, Fg_pattern);
-    return;
-    int offset = currPattern.rows();
-    currPattern.col(2).setConstant(200);
-    vector<VectorXd> addedVerts;
-    bool insertFalag= false; // TODO THIS IS VERY HACKY!!
-    int count = 0;
-    for(int i =0; i< Vg_retri.rows(); i++){
-        int newIdx = -1; // offset + count;
-        for(int j=0; j < currPattern.rows(); j++){
-            if(currPattern.row(j ) == Vg_retri.row(i)){
-                newIdx = j;
-                cout<<"located"<<endl;
-                if(j== 3105) insertFalag = true;
-            }
-        }
-
-        if(newIdx == -1 ){
-            cout<<"not located"<<endl ;
-            newIdx = offset+count;
-            // we  didnt find it in the pattern, therefore we need to add it as verted
-            addedVerts.push_back( Vg_retri.row(i).transpose());
-            count++;
-        }
-        replaceInFaces(i, newIdx, Fg_retri);
-
-
+    for(int i= faceOffset; i<Fg_pattern.rows(); i++){
+        newFaces.push_back(i);
     }
-    cout<<"----------"<<endl;
-    MatrixXd newVg (offset + addedVerts.size(), 3);
-    newVg.block(0,0,offset, 3) = currPattern;
-    for(int i= 0; i< addedVerts.size(); i++){
-        newVg.row(i+offset) = addedVerts[i];
-    }
-
-
-    MatrixXi newFg (Fg_pattern.rows()+ Fg_retri.rows(), 3);
-    newFg.block(0,0,Fg_pattern.rows(), 3) = Fg_pattern;
-    newFg.block(Fg_pattern.rows(), 0, Fg_retri.rows(), 3) = Fg_retri;
-
-    currPattern.resize(newVg.rows(), 3);
-    currPattern = newVg;
-    Fg_pattern.resize(newFg.rows(), 3);
-    Fg_pattern = newFg;
-    MatrixXi Fgfix;
-    if(insertFalag){
-//        Fgfix.resize (Fg_pattern.rows()+3, 3);
-//        Fgfix.block(0,0, Fg_pattern.rows(), 3) = Fg_pattern;
-//
-//        Fgfix.row(Fg_pattern.rows()+1) = Fg_pattern.row(1166) ;
-//        Fgfix(1166,0 )= 3128;
-//        Fgfix(Fg_pattern.rows()+1, 1) = 3128 ;
-//
-//        Fgfix.row(Fg_pattern.rows()+2)=  Fg_pattern.row(1144) ;
-//        Fgfix(Fg_pattern.rows()+2, 1) =3130;
-//
-//        Fgfix(1144,2 )= 3129;
-//        Fgfix(1166,0 )= 3128;
-//
-//        Fgfix.row(Fg_pattern.rows()+0)= Fg_pattern.row(1144);
-//        Fgfix(Fg_pattern.rows()+0,1 ) = 3129;
-//        Fgfix(Fg_pattern.rows()+0,2 ) = 3130;
-//
-//        Fg_pattern.resize(Fgfix.rows(), 3);
-//        Fg_pattern = Fgfix;
-
-        // another round
-        Fgfix.resize (Fg_pattern.rows()+1, 3);
-        Fgfix.block(0,0, Fg_pattern.rows(), 3) = Fg_pattern;
-
-        Fgfix.row(Fg_pattern.rows()) = Fg_pattern.row(1683) ;
-        Fgfix(1683,2 )= 3138;
-        Fgfix(Fg_pattern.rows(), 0) = 3138 ;
-
-//        Fgfix.row(Fg_pattern.rows()+2) = Fg_pattern.row(2412) ;
-//        Fgfix(2412,0 )= 3132;
-//        Fgfix(Fg_pattern.rows()+2, 2) = 3132 ;
-//
-//        Fgfix.row(Fg_pattern.rows()+1) = Fg_pattern.row(2045) ;
-//        Fgfix(2045,2 )= 3134;
-//        Fgfix(Fg_pattern.rows()+1, 1) = 3134 ;
-
-        Fg_pattern.resize(Fgfix.rows(), 3);
-        Fg_pattern = Fgfix;
-
-    }
-
-    vector<vector<int>> newBound;
-    igl::boundary_loop(Fg_pattern, newBound);
-    vector<vector<int>> newnewBound;
-    igl::boundary_loop(Fgfix, newnewBound);
-    cout<<"We now have "<<newBound.size()<< newnewBound.size()<<" patches. "<<endl;
-
 }
 
 vector<int> toVecInt(VectorXi& v){
