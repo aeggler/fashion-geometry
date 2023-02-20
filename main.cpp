@@ -441,7 +441,10 @@ int main(int argc, char *argv[])
     string mappedPatternFile = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/patternComputed_maternity_01.obj";
     igl::readOBJ(mappedPatternFile, mapToVg, mapToFg);
     mapFromVg = Vg_pattern;
-    mapFromFg =Fg_pattern;
+    mapFromFg = Fg_pattern;
+    if(symetry){
+        // vertices and faces need to be split in left and right side
+    }
 
 
     viewer.core().animation_max_fps = 200.;
@@ -495,12 +498,14 @@ int main(int argc, char *argv[])
     map<int, int> halfPatternFaceToFullPatternFace, fullPatternFaceToHalfPatternFace, halfPatternVertToFullPatternVert, fullPatternVertToHalfPatternVert, insertedIdxToPatternVert;
     MatrixXi Fg_pattern_half;
     MatrixXd Vg_pattern_half;
+    VectorXi isLeftVertPattern;
     createHalfSewingPattern( Vg_orig, Fg_orig, Vg_pattern, Fg_pattern, Vg_pattern_half, Fg_pattern_half,
-                                  halfPatternFaceToFullPatternFace, fullPatternFaceToHalfPatternFace, halfPatternVertToFullPatternVert , fullPatternVertToHalfPatternVert, insertedIdxToPatternVert );
-    cout<<" FINI PATTERN SPLIT OPERATORION"<<endl ;
-    viewer.selected_data_index = 0;
-    viewer.data().clear();
-    viewer.data().set_mesh(Vg_pattern_half, Fg_pattern_half);
+                                  halfPatternFaceToFullPatternFace, fullPatternFaceToHalfPatternFace, halfPatternVertToFullPatternVert ,
+                                  fullPatternVertToHalfPatternVert, insertedIdxToPatternVert, isLeftVertPattern );
+    cout<<" FINI PATTERN SPLIT Operation"<<endl ;
+//    viewer.selected_data_index = 0;
+//    viewer.data().clear();
+//    viewer.data().set_mesh(Vg_pattern_half, Fg_pattern_half);
 
     menu.callback_draw_viewer_menu = [&]() {
         if (ImGui::CollapsingHeader("Garment", ImGuiTreeNodeFlags_OpenOnArrow)) {
@@ -786,8 +791,18 @@ int main(int argc, char *argv[])
                 preComputeAdaption();
                 if(inverseMap){
                     initialGuessAdaption(currPattern, mapToVg, perfPattVg, Fg_pattern_curr, perfPattFg);
-                }else{
+                }else if (!symetry){
                     currPattern= mapToVg;
+                }else{
+                    int halfVert = Vg_pattern_half.rows();
+                    currPattern.resize(halfVert, 3);
+                    int usedIdx = 0;
+                    for(int i=0; i< mapFromVg.rows(); i++){
+                        if(fullPatternVertToHalfPatternVert.find(i) != fullPatternVertToHalfPatternVert.end())
+                            currPattern.row(fullPatternVertToHalfPatternVert[i]) = mapToVg.row(i);
+                            usedIdx++;
+                    }
+                    Fg_pattern_curr = Fg_pattern_half;
                 }
                 viewer.selected_data_index = 2;
                 viewer.data().clear();
@@ -795,7 +810,7 @@ int main(int argc, char *argv[])
                 viewer.data().clear();
                 viewer.selected_data_index = 0;
                 viewer.data().clear();
-                viewer.data().set_mesh(currPattern, mapFromFg);
+                viewer.data().set_mesh(currPattern, Fg_pattern_curr);
                 viewer.data().uniform_colors(ambient, diffuse, specular);
                 viewer.data().show_texture = false;
                 viewer.data().set_face_based(false);
@@ -814,6 +829,11 @@ int main(int argc, char *argv[])
                     cornerVertices = VectorXd::Zero(currPattern.rows());
                     updateCornerUtils(cornerSet, cornerPerBoundary, seamIdPerCorner, mapCornerToCorner, cornerVertices);
                     updateSeamCorner(seamsList, minusOneSeamsList, mapCornerToCorner, boundaryL);
+                }else if (symetry){
+//                    createMapCornersToNewCorner(currPattern, mapToVg, cornerPerBoundary, mapCornerToCorner, boundaryL);
+//                    cornerVertices = VectorXd::Zero(currPattern.rows());
+//                    updateCornerUtils(cornerSet, cornerPerBoundary, seamIdPerCorner, mapCornerToCorner, cornerVertices);
+//                    updateSeamCorner(seamsList, minusOneSeamsList, mapCornerToCorner, boundaryL);
                 }
 //                viewer.core().is_animating = true;
 //                adaptionFlag = true;

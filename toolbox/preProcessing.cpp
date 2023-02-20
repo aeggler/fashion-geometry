@@ -139,7 +139,7 @@ void setupCollisionConstraintsCall(Eigen::MatrixXi& collisionVert, vector<int> &
 // decision if it is in the half pattern depends on x- coordinate on 3D garment
 void createHalfSewingPattern(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg_pattern, MatrixXd& Vg_pattern_half, MatrixXi& Fg_pattern_half,
                              map<int, int>& halfPatternFaceToFullPatternFace, map<int, int>& fullPatternFaceToHalfPatternFace, map<int, int>& halfPatternVertToFullPatternVert ,
-                             map<int, int>& fullPatternVertToHalfPatternVert, map<int, int>& insertedIdxToPatternVert ){
+                             map<int, int>& fullPatternVertToHalfPatternVert, map<int, int>& insertedIdxToPatternVert, VectorXi& isLeftVertPattern ){
    int n = Vg.rows();
    int m  = Fg.rows();
     VectorXi isLeftVert(Vg.rows());
@@ -151,7 +151,6 @@ void createHalfSewingPattern(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, M
             leftCount++;
         }
     }
-//    cout<<"Left count "<<leftCount<<"/ "<<n<<endl;
 
     MatrixXd Vg_half(leftCount, 3);
     map<int, int> halfVertToFullVert, fullVertToHalfVert;
@@ -165,7 +164,7 @@ void createHalfSewingPattern(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, M
 
         }
     }
-    VectorXi isLeftVertPattern(Vg_pattern.rows());isLeftVertPattern.setConstant(-1);
+    isLeftVertPattern.resize(Vg_pattern.rows());isLeftVertPattern.setConstant(-1);
     VectorXi isLeftFace(m);
     isLeftFace.setConstant(0);
     int faceCount = 0;
