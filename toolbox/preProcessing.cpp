@@ -135,6 +135,153 @@ void setupCollisionConstraintsCall(Eigen::MatrixXi& collisionVert, vector<int> &
         cout<<" size problem"<<endl;
     }
 }
+// attention we lose face to face correspondance between the original face and the new -> create a map from halfPatternFaceToFullPatternFace
+// decision if it is in the half pattern depends on x- coordinate on 3D garment
+void createHalfSewingPattern(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg_pattern, MatrixXd& Vg_pattern_half, MatrixXi& Fg_pattern_half,
+                             map<int, int>& halfPatternFaceToFullPatternFace, map<int, int>& fullPatternFaceToHalfPatternFace, map<int, int>& halfPatternVertToFullPatternVert ,
+                             map<int, int>& fullPatternVertToHalfPatternVert, map<int, int>& insertedIdxToPatternVert ){
+   int n = Vg.rows();
+   int m  = Fg.rows();
+    VectorXi isLeftVert(Vg.rows());
+    isLeftVert.setConstant(-1);
+    int leftCount = 0;
+    for(int i=0; i<n; i++){
+        if(Vg(i, 0) <= 0){
+            isLeftVert(i) = 1;
+            leftCount++;
+        }
+    }
+//    cout<<"Left count "<<leftCount<<"/ "<<n<<endl;
+
+    MatrixXd Vg_half(leftCount, 3);
+    map<int, int> halfVertToFullVert, fullVertToHalfVert;
+    int idx=0;
+    for(int i=0; i<n; i++){
+        if(isLeftVert(i)){
+            Vg_half.row(idx) = Vg.row(i);
+            halfVertToFullVert[idx] = i;
+            fullVertToHalfVert[i] = idx;
+            idx++;
+
+        }
+    }
+    VectorXi isLeftVertPattern(Vg_pattern.rows());isLeftVertPattern.setConstant(-1);
+    VectorXi isLeftFace(m);
+    isLeftFace.setConstant(0);
+    int faceCount = 0;
+    for(int i=0; i<m; i++) {
+        int v0 = Fg(i, 0);
+        int v1 = Fg(i, 1);
+        int v2 = Fg(i, 2);
+        isLeftVertPattern(Fg_pattern(i, 0)) = (isLeftVert(v0) == 1) ? 1 : 0;
+        isLeftVertPattern(Fg_pattern(i, 1)) = (isLeftVert(v1) == 1) ? 1 : 0;
+        isLeftVertPattern(Fg_pattern(i, 2)) = (isLeftVert(v2) == 1) ? 1 : 0;
+
+        if(isLeftVert(v0) == -1 && isLeftVert(v1) == -1 && isLeftVert(v2) == -1){
+            // all on the right, ignore it
+            isLeftFace(i) = -1;
+
+        }else if(isLeftVert(v0) == 1 && isLeftVert(v1) == 1 && isLeftVert(v2) == 1){
+            // all on the left -> just take it
+            isLeftFace(i) = 1;
+
+
+            faceCount ++;
+        }else if (Vg(v0, 0)<0 ||Vg(v1, 0)<0 ||Vg(v2, 0)<0  ){
+            faceCount++;
+        }else{
+            isLeftFace(i) = -1;
+        }
+    }
+    idx=0;
+    int patternHalfVert = isLeftVertPattern.sum();
+    Vg_pattern_half.resize(patternHalfVert, 3);
+    for(int i=0; i< Vg_pattern.rows(); i++){
+        if(isLeftVertPattern(i)){
+            Vg_pattern_half.row(idx) = Vg_pattern.row(i);
+            halfPatternVertToFullPatternVert[idx] = i;
+            fullPatternVertToHalfPatternVert[i] = idx;
+            idx++;
+
+        }
+    }
+
+
+
+//    cout<<faceCount<<"/"<< m <<" left face count and middle face count "<<endl;
+    vector<VectorXd> addedVert;
+    int newIdx = leftCount;
+    Fg_pattern_half.resize(faceCount, 3);
+//    cout<<Fg_pattern_half.rows()<<" half pattern faces "<<endl ;
+
+
+    idx = 0;
+    for(int i = 0; i<m; i++){
+        if(isLeftFace(i) == 1){
+            Fg_pattern_half(idx, 0)= fullPatternVertToHalfPatternVert[Fg_pattern(i, 0)];
+            Fg_pattern_half(idx, 1)= fullPatternVertToHalfPatternVert[Fg_pattern(i, 1)];
+            Fg_pattern_half(idx, 2)= fullPatternVertToHalfPatternVert[Fg_pattern(i, 2)];
+            idx++;
+
+        }
+//        else if(isLeftFace(i)==0){
+//            int v0 = Fg(i, 0);
+//            int v1 = Fg(i, 1);
+//            int v2 = Fg(i, 2);
+//            cout<<i<<" intermediate face "<<isLeftVert(v0)<<" "<<isLeftVert(v1)<<" "<<isLeftVert(v2)<<endl;
+//
+//            Fg_pattern_half(idx, 0) = fullPatternVertToHalfPatternVert[v0];
+//            Fg_pattern_half(idx, 1) = fullPatternVertToHalfPatternVert[v1];
+//            Fg_pattern_half(idx, 2) = fullPatternVertToHalfPatternVert[v2];
+//
+//            // at least one face is on the right side , it has to be replaced
+//            if(isLeftVert(v0) == -1){
+//                VectorXd vertPos = Vg_pattern.row(v0);
+//                vertPos(0)=0;
+//                // replace it and change the face
+//                addedVert.push_back(vertPos);
+//                Fg_pattern_half(idx, 0) = newIdx;
+//                insertedIdxToPatternVert[newIdx]= v0;
+//                newIdx++;
+//            }
+//            if(isLeftVert(v1) == -1){
+//                VectorXd vertPos = Vg_pattern.row(v1);
+//                vertPos(0)=0;
+//                // replace it and change the face
+//                addedVert.push_back(vertPos);
+//                Fg_pattern_half(idx, 1) = newIdx;
+//                insertedIdxToPatternVert[newIdx]= v1;
+//                newIdx++;
+//            }
+//            if(isLeftVert(v2) == -1){
+//                VectorXd vertPos = Vg_pattern.row(v2);
+//                vertPos(0)=0;
+//                // replace it and change the face
+//                addedVert.push_back(vertPos);
+//                Fg_pattern_half(idx, 2) = newIdx;
+//                insertedIdxToPatternVert[newIdx]= v2;
+//                newIdx++;
+//            }
+//
+//            idx++;
+//
+//        }
+    }
+
+//    MatrixXd Vg_temp = Vg_pattern_half;
+//    Vg_pattern_half.resize(Vg_pattern_half.rows() + addedVert.size(), 3);
+//    Vg_pattern_half.block(0, 0, Vg_temp.rows(), 3) = Vg_temp;
+//    idx = Vg_pattern_half.rows();
+//    for(auto vert : addedVert){
+//        Vg_pattern_half.row(idx) = vert;
+//        idx ++;
+//    }
+
+//    cout<<Vg_pattern_half.rows()<<" half pattern vertices "<<endl;
+}
+
+
+
 //
 //void oneShotLengthOpt(MatrixXi& Fg, int verts ){
 //    cout<<endl<<endl<<endl;

@@ -198,7 +198,7 @@ int computeClosestVertexOnMesh(Vector3d& b, int& fid, MatrixXi& F);
 bool callback_mouse_down(igl::opengl::glfw::Viewer& viewer, int button, int modifier);
 void updateChangedBaryCoordinates(int changedPosition, vector<vector<int>>& vfFromPatt);
 int pos;
-
+bool symetry = true;
 bool pre_draw(igl::opengl::glfw::Viewer& viewer){
     viewer.data().dirty |= igl::opengl::MeshGL::DIRTY_DIFFUSE | igl::opengl::MeshGL::DIRTY_SPECULAR;
     if(simulate){
@@ -278,10 +278,22 @@ int main(int argc, char *argv[])
 //    string garment_file_name =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/moreGarments/dress_4/dress_3d.obj";// for the dress
 
     igl::readOBJ(garment_file_name, Vg, Fg);
-//    cout<<"loaded garment "<<endl;
+//    int rears = 68;
+//    VectorXi idxrear ( rears);
+//    ifstream in("seamOut3D.txt");
+////    ifstream in2("seamOut2D.txt");
+//    for(int i = 0; i < rears/2; i++){
+//        in >>idxrear(i);
+//    }
+//    for(int i=0; i<rears/2; i++){
+//        Vg(idxrear(i), 0) = 0; // ensure the vertex is exactly on the symetry plane!
+//    }
+
+
     Timer t("Setup");
     garmentPreInterpol = Vg;
     Vg_orig = Vg; Fg_orig= Fg;
+//    igl::writeOBJ("readjustedPos.obj", Vg, Fg);
 
 //    cout<<"choose garment 2D"<<endl;
 //    string garment_pattern_file_name= igl::file_dialog_open();
@@ -442,6 +454,54 @@ int main(int argc, char *argv[])
     bool showPattern= false;
     set<int> handledVerticesSet;
     pos = -1;
+
+
+//    // quick to fix them on the seam
+//    ofstream out("seamOut3D.txt");
+//    ofstream out2("seamOut2D.txt");
+//
+//    vector<int> whichS;
+//    whichS.push_back(2);
+//    whichS.push_back(3);
+//    whichS.push_back(9);
+//    whichS.push_back(12);
+//    int rears =0;
+//    for(auto j:whichS){
+//        seam* firstSeam = seamsList[j];
+//        auto stP1 = firstSeam-> getStartAndPatch1();
+//        auto stP2 = firstSeam-> getStartAndPatch2ForCorres();
+//
+//        int len = firstSeam -> seamLength();
+//        int boundLen1 = boundaryL[stP1.second].size();
+//        int boundLen2 = boundaryL[stP2.second].size();
+//
+//        for(int i=0; i<=len; i++){
+//            int vone = vertexMapPattToGar[boundaryL[stP1.second][(stP1.first+i)% boundLen1]];
+//            out2<<boundaryL[stP1.second][(stP1.first+i)% boundLen1]<<" ";
+//            int setAccess = (stP2.first-i)% boundLen2;
+//            if(setAccess < 0) {
+//                setAccess +=boundLen2;
+//            }
+//            if(seamsList[j]->inverted) setAccess = (stP2.first + i) % boundLen2;
+//            int vtwo = vertexMapPattToGar[boundaryL[stP2.second][setAccess]] ;
+//            out<<vone<<" ";
+//            out2<< boundaryL[stP2.second][setAccess]<<" ";
+//            rears+=2;
+//
+//        }
+//    }
+//    out.close();
+//    out2.close();
+    map<int, int> halfPatternFaceToFullPatternFace, fullPatternFaceToHalfPatternFace, halfPatternVertToFullPatternVert, fullPatternVertToHalfPatternVert, insertedIdxToPatternVert;
+    MatrixXi Fg_pattern_half;
+    MatrixXd Vg_pattern_half;
+    createHalfSewingPattern( Vg_orig, Fg_orig, Vg_pattern, Fg_pattern, Vg_pattern_half, Fg_pattern_half,
+                                  halfPatternFaceToFullPatternFace, fullPatternFaceToHalfPatternFace, halfPatternVertToFullPatternVert , fullPatternVertToHalfPatternVert, insertedIdxToPatternVert );
+    cout<<" FINI PATTERN SPLIT OPERATORION"<<endl ;
+    viewer.selected_data_index = 0;
+    viewer.data().clear();
+    viewer.data().set_mesh(Vg_pattern_half, Fg_pattern_half);
+
     menu.callback_draw_viewer_menu = [&]() {
         if (ImGui::CollapsingHeader("Garment", ImGuiTreeNodeFlags_OpenOnArrow)) {
 

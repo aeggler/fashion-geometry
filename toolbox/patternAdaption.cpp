@@ -23,6 +23,8 @@ using namespace Eigen;
 MatrixXd lengthsOrig;
 map<int, cutVertEntry *> cveStartPositionsSet;
 set<int> cutThroughCornerVertices;
+double boundThereshold ;
+double middleThereshold ;
 int findWhichEdgeOfFace(int face, int v1, int v2, MatrixXi& Fg){
     int faceidxv1, faceidxv2;
     for(int j=0; j<3; j++){
@@ -203,11 +205,11 @@ bool checkIfTearIsUseful(int vert, Vector3d& cutDirection,  vector<vector<int>>&
             if(faces.first!= -1){
                 int whichEdgeLeft = findWhichEdgeOfFace(faces.first, vert, otherVert, Fg_pattern);
                 w += lengthsCurr(faces.first, whichEdgeLeft)/lengthsOrig(faces.first, whichEdgeLeft);
-                cout<<otherVert<<" Length now:"<<lengthsCurr(faces.first, whichEdgeLeft)<<" and orig"<<lengthsOrig(faces.first, whichEdgeLeft)<<endl;
+//                cout<<otherVert<<" Length now:"<<lengthsCurr(faces.first, whichEdgeLeft)<<" and orig"<<lengthsOrig(faces.first, whichEdgeLeft)<<endl;
             }else if(faces.second!= -1){
                 int whichEdgeRight = findWhichEdgeOfFace(faces.second, vert, otherVert, Fg_pattern);
                 w += lengthsCurr(faces.second, whichEdgeRight)/lengthsOrig(faces.second, whichEdgeRight);
-                cout<<otherVert<<" Length now:"<< lengthsCurr(faces.second, whichEdgeRight) <<" and orig"<< lengthsOrig(faces.second, whichEdgeRight) <<endl;
+//                cout<<otherVert<<" Length now:"<< lengthsCurr(faces.second, whichEdgeRight) <<" and orig"<< lengthsOrig(faces.second, whichEdgeRight) <<endl;
 
             }
             ws(i) = w;
@@ -433,8 +435,6 @@ void splitVertexFromCVE( cutVertEntry*& cve,
         return;
     }
 
-    double thereshold = 1.05;
-
     Vector3d toLeft = Vg.row(boundaryL[cve->patch][plusOneId]) - Vg.row(cve->vert);
     Vector3d toRight = Vg.row(boundaryL[cve->patch][minusOneId])- Vg.row(cve->vert);
 
@@ -479,43 +479,36 @@ void splitVertexFromCVE( cutVertEntry*& cve,
                        Vg.row(Fg(adjFace, 2))*  (1./3) ).transpose();
            double lenNow = distNow.norm();
 
-//        cout<<"pos now "<<distNow.transpose() <<" and normed"<<distNow.normalized().transpose() <<endl;//it has to be for any of the adjacent ones, not just this single one
-
-            faceBaryKeep(0) += 1;
-            input.row(0)= faceBary;
-            VectorXd baryUcurr;
-            igl::barycentric_coordinates(input, Vg_pattern_orig.row(Fg(adjFace, 0)), Vg_pattern_orig.row(Fg(adjFace, 1)),
-                                             Vg_pattern_orig.row(Fg(adjFace, 2)), baryUcurr);
-            distNow = (Vg.row(Fg(adjFace, 0)) * baryUcurr(0)+
-                                    Vg.row(Fg(adjFace, 1)) * baryUcurr(1) +
-                                    Vg.row(Fg(adjFace, 2))* baryUcurr(2)).transpose();
-
-            distNow -= (Vg.row(Fg(adjFace, 0)) * (1./3)+
-                            Vg.row(Fg(adjFace, 1)) *  (1./3) +
-                            Vg.row(Fg(adjFace, 2))*  (1./3) ).transpose();
-           VectorXd cutPerp= cutDirection; cutPerp(1)=cutDirection(0); cutPerp(0)= cutDirection(1);
-           auto dotH = cutPerp.normalized().dot(distNow.normalized());
-//           if(distNow.norm() * dotH > 1.01){
-//               tearIsUseful= true;
-//           }
-
-//                cout<<" U dist now rel pos : "<<distNow.transpose()<<" norm "<<distNow.norm()<<endl;
-
-            faceBary(1) += 1; faceBary(0) -= 1;
-            input.row(0)= faceBary;
-            VectorXd baryVcurr;
-            igl::barycentric_coordinates(input, Vg_pattern_orig.row(Fg(adjFace, 0)), Vg_pattern_orig.row(Fg(adjFace, 1)),
-                                             Vg_pattern_orig.row(Fg(adjFace, 2)), baryVcurr);
-            distNow = (Vg.row(Fg(adjFace, 0)) * baryVcurr(0)+
-                           Vg.row(Fg(adjFace, 1)) * baryVcurr(1) +
-                           Vg.row(Fg(adjFace, 2))* baryVcurr(2)).transpose();
-            distNow -= (Vg.row(Fg(adjFace, 0)) * (1./3)+
-                            Vg.row(Fg(adjFace, 1)) *  (1./3) +
-                            Vg.row(Fg(adjFace, 2))*  (1./3) ).transpose();
-//                cout<<" V dist now: "<<distNow.transpose()<<" norm "<<distNow.norm()<<endl;
-
-           dotH = cutPerp.normalized().dot(distNow.normalized());
-//           if(distNow.norm() * dotH > 1.01){
+//            faceBaryKeep(0) += 1;
+//            input.row(0)= faceBary;
+//            VectorXd baryUcurr;
+//            igl::barycentric_coordinates(input, Vg_pattern_orig.row(Fg(adjFace, 0)), Vg_pattern_orig.row(Fg(adjFace, 1)),
+//                                             Vg_pattern_orig.row(Fg(adjFace, 2)), baryUcurr);
+//            distNow = (Vg.row(Fg(adjFace, 0)) * baryUcurr(0)+
+//                                    Vg.row(Fg(adjFace, 1)) * baryUcurr(1) +
+//                                    Vg.row(Fg(adjFace, 2))* baryUcurr(2)).transpose();
+//
+//            distNow -= (Vg.row(Fg(adjFace, 0)) * (1./3)+
+//                            Vg.row(Fg(adjFace, 1)) *  (1./3) +
+//                            Vg.row(Fg(adjFace, 2))*  (1./3) ).transpose();
+//           VectorXd cutPerp= cutDirection; cutPerp(1)=cutDirection(0); cutPerp(0)= cutDirection(1);
+//           auto dotH = cutPerp.normalized().dot(distNow.normalized());
+//
+//            faceBary(1) += 1; faceBary(0) -= 1;
+//            input.row(0)= faceBary;
+//            VectorXd baryVcurr;
+//            igl::barycentric_coordinates(input, Vg_pattern_orig.row(Fg(adjFace, 0)), Vg_pattern_orig.row(Fg(adjFace, 1)),
+//                                             Vg_pattern_orig.row(Fg(adjFace, 2)), baryVcurr);
+//            distNow = (Vg.row(Fg(adjFace, 0)) * baryVcurr(0)+
+//                           Vg.row(Fg(adjFace, 1)) * baryVcurr(1) +
+//                           Vg.row(Fg(adjFace, 2))* baryVcurr(2)).transpose();
+//            distNow -= (Vg.row(Fg(adjFace, 0)) * (1./3)+
+//                            Vg.row(Fg(adjFace, 1)) *  (1./3) +
+//                            Vg.row(Fg(adjFace, 2))*  (1./3) ).transpose();
+////                cout<<" V dist now: "<<distNow.transpose()<<" norm "<<distNow.norm()<<endl;
+//
+//           dotH = cutPerp.normalized().dot(distNow.normalized());
+////           if(distNow.norm() * dotH > 1.01){
 //               tearIsUseful= true;
 //           }
 //                cout<<dotH<<" the dot product and the computed influence "<<distNow.norm() * dotH <<endl ;
@@ -523,9 +516,8 @@ void splitVertexFromCVE( cutVertEntry*& cve,
                 // we could use fiber direction dot product with perp cut direction
                 //idea a lower thereshold for the last one? better to cut through immediately
 
-
-           double checkIfTearIsUsefulThereshold = 1.051;
-           if(lenNow/lenThen >checkIfTearIsUsefulThereshold ){
+            cout<<lenNow/lenThen << " ratio of side, thereshold "<<boundThereshold<<endl;
+           if(lenNow/lenThen > boundThereshold ){
                tearIsUseful= true;
            }
            /*END TEST IF USEFUL*/
@@ -599,16 +591,6 @@ void splitVertexFromCVE( cutVertEntry*& cve,
         Vg= newVg;
         return;
 
-    }
-    // if it's a bridge there is no next and we set fin flag
-    if(cve-> bridgeFlag){
-        // todo I guess this is obsolete
-        // this is the final cut, we are done after: should look like  ><
-        cout<<"cutting the bridge, but better dont for now , it messes up the patches "<<endl;
-       // updateWithNewId(Fg, cve->vert, rightFaceId, newVertIdx);
-
-        cve-> finFlag = true;
-        return;
     }
 
     Vector3d midVec;
@@ -727,11 +709,11 @@ void splitVertexFromCVE( cutVertEntry*& cve,
                     Vg.row(Fg(adjFace, 1)) *  (1./3) +
                     Vg.row(Fg(adjFace, 2))*  (1./3) ).transpose();
         double lenNow = distNow.norm();
-        cout<<"Face: "<<adjFace<<" "<<lenNow<<" dist now and then "<<lenThen<<" ratio is "<<lenNow/lenThen<<endl;
+        cout<<"Face: "<<adjFace<<" "<<lenNow<<" dist now and then "<<lenThen<<" ratio is "<<lenNow/lenThen<<" th:"<<middleThereshold<<endl;
 //        cout<<"pos now "<<distNow.transpose() <<" and normed"<<distNow.normalized().transpose() <<endl;//it has to be for any of the adjacent ones, not just this single one
 
-        double checkIfTearIsUsefulThereshold = 1.051;
-        if(lenNow/lenThen >checkIfTearIsUsefulThereshold ){
+
+        if(lenNow/lenThen > middleThereshold ){
             tearIsUseful= true;
         }
         /*END TEST IF USEFUL*/
@@ -1850,7 +1832,10 @@ int tearFurther(vector<cutVertEntry*>& cutPositions, MatrixXd&  currPattern, Mat
                  map<int, pair<int, int>> & releasedVert, set<int>& toPattern_boundaryVerticesSet,  std::vector<std::vector<int> >& boundaryL,
                  set<int> & cornerSet, set<int>& handledVerticesSet,  bool& prevFinished, const bool & preferManySmallCuts, const bool & LShapeAllowed,
                  MatrixXd& patternEdgeLengths_orig, MatrixXd& Vg_pattern_orig, MatrixXi& Fg_pattern_orig, bool& prioInner,
-                bool& prioOuter ){
+                bool& prioOuter, double& setTheresholdlMid, double& setTheresholdBound ){
+    middleThereshold = setTheresholdlMid;
+    boundThereshold = setTheresholdBound;
+
     cout<<endl<<endl<<"-----------------------"<<endl<<endl;
 
     int returnPosition = -1;
@@ -2067,9 +2052,11 @@ int computeTear(bool inverseMap, Eigen::MatrixXd & fromPattern, MatrixXd&  currP
                  bool& prevFinished,
                  const bool & LShapeAllowed,
                  bool& prioInner,
-                 bool& prioOuter, double tailor_lazyness, const MatrixXi& mapFromFg )
+                 bool& prioOuter, double tailor_lazyness, const MatrixXi& mapFromFg, double& setTheresholdlMid, double& setTheresholdBound )
                  {
-    cout<<boundaryL.size()<<" boundaryL size"<<endl;
+
+                     middleThereshold = setTheresholdlMid;
+                     boundThereshold = setTheresholdBound;
     std::vector<std::vector<int> > boundaryLnew;
     igl::boundary_loop(Fg_pattern_curr, boundaryLnew);
     boundaryL.clear();
