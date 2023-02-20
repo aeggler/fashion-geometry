@@ -180,6 +180,7 @@ void createHalfSewingPattern(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, M
             // all on the right, ignore it
             isLeftFace(i) = -1;
 
+
         }else if(isLeftVert(v0) == 1 && isLeftVert(v1) == 1 && isLeftVert(v2) == 1){
             // all on the left -> just take it
             isLeftFace(i) = 1;
@@ -190,6 +191,9 @@ void createHalfSewingPattern(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, M
             faceCount++;
         }else{
             isLeftFace(i) = -1;
+            isLeftVertPattern(Fg_pattern(i, 0))=0;
+            isLeftVertPattern(Fg_pattern(i, 1))=0;
+            isLeftVertPattern(Fg_pattern(i, 2))=0;
         }
     }
     idx=0;
@@ -220,6 +224,9 @@ void createHalfSewingPattern(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, M
             Fg_pattern_half(idx, 0)= fullPatternVertToHalfPatternVert[Fg_pattern(i, 0)];
             Fg_pattern_half(idx, 1)= fullPatternVertToHalfPatternVert[Fg_pattern(i, 1)];
             Fg_pattern_half(idx, 2)= fullPatternVertToHalfPatternVert[Fg_pattern(i, 2)];
+
+            halfPatternFaceToFullPatternFace[idx] = i;
+            fullPatternFaceToHalfPatternFace[i] = idx;
             idx++;
 
         }
