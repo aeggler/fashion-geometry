@@ -243,6 +243,8 @@ MatrixXd patternEdgeLengths_orig;
 MatrixXi mapFromFg, mapToFg, Fg_pattern_curr; //from  = the rest shape of the garment
 MatrixXd mapFromVg, mapToVg; //to = the target shape
 int changedPos;
+map<int, int> halfPatternFaceToFullPatternFace, fullPatternFaceToHalfPatternFace, halfPatternVertToFullPatternVert, fullPatternVertToHalfPatternVert, insertedIdxToPatternVert;
+
 vector<vector<int>> boundaryLFrom;
 int main(int argc, char *argv[])
 {
@@ -438,14 +440,11 @@ int main(int argc, char *argv[])
 //    toPattern= Vg_pattern_orig;
 
     bool inverseMap = false;
+//    symetry = false;
     string mappedPatternFile = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/patternComputed_maternity_01.obj";
     igl::readOBJ(mappedPatternFile, mapToVg, mapToFg);
     mapFromVg = Vg_pattern;
     mapFromFg = Fg_pattern;
-    if(symetry){
-        // vertices and faces need to be split in left and right side
-    }
-
 
     viewer.core().animation_max_fps = 200.;
     viewer.core().is_animating = false;
@@ -457,7 +456,6 @@ int main(int argc, char *argv[])
     bool showPattern= false;
     set<int> handledVerticesSet;
     pos = -1;
-
 
 //    // quick to fix them on the seam
 //    ofstream out("seamOut3D.txt");
@@ -495,14 +493,29 @@ int main(int argc, char *argv[])
 //    }
 //    out.close();
 //    out2.close();
-    map<int, int> halfPatternFaceToFullPatternFace, fullPatternFaceToHalfPatternFace, halfPatternVertToFullPatternVert, fullPatternVertToHalfPatternVert, insertedIdxToPatternVert;
     MatrixXi Fg_pattern_half;
     MatrixXd Vg_pattern_half;
     VectorXi isLeftVertPattern;
-    createHalfSewingPattern( Vg_orig, Fg_orig, Vg_pattern, Fg_pattern, Vg_pattern_half, Fg_pattern_half,
-                                  halfPatternFaceToFullPatternFace, fullPatternFaceToHalfPatternFace, halfPatternVertToFullPatternVert ,
-                                  fullPatternVertToHalfPatternVert, insertedIdxToPatternVert, isLeftVertPattern );
-    cout<<" FINI PATTERN SPLIT Operation"<<endl ;
+
+    if(symetry) {
+        createHalfSewingPattern(Vg_orig, Fg_orig, Vg_pattern, Fg_pattern, Vg_pattern_half, Fg_pattern_half,
+                                halfPatternFaceToFullPatternFace, fullPatternFaceToHalfPatternFace,
+                                halfPatternVertToFullPatternVert,
+                                fullPatternVertToHalfPatternVert, insertedIdxToPatternVert, isLeftVertPattern);
+        cout << " FINISHED PATTERN SPLIT Operation" << endl;
+        cout<<(fullPatternVertToHalfPatternVert.find(2264) != fullPatternVertToHalfPatternVert.end())<<" check if 2264 is there"<<endl;
+        cout<<(fullPatternVertToHalfPatternVert.find(444) != fullPatternVertToHalfPatternVert.end())<<" check if 444 is there"<<endl;
+
+    }else{
+        for(int i= 0; i< Vg_pattern.rows(); i++){
+            halfPatternVertToFullPatternVert[i] = i;
+            fullPatternVertToHalfPatternVert[i] = i;
+        }
+        for(int i=0; i<Fg_pattern.rows(); i++){
+            halfPatternFaceToFullPatternFace[i] = i;
+            fullPatternFaceToHalfPatternFace[i] = i;
+        }
+    }
 //    viewer.selected_data_index = 0;
 //    viewer.data().clear();
 //    viewer.data().set_mesh(Vg_pattern_half, Fg_pattern_half);
@@ -829,11 +842,6 @@ int main(int argc, char *argv[])
                     cornerVertices = VectorXd::Zero(currPattern.rows());
                     updateCornerUtils(cornerSet, cornerPerBoundary, seamIdPerCorner, mapCornerToCorner, cornerVertices);
                     updateSeamCorner(seamsList, minusOneSeamsList, mapCornerToCorner, boundaryL);
-                }else if (symetry){
-//                    createMapCornersToNewCorner(currPattern, mapToVg, cornerPerBoundary, mapCornerToCorner, boundaryL);
-//                    cornerVertices = VectorXd::Zero(currPattern.rows());
-//                    updateCornerUtils(cornerSet, cornerPerBoundary, seamIdPerCorner, mapCornerToCorner, cornerVertices);
-//                    updateSeamCorner(seamsList, minusOneSeamsList, mapCornerToCorner, boundaryL);
                 }
 //                viewer.core().is_animating = true;
 //                adaptionFlag = true;
@@ -855,7 +863,7 @@ int main(int argc, char *argv[])
                             cornerVertices, cutPositions, releasedVert, toPattern_boundaryVerticesSet, cornerSet,
                             handledVerticesSet, prevTearFinished, LShapeAllowed,
                             prioInner, prioOuter, taylor_lazyness, mapFromFg, setTheresholdlMid,
-                                 setTheresholdBound);
+                                 setTheresholdBound, fullPatternVertToHalfPatternVert, halfPatternVertToFullPatternVert, symetry);
 
                  changedPos = pos;
                 if( copyPattern != mapFromVg){
@@ -2312,8 +2320,9 @@ void solveStretchAdaption(){
 //    oneShotLengthSolve( p_adaption,  Fg_pattern_curr, baryCoordsUPattern, baryCoordsVPattern, mapFromVg, mapFromFg);
         // force that pulls back to the original position in fromPattern
     // it does not quite work after tthe 3rd cut. Jacobian seems to be fine but it messes up
-    for(int i=0; i< Fg_pattern_curr.rows(); i++){
+    for(int j=0; j< Fg_pattern_curr.rows(); j++){
         Eigen::MatrixXd patternCoords(2, 3);
+        int i  = halfPatternFaceToFullPatternFace[j];
         patternCoords.col(0) = mapFromVg.row(mapFromFg(i, 0)).leftCols(2).transpose();
         patternCoords.col(1) = mapFromVg.row(mapFromFg(i, 1)).leftCols(2).transpose();
         patternCoords.col(2) = mapFromVg.row(mapFromFg(i, 2)).leftCols(2).transpose();
@@ -2321,9 +2330,9 @@ void solveStretchAdaption(){
         Vector2r tarUV0, tarUV1 , tarUV2;
 
         Eigen::MatrixXd targetPositions(2, 3);
-        targetPositions.col(0)=  p_adaption.row(Fg_pattern_curr(i, 0)).leftCols(2).transpose() ;
-        targetPositions.col(1)=  p_adaption.row(Fg_pattern_curr(i, 1)).leftCols(2).transpose() ;
-        targetPositions.col(2)=  p_adaption.row(Fg_pattern_curr(i, 2)).leftCols(2).transpose() ;
+        targetPositions.col(0)=  p_adaption.row(Fg_pattern_curr(j, 0)).leftCols(2).transpose() ;
+        targetPositions.col(1)=  p_adaption.row(Fg_pattern_curr(j, 1)).leftCols(2).transpose() ;
+        targetPositions.col(2)=  p_adaption.row(Fg_pattern_curr(j, 2)).leftCols(2).transpose() ;
 
         int uOrv = 1;
 //        if( i == 5549  ) uOrv = 11;
@@ -2334,15 +2343,15 @@ void solveStretchAdaption(){
         PBD_adaption.init_UVStretchPattern( thisFaceU- bary,  thisFaceV - bary, patternCoords,targetPositions,
                                                 tarUV0, tarUV1,tarUV2, uOrv,  stretchStiffnessD);
 //
-        Vector2d dir0 = tarUV0 - p_adaption.row(Fg_pattern_curr(i, 0)).leftCols(2).transpose() ;
-        Vector2d dir1 = tarUV1 - p_adaption.row(Fg_pattern_curr(i, 1)).leftCols(2).transpose() ;
-        Vector2d dir2 = tarUV2 - p_adaption.row(Fg_pattern_curr(i, 2)).leftCols(2).transpose() ;
-        correctionTerm.row(Fg_pattern_curr(i,0)).leftCols(2) += ( stretchStiffnessU * dir0);
-        correctionTerm.row(Fg_pattern_curr(i,1)).leftCols(2) += ( stretchStiffnessU * dir1);
-        correctionTerm.row(Fg_pattern_curr(i,2)).leftCols(2) += ( stretchStiffnessU * dir2);
-        itemCount(Fg_pattern_curr(i,0))++;
-        itemCount(Fg_pattern_curr(i,1))++;
-        itemCount(Fg_pattern_curr(i,2))++;
+        Vector2d dir0 = tarUV0 - p_adaption.row(Fg_pattern_curr(j, 0)).leftCols(2).transpose() ;
+        Vector2d dir1 = tarUV1 - p_adaption.row(Fg_pattern_curr(j, 1)).leftCols(2).transpose() ;
+        Vector2d dir2 = tarUV2 - p_adaption.row(Fg_pattern_curr(j, 2)).leftCols(2).transpose() ;
+        correctionTerm.row(Fg_pattern_curr(j,0)).leftCols(2) += ( stretchStiffnessU * dir0);
+        correctionTerm.row(Fg_pattern_curr(j,1)).leftCols(2) += ( stretchStiffnessU * dir1);
+        correctionTerm.row(Fg_pattern_curr(j,2)).leftCols(2) += ( stretchStiffnessU * dir2);
+        itemCount(Fg_pattern_curr(j,0))++;
+        itemCount(Fg_pattern_curr(j,1))++;
+        itemCount(Fg_pattern_curr(j,2))++;
 
     }
     for(int i=0; i<p_adaption.rows(); i++){
@@ -2392,11 +2401,16 @@ void solveCornerMappedVertices(){
     for(auto cpb: cornerPerBoundary){
         for(auto cpbj :  cpb ){
             int vertIdx = get<0>(cpbj);
+            if(fullPatternVertToHalfPatternVert.find(vertIdx) == fullPatternVertToHalfPatternVert.end()){
+                continue;
+            }
+            vertIdx = fullPatternVertToHalfPatternVert[vertIdx];
+
             if(releasedVert.find(vertIdx)!= releasedVert.end()){
 //                if(adaptioncount%20==0) cout<<vertIdx<<" released"<<endl;
                 continue;
             }
-            Vector2d newSuggestedPos = mapToVg.row(vertIdx).leftCols(2);
+            Vector2d newSuggestedPos = mapToVg.row(get<0>(cpbj)).leftCols(2);
             Vector2d dir = newSuggestedPos - p_adaption.row(vertIdx).leftCols(2).transpose();
             // TODO PARAMETER
             p_adaption.row(vertIdx).leftCols(2) += boundaryStiffness * dir;
@@ -2430,34 +2444,20 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
 
         solveStretchAdaption();
 //        solveStretchAdaptionViaEdgeLength();//
-        if(changedPos != -1){
-            cout<<p_adaption.row(changedPos)<<" edge "<<endl;
-        }
-
-//        t.printTime("after pattern stress ");
 
         // before cutting the boundaries should be the same
         projectBackOnBoundary( mapToVg, p_adaption, seamsList, minusOneSeamsList, boundaryL_toPattern,
-                                boundaryLFrom, releasedVert ,false );
-        if(changedPos != -1){
-            cout<<p_adaption.row(changedPos)<<" bound "<<endl;
-        }
-//        t.printTime("after proj  ");
-
+                                boundaryLFrom, releasedVert ,false, fullPatternVertToHalfPatternVert);
+//        if(changedPos != -1){
+//            cout<<p_adaption.row(changedPos)<<" bound "<<endl;
+//        }
 
 //        ensurePairwiseDist(p_adaption, toPattern, Fg_pattern);
         solveCornerMappedVertices();
-//        t.printTime("after corner stress ");
-
-        if(changedPos != -1){
-            cout<<p_adaption.row(changedPos)<<" corner "<<endl;
-        }
 
         // this causes the weired ange issue
 //        ensureAngle(p_adaption, mapFromVg, Fg_pattern_curr, mapFromFg);
-        if(changedPos != -1){
-            cout<<p_adaption.row(changedPos)<<" angle "<<endl;
-        }
+
     }
 
     currPattern = p_adaption;
@@ -2491,8 +2491,11 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
         Vector3d v1new = currPattern.row(Fg_pattern_curr(i, 1)).transpose();
         Vector3d v2new = currPattern.row(Fg_pattern_curr(i, 2)).transpose();
         startPerEdge.row(i) = ( (v0new + v1new + v2new)/3).transpose();
-        Vector3d ubary = baryCoordsUPattern.row(i);
-        Vector3d vbary = baryCoordsVPattern.row(i);
+//        if(i<5){
+//            igl::writeOBJ("halfPattern.txt", currPattern, Fg_pattern_curr);
+//            cout<<i<<" i and in the full pattern it was "<<halfPatternFaceToFullPatternFace[i]<<endl; }
+        Vector3d ubary = baryCoordsUPattern.row(halfPatternFaceToFullPatternFace[i]);
+        Vector3d vbary = baryCoordsVPattern.row(halfPatternFaceToFullPatternFace[i]);
 
         uPerEdge.row(i) = (ubary(0) * v0new + ubary(1) * v1new + ubary(2) * v2new).transpose() -  startPerEdge.row(i);
         vPerEdge.row(i) = (vbary(0) * v0new + vbary(1) * v1new + vbary(2) * v2new).transpose() -  startPerEdge.row(i);
