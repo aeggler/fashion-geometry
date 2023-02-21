@@ -863,22 +863,39 @@ int main(int argc, char *argv[])
                             cornerVertices, cutPositions, releasedVert, toPattern_boundaryVerticesSet, cornerSet,
                             handledVerticesSet, prevTearFinished, LShapeAllowed,
                             prioInner, prioOuter, taylor_lazyness, mapFromFg, setTheresholdlMid,
-                                 setTheresholdBound, fullPatternVertToHalfPatternVert, halfPatternVertToFullPatternVert, symetry);
+                                 setTheresholdBound, fullPatternVertToHalfPatternVert, halfPatternVertToFullPatternVert, halfPatternFaceToFullPatternFace,
+                                 symetry);
 
                  changedPos = pos;
-                if( copyPattern != mapFromVg){
+                 cout<<pos<<" Pos was changed"<<endl;
+
+
+
+                if( copyPattern != mapFromVg){// rest shape changes if we insert middle cuts
+                    vector<vector<int> > vvAdjPatt;
+                    igl::adjacency_list( mapFromFg, vvAdjPatt);
+                    vector<vector<int>> vfAdjPatternFrom;
+                    createVertexFaceAdjacencyList(mapFromFg,vfAdjPatternFrom );
+                    for(auto adjPosi: vvAdjPatt[halfPatternVertToFullPatternVert[pos]]){
+                        if(copyPattern.row(adjPosi) != mapFromVg.row(adjPosi)){
+                            changedPos = adjPosi;
+                            cout<<copyPattern.row(adjPosi)<<" old one "<<changedPos <<endl<< mapFromVg.row(adjPosi)<<" new pos"<<endl;
+                            updateChangedBaryCoordinates(changedPos, vfAdjPatternFrom);
+//
+                        }
+                    }
                     MatrixXd lengthsOrig;
                     igl::edge_lengths(mapFromVg, mapFromFg, lengthsOrig);
                     patternEdgeLengths_orig = lengthsOrig;
                     cout<<"---------------------"<<endl;
-
                     cout<<"updated edge lengths"<<endl;
                     viewer.selected_data_index = 0;
                     viewer.data().clear();
+                    viewer.data().uniform_colors(ambient, specular, diffuse);
                     viewer.data().set_mesh(currPattern, Fg_pattern_curr);
-                    viewer.data().uniform_colors(ambient, diffuse, specular);
-
                 }
+
+
                 if(pos!=-1){
                     viewer.selected_data_index = 2;
                     viewer.data().uniform_colors(ambient, diffuse, specular);

@@ -86,7 +86,8 @@ int computeTear(bool inverseMap,
                  const MatrixXi& mapFromFg,
                  double& setTheresholdlMid,
                  double& setTheresholdBound,
-                 map<int, int> & fullPatternVertToHalfPatternVert, map<int, int>& halfPatternVertToFullPatternVert, bool& symetry );
+                 map<int, int> & fullPatternVertToHalfPatternVert, map<int, int>& halfPatternVertToFullPatternVert,
+                 map<int, int> & halfPatternFaceToFullPatternFace, bool& symetry );
 
 
 

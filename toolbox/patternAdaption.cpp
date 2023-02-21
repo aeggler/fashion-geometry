@@ -137,14 +137,16 @@ void computeMidVecBasedOnPCA(VectorXd& midVec, vector<vector<int>>& vvAdj, vecto
 }
 
 void computeMidVecBasedOnStress(VectorXd& midVec, vector<vector<int>>& vfAdj, MatrixXd& Vg ,MatrixXd& Vg_orig ,
-                           MatrixXi& Fg, int& vert, double& lenMid){
+                           MatrixXi& Fg, const MatrixXi& Fg_orig, int& vert, double& lenMid, map<int, int>& halfPatternVertToFullPatternVert, map<int, int>& fullPatternVertToHalfPatternVert,
+                           map<int, int>& halfPatternFaceToFullPatternFace ){
     // new approach: look at the stress vectors of all adjacent faces, take the average
     Vector3d uVecs, vVecs;
     for(int i=0; i<vfAdj[vert].size(); i++){
         int face = vfAdj[vert][i];
-        Vector3d v0 = Vg_orig.row(Fg(face, 0)).transpose();
-        Vector3d v1 = Vg_orig.row(Fg(face, 1)).transpose();
-        Vector3d v2 = Vg_orig.row(Fg(face, 2)).transpose();
+        int faceOrig =halfPatternFaceToFullPatternFace[face];
+        Vector3d v0 = Vg_orig.row(Fg_orig(faceOrig, 0)).transpose();
+        Vector3d v1 = Vg_orig.row(Fg_orig(faceOrig, 1)).transpose();
+        Vector3d v2 = Vg_orig.row(Fg_orig(faceOrig, 2)).transpose();
 
         Vector3d bary = (v0 + v1 + v2)/3;
         Vector3d u = bary; u(0)+= 1;
@@ -336,11 +338,14 @@ void splitVertexFromCVE( cutVertEntry*& cve,
                          vector<minusOneSeam*> & minusOneSeams,
                          map<int, pair<int, int>> & releasedVert,
                          set<int>& toPattern_boundaryVerticesSet,
-                         MatrixXd& lengthsCurr,
                          set<int> & cornerSet,
                          set<int>& handledVerticesSet ,
                          const bool & LShapeAllowed,
-                         MatrixXd& Vg_pattern_orig,const MatrixXi& Fg_pattern_orig){
+                         MatrixXd& Vg_pattern_orig,const MatrixXi& Fg_pattern_orig,
+                         map<int, int> & fullPatternVertToHalfPatternVert,
+                         map<int, int> & halfPatternVertToFullPatternVert,
+                         map<int, int> & halfPatternFaceToFullPatternFace
+                         ){
 
     cout<<" patch "<<cve->patch<<" of "<<boundaryL.size()<<" L Shape allowed? "<<LShapeAllowed <<endl;
 
@@ -355,7 +360,7 @@ void splitVertexFromCVE( cutVertEntry*& cve,
         cout<<"Handled by other seams already."<<endl;
 
         // if it is a corner (and cut from both sides(,) or a cut position itself, mabe we can still cut
-        bool cornerOrStart = ((cveStartPositionsSet.find(cve->vert) != cveStartPositionsSet.end()) || cornerSet.find(cve->vert) != cornerSet.end()
+        bool cornerOrStart = ((cveStartPositionsSet.find(cve->vert) != cveStartPositionsSet.end()) || cornerSet.find(halfPatternVertToFullPatternVert[cve->vert]) != cornerSet.end()
                 || cutThroughCornerVertices.find(cve->vert) != cutThroughCornerVertices.end());
         cout<<(cutThroughCornerVertices.find(cve->vert) != cutThroughCornerVertices.end())<<" in this set? "<<endl;
         if( cornerOrStart && LShapeAllowed){
@@ -399,7 +404,6 @@ void splitVertexFromCVE( cutVertEntry*& cve,
         }
     }
 
-
     plusOneId = (idx + 1) % boundary.size();
     minusOneId = (idx -1);
     if(minusOneId<0) minusOneId+= boundary.size();
@@ -423,7 +427,7 @@ void splitVertexFromCVE( cutVertEntry*& cve,
             }
 
         }else{
-            minusOneSeam*helper = minusOneSeams[cve->seamIdInList];
+            minusOneSeam* helper = minusOneSeams[cve->seamIdInList];
             if(leftFaceId == -1) plusOneId = helper->duplicates[plusOneId];
             if(rightFaceId == -1) minusOneId = helper->duplicates[minusOneId];
         }
@@ -446,15 +450,15 @@ void splitVertexFromCVE( cutVertEntry*& cve,
                             boundaryL[cve->patch][minusOneId], boundaryL[cve->patch][plusOneId],nextVertOnBoundary );
 
         Vector3d cutDirection = Vg.row(nextVertOnBoundary) - Vg.row(cve->vert); //cve-> continuedDirection;
-        if (cornerSet.find(cve->vert) != cornerSet.end()&& cve->vert != cve-> cornerInitial){
+        if (cornerSet.find(halfPatternVertToFullPatternVert[cve->vert]) != cornerSet.end() && cve->vert != cve-> cornerInitial){
             cutDirection = (toLeft(0) == cutDirection(0) && toLeft(1) == cutDirection(1)) ? toRight : toLeft;
 
         }
         VectorXd ws;
         vector<int> fn = vfAdj[cve->vert]; // the face neighbors
         bool tearIsUseful = false;
-       for(int faceIdx =0; faceIdx <fn.size(); faceIdx++){
-           int adjFace = fn[faceIdx];
+        for(int faceIdx =0; faceIdx <fn.size(); faceIdx++){
+           int adjFace = halfPatternFaceToFullPatternFace[fn[faceIdx]];
            VectorXd faceBary = (Vg_pattern_orig.row(Fg_pattern_orig(adjFace, 0))+
                                 Vg_pattern_orig.row(Fg_pattern_orig(adjFace, 1))+
                                 Vg_pattern_orig.row(Fg_pattern_orig(adjFace, 2))).transpose();
@@ -467,16 +471,16 @@ void splitVertexFromCVE( cutVertEntry*& cve,
            MatrixXd input(1, 3);
            input.row(0)= faceBary;
            // is the face elongated in cut direction compared to its original shape ? (=> rest shape)
-           igl::barycentric_coordinates(input, Vg_pattern_orig.row(Fg(adjFace, 0)), Vg_pattern_orig.row(Fg(adjFace, 1)),
-                                        Vg_pattern_orig.row(Fg(adjFace, 2)), distB);
+           igl::barycentric_coordinates(input, Vg_pattern_orig.row(Fg_pattern_orig(adjFace, 0)), Vg_pattern_orig.row(Fg_pattern_orig(adjFace, 1)),
+                                        Vg_pattern_orig.row(Fg_pattern_orig(adjFace, 2)), distB);
            double lenThen = cutDirection.norm();
 
-           VectorXd distNow = (Vg.row(Fg(adjFace, 0)) * distB(0)+
-                               Vg.row(Fg(adjFace, 1)) * distB(1) +
-                               Vg.row(Fg(adjFace, 2))* distB(2)).transpose();
-           distNow -= (Vg.row(Fg(adjFace, 0)) * (1./3)+
-                       Vg.row(Fg(adjFace, 1)) *  (1./3) +
-                       Vg.row(Fg(adjFace, 2))*  (1./3) ).transpose();
+           VectorXd distNow = (Vg.row(Fg(fn[faceIdx], 0)) * distB(0)+
+                               Vg.row(Fg(fn[faceIdx], 1)) * distB(1) +
+                               Vg.row(Fg(fn[faceIdx], 2))* distB(2)).transpose();
+           distNow -= (Vg.row(Fg(fn[faceIdx], 0)) * (1./3)+
+                       Vg.row(Fg(fn[faceIdx], 1)) *  (1./3) +
+                       Vg.row(Fg(fn[faceIdx], 2))*  (1./3) ).transpose();
            double lenNow = distNow.norm();
 
                 // we could use fiber direction dot product with perp cut direction
@@ -513,6 +517,7 @@ void splitVertexFromCVE( cutVertEntry*& cve,
         cout<<"released from seam "<<valPair.first<<" "<<valPair.second<<endl;
         // now we need to find the seam from which we release.
         // each corner is adjacent to two seams. If one is the one we make the decision from, then the other is the one from which it is released
+
         if(cornerToSeams[cve->cornerInitial][0] == seamComp ){
             // if we allow releasing from two seams this has to be a vec
             if(releasedVertNew.find(cve->vert)!= releasedVertNew.end()){
@@ -542,7 +547,7 @@ void splitVertexFromCVE( cutVertEntry*& cve,
         newVg.row(newVertIdx) = Vg.row(cve->vert);
 
         cve->continuedCorner = true;
-        cve->finFlag = (cornerSet.find(cve->vert) != cornerSet.end()&& cve->vert != cve-> cornerInitial); //if it is a corner we are done
+        cve->finFlag = (cornerSet.find(halfPatternVertToFullPatternVert[cve->vert]) != cornerSet.end() && cve->vert != cve-> cornerInitial); //if it is a corner we are done
         int nextVertComp;
         getBoundaryNextVert(cve-> startCorner ,cve-> seamType, cve-> seamIdInList, boundary[minusOneId], boundary[ plusOneId], nextVertComp );
         cve->vert = nextVertComp;
@@ -553,15 +558,14 @@ void splitVertexFromCVE( cutVertEntry*& cve,
     }
 
     Vector3d midVec;
-
     double lenMidVec;
     VectorXd  stressMidVec;
 
-    computeMidVecBasedOnStress(stressMidVec, vfAdj, Vg, Vg_pattern_orig, Fg, cve->vert, lenMidVec );
+    computeMidVecBasedOnStress(stressMidVec, vfAdj, Vg, Vg_pattern_orig, Fg, Fg_pattern_orig, cve->vert, lenMidVec, halfPatternVertToFullPatternVert, fullPatternVertToHalfPatternVert, halfPatternFaceToFullPatternFace );
 
     midVec = (-1) * stressMidVec; // newMidVec;
     // todo sketchy, for whatever reason it breaks without this. does it do the transposing?
-    cout<<" stress and pca midvec "<<midVec.transpose()<<endl;//<<stressMidVec.transpose()
+    cout<<" stress midvec "<<midVec.transpose()<<endl;//<<stressMidVec.transpose()
 
     Vector3d cutDirection = midVec;
 
@@ -642,26 +646,31 @@ void splitVertexFromCVE( cutVertEntry*& cve,
 
 
         /* TEST IF IT IS ACTUALLY USEFUL*/
-        VectorXd distThen = (Vg_pattern_orig.row(Fg(adjFace, 0))+
-                             Vg_pattern_orig.row(Fg(adjFace, 1))+
-                             Vg_pattern_orig.row(Fg(adjFace, 2))).transpose();
+        VectorXd distThen = (Vg_pattern_orig.row(Fg_pattern_orig(halfPatternFaceToFullPatternFace[adjFace], 0))+
+                             Vg_pattern_orig.row(Fg_pattern_orig(halfPatternFaceToFullPatternFace[adjFace], 1))+
+                             Vg_pattern_orig.row(Fg_pattern_orig(halfPatternFaceToFullPatternFace[adjFace], 2))).transpose();
+//        cout<<Fg_pattern_orig.row(halfPatternFaceToFullPatternFace[adjFace])<<" dis then:"<<(distThen/3).transpose()<<" "<<mid2.transpose()<<endl;
+
         distThen /= 3;
         distThen(0) -= mid2(1);
         distThen(1) += mid2(0); // perp to midvec measure stress
         MatrixXd distB;
         MatrixXd input(1, 3);
         input.row(0)= distThen;
-        igl::barycentric_coordinates(input, Vg_pattern_orig.row(Fg(adjFace, 0)), Vg_pattern_orig.row(Fg(adjFace, 1)),
-                                     Vg_pattern_orig.row(Fg(adjFace, 2)), distB);
+        igl::barycentric_coordinates(input, Vg_pattern_orig.row(Fg_pattern_orig(halfPatternFaceToFullPatternFace[adjFace], 0)), Vg_pattern_orig.row(Fg_pattern_orig(halfPatternFaceToFullPatternFace[adjFace], 1)),
+                                     Vg_pattern_orig.row(Fg_pattern_orig(halfPatternFaceToFullPatternFace[adjFace], 2)), distB);
         double lenThen = mid2.norm();
+
         VectorXd distNow = (Vg.row(Fg(adjFace, 0)) * distB(0)+
                             Vg.row(Fg(adjFace, 1)) * distB(1) +
                             Vg.row(Fg(adjFace, 2))* distB(2)).transpose();
+//        cout<<distNow.transpose()<<" newPos, and bary "<< (Vg.row(Fg(adjFace, 0)) * (1./3)+ Vg.row(Fg(adjFace, 1)) *  (1./3) +  Vg.row(Fg(adjFace, 2))*  (1./3) )<<endl;
         distNow -= (Vg.row(Fg(adjFace, 0)) * (1./3)+
                     Vg.row(Fg(adjFace, 1)) *  (1./3) +
                     Vg.row(Fg(adjFace, 2))*  (1./3) ).transpose();
         double lenNow = distNow.norm();
-        cout<<"Face: "<<adjFace<<" "<<lenNow<<" dist now and then "<<lenThen<<" ratio is "<<lenNow/lenThen<<" th:"<<middleThereshold<<endl;
+//        cout<<"new face verts "<<Fg.row(adjFace)<<endl;
+        cout<<"Face: "<<adjFace<<" or "<<halfPatternFaceToFullPatternFace[adjFace]<<" "<<lenNow<<" dist now and then "<<lenThen<<" ratio is "<<lenNow/lenThen<<" th:"<<middleThereshold<<endl;
 
         if(lenNow/lenThen > middleThereshold ){
             tearIsUseful= true;
@@ -738,13 +747,13 @@ void splitVertexFromCVE( cutVertEntry*& cve,
     newVg.row(insertIdx) = newPos;
     cout<<newPos.transpose()<<" new pos"<<endl;
 
-    VectorXd updatedRestShapeVertPos = insertIdxInBary(0) * Vg_pattern_orig.row(Fg_pattern_orig(intersectingFace, 0)) ;
-    updatedRestShapeVertPos += insertIdxInBary(1) * Vg_pattern_orig.row(Fg_pattern_orig(intersectingFace, 1)) ;
-    updatedRestShapeVertPos += insertIdxInBary(2) * Vg_pattern_orig.row(Fg_pattern_orig(intersectingFace, 2) );
-    //  upadte all original edge lengths -> in main
-    cout<<  Vg_pattern_orig.row(insertIdx)<<" before restshape "<<endl;
-    Vg_pattern_orig.row(insertIdx) = updatedRestShapeVertPos;
-    cout<<  Vg_pattern_orig.row(insertIdx)<<" after restshape"<<endl;
+    VectorXd updatedRestShapeVertPos = insertIdxInBary(0) * Vg_pattern_orig.row(Fg_pattern_orig(halfPatternFaceToFullPatternFace[intersectingFace], 0)) ;
+    updatedRestShapeVertPos += insertIdxInBary(1) * Vg_pattern_orig.row(Fg_pattern_orig(halfPatternFaceToFullPatternFace[intersectingFace], 1)) ;
+    updatedRestShapeVertPos += insertIdxInBary(2) * Vg_pattern_orig.row(Fg_pattern_orig(halfPatternFaceToFullPatternFace[intersectingFace], 2) );
+    //  update all original edge lengths -> in main
+    cout<<  Vg_pattern_orig.row(halfPatternVertToFullPatternVert[insertIdx])<<" before restshape "<<endl;
+    Vg_pattern_orig.row(halfPatternVertToFullPatternVert[insertIdx]) = updatedRestShapeVertPos;
+    cout<<  Vg_pattern_orig.row(halfPatternVertToFullPatternVert[insertIdx])<<" after restshape"<<endl;
 
     computeOrientationOfFaces(signsAfter, vfAdj[insertIdx], Fg, Vg);
     if(signsAfter != signs){
@@ -856,6 +865,7 @@ void splitVertexFromCVE( cutVertEntry*& cve,
     Vg.resize(newVg.rows(), 3);
     Vg = newVg;
 
+    //doubt this is ever used
     if(toPattern_boundaryVerticesSet.find(insertIdx)!= toPattern_boundaryVerticesSet.end()){
             cout<<"we are nearly done here, it's cut through! "<<endl;
             cve-> vert = insertIdx;
@@ -1008,7 +1018,7 @@ void splitCounterPart(vector<cutVertEntry*>& cutPositions, int idxOfCVE,  cutVer
 void findCorrespondingCounterCutPosition(vector<cutVertEntry*>& cutPositions, int idxOfCVE, cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<vector<int> >& vfAdj,
                       std::vector<std::vector<int> >& boundaryL,  vector<seam*>& seamsList, vector<minusOneSeam*> & minusOneSeams,
                       map<int, pair<int, int>> & releasedVert, set<int>& toPattern_boundaryVerticesSet,
-                      MatrixXi& Fg_pattern, set<int> & cornerSet,  set<int>& handledVerticesSet, map<int, int>& fullPatternVertToHalfPatternVert, map<int, int>& halfPatternVertToFullPatternVert){
+                      MatrixXi& Fg_pattern,  set<int>& handledVerticesSet, map<int, int>& fullPatternVertToHalfPatternVert, map<int, int>& halfPatternVertToFullPatternVert){
     //idx of cve has higher stress, hence we have searched before already, just need to increment
     //if not found we have handled it already
     if(cve->seamType == -1 ) {
@@ -1070,7 +1080,7 @@ void findCorrespondingCounterCutPosition(vector<cutVertEntry*>& cutPositions, in
     }
     int idx = -1;
     for(int i = 0; i < cutPositions.size(); i++){
-       
+
         if(cutPositions[i]->seamType == 1 && halfPatternVertToFullPatternVert[cutPositions[i]->vert] == lookFor && cutPositions[i]-> seamIdInList == counterID){
             idx= i;
         }
@@ -2024,12 +2034,13 @@ int computeTear(bool inverseMap, Eigen::MatrixXd & fromPattern, MatrixXd&  currP
                  VectorXd& cornerVert, vector<cutVertEntry*>& cutPositions, map<int, pair<int, int>> & releasedVert,
                  set<int>& toPattern_boundaryVerticesSet, set<int> & cornerSet, set<int>& handledVerticesSet ,
                  bool& prevFinished,const bool & LShapeAllowed,bool& prioInner,
-                 bool& prioOuter, double tailor_lazyness, const MatrixXi& mapFromFg, double& setTheresholdlMid, double& setTheresholdBound, map<int, int> & fullPatternVertToHalfPatternVert, map<int, int>& halfPatternVertToFullPatternVert, bool& symetry )
+                 bool& prioOuter, double tailor_lazyness, const MatrixXi& mapFromFg, double& setTheresholdlMid, double& setTheresholdBound,
+                 map<int, int> & fullPatternVertToHalfPatternVert, map<int, int>& halfPatternVertToFullPatternVert,
+                 map<int, int> & halfPatternFaceToFullPatternFace,
+                 bool& symetry )
                  {
-igl::writeOBJ("halfPattern.obj" ,currPattern, Fg_pattern_curr);
     middleThereshold = setTheresholdlMid;
     boundThereshold = setTheresholdBound;
-
 
     std::vector<std::vector<int> > boundaryLnew;
     igl::boundary_loop(Fg_pattern_curr, boundaryLnew);
@@ -2124,7 +2135,6 @@ igl::writeOBJ("halfPattern.obj" ,currPattern, Fg_pattern_curr);
     cout<<"finished set lp "<<endl;
     //update with the preferences before sorting
     updateStress( cutPositions, seamsList, minusOneSeams, boundaryL,  Fg_pattern_curr, vfAdj,  prioInner, prioOuter, currPattern, fullPatternVertToHalfPatternVert, halfPatternVertToFullPatternVert);
-    cout<<"update stress"<<endl;
 
 
     //  here we need to sort and check if handled already
@@ -2132,12 +2142,11 @@ igl::writeOBJ("halfPattern.obj" ,currPattern, Fg_pattern_curr);
 
 
     for(int i = 0; i < cutPositions.size(); i++){
-        cout<<"finding counter "<<i<<endl;
         findCorrespondingCounterCutPosition(cutPositions, i, cutPositions[i], currPattern, Fg_pattern_curr, vfAdj, boundaryL,
-                                            seamsList, minusOneSeams, releasedVert, toPattern_boundaryVerticesSet, Fg_pattern_curr, cornerSet, handledVerticesSet, fullPatternVertToHalfPatternVert, halfPatternVertToFullPatternVert);
+                                            seamsList, minusOneSeams, releasedVert, toPattern_boundaryVerticesSet, Fg_pattern_curr, handledVerticesSet, fullPatternVertToHalfPatternVert, halfPatternVertToFullPatternVert);
 
     }
-
+    cout<<" found all counter positions "<<endl;
     int count=0;
     prevFinished = false;
     int returnPosition = -1;
@@ -2149,13 +2158,13 @@ igl::writeOBJ("halfPattern.obj" ,currPattern, Fg_pattern_curr);
             count ++;
             continue;
         }
-        cout<<cutPositions[count]->stress<<" curr stress "<<cutPositions[count]->stressWithCounter<<endl;
+        cout<<cutPositions[count]->stress<<" curr stress "<<cutPositions[count]->vert<<endl;
         int currVert = cutPositions[count]->vert;
         returnPosition = cutPositions[count]->vert;
 
         splitVertexFromCVE(cutPositions[count], currPattern, Fg_pattern_curr, vfAdj, boundaryL, seamsList,
-                           minusOneSeams, releasedVert, toPattern_boundaryVerticesSet,lengthsCurr,
-                           cornerSet, handledVerticesSet, LShapeAllowed, fromPattern, mapFromFg);
+                           minusOneSeams, releasedVert, toPattern_boundaryVerticesSet,
+                           cornerSet, handledVerticesSet, LShapeAllowed, fromPattern, mapFromFg, fullPatternVertToHalfPatternVert, halfPatternVertToFullPatternVert, halfPatternFaceToFullPatternFace);
         prevFinished = cutPositions[count] -> finFlag;
 
         if( releasedVertNew.find(currVert) != releasedVertNew.end()){
@@ -2166,8 +2175,9 @@ igl::writeOBJ("halfPattern.obj" ,currPattern, Fg_pattern_curr);
             if(parallel<0) {cout<<"no proper parallel found"<<endl;continue;}
 
             splitVertexFromCVE(cutPositions[parallel], currPattern, Fg_pattern_curr, vfAdj, boundaryL, seamsList,
-                               minusOneSeams, releasedVert, toPattern_boundaryVerticesSet,lengthsCurr,
-                               cornerSet, handledVerticesSet, LShapeAllowed, fromPattern, mapFromFg);
+                               minusOneSeams, releasedVert, toPattern_boundaryVerticesSet,
+                               cornerSet, handledVerticesSet, LShapeAllowed, fromPattern, mapFromFg,
+                               fullPatternVertToHalfPatternVert, halfPatternVertToFullPatternVert, halfPatternFaceToFullPatternFace);
             prevFinished = (prevFinished && cutPositions[parallel] -> finFlag);
 
         }
