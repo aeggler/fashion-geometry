@@ -925,7 +925,9 @@ int main(int argc, char *argv[])
 
                 pos = tearFurther(cutPositions, currPattern, Fg_pattern_curr, seamsList, minusOneSeamsList, releasedVert,
                             toPattern_boundaryVerticesSet, boundaryL, cornerSet, handledVerticesSet, prevTearFinished,
-                            preferManySmallCuts, LShapeAllowed, patternEdgeLengths_orig, mapFromVg, mapFromFg, prioInner, prioOuter, setTheresholdlMid, setTheresholdBound);
+                            preferManySmallCuts, LShapeAllowed, patternEdgeLengths_orig, mapFromVg, mapFromFg, prioInner, prioOuter, setTheresholdlMid, setTheresholdBound,
+                                  fullPatternVertToHalfPatternVert, halfPatternVertToFullPatternVert, halfPatternFaceToFullPatternFace
+                            );
 
                 if(pos!=-1){
                     viewer.selected_data_index = 2;
@@ -949,13 +951,26 @@ int main(int argc, char *argv[])
                     igl::adjacency_list( mapFromFg, vvAdjPatt);
                     vector<vector<int>> vfAdjPatternFrom;
                     createVertexFaceAdjacencyList(mapFromFg,vfAdjPatternFrom );
-                    for(auto adjPosi: vvAdjPatt[pos]){
+                    for(auto adjPosi: vvAdjPatt[halfPatternVertToFullPatternVert[pos]]){
                         if(copyPattern.row(adjPosi) != mapFromVg.row(adjPosi)){
                             changedPos = adjPosi;
                             cout<<copyPattern.row(adjPosi)<<" old one "<<changedPos <<endl<< mapFromVg.row(adjPosi)<<" new pos"<<endl;
                             updateChangedBaryCoordinates(changedPos, vfAdjPatternFrom);
                             // todo uvv should also change
 
+                        }
+                    }
+                    if(prevTearFinished){
+                        // maybe we just cut through, update also all neigh neigh
+                        for(auto adjPos: vvAdjPatt[halfPatternVertToFullPatternVert[pos]]){
+                            for(auto adjPosi : vvAdjPatt[adjPos]){
+                                if(copyPattern.row(adjPosi) != mapFromVg.row(adjPosi)){
+                                    changedPos = adjPosi;
+                                    cout<<copyPattern.row(adjPosi)<<" additional change old one "<<changedPos <<endl<< mapFromVg.row(adjPosi)<<" new pos"<<endl;
+                                    updateChangedBaryCoordinates(changedPos, vfAdjPatternFrom);
+
+                                }
+                            }
                         }
                     }
                     MatrixXd lengthsOrig;

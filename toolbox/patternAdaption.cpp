@@ -74,12 +74,12 @@ void updateWithNewId(MatrixXi& Fg, int vert,int rightFaceId, int newVertIdx ){
 void addToDulicateList( cutVertEntry*& cve, vector<seam*>& seamsList,  vector<minusOneSeam*> & minusOneSeams, int newVertIdx, bool global){
     if(global){
         if(cve->seamType<0){
-            minusOneSeams[cve->seamIdInList]->duplicatesGlob[cve->vert]= newVertIdx;
+            minusOneSeams[cve->seamIdInList]->duplicatesGlob[cve->vert] = newVertIdx;
         }else{
             if(cve->seamIdInList >= 0){
-                seamsList[cve-> seamIdInList]-> duplicatesGlob[cve->vert]=newVertIdx;
+                seamsList[cve-> seamIdInList]-> duplicatesGlob[cve->vert] = newVertIdx;
             }else{
-                seamsList[(cve-> seamIdInList+1)*(-1)]->duplicatesGlob2[cve->vert]= newVertIdx;
+                seamsList[(cve-> seamIdInList+1)*(-1)]->duplicatesGlob2[cve->vert] = newVertIdx;
             }
         }
     }else{
@@ -865,12 +865,12 @@ void splitVertexFromCVE( cutVertEntry*& cve,
     Vg.resize(newVg.rows(), 3);
     Vg = newVg;
 
-    //doubt this is ever used
-    if(toPattern_boundaryVerticesSet.find(insertIdx)!= toPattern_boundaryVerticesSet.end()){
-            cout<<"we are nearly done here, it's cut through! "<<endl;
-            cve-> vert = insertIdx;
-            cve -> bridgeFlag = true;
-    }
+//    //doubt this is ever used
+//    if(toPattern_boundaryVerticesSet.find(insertIdx)!= toPattern_boundaryVerticesSet.end()){
+//            cout<<"we are nearly done here, it's cut through! "<<endl;
+//            cve-> vert = insertIdx;
+//            cve -> bridgeFlag = true;
+//    }
 
     // only the first level i.e. boundary duplicate has to be projected, hence only this one is to be added
     if(cve->levelOne) {
@@ -971,7 +971,9 @@ void splitCounterPart(vector<cutVertEntry*>& cutPositions, int idxOfCVE,  cutVer
 |
  if we open the cut horizontally at a, we want to open at b as well since the two together form a seam (though the common seam has it's cut in the middle)
  */
- int openParallelPosition(int& cornerInitial, int& seamType, vector<seam*>& seamsList, vector <cutVertEntry*>& cutPositions){
+ int openParallelPosition(int& cornerInitial, int& seamType, vector<seam*>& seamsList, vector <cutVertEntry*>& cutPositions,
+ map<int, int> & fullPatternVertToHalfPatternVert, map<int, int> & halfPatternVertToFullPatternVert
+ ){
      // if a paralell cut position exists we find and open it . But attention, it is not guaranteed the position exists. But we don't enforce it (might be worth a thought tough)
     if(seamType < 0){
         return -1; // no parallel to open
@@ -979,18 +981,22 @@ void splitCounterPart(vector<cutVertEntry*>& cutPositions, int idxOfCVE,  cutVer
     seam* currSeam = seamsList[seamType];
     // figure out if the initial was pos or neg side, the one we are searching is the other side
     int searchedVert;
-    if(currSeam->getStart1() == cornerInitial){
+    if(currSeam->getStart1() == halfPatternVertToFullPatternVert[cornerInitial]){
         searchedVert = currSeam->getStart2();
-    }else if(currSeam->getStart2() == cornerInitial) {
+    }else if(currSeam->getStart2() == halfPatternVertToFullPatternVert[ cornerInitial]) {
         searchedVert = currSeam->getStart1();
-    }else if(currSeam->getEndCornerIds().first == cornerInitial) {
+    }else if(currSeam->getEndCornerIds().first == halfPatternVertToFullPatternVert[cornerInitial] ) {
         searchedVert = currSeam-> getEndCornerIds().second;
-    }else if(currSeam->getEndCornerIds().second == cornerInitial) {
+    }else if(currSeam->getEndCornerIds().second == halfPatternVertToFullPatternVert[cornerInitial] ) {
         searchedVert = currSeam-> getEndCornerIds().first;
     }else{
 //        cout<<" partner not found, we have a huge problem in opening the parallel positions "<<seamType<<endl;
         return -1;
     }
+    if(fullPatternVertToHalfPatternVert.find(searchedVert) == fullPatternVertToHalfPatternVert.end() ){
+        return -1;
+    }
+    searchedVert = fullPatternVertToHalfPatternVert[searchedVert];
 
     int size =  cornerToSeams[searchedVert].size();
     if( size != 2) {
@@ -1007,7 +1013,7 @@ void splitCounterPart(vector<cutVertEntry*>& cutPositions, int idxOfCVE,  cutVer
 
     // identify the index of the paralell cut postion by comparing the vertex with the one we search
     for(int i=0; i<cutPositions.size(); i++){
-        if(cutPositions[i]->vert == searchedVert || cutPositions[i]->cornerInitial == searchedVert){
+        if(cutPositions[i]->vert == halfPatternVertToFullPatternVert[searchedVert] || cutPositions[i]->cornerInitial == halfPatternVertToFullPatternVert[searchedVert]){
             return i;
 
         }
@@ -1017,8 +1023,7 @@ void splitCounterPart(vector<cutVertEntry*>& cutPositions, int idxOfCVE,  cutVer
 }
 void findCorrespondingCounterCutPosition(vector<cutVertEntry*>& cutPositions, int idxOfCVE, cutVertEntry*& cve, MatrixXd& Vg, MatrixXi& Fg, vector<vector<int> >& vfAdj,
                       std::vector<std::vector<int> >& boundaryL,  vector<seam*>& seamsList, vector<minusOneSeam*> & minusOneSeams,
-                      map<int, pair<int, int>> & releasedVert, set<int>& toPattern_boundaryVerticesSet,
-                      MatrixXi& Fg_pattern,  set<int>& handledVerticesSet, map<int, int>& fullPatternVertToHalfPatternVert, map<int, int>& halfPatternVertToFullPatternVert){
+                      map<int, pair<int, int>> & releasedVert, set<int>& toPattern_boundaryVerticesSet, set<int>& handledVerticesSet, map<int, int>& fullPatternVertToHalfPatternVert, map<int, int>& halfPatternVertToFullPatternVert){
     //idx of cve has higher stress, hence we have searched before already, just need to increment
     //if not found we have handled it already
     if(cve->seamType == -1 ) {
@@ -1816,118 +1821,126 @@ int tearFurther(vector<cutVertEntry*>& cutPositions, MatrixXd&  currPattern, Mat
                  map<int, pair<int, int>> & releasedVert, set<int>& toPattern_boundaryVerticesSet,  std::vector<std::vector<int> >& boundaryL,
                  set<int> & cornerSet, set<int>& handledVerticesSet,  bool& prevFinished, const bool & preferManySmallCuts, const bool & LShapeAllowed,
                  MatrixXd& patternEdgeLengths_orig, MatrixXd& Vg_pattern_orig, MatrixXi& Fg_pattern_orig, bool& prioInner,
-                bool& prioOuter, double& setTheresholdlMid, double& setTheresholdBound ){
-//    middleThereshold = setTheresholdlMid;
-//    boundThereshold = setTheresholdBound;
-//
-//    cout<<endl<<endl<<"-----------------------"<<endl<<endl;
-//
-//    int returnPosition = -1;
+                bool& prioOuter, double& setTheresholdlMid, double& setTheresholdBound, map<int, int>& fullPatternVertToHalfPatternVert, map<int, int>& halfPatternVertToFullPatternVert,
+                map<int, int> & halfPatternFaceToFullPatternFace){
+    middleThereshold = setTheresholdlMid;
+    boundThereshold = setTheresholdBound;
+
+    cout<<endl<<endl<<"-----------------------"<<endl<<endl;
+
+    int returnPosition = -1;
 //    //when releasing the boundary it can turn into a non manifold mesh. not sure if this causes further problems
 //    Eigen::MatrixXi B;
 //    bool isManifold = igl::is_vertex_manifold( Fg_pattern, B);
 //
-//    vector<vector<int> > vfAdj;
-//    createVertexFaceAdjacencyList(Fg_pattern, vfAdj);
+    vector<vector<int> > vfAdj;
+    createVertexFaceAdjacencyList(Fg_pattern, vfAdj);
 //    MatrixXd lengthsCurr;
 //    igl::edge_lengths(currPattern, Fg_pattern, lengthsCurr);
-//    updateStress( cutPositions, seamsList, minusOneSeams, boundaryL,  Fg_pattern, vfAdj,  prioInner, prioOuter, currPattern);
+    updateStress( cutPositions, seamsList, minusOneSeams, boundaryL,  Fg_pattern, vfAdj,  prioInner, prioOuter, currPattern, fullPatternVertToHalfPatternVert, halfPatternVertToFullPatternVert);
 
 //
-//    if(prevFinished || preferManySmallCuts){
-//        // if we want many small cuts we sort always and there is no need to finish a seam before handling the next one!
-//        cout<<"It's time to sort again"<<endl;
-//        sort(cutPositions.begin(), cutPositions.end(), []( cutVertEntry* &a,  cutVertEntry* &b) { return a->stress > b-> stress; });
-//           find counter!
+    if(prevFinished || preferManySmallCuts){
+        // if we want many small cuts we sort always and there is no need to finish a seam before handling the next one!
+        cout<<"It's time to sort again"<<endl;
+        sort(cutPositions.begin(), cutPositions.end(), []( cutVertEntry* &a,  cutVertEntry* &b) { return a->stress > b-> stress; });
+        for(int i = 0; i < cutPositions.size(); i++){
+            findCorrespondingCounterCutPosition(cutPositions, i, cutPositions[i], currPattern, Fg_pattern, vfAdj, boundaryL,
+                                                seamsList, minusOneSeams, releasedVert, toPattern_boundaryVerticesSet, handledVerticesSet,
+                                                fullPatternVertToHalfPatternVert, halfPatternVertToFullPatternVert );
+
+        }
+
+    }
 //
-//    }
+    int  count = 0 ;
+    for(int i = 0; i < 1; i++){
+        if(count == cutPositions.size()){
+            cout<<endl<<"* * * * * * * * * * * * * * * * * * *"<<endl;
+            cout<<"All done. Stop now. "<<endl;
+            cout<<"* * * * * * * * * * * * * * * * * * * *"<<endl;
+            return -1;
+        }
+        int currVert = cutPositions[count]->vert;
+        bool parallelFinFlag = true;
+        int parallel;
+        int thisSeam = cutPositions[count]->seamIdInList;
+        if(thisSeam<0) thisSeam = thisSeam*(-1)-1;
 //
-//    int  count = 0 ;
-//    for(int i = 0; i < 1; i++){
-//        if(count == cutPositions.size()){
-//            cout<<endl<<"* * * * * * * * * * * * * * * * * * *"<<endl;
-//            cout<<"All done. Stop now. "<<endl;
-//            cout<<"* * * * * * * * * * * * * * * * * * * *"<<endl;
-//            return -1;
-//        }
-//        int currVert = cutPositions[count]->vert;
-//        bool parallelFinFlag = true;
-//        int parallel;
-//        int thisSeam = cutPositions[count]->seamIdInList;
-//        if(thisSeam<0) thisSeam = thisSeam*(-1)-1;
-//
-//        if(cutPositions[count]->finFlag ){
+        if(cutPositions[count]->finFlag ){
 //            // if it is a corner and it has been released
-//            if((cutPositions[count]->startCorner || cutPositions[count]->endCorner) &&
-//                releasedVertNew.find( cutPositions[count]->cornerInitial) != releasedVertNew.end() ){
-//                int seamPotentiallyReleasedFrom = (cornerToSeams[cutPositions[count]-> cornerInitial][0] == thisSeam) ? cornerToSeams[cutPositions[count]-> cornerInitial][1] : cornerToSeams[cutPositions[count]-> cornerInitial][0];
-//                if(releasedVertNew[ cutPositions[count]->cornerInitial].end() != std::find( releasedVertNew[ cutPositions[count]->cornerInitial].begin(), releasedVertNew[ cutPositions[count]->cornerInitial].end(), seamPotentiallyReleasedFrom)){
-//                    parallel = openParallelPosition(cutPositions[count]-> cornerInitial, seamPotentiallyReleasedFrom, seamsList, cutPositions);//releasedVertNew[cutPositions[count]->cornerInitial]
-//                    if(parallel >= 0) parallelFinFlag = cutPositions[parallel]->finFlag;
-//                    if(parallelFinFlag){
-//                        i--;
-//                        count ++;
-//                    }else{
-//                        returnPosition = cutPositions[parallel] ->vert;
-//                        splitVertexFromCVE(cutPositions[parallel], currPattern, Fg_pattern, vfAdj, boundaryL, seamsList,
-//                                           minusOneSeams, releasedVert, toPattern_boundaryVerticesSet,lengthsCurr, cornerSet,
-//                                           handledVerticesSet, LShapeAllowed, Vg_pattern_orig, Fg_pattern_orig);
-//                        prevFinished = cutPositions[parallel]->finFlag;
-//                    }
-//                }else{
-//                    i--;
-//                    count ++;
-//                }
+            if((cutPositions[count]->startCorner || cutPositions[count]->endCorner) &&
+                releasedVertNew.find( cutPositions[count]->cornerInitial) != releasedVertNew.end() ){
+                int seamPotentiallyReleasedFrom = (cornerToSeams[cutPositions[count]-> cornerInitial][0] == thisSeam) ? cornerToSeams[cutPositions[count]-> cornerInitial][1] : cornerToSeams[cutPositions[count]-> cornerInitial][0];
+                if(releasedVertNew[ cutPositions[count]->cornerInitial].end() != std::find( releasedVertNew[ cutPositions[count]->cornerInitial].begin(), releasedVertNew[ cutPositions[count]->cornerInitial].end(), seamPotentiallyReleasedFrom)){
+                    parallel = openParallelPosition(cutPositions[count]-> cornerInitial, seamPotentiallyReleasedFrom, seamsList, cutPositions,fullPatternVertToHalfPatternVert, halfPatternVertToFullPatternVert );//releasedVertNew[cutPositions[count]->cornerInitial]
+                    if(parallel >= 0) parallelFinFlag = cutPositions[parallel]->finFlag;
+                    if(parallelFinFlag){
+                        i--;
+                        count ++;
+                    }else{
+                        returnPosition = cutPositions[parallel] ->vert;
+                        cout<<"only handling paralell:"<<endl;
+                        splitVertexFromCVE(cutPositions[parallel], currPattern, Fg_pattern, vfAdj, boundaryL, seamsList,
+                                           minusOneSeams, releasedVert, toPattern_boundaryVerticesSet, cornerSet,
+                                           handledVerticesSet, LShapeAllowed, Vg_pattern_orig, Fg_pattern_orig,
+                                           fullPatternVertToHalfPatternVert, halfPatternVertToFullPatternVert, halfPatternFaceToFullPatternFace);
+                        prevFinished = cutPositions[parallel]->finFlag;
+                    }
+                }else{
+                    i--;
+                    count ++;
+                }
 //
-//            }else{
-//                i--;
-//                count ++;
-//            }
+            }else{
+                i--;
+                count ++;
+            }
 //
-//        }else{
+        }else{
 //
-//            cout<<endl<< cutPositions[count]->vert<<" vertex up next handling with i= "<<count<<" /"<<cutPositions.size()-1<<endl;
-//            returnPosition = cutPositions[count] ->vert;
-//            splitVertexFromCVE(cutPositions[count], currPattern, Fg_pattern, vfAdj, boundaryL, seamsList, minusOneSeams, releasedVert,
-//                                   toPattern_boundaryVerticesSet,lengthsCurr, cornerSet, handledVerticesSet, LShapeAllowed, Vg_pattern_orig, Fg_pattern_orig );
-//            cout<<"finished ? "<<cutPositions[count]->finFlag<<endl<<endl;
-//            prevFinished = cutPositions[count] -> finFlag;
-//
-//            parallel = -1;
-//            // if it is a corner and it has been released
-//            if(cutPositions[count]->startCorner || cutPositions[count]->endCorner){
+            cout<<endl<< cutPositions[count]->vert<<" vertex up next handling with i= "<<count<<" /"<<cutPositions.size()-1<<endl;
+            returnPosition = cutPositions[count] ->vert;
+            splitVertexFromCVE(cutPositions[count], currPattern, Fg_pattern, vfAdj, boundaryL, seamsList, minusOneSeams, releasedVert,
+                                   toPattern_boundaryVerticesSet, cornerSet, handledVerticesSet, LShapeAllowed, Vg_pattern_orig, Fg_pattern_orig,
+                               fullPatternVertToHalfPatternVert, halfPatternVertToFullPatternVert, halfPatternFaceToFullPatternFace);
+            cout<<"finished ? "<<cutPositions[count]->finFlag<<endl<<endl;
+            prevFinished = cutPositions[count] -> finFlag;
+
+            parallel = -1;
+            // if it is a corner and it has been released
+            if(cutPositions[count]->startCorner || cutPositions[count]->endCorner){
 //                // once we finished cutting one side, check if it was a side opening. If so we can go on with the other side
 //                //this is the released seam, so the other one is the one we have in common
-//                int seamPotentiallyReleasedFrom = (cornerToSeams[cutPositions[count]-> cornerInitial][0] == thisSeam) ? cornerToSeams[cutPositions[count]-> cornerInitial][1] : cornerToSeams[cutPositions[count]-> cornerInitial][0];
-//                parallel = openParallelPosition(cutPositions[count]-> cornerInitial, seamPotentiallyReleasedFrom, seamsList, cutPositions);
+                int seamPotentiallyReleasedFrom = (cornerToSeams[cutPositions[count]-> cornerInitial][0] == thisSeam) ? cornerToSeams[cutPositions[count]-> cornerInitial][1] : cornerToSeams[cutPositions[count]-> cornerInitial][0];
+                parallel = openParallelPosition(cutPositions[count]-> cornerInitial, seamPotentiallyReleasedFrom, seamsList, cutPositions, fullPatternVertToHalfPatternVert, halfPatternVertToFullPatternVert);
 //                // open the other side of a released seam .
 //                // attention this is not the other side of the seam but the same 3D corner of a different patch.
 //                // note that there is no guarantee there is a cut position. If not, we do not enforce it.
-//            }
+            }
 //
-//            if(parallel<0) {
-//                cout<<"no proper parallel found"<<endl;
-//                continue;
-//            }else if(!cutPositions[parallel]->finFlag){
-//                cout<<"split parallel "<<endl;
-//
-//                splitVertexFromCVE(cutPositions[parallel], currPattern, Fg_pattern, vfAdj, boundaryL, seamsList,
-//                                   minusOneSeams, releasedVert, toPattern_boundaryVerticesSet,lengthsCurr, cornerSet,
-//                                   handledVerticesSet, LShapeAllowed, Vg_pattern_orig, Fg_pattern_orig);
-//                cout<<"finished  p ? "<<cutPositions[parallel]->finFlag<<endl;
-//                prevFinished = (prevFinished && cutPositions[parallel] -> finFlag);
-//
-//            }else{
-//                cout<<"parallel already finished"<<endl;
-//            }
-//
-//        }
-//
-//    }
-//    cout<<prevFinished<<" --------------------"<<endl;
-//
-//    return returnPosition;
-return 1;
+            if(parallel<0) {
+                cout<<"no proper parallel found, only avalilable for boundary cuts "<<endl;
+                continue;
+            }else if(!cutPositions[parallel]->finFlag){
+                cout<<"split parallel "<<endl;
+
+                splitVertexFromCVE(cutPositions[parallel], currPattern, Fg_pattern, vfAdj, boundaryL, seamsList,
+                                   minusOneSeams, releasedVert, toPattern_boundaryVerticesSet, cornerSet,
+                                   handledVerticesSet, LShapeAllowed, Vg_pattern_orig, Fg_pattern_orig, fullPatternVertToHalfPatternVert,
+                                   halfPatternVertToFullPatternVert, halfPatternFaceToFullPatternFace);
+                cout<<"finished  p ? "<<cutPositions[parallel]->finFlag<<endl;
+                prevFinished = (prevFinished && cutPositions[parallel] -> finFlag);
+
+            }else{
+                cout<<"parallel already finished"<<endl;
+            }
+        }
+
+    }
+    cout<<prevFinished<<" --------------------"<<endl;
+
+    return returnPosition;
 }
 
 void smoothSingleCut( cutVertEntry*& cve, MatrixXd& Vg, std::vector<std::vector<int> >& boundaryL){
@@ -2136,14 +2149,13 @@ int computeTear(bool inverseMap, Eigen::MatrixXd & fromPattern, MatrixXd&  currP
     //update with the preferences before sorting
     updateStress( cutPositions, seamsList, minusOneSeams, boundaryL,  Fg_pattern_curr, vfAdj,  prioInner, prioOuter, currPattern, fullPatternVertToHalfPatternVert, halfPatternVertToFullPatternVert);
 
-
-    //  here we need to sort and check if handled already
+    // sort and check if handled already
     sort(cutPositions.begin(), cutPositions.end(), []( cutVertEntry* &a,  cutVertEntry* &b) { return a->stress > b-> stress; });
 
 
     for(int i = 0; i < cutPositions.size(); i++){
         findCorrespondingCounterCutPosition(cutPositions, i, cutPositions[i], currPattern, Fg_pattern_curr, vfAdj, boundaryL,
-                                            seamsList, minusOneSeams, releasedVert, toPattern_boundaryVerticesSet, Fg_pattern_curr, handledVerticesSet, fullPatternVertToHalfPatternVert, halfPatternVertToFullPatternVert);
+                                            seamsList, minusOneSeams, releasedVert, toPattern_boundaryVerticesSet, handledVerticesSet, fullPatternVertToHalfPatternVert, halfPatternVertToFullPatternVert);
 
     }
     cout<<" found all counter positions "<<endl;
@@ -2171,7 +2183,7 @@ int computeTear(bool inverseMap, Eigen::MatrixXd & fromPattern, MatrixXd&  currP
             // dann können müssen wir ja auch die passende andere seite des cuts öffnen
             // achtung, das ist nicht die corresponding seam
             // es kann aber noch nicht von einer anderen Seite geöffnett sein. daher nimm idx [0] von den released vert
-            int parallel = openParallelPosition(cutPositions[count]-> cornerInitial, releasedVertNew[currVert][0], seamsList, cutPositions);
+            int parallel = openParallelPosition(cutPositions[count]-> cornerInitial, releasedVertNew[currVert][0], seamsList, cutPositions, fullPatternVertToHalfPatternVert, halfPatternVertToFullPatternVert);
             if(parallel<0) {cout<<"no proper parallel found"<<endl;continue;}
 
             splitVertexFromCVE(cutPositions[parallel], currPattern, Fg_pattern_curr, vfAdj, boundaryL, seamsList,
@@ -2183,7 +2195,7 @@ int computeTear(bool inverseMap, Eigen::MatrixXd & fromPattern, MatrixXd&  currP
         }
 
     }
-    cout<<"fin compute tear "<<endl ;
+    cout<<"fin compute tear "<<prevFinished<<endl ;
     return returnPosition;
 }
 void updatePositionToIntersection(MatrixXd& p,int next, const MatrixXd& Vg_bound, bool shouldBeLeft){
@@ -2460,9 +2472,11 @@ void projectBackOnBoundary(const MatrixXd & mapToVg, MatrixXd& p, const vector<s
         }
         // also map all projections
         for(const auto & addedVert : currSeam -> duplicates){
-            if (fullPatternVertToHalfPatternVert.find(addedVert.second) == fullPatternVertToHalfPatternVert.end()) continue;
-            int avs =fullPatternVertToHalfPatternVert[addedVert.second];
+//            cout<<"added vert "<<addedVert.second<<endl;
+//            if (fullPatternVertToHalfPatternVert.find(addedVert.second) == fullPatternVertToHalfPatternVert.end()) continue;
+            int avs =addedVert.second;
             if(releasedVert.find(avs) == releasedVert.end() ){
+//                cout<<"updated to insersection "<<avs <<endl;
                 updatePositionToIntersection(p, avs, Vg_seamto, true);
             } else if( std::find(releasedVertNew[next].begin(), releasedVertNew[next].end(), j) == releasedVertNew[next].end()){
                 updatePositionToIntersection(p, avs, Vg_seamto, true);
