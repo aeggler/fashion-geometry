@@ -329,6 +329,92 @@ void computeOrientationOfFaces(VectorXd& signs,vector<int> vfAdj, MatrixXi& Fg, 
 //
 //}
 map<int, int> patchMapToHalf;
+void findCorrectSeamAndAddToDuplicates(vector<seam*>& seamsList, vector<minusOneSeam*> & minusOneSeams, int vertIdx,
+                                       int duplVertIdx, vector<int> boundary, int patch, map<int, int> & fullPatternVertToHalfPatternVert ){
+    cout<<"finding Corrrect dupl"<<endl;
+    bool found = false;
+    int seam; bool inv = false;
+    for(int i=0; i<seamsList.size(); i++){
+        auto currSeam = seamsList[i];
+        if(patchMapToHalf[currSeam->getPatch1()] == patch){
+            int startVert = fullPatternVertToHalfPatternVert[currSeam->getStart1()];
+            int end = fullPatternVertToHalfPatternVert[currSeam->getEndCornerIds().first];
+            int idxOfStart = 0;
+            while (boundary[idxOfStart]!= startVert){
+                idxOfStart++;
+            }
+            while(boundary[idxOfStart] != end){
+
+                if(boundary[idxOfStart] == vertIdx){
+                    seamsList[i]-> duplicates[vertIdx] = duplVertIdx;
+                    cout<<"located in seam "<<i<<endl;
+                    return;
+                }
+                idxOfStart ++; idxOfStart  = idxOfStart % boundary.size();
+            }
+            if(boundary[idxOfStart] == vertIdx){
+                seamsList[i]-> duplicates[vertIdx] = duplVertIdx;
+                return;
+            }
+
+
+        }
+        if(patchMapToHalf[currSeam->getPatch2()] == patch){
+            int startVert = fullPatternVertToHalfPatternVert[currSeam->getStart2()];
+            int end = fullPatternVertToHalfPatternVert[currSeam->getEndCornerIds().second];
+            int idxOfStart = 0;
+            while (boundary[idxOfStart]!= startVert){
+                idxOfStart++;
+            }
+            while(boundary[idxOfStart] != end){
+
+                if(boundary[idxOfStart] == vertIdx){
+                    seamsList[i]-> duplicates2[vertIdx] = duplVertIdx;
+                    cout<<"located in seam "<<i<<endl;
+
+                    return;
+
+                }
+                idxOfStart --;if( idxOfStart<0)   idxOfStart += boundary.size();
+            }
+            if(boundary[idxOfStart] == vertIdx){
+                seamsList[i]-> duplicates2[vertIdx] = duplVertIdx;
+                return;
+            }
+
+        }
+
+    }
+    for(int i = 0; i<minusOneSeams.size(); i++){
+        auto currSeam = minusOneSeams[i];
+        if(currSeam->getPatch() != patch )continue;
+        int startVert = fullPatternVertToHalfPatternVert[currSeam->getStartVert()];
+        int end = fullPatternVertToHalfPatternVert[currSeam->getEndVert()];
+        int idxOfStart = 0;
+        while (boundary[idxOfStart]!= startVert){
+            idxOfStart++;
+        }
+        while(boundary[idxOfStart] != end){
+            if(boundary[idxOfStart] == vertIdx){
+                minusOneSeams[i]-> duplicates[vertIdx] = duplVertIdx;
+                return;
+            }
+            idxOfStart ++;
+            idxOfStart = idxOfStart % boundary.size();
+        }
+        if(boundary[idxOfStart] == vertIdx){
+            minusOneSeams[i]-> duplicates[vertIdx] = duplVertIdx;
+            return;
+        }
+
+
+    }
+
+
+    cout<<"No seam found on which we could locate "<<vertIdx<<endl;
+
+}
+
 void splitVertexFromCVE( cutVertEntry*& cve,
                          MatrixXd& Vg, // this is the current pattern we modify
                          MatrixXi& Fg, // this will be modified and have entries that are not in the original pattern
@@ -857,6 +943,9 @@ void splitVertexFromCVE( cutVertEntry*& cve,
         newVg.resize(newnewVg.rows(), 3);
         newVg = newnewVg;
         cout<<" fin operation"<<endl;
+        findCorrectSeamAndAddToDuplicates(seamsList, minusOneSeams, insertIdx, newnewVertIdx, boundaryL[cve->patch], cve->patch, fullPatternVertToHalfPatternVert );
+
+            // if it is on the boundary anyways, find on which seam it is (the original) and add it to the duplicates of theat seam
 
         cve->finFlag= true;
 
@@ -2308,8 +2397,7 @@ void projectBackOnBoundary(const MatrixXd & mapToVg, MatrixXd& p, const vector<s
         seam* currSeam  = seamsList[j];
         auto stP1= currSeam-> getStartAndPatch1();
         auto stP2 =  currSeam -> getStartAndPatch2ForCorres(); // attention this is with respect to the original pattern
-//        int boundLen1 = boundaryL_toPattern[stP1.second].size();
-//        int boundLen2 = boundaryL_toPattern[stP2.second].size();
+//
         MatrixXd Vg_seam1to, Vg_seam2to;
         // build the structure for closest search
         if(fullPatternVertToHalfPatternVert.find(currSeam-> patch1startCornerIdOld) != fullPatternVertToHalfPatternVert.end()  ||
@@ -2403,8 +2491,7 @@ void projectBackOnBoundary(const MatrixXd & mapToVg, MatrixXd& p, const vector<s
 
         // also project all duplicates of interior cut vertices
         for(const auto & addedVert : currSeam->duplicates){
-             if (fullPatternVertToHalfPatternVert.find(addedVert.second) == fullPatternVertToHalfPatternVert.end()) continue;
-            int avs =fullPatternVertToHalfPatternVert[addedVert.second];
+            int avs =addedVert.second;
             if(releasedVert.find(avs) == releasedVert.end() ){
                 updatePositionToIntersection(p, avs, Vg_seam1to, true);
             } else if( std::find(releasedVertNew[avs].begin(), releasedVertNew[avs].end(), j) == releasedVertNew[avs].end()){
@@ -2413,8 +2500,8 @@ void projectBackOnBoundary(const MatrixXd & mapToVg, MatrixXd& p, const vector<s
         }
 
         for(const auto & addedVert : currSeam->duplicates2){
-            if (fullPatternVertToHalfPatternVert.find(addedVert.second) == fullPatternVertToHalfPatternVert.end()) continue;
-            int avs =fullPatternVertToHalfPatternVert[addedVert.second];
+
+            int avs = addedVert.second;
             if(releasedVert.find(addedVert.second) == releasedVert.end() ){
                 updatePositionToIntersection(p, addedVert.second, Vg_seam2to, shoulBeLeft);
             } else if( std::find(releasedVertNew[avs].begin(), releasedVertNew[avs].end(), j) == releasedVertNew[avs].end()){
