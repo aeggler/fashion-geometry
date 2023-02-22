@@ -869,8 +869,6 @@ int main(int argc, char *argv[])
                  changedPos = pos;
                  cout<<pos<<" Pos was changed"<<endl;
 
-
-
                 if( copyPattern != mapFromVg){// rest shape changes if we insert middle cuts
                     vector<vector<int> > vvAdjPatt;
                     igl::adjacency_list( mapFromFg, vvAdjPatt);
@@ -895,7 +893,6 @@ int main(int argc, char *argv[])
                     viewer.data().set_mesh(currPattern, Fg_pattern_curr);
                 }
 
-
                 if(pos!=-1){
                     viewer.selected_data_index = 2;
                     viewer.data().uniform_colors(ambient, diffuse, specular);
@@ -907,13 +904,13 @@ int main(int argc, char *argv[])
                 igl::boundary_loop(Fg_pattern_curr, boundaryLnew);
                 if(boundaryLnew.size() != boundaryL.size()){
                     // TODO CHECK
-                    updatePatchId(cutPositions, boundaryLnew , seamsList, minusOneSeamsList);
+                    updatePatchId(cutPositions, boundaryLnew , seamsList, minusOneSeamsList,fullPatternVertToHalfPatternVert );
                 }
                 boundaryL.clear();
                 boundaryL = boundaryLnew;
 
-//                viewer.core().is_animating = true;
-//                adaptionFlag = true;
+                viewer.core().is_animating = true;
+                adaptionFlag = true;
 
             }
 
@@ -939,7 +936,7 @@ int main(int argc, char *argv[])
                 igl::boundary_loop(Fg_pattern_curr, boundaryLnew);
 
                 if(boundaryLnew.size() != boundaryL.size()){
-                    updatePatchId(cutPositions, boundaryLnew,seamsList, minusOneSeamsList );
+                    updatePatchId(cutPositions, boundaryLnew,seamsList, minusOneSeamsList, fullPatternVertToHalfPatternVert );
                 }
                 boundaryL.clear();
                 boundaryL= boundaryLnew;
@@ -954,7 +951,7 @@ int main(int argc, char *argv[])
                     for(auto adjPosi: vvAdjPatt[halfPatternVertToFullPatternVert[pos]]){
                         if(copyPattern.row(adjPosi) != mapFromVg.row(adjPosi)){
                             changedPos = adjPosi;
-                            cout<<copyPattern.row(adjPosi)<<" old one "<<changedPos <<endl<< mapFromVg.row(adjPosi)<<" new pos"<<endl;
+//                            cout<<copyPattern.row(adjPosi)<<" old one "<<changedPos <<endl<< mapFromVg.row(adjPosi)<<" new pos"<<endl;
                             updateChangedBaryCoordinates(changedPos, vfAdjPatternFrom);
                             // todo uvv should also change
 
@@ -966,7 +963,7 @@ int main(int argc, char *argv[])
                             for(auto adjPosi : vvAdjPatt[adjPos]){
                                 if(copyPattern.row(adjPosi) != mapFromVg.row(adjPosi)){
                                     changedPos = adjPosi;
-                                    cout<<copyPattern.row(adjPosi)<<" additional change old one "<<changedPos <<endl<< mapFromVg.row(adjPosi)<<" new pos"<<endl;
+//                                    cout<<copyPattern.row(adjPosi)<<" additional change old one "<<changedPos <<endl<< mapFromVg.row(adjPosi)<<" new pos"<<endl;
                                     updateChangedBaryCoordinates(changedPos, vfAdjPatternFrom);
 
                                 }
