@@ -168,7 +168,7 @@ map<int, pair<int, int>>  releasedVert; // all positions that need not be mapped
 set<int> toPattern_boundaryVerticesSet; // the boundary vertices of the toPattern, for visualization purposes
 vector<int> startAndEnd; // start and end to do the smoothing
 double taylor_lazyness = 1;
-
+bool inverseMap;
 void preComputeAdaption();
 void computeBaryCoordsGarOnNewMannequin(igl::opengl::glfw::Viewer& viewer);
 void setNewGarmentMesh(igl::opengl::glfw::Viewer& viewer);
@@ -367,7 +367,7 @@ int main(int argc, char *argv[])
     }
 
     setNewMannequinMesh(viewer);
-    t.printTime( " set collison mesh ");
+    t.printTime( " set collision mesh ");
 
     std::map<int,int> vertexMapPattToGar;
     std::map<std::pair<int, int>,int> vertexMapGarAndIdToPatch;
@@ -419,32 +419,31 @@ int main(int argc, char *argv[])
     computeStress(viewer);
 
     setCollisionMesh();
-
+    MatrixXd perfPattVg;
+    MatrixXi perfPattFg;
     // copy the matrices to not mess with them
 //    string fromPatternFile = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/writtenPatternSmoothedMaternity_fullyRetri.obj"; //_Added_duplRem_unrefRem
 //    TODO LATER NO MORE
 //    string fromPatternFile = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/writtenPattern_fullyRetri.obj"; //_Added_duplRem_unrefRem
-//    bool inverseMap = true;
-//    igl::readOBJ(fromPatternFile, mapFromVg, mapFromFg);
-//    Fg_pattern_curr = mapFromFg;
-//    mapToVg =  Vg_pattern_orig ;// curr = the current shape of the garment, something in between
-//    mapToFg = Fg_pattern_orig ;// the stress is computed between the rest shape and the current, ie mapFromVg and currPattern
-    string perfPatternFile = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/patternComputed_maternity_01.obj"; //_Added_duplRem_unrefRem
-    MatrixXd perfPattVg;
-    MatrixXi perfPattFg;
-    igl::readOBJ(perfPatternFile, perfPattVg, perfPattFg);//
+    inverseMap = true;
+    if(inverseMap){
+        string fromPatternFile = "/Users/annaeggler/Desktop/writtenPattern.obj";
+        igl::readOBJ(fromPatternFile, mapFromVg, mapFromFg);
+        Fg_pattern_curr = mapFromFg;
+        cout<<mapFromVg.rows()<<" rows at the beginning"<<endl;
+        mapToVg =  Vg_pattern_orig ;// curr = the current shape of the garment, something in between
+        mapToFg = Fg_pattern_orig ;// the stress is computed between the rest shape and the current, ie mapFromVg and currPattern
+        string perfPatternFile = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/patternComputed_maternity_01.obj"; //_Added_duplRem_unrefRem
+        igl::readOBJ(perfPatternFile, perfPattVg, perfPattFg);//
+    }else{
+        string mappedPatternFile = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/patternComputed_maternity_01.obj";
+        igl::readOBJ(mappedPatternFile, mapToVg, mapToFg);
+        mapFromVg = Vg_pattern;
+        mapFromFg = Fg_pattern;
+    }
 
-//    fromPattern = Vg_pattern_orig;
-//    string mappedPatternFile = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/patternComputed_maternity_01.obj";
-//    igl::readOBJ(mappedPatternFile, toPattern, Fg_pattern);// remove for simulation, add for adaption
-//    toPattern= Vg_pattern_orig;
+    //    symetry = false;
 
-    bool inverseMap = false;
-//    symetry = false;
-    string mappedPatternFile = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/patternComputed_maternity_01.obj";
-    igl::readOBJ(mappedPatternFile, mapToVg, mapToFg);
-    mapFromVg = Vg_pattern;
-    mapFromFg = Fg_pattern;
 
     viewer.core().animation_max_fps = 200.;
     viewer.core().is_animating = false;
@@ -457,56 +456,27 @@ int main(int argc, char *argv[])
     set<int> handledVerticesSet;
     pos = -1;
 
-//    // quick to fix them on the seam
-//    ofstream out("seamOut3D.txt");
-//    ofstream out2("seamOut2D.txt");
-//
-//    vector<int> whichS;
-//    whichS.push_back(2);
-//    whichS.push_back(3);
-//    whichS.push_back(9);
-//    whichS.push_back(12);
-//    int rears =0;
-//    for(auto j:whichS){
-//        seam* firstSeam = seamsList[j];
-//        auto stP1 = firstSeam-> getStartAndPatch1();
-//        auto stP2 = firstSeam-> getStartAndPatch2ForCorres();
-//
-//        int len = firstSeam -> seamLength();
-//        int boundLen1 = boundaryL[stP1.second].size();
-//        int boundLen2 = boundaryL[stP2.second].size();
-//
-//        for(int i=0; i<=len; i++){
-//            int vone = vertexMapPattToGar[boundaryL[stP1.second][(stP1.first+i)% boundLen1]];
-//            out2<<boundaryL[stP1.second][(stP1.first+i)% boundLen1]<<" ";
-//            int setAccess = (stP2.first-i)% boundLen2;
-//            if(setAccess < 0) {
-//                setAccess +=boundLen2;
-//            }
-//            if(seamsList[j]->inverted) setAccess = (stP2.first + i) % boundLen2;
-//            int vtwo = vertexMapPattToGar[boundaryL[stP2.second][setAccess]] ;
-//            out<<vone<<" ";
-//            out2<< boundaryL[stP2.second][setAccess]<<" ";
-//            rears+=2;
-//
-//        }
-//    }
-//    out.close();
-//    out2.close();
+
     MatrixXi Fg_pattern_half;
     MatrixXd Vg_pattern_half;
     VectorXi isLeftVertPattern;
 
-    if(symetry) {
+    if(symetry && !inverseMap) {
         createHalfSewingPattern(Vg_orig, Fg_orig, Vg_pattern, Fg_pattern, Vg_pattern_half, Fg_pattern_half,
                                 halfPatternFaceToFullPatternFace, fullPatternFaceToHalfPatternFace,
                                 halfPatternVertToFullPatternVert,
                                 fullPatternVertToHalfPatternVert, insertedIdxToPatternVert, isLeftVertPattern);
         cout << " FINISHED PATTERN SPLIT Operation" << endl;
-        cout<<(fullPatternVertToHalfPatternVert.find(2264) != fullPatternVertToHalfPatternVert.end())<<" check if 2264 is there"<<endl;
-        cout<<(fullPatternVertToHalfPatternVert.find(444) != fullPatternVertToHalfPatternVert.end())<<" check if 444 is there"<<endl;
 
-    }else{
+    }else if (symetry && inverseMap){
+        // map from is already split in two sides,
+        // do the same for map to
+        createHalfSewingPattern(Vg_orig, Fg_orig, mapToVg, mapToFg, Vg_pattern_half, Fg_pattern_half,
+                                halfPatternFaceToFullPatternFace, fullPatternFaceToHalfPatternFace,
+                                halfPatternVertToFullPatternVert,
+                                fullPatternVertToHalfPatternVert, insertedIdxToPatternVert, isLeftVertPattern );
+    }
+    else{
         for(int i= 0; i< Vg_pattern.rows(); i++){
             halfPatternVertToFullPatternVert[i] = i;
             fullPatternVertToHalfPatternVert[i] = i;
@@ -803,7 +773,8 @@ int main(int argc, char *argv[])
                 cout<<endl<<currPattern.rows()<<" curr pattern rows "<<endl;
                 preComputeAdaption();
                 if(inverseMap){
-                    initialGuessAdaption(currPattern, mapToVg, perfPattVg, Fg_pattern_curr, perfPattFg);
+                    initialGuessAdaption(currPattern, mapToVg, perfPattVg, Fg_pattern_curr, perfPattFg, symetry, cornerSet,
+                                         mapCornerToCorner, halfPatternVertToFullPatternVert.size(), halfPatternVertToFullPatternVert);
                 }else if (!symetry){
                     currPattern= mapToVg;
                 }else{
@@ -838,11 +809,14 @@ int main(int argc, char *argv[])
                 igl::boundary_loop(mapFromFg, boundaryLFrom);
 
                 if(inverseMap) {
-                    createMapCornersToNewCorner(currPattern, mapToVg, cornerPerBoundary, mapCornerToCorner, boundaryL);
+                    // corner per boundary contains only corners of the half pattern, but their original id -> always apply map when using these constructs
+                    createMapCornersToNewCorner(currPattern, mapToVg, cornerPerBoundary, mapCornerToCorner, boundaryL, halfPatternVertToFullPatternVert, fullPatternVertToHalfPatternVert,
+                    symetry, halfPatternFaceToFullPatternFace, fullPatternFaceToHalfPatternFace);
                     cornerVertices = VectorXd::Zero(currPattern.rows());
                     updateCornerUtils(cornerSet, cornerPerBoundary, seamIdPerCorner, mapCornerToCorner, cornerVertices);
                     updateSeamCorner(seamsList, minusOneSeamsList, mapCornerToCorner, boundaryL);
                 }
+                cout<<"ready for adaption"<<endl;
 //                viewer.core().is_animating = true;
 //                adaptionFlag = true;
             }
@@ -986,24 +960,6 @@ int main(int argc, char *argv[])
                     adaptionFlag = true;
                 }
 
-            }
-            if(ImGui::Button("Smooth cuts", ImVec2(-1, 0))){
-                simulate = false;
-                adaptionFlag = false;
-                viewer.core().is_animating = false;
-                smoothCuts(cutPositions, currPattern, Fg_pattern, seamsList, minusOneSeamsList, releasedVert, toPattern_boundaryVerticesSet, boundaryL, cornerSet);
-                cout<<"back"<<endl;
-                std::vector<std::vector<int> > boundaryLnew;
-                igl::boundary_loop(Fg_pattern, boundaryLnew);
-                viewer.selected_data_index = 0;
-                viewer.data().clear();
-                viewer.data().set_mesh(currPattern, Fg_pattern);
-
-                boundaryL.clear();
-                boundaryL= boundaryLnew;
-
-//                viewer.core().is_animating = true;
-//                adaptionFlag = true;
             }
             if(ImGui::Checkbox("Allow L-shaped fabric insertion", &LShapeAllowed)){}
             if(ImGui::Checkbox("Prioritize Inner Cuts", &prioInner)){
@@ -1283,7 +1239,8 @@ int main(int argc, char *argv[])
                 igl::readOBJ(helperToLocate, helperV, helperF);
                 igl::readOBJ(helperToLocate, oneDirMapV, oneDirMapF);
                 // helper is localized in mapToV (= the perfect pattern), and mapped to mapFromV (= the shape we start with)
-                initialGuessAdaption( helperV,  mapFromV,  mapToV, helperF,  mapToF);
+                initialGuessAdaption( helperV,  mapFromV,  mapToV, helperF,  mapToF, symetry,    cornerSet,  mapCornerToCorner, halfPatternVertToFullPatternVert.size()
+                ,  halfPatternVertToFullPatternVert);
 
                 // facturedInverse is localized in helper(could also be mapFromV) , and mapped to mapTo (= the target shape, ,could also be final but who cares)
                 // note: translation does not work well here becuase the fracture might have introduced more components, then the translation is off ;(
@@ -2346,12 +2303,13 @@ void solveStretchAdaption(){
 
     MatrixXd correctionTerm = MatrixXd::Zero(currPattern.rows(), 3);
     VectorXd itemCount = VectorXd::Zero(currPattern.rows());
+    cout<<"stretch adaption"<<endl<<endl;
 //    oneShotLengthSolve( p_adaption,  Fg_pattern_curr, baryCoordsUPattern, baryCoordsVPattern, mapFromVg, mapFromFg);
         // force that pulls back to the original position in fromPattern
     // it does not quite work after tthe 3rd cut. Jacobian seems to be fine but it messes up
     for(int j=0; j< Fg_pattern_curr.rows(); j++){
         Eigen::MatrixXd patternCoords(2, 3);
-        int i  = halfPatternFaceToFullPatternFace[j];
+        int i  = (inverseMap) ? j : halfPatternFaceToFullPatternFace[j];
         patternCoords.col(0) = mapFromVg.row(mapFromFg(i, 0)).leftCols(2).transpose();
         patternCoords.col(1) = mapFromVg.row(mapFromFg(i, 1)).leftCols(2).transpose();
         patternCoords.col(2) = mapFromVg.row(mapFromFg(i, 2)).leftCols(2).transpose();
@@ -2362,7 +2320,7 @@ void solveStretchAdaption(){
         targetPositions.col(0)=  p_adaption.row(Fg_pattern_curr(j, 0)).leftCols(2).transpose() ;
         targetPositions.col(1)=  p_adaption.row(Fg_pattern_curr(j, 1)).leftCols(2).transpose() ;
         targetPositions.col(2)=  p_adaption.row(Fg_pattern_curr(j, 2)).leftCols(2).transpose() ;
-
+        if(j==0) cout<<patternCoords<<endl<<endl<<targetPositions<<endl<<endl;
         int uOrv = 1;
 //        if( i == 5549  ) uOrv = 11;
 //        TODO STIFFNESS PARAMETER
@@ -2385,6 +2343,7 @@ void solveStretchAdaption(){
     }
     for(int i=0; i<p_adaption.rows(); i++){
         p_adaption.row(i) += (correctionTerm.row(i))/itemCount(i);
+//        cout<<((correctionTerm.row(i))/itemCount(i)).norm()<<" change"<<endl;
     }
 
 }
@@ -2429,30 +2388,40 @@ void solveCornerMappedVertices(){
 
     for(auto cpb: cornerPerBoundary){
         for(auto cpbj :  cpb ){
-            int vertIdx = get<0>(cpbj);
-            if(fullPatternVertToHalfPatternVert.find(vertIdx) == fullPatternVertToHalfPatternVert.end()){
-                continue;
+            int vertIdx = mapCornerToCorner[get<0>(cpbj)];
+            if(vertIdx <0){vertIdx*= -1; }else{
+                if(fullPatternVertToHalfPatternVert.find(vertIdx) == fullPatternVertToHalfPatternVert.end()){
+                    continue;
+                }
+                vertIdx = fullPatternVertToHalfPatternVert[vertIdx];
             }
-            vertIdx = fullPatternVertToHalfPatternVert[vertIdx];
+
 
             if(releasedVert.find(vertIdx)!= releasedVert.end()){
 //                if(adaptioncount%20==0) cout<<vertIdx<<" released"<<endl;
                 continue;
             }
-            Vector2d newSuggestedPos = mapToVg.row(get<0>(cpbj)).leftCols(2);
+            Vector2d newSuggestedPos;
+//            if(inverseMap){
+//                newSuggestedPos = mapToVg.row(vertIdx).leftCols(2);
+//            }else{
+                newSuggestedPos = mapToVg.row(get<0>(cpbj)).leftCols(2);
+//            }
             Vector2d dir = newSuggestedPos - p_adaption.row(vertIdx).leftCols(2).transpose();
             // TODO PARAMETER
             p_adaption.row(vertIdx).leftCols(2) += boundaryStiffness * dir;
         }
     }
 
-}
+}map<int,int> IdMap;
 void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
     Timer t(" Adaption time step ");
-
+for(int i=0; i<currPattern.rows(); i++){
+    IdMap[i]=i;
+}
     adaptioncount++;
 //    if(adaptioncount>1)return;
-//    cout<<adaptioncount<<endl<<endl;
+    cout<<adaptioncount<<endl<<endl;
 
  //   std::cout<<"-------------- Time Step ------------"<<adaptioncount<<endl;
     // we have no velocity or collision, but we do have stretch, constrainedStretch and bending
@@ -2468,24 +2437,27 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
 
     changedPos = -1;
 //    t.printTime(" init ");
-    for(int i=0; i<8; i++){
-//        t.printTime(" pattern stress ");
+    for(int i=0; i<1; i++){
+        t.printTime(" init stress ");
 
         solveStretchAdaption();
 //        solveStretchAdaptionViaEdgeLength();//
-
+        t.printTime(" stretch stress ");
         // before cutting the boundaries should be the same
-        projectBackOnBoundary( mapToVg, p_adaption, seamsList, minusOneSeamsList, boundaryL_toPattern,
-                                boundaryLFrom, releasedVert ,false, fullPatternVertToHalfPatternVert);
+//        map<int, int> mapUsed = fullPatternVertToHalfPatternVert;
+//        if(symetry && inverseMap) mapUsed = IdMap;
+//        projectBackOnBoundary( mapToVg, p_adaption, seamsList, minusOneSeamsList, boundaryL_toPattern,
+//                                boundaryLFrom, releasedVert ,false, mapUsed);
 //        if(changedPos != -1){
 //            cout<<p_adaption.row(changedPos)<<" bound "<<endl;
 //        }
-
+//        t.printTime(" proj stress ");
 //        ensurePairwiseDist(p_adaption, toPattern, Fg_pattern);
         solveCornerMappedVertices();
-
+        t.printTime(" corner  ");
         // this causes the weired ange issue
 //        ensureAngle(p_adaption, mapFromVg, Fg_pattern_curr, mapFromFg);
+
 
     }
 
@@ -2523,8 +2495,9 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
 //        if(i<5){
 //            igl::writeOBJ("halfPattern.txt", currPattern, Fg_pattern_curr);
 //            cout<<i<<" i and in the full pattern it was "<<halfPatternFaceToFullPatternFace[i]<<endl; }
-        Vector3d ubary = baryCoordsUPattern.row(halfPatternFaceToFullPatternFace[i]);
-        Vector3d vbary = baryCoordsVPattern.row(halfPatternFaceToFullPatternFace[i]);
+        int idx = (inverseMap)? i: halfPatternFaceToFullPatternFace[i];
+        Vector3d ubary = baryCoordsUPattern.row(idx );
+        Vector3d vbary = baryCoordsVPattern.row(idx);
 
         uPerEdge.row(i) = (ubary(0) * v0new + ubary(1) * v1new + ubary(2) * v2new).transpose() -  startPerEdge.row(i);
         vPerEdge.row(i) = (vbary(0) * v0new + vbary(1) * v1new + vbary(2) * v2new).transpose() -  startPerEdge.row(i);

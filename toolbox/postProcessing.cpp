@@ -1046,7 +1046,8 @@ void createHalfAvatarMap(MatrixXd& testMorph_V1, MatrixXi& testMorph_F1,
 
 }
 
-void initialGuessAdaption(MatrixXd& currPattern_nt, MatrixXd& mapToVg_nt, MatrixXd& perfectPattern_nt,  MatrixXi& Fg_pattern_curr, MatrixXi& mapToFg){
+void initialGuessAdaption(MatrixXd& currPattern_nt, MatrixXd& mapToVg_nt, MatrixXd& perfectPattern_nt,  MatrixXi& Fg_pattern_curr, MatrixXi& mapToFg, bool symetry,
+                          set<int> & cornerSet, map<int, int >& mapCornerToCorner, int origHalfSize, map<int, int>& halfPatternVertToFullPatternVertT){
 //perfect pattern is the initial perfect pattern for the new shape, and curr is the existing adapted to the perfect, thus is has more faces and its own Fg
 // note that mapToVg was the one we started with, and it has face correspondence with perfect pattern, therefore they both use mapToFg
     cout<<"start init guess"<<endl ;
@@ -1054,11 +1055,23 @@ void initialGuessAdaption(MatrixXd& currPattern_nt, MatrixXd& mapToVg_nt, Matrix
     igl::vertex_components(mapToFg, componentIdPerVert_other);
     igl::vertex_components(Fg_pattern_curr,componentIdPerVert_curr );
     MatrixXd currPattern = currPattern_nt;
+
+    vector<int> right, left, rightFull, leftFull;
+    rightFull.push_back(1); rightFull.push_back(5);
+    leftFull.push_back(3); leftFull.push_back(6);
+    if(!symetry){
+        right = rightFull;
+        left = leftFull;
+    }else{
+        right.push_back(1); right.push_back(3); // maybe switched!!
+        left.push_back(100); left.push_back(3000);
+    }
+
     for(int i=0; i < currPattern_nt.rows(); i++){
-        if(componentIdPerVert_curr(i)== 1 ||componentIdPerVert_curr(i)== 5){
+        if(componentIdPerVert_curr(i)== right[0] ||componentIdPerVert_curr(i)== right[1]){
             currPattern(i, 0) += 100;
         }
-        else if(componentIdPerVert_curr(i)== 3 ||componentIdPerVert_curr(i)== 6){
+        else if(componentIdPerVert_curr(i)== left[0] ||componentIdPerVert_curr(i)== left[1] ){
             currPattern(i, 0) -= 100;
         }
     }
@@ -1066,11 +1079,11 @@ void initialGuessAdaption(MatrixXd& currPattern_nt, MatrixXd& mapToVg_nt, Matrix
     MatrixXd mapToVg = mapToVg_nt;
     MatrixXd perfectPattern = perfectPattern_nt;
     for(int i=0; i < mapToVg.rows(); i++){
-        if(componentIdPerVert_other(i)== 1 ||componentIdPerVert_other(i)== 5){
+        if(componentIdPerVert_other(i)== rightFull[0] ||componentIdPerVert_other(i)== rightFull[1]){
             mapToVg(i, 0) += 100;
             perfectPattern(i, 0) += 100;
         }
-        else if(componentIdPerVert_other(i)== 3 ||componentIdPerVert_other(i)== 6){
+        else if(componentIdPerVert_other(i)== leftFull[0] ||componentIdPerVert_other(i)== leftFull[1] ){
             mapToVg(i, 0) -= 100;
             perfectPattern(i, 0) -= 100;
 
@@ -1081,32 +1094,65 @@ void initialGuessAdaption(MatrixXd& currPattern_nt, MatrixXd& mapToVg_nt, Matrix
     VectorXi I;//face index of smallest distance
     MatrixXd C,N, initGuess;
     cout<<"Starting with signed distance "<<endl;
+
     igl::signed_distance(currPattern, perfectPattern, mapToFg, igl::SIGNED_DISTANCE_TYPE_UNSIGNED, S, I, C, N);
 //    cout<<"Finished signed distance "<<endl;
-
+    vector<set<pair<int, double>>> newCornerCandidate(perfectPattern.rows());
     MatrixXd B(currPattern.rows(), 3); // contains all barycentric coordinates
     for(int i = 0; i < currPattern.rows(); i++){
         VectorXd bary;
+
         auto face = mapToFg.row(I(i));
         igl::barycentric_coordinates(currPattern.row(i), perfectPattern.row(face(0)), perfectPattern.row(face(1)),
                                      perfectPattern.row(face(2)), bary);
+        for(int c=0; c<3; c++){
+            if(cornerSet.find(mapToFg(I(i),c)) != cornerSet.end()){
+                newCornerCandidate[mapToFg(I(i),c) ].insert(make_pair(i, (currPattern.row(i) - perfectPattern.row( mapToFg(I(i),c) )).norm() ));
+            }
+        }
+
         B.row(i) = bary;
     }
-    cout<<"Got all barycentric coords"<<endl;
+    cout<<"Got all barycentric coords "<< newCornerCandidate.size()<<endl;
     igl::barycentric_interpolation(mapToVg, mapToFg, B, I, initGuess);
     cout<<"Got interpolation "<<initGuess.rows()<<" and before we had "<<currPattern.rows()<<endl;
     currPattern  = initGuess;
     //undo the transposition
     currPattern_nt = currPattern;
     for(int i=0; i < currPattern_nt.rows(); i++){
-        if(componentIdPerVert_curr(i)== 1 ||componentIdPerVert_curr(i)== 5){
+        if(componentIdPerVert_curr(i)== right[0] ||componentIdPerVert_curr(i)== right[1]){
             currPattern_nt(i, 0) -= 100;
         }
-        else if(componentIdPerVert_curr(i)== 3 ||componentIdPerVert_curr(i)== 6){
+        else if(componentIdPerVert_curr(i)== left[0] ||componentIdPerVert_curr(i)== left[1] ){
             currPattern_nt(i, 0) += 100;
         }
     }
-cout<<"fin init guess"<<endl;
+    for(int i = 0; i<newCornerCandidate.size(); i++){
+        double min = 10000;
+        int newCorner = -1;
+        if(newCornerCandidate[i].size()<1)continue;
+        for(auto sugg : newCornerCandidate[i]){
+            if(sugg.second<min){
+               newCorner = sugg.first;
+               min = sugg.second;
+            }
+        }
+        if(newCorner ==-1){
+            cout<<"no new corner found "<<i<<endl;
+        }else{
+            cout<<i<<" new corner is "<<newCorner<<endl;
+            if(newCorner>origHalfSize){
+                cout<<"added neg"<<endl;
+                newCorner *= -1;
+            }else{
+                newCorner = halfPatternVertToFullPatternVertT[newCorner];
+                cout<<"updated to "<<newCorner<<endl;
+            }
+            mapCornerToCorner[i]= newCorner;
+        }
+    }
+
+cout<<"fin init guess "<<currPattern_nt.rows()<<endl;
 }
 void initialGuessAdaptionWithoutT(MatrixXd& currPattern, MatrixXd& mapToVg, MatrixXd& perfectPattern,  MatrixXi& Fg_pattern_curr, MatrixXi& mapToFg){
 //perfect pattern is the initial perfect pattern for the new shape, and curr is the existing adapted to the perfect, thus is has more faces and its own Fg
@@ -1238,35 +1284,90 @@ void ensurePairwiseDist(MatrixXd& p, MatrixXd& toPattern, MatrixXi& Fg_pattern){
 //        }
     }
 }
+//map<int, int> patchMapToHalf;
+map<int, int> htFFace ,pMapToHalf,
+//        fullPatternFaceToHalfPatternFace,
+        fTHVert;
+//        halfPatternVertToFullPatternVert;
+
 void createMapCornersToNewCorner(MatrixXd& currPattern,MatrixXd& mapToVg, vector<vector<pair<int, int>>>& cornerPerBoundary,// first is vert id, second ins loop id, but thats bullshit
-                                 map<int, int>& mapCornerToCorner, vector<vector<int>>& boundaryL){
+                                 map<int, int>& mapCornerToCorner, vector<vector<int>>& boundaryL, map<int, int>& halfPatternVertToFullPatternVertT,
+                                 map<int, int>& fullPatternVertToHalfPatternVertT, bool symetry, map<int, int>&  halfPatternFaceToFullPatternFaceT, map<int, int>&
+                                 fullPatternFaceToHalfPatternFaceT ){
     currPattern.col(2).setConstant(200);
     mapToVg.col(2).setConstant(200);
-    double eps = 0.1;
-    for(int i = 0; i<cornerPerBoundary.size(); i++){
-        vector<pair<int, int>> cornersOfB = cornerPerBoundary[i];
-        for(int j = 0; j< cornersOfB.size(); j++){
-            int newId;
-            if((currPattern.row(cornersOfB[j].first)- mapToVg.row(cornersOfB[j].first)).norm()> eps){
-                // we need to find it
-                bool found = false;
-                double minDist = (currPattern.row(boundaryL[i][0])- mapToVg.row(cornersOfB[j].first)).norm();
-                for(int ii=0; ii< boundaryL[i].size(); ii++){
-                    if((currPattern.row(boundaryL[i][ii])- mapToVg.row(cornersOfB[j].first)).norm()< minDist){
-                        found = true;
-                        newId= boundaryL[i][ii];
-                        minDist = (currPattern.row(boundaryL[i][ii])- mapToVg.row(cornersOfB[j].first)).norm();
-                    }
-                }
-                if(!found){
-                    cout<<" no alternative corner found!"<<endl ;
-                }else{cout<<"taking "<<newId<<" with dist "<<minDist<<" as heuristic"<<endl; }
-            }else{
-                newId = cornersOfB[j].first;
-            }
-            mapCornerToCorner[cornersOfB[j].first] = newId;
-        }
-    }
+    fTHVert = fullPatternVertToHalfPatternVertT;
+    double eps = 0.1; int count = 0;
+//    for(int i = 0; i<cornerPerBoundary.size(); i++){
+//        vector<pair<int, int>> cornersOfB = cornerPerBoundary[i];
+//        for(int j = 0; j< cornersOfB.size(); j++){
+//            int newId;
+//
+//            if(fullPatternVertToHalfPatternVertT.find(cornersOfB[j].first ) == fullPatternVertToHalfPatternVertT.end()){continue; }
+//
+//            if(pMapToHalf.find(i)== pMapToHalf.end()){
+//                pMapToHalf[i]=count;
+//                cout<<i<<" is now patch "<<count<<endl;
+//                count++;
+//            }
+//            cout<<j<<" / "<<endl;
+//            int halfId= fullPatternVertToHalfPatternVertT[cornersOfB[j].first];
+//            if((currPattern.row(halfId )- mapToVg.row(halfId)).norm()> eps){
+//                // we need to find it
+//                bool found = false;
+//                double minDist = (currPattern.row(boundaryL[pMapToHalf[i]][0])- mapToVg.row(halfId)).norm();
+//                for(int ii=0; ii< boundaryL[pMapToHalf[i]].size(); ii++){
+//
+//                    if((currPattern.row(boundaryL[pMapToHalf[i]][ii])- mapToVg.row(halfId)).norm()< minDist){
+//                        found = true;
+//                        newId= boundaryL[i][ii];
+//                        minDist = (currPattern.row(boundaryL[pMapToHalf[i]][ii])- mapToVg.row(halfId)).norm();
+//                    }
+//                }
+//                if(!found){
+//                    cout<<" no alternative corner found!"<<endl ;
+//                }else{cout<<"taking "<<newId<<" with dist "<<minDist<<" as heuristic"<<endl;
+//                    if(halfPatternVertToFullPatternVertT.find(newId) == halfPatternVertToFullPatternVertT.end() ){
+//                        newId *= (-1);
+//                        fullPatternVertToHalfPatternVertT[newId] = (-1) * newId;
+//                        cout<<newId<<" a new introduced vertex iis corner, map it negatively"<<endl;
+//                    }else{
+//                        cout<<"Full Id compute"<<endl;
+//                        newId = halfPatternVertToFullPatternVertT[newId];
+//                        cout<<"Full Id computed * "<<endl;
+//
+//                    }
+//                }
+//            }else{
+//                newId = cornersOfB[j].first;
+//            }
+//
+//            mapCornerToCorner[cornersOfB[j].first] = newId;
+//        }
+//    }
+//    if(symetry){
+//        halfPatternFaceToFullPatternFace= halfPatternFaceToFullPatternFaceT;
+//        fullPatternFaceToHalfPatternFace =fullPatternFaceToHalfPatternFaceT;
+//        fullPatternVertToHalfPatternVert= fullPatternVertToHalfPatternVertT;
+//        halfPatternVertToFullPatternVert=halfPatternVertToFullPatternVertT;
+//
+//        for(int i=0; i<cornerPerBoundary.size(); i++){
+//            for(int j=0; j<cornerPerBoundary[i].size(); j++){
+//                int ver = cornerPerBoundary[i][j].first;
+//                if(fullPatternVertToHalfPatternVert.find(ver) == fullPatternVertToHalfPatternVert.end()){
+//                    continue;
+//                }
+//                int newVer = fullPatternVertToHalfPatternVert[ver];
+//                for(int ii=0; ii < boundaryL.size(); ii++){
+//                    for(int jj= 0; jj<boundaryL[ii].size(); jj++){
+//                        if(boundaryL[ii][jj] == newVer){
+//                            patchMapToHalf[i]= ii;
+//                        }
+//                    }
+//                }
+//            }
+//        }
+//    }
 }
 
 void updateCornerUtils(set<int>& cornerSet , // a set containing all corner vertices
@@ -1296,52 +1397,61 @@ void updateSeamCorner( vector<seam*>& seamsList,  vector<minusOneSeam*> & minusO
     for(int i=0; i<seamsList.size(); i++){
         int start1 =  seamsList[i]->getStart1();
         int start2 =  seamsList[i]->getStart2();
+
+
+        //issue: some verts are in half-pattern
+        // half-pattern gets some new verts
+        // but these new verts of half pattern are not in halfMap
+        // which is ok bc they are not in full, but maybe it is needed in some mappings?
+
+
         auto ends =  seamsList[i]->getEndCornerIds();
         seamsList[i]->updateStartEnd( mapCornerToCorner[start1], mapCornerToCorner[start2],
                                       mapCornerToCorner[ends.first],  mapCornerToCorner[ends.second]) ;
         int patch1 = seamsList[i]->getPatch1();
         int patch2 = seamsList[i]->getPatch2();
 
-        int start1idx=0;
-        while(boundaryL[patch1][start1idx] != mapCornerToCorner[start1] && start1idx <= boundaryL[patch1].size()){
-            start1idx ++;
-        } if (boundaryL[patch1][start1idx] != mapCornerToCorner[start1]) { cout<<"start1 not found"<<endl;}
+//        int start1idx=0;
+//        while(boundaryL[patchMapToHalf[patch1]][start1idx] != mapCornerToCorner[start1] && start1idx <= boundaryL[patch1].size()){
+//            start1idx ++;
+//        } if (boundaryL[patch1][start1idx] != mapCornerToCorner[start1]) { cout<<"start1 not found"<<endl;}
+//
+//        int start2idx=0;
+//        while(boundaryL[patch2][start2idx] != mapCornerToCorner[start2] && start2idx <= boundaryL[patch2].size() ){
+//            start2idx ++;
+//        } if(boundaryL[patch2][start2idx] != mapCornerToCorner[start2]){ cout<<"start2 not found"<<endl;}
+//
+//        int end1idx=0;
+//        while(boundaryL[patch1][end1idx] != mapCornerToCorner[ends.first] && end1idx <= boundaryL[patch1].size()){
+//            end1idx ++;
+//        } if(boundaryL[patch1][end1idx] != mapCornerToCorner[ends.first]){cout<<"end1 not found"<<endl; }
+//
+//        int end2idx=0;
+//        while(boundaryL[patch2][end2idx] != mapCornerToCorner[ends.second] && end2idx <= boundaryL[patch2].size()){
+//            end2idx ++;
+//        } if(boundaryL[patch2][end2idx] != mapCornerToCorner[ends.second]){ cout<<"end2 not found"<<endl;}
 
-        int start2idx=0;
-        while(boundaryL[patch2][start2idx] != mapCornerToCorner[start2] && start2idx <= boundaryL[patch2].size() ){
-            start2idx ++;
-        } if(boundaryL[patch2][start2idx] != mapCornerToCorner[start2]){ cout<<"start2 not found"<<endl;}
 
-        int end1idx=0;
-        while(boundaryL[patch1][end1idx] != mapCornerToCorner[ends.first] && end1idx <= boundaryL[patch1].size()){
-            end1idx ++;
-        } if(boundaryL[patch1][end1idx] != mapCornerToCorner[ends.first]){cout<<"end1 not found"<<endl; }
-
-        int end2idx=0;
-        while(boundaryL[patch2][end2idx] != mapCornerToCorner[ends.second] && end2idx <= boundaryL[patch2].size()){
-            end2idx ++;
-        } if(boundaryL[patch2][end2idx] != mapCornerToCorner[ends.second]){ cout<<"end2 not found"<<endl;}
-
-
-        seamsList[i]->updateStartEndIdx( start1idx, start2idx, end1idx, end2idx);
+//        seamsList[i]->updateStartEndIdx( start1idx, start2idx, end1idx, end2idx);
 
     }
     for(int i=0; i<minusOneSeams.size(); i++){
         int start =  minusOneSeams[i]->getStartVert();
         int end =  minusOneSeams[i]->getEndVert();
+        if(fTHVert.find(start)== fTHVert.end())continue; // no need to update, it is not in the half pattern
 
         minusOneSeams[i]->updateStartEnd( mapCornerToCorner[start], mapCornerToCorner[end]) ;
         cout<<"From "<<start<<" "<<end<<" to "<<mapCornerToCorner[start]<<" "<<mapCornerToCorner[end]<<endl;
         int patch = minusOneSeams[i]->getPatch();
-        int startidx=0;
-        while(boundaryL[patch][startidx] != mapCornerToCorner[start] && startidx <= boundaryL[patch].size()){
-            startidx ++;
-        }if (boundaryL[patch][startidx] != mapCornerToCorner[start] ){ cout<<"start not found" <<endl; }
-        int endidx=0;
-        while(boundaryL[patch][endidx] != mapCornerToCorner[end] && endidx <= boundaryL[patch].size()){
-            endidx ++;
-        } if (boundaryL[patch][endidx] != mapCornerToCorner[end]){ cout<<"end not fond "<<endl ; }
-        minusOneSeams[i]->updateStartEndIdx( startidx, endidx) ;
+//        int startidx=0;
+//        while(boundaryL[patch][startidx] != mapCornerToCorner[start] && startidx <= boundaryL[patch].size()){
+//            startidx ++;
+//        }if (boundaryL[patch][startidx] != mapCornerToCorner[start] ){ cout<<"start not found" <<endl; }
+//        int endidx=0;
+//        while(boundaryL[patch][endidx] != mapCornerToCorner[end] && endidx <= boundaryL[patch].size()){
+//            endidx ++;
+//        } if (boundaryL[patch][endidx] != mapCornerToCorner[end]){ cout<<"end not fond "<<endl ; }
+//        minusOneSeams[i]->updateStartEndIdx( startidx, endidx) ;
 
     }
     cout<<"updated all corners :) "<<endl;
