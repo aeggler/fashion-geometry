@@ -43,6 +43,8 @@ public:
     std::map<int, int> duplicatesGlob2;// other side of the seam
     bool seamSplit1;
     bool seamSplit2;
+    bool usedInHalf1;
+    bool usedInHalf2;
 
     seam(int patch1Id, int patch2Id,
          int patch1startCornerId, // boundary loop index [patch1id][patch1startCornerid] to end
@@ -142,7 +144,7 @@ public:
     int endVertOld;
     std::map<int, int> duplicates;
     std::map<int, int> duplicatesGlob;
-
+    bool usedInHalf;
     bool seamSplit;
 
     minusOneSeam(int patchId,

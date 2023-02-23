@@ -2163,7 +2163,7 @@ void fillMatrixWithBoundaryVert(const vector<int>& boundary, const int& start, c
     int countLen = 2;
     int startIdx = 0;
     int boundLen = boundary.size();
-    cout<<start<<" "<<end<<" "<<boundLen<<endl;
+//    cout<<start<<" "<<end<<" "<<boundLen<<endl;
 
     while(boundary[startIdx] != start && startIdx <= boundLen){
         startIdx++;
@@ -2193,7 +2193,6 @@ void fillMatrixWithBoundaryVert(const vector<int>& boundary, const int& start, c
             bid += boundLen;
         }
         int v1_oneSide = boundary[bid ];
-        if(v1_oneSide == 2887)cout<< mapToVg.row(v1_oneSide)<<" the side "<<endl;
         Vg_seam1to.row(i) = mapToVg.row(v1_oneSide);
 
     }
@@ -2228,7 +2227,6 @@ void projectBackOnBoundary(const MatrixXd & mapToVg, MatrixXd& p, const vector<s
 
     cout<<"in projection "<<endl;
     for (int j = 0; j<numSeams; j++){
-        cout<<j<<" / "<<numSeams-1<<" "<<p.row(0)<<endl;
         seam* currSeam  = seamsList[j];
         auto stP1= currSeam-> getStartAndPatch1();
         auto stP2 =  currSeam -> getStartAndPatch2ForCorres(); // attention this is with respect to the original pattern
@@ -2256,7 +2254,13 @@ void projectBackOnBoundary(const MatrixXd & mapToVg, MatrixXd& p, const vector<s
         bool shoulBeLeft =true; // for 2 case
         // for each interior (=not corner) vertex of the new boundary we need to find the closest position on the polyline and map it there
         pair<int, int> ends = currSeam->getEndCornerIds();
+        cout<< j<<" seam, "<<currSeam->usedInHalf1<<" "<<currSeam->usedInHalf2<<endl;
 
+        if(j==7){
+            cout<<currSeam->usedInHalf1<<" "<<currSeam->usedInHalf2<<endl;
+            cout<<(seamFullHalf.find(currSeam->getStart1()) != seamFullHalf.end() ||
+            seamFullHalf.find(ends.first) != seamFullHalf.end())<<" found 7 ? "<<currSeam->getStart1()<<" "<<ends.first<<endl;
+        }
         if(seamFullHalf.find(currSeam->getStart1()) != seamFullHalf.end() ||
                 seamFullHalf.find(ends.first) != seamFullHalf.end() ){// only if at least one of them exists on the half pattern iit makes sense to iterate
 
@@ -2315,7 +2319,6 @@ void projectBackOnBoundary(const MatrixXd & mapToVg, MatrixXd& p, const vector<s
             int endSecond = (inverseMap) ? seamFullHalf[ends.second]: ends.second;
             int nextSeach;
             while( next!= endSecond ){
-                if(j==2) cout<<next<<endl;
                 // general case an interior vertex , if it is not constrained pull it to boundary
                  nextSeach = (inverseMap)? next: seamFullHalf[next];
                 if(releasedVert.find(nextSeach) == releasedVert.end() ){

@@ -1412,37 +1412,26 @@ void updateSeamCorner( vector<seam*>& seamsList,  vector<minusOneSeam*> & minusO
         // but these new verts of half pattern are not in halfMap
         // which is ok bc they are not in full, but maybe it is needed in some mappings?
 
-
         auto ends =  seamsList[i]->getEndCornerIds();
-        seamsList[i]->updateStartEnd( mapCornerToCorner[start1], mapCornerToCorner[start2],
-                                      mapCornerToCorner[ends.first],  mapCornerToCorner[ends.second]) ;
-//        cout<<"seam "<<i<<" "<<mapCornerToCorner[start1]<<" "<< mapCornerToCorner[start2]<<" "<<
-//                mapCornerToCorner[ends.first]<<" "<<  mapCornerToCorner[ends.second]<<endl;
-        int patch1 = seamsList[i]->getPatch1();
-        int patch2 = seamsList[i]->getPatch2();
+        int end1 = ends.first; int end2 = ends.second;
+        if(fTHVert.find(start1) != fTHVert.end() && fTHVert.find(end1) != fTHVert.end()) {
+            start1 = mapCornerToCorner[start1];
+            end1 = mapCornerToCorner[end1];
+            seamsList[i]->usedinHalf1 = true;
+        }else{ seamsList[i]->usedInHalf1 = false;
 
-//        int start1idx=0;
-//        while(boundaryL[patchMapToHalf[patch1]][start1idx] != mapCornerToCorner[start1] && start1idx <= boundaryL[patch1].size()){
-//            start1idx ++;
-//        } if (boundaryL[patch1][start1idx] != mapCornerToCorner[start1]) { cout<<"start1 not found"<<endl;}
-//
-//        int start2idx=0;
-//        while(boundaryL[patch2][start2idx] != mapCornerToCorner[start2] && start2idx <= boundaryL[patch2].size() ){
-//            start2idx ++;
-//        } if(boundaryL[patch2][start2idx] != mapCornerToCorner[start2]){ cout<<"start2 not found"<<endl;}
-//
-//        int end1idx=0;
-//        while(boundaryL[patch1][end1idx] != mapCornerToCorner[ends.first] && end1idx <= boundaryL[patch1].size()){
-//            end1idx ++;
-//        } if(boundaryL[patch1][end1idx] != mapCornerToCorner[ends.first]){cout<<"end1 not found"<<endl; }
-//
-//        int end2idx=0;
-//        while(boundaryL[patch2][end2idx] != mapCornerToCorner[ends.second] && end2idx <= boundaryL[patch2].size()){
-//            end2idx ++;
-//        } if(boundaryL[patch2][end2idx] != mapCornerToCorner[ends.second]){ cout<<"end2 not found"<<endl;}
+        }
+        if(fTHVert.find(start2) != fTHVert.end()){
+            start2 = mapCornerToCorner[start2];
+            end2 = mapCornerToCorner[end2];
+            seamsList[i]->usedInHalf2= true;
+        } else{ seamsList[i]->usedInHalf2 = false;
 
-
-//        seamsList[i]->updateStartEndIdx( start1idx, start2idx, end1idx, end2idx);
+        }
+//        if(fTHVert.find(end2) != fTHVert.end())
+        cout<<"seam "<<i<<" "<<start1<<" "<< start2<<" "<<
+            end1<<" "<<  end2<<endl;
+        seamsList[i]->updateStartEnd( start1, start2, end1,end2) ;
 
     }
     for(int i=0; i<minusOneSeams.size(); i++){
@@ -1451,6 +1440,7 @@ void updateSeamCorner( vector<seam*>& seamsList,  vector<minusOneSeam*> & minusO
         if(fTHVert.find(start)== fTHVert.end())continue; // no need to update, it is not in the half pattern
 
         minusOneSeams[i]->updateStartEnd( mapCornerToCorner[start], mapCornerToCorner[end]) ;
+        //TODO
 //        cout<<"From "<<start<<" "<<end<<" to "<<mapCornerToCorner[start]<<" "<<mapCornerToCorner[end]<<endl;
         int patch = minusOneSeams[i]->getPatch();
 //        int startidx=0;
