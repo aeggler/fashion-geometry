@@ -200,7 +200,7 @@ void computeOrientationOfFaces(VectorXd& signs,vector<int> vfAdj, MatrixXi& Fg, 
     }
 }
 
-map<int, int> patchMapToHalf;
+map<int, int> patchMapToHalf, patchMapToHalfInverse;
 void findCorrectSeamAndAddToDuplicates(vector<seam*>& seamsList, vector<minusOneSeam*> & minusOneSeams, int vertIdx,
                                        int duplVertIdx, vector<int> boundary, int patch, map<int, int> & fullPatternVertToHalfPatternVert ){
     cout<<"finding Corrrect dupl"<<endl;
@@ -2163,6 +2163,7 @@ void fillMatrixWithBoundaryVert(const vector<int>& boundary, const int& start, c
     int countLen = 2;
     int startIdx = 0;
     int boundLen = boundary.size();
+    cout<<start<<" "<<end<<" "<<boundLen<<endl;
 
     while(boundary[startIdx] != start && startIdx <= boundLen){
         startIdx++;
@@ -2178,18 +2179,6 @@ void fillMatrixWithBoundaryVert(const vector<int>& boundary, const int& start, c
         endIdx = endIdx % boundLen;
         countLen++;
     }
-//    int endPlusOne = (inverted)? startIdx-1: startIdx+1;
-//    endPlusOne = (inverted)? endPlusOne-1 : endPlusOne+1;
-//    if(endPlusOne <0) endPlusOne+= boundLen;
-//    endPlusOne = endPlusOne % boundLen;
-
-//   if (fullPatternVertToHalfPatternVert.find(boundary[endIdx]) == fullPatternVertToHalfPatternVert.end()){
-//       cout<<boundary[endIdx]<<" end index "<<endIdx<<" it is not a full seam "<<end<<endl;
-//       endIdx = (inverted)? endIdx+1 : endIdx-1;
-//       if(endIdx <0) endIdx+= boundLen;
-//       endIdx = endIdx % boundLen;
-//       countLen--;// we overshoot one
-//   } else
     if(boundary[endIdx] != end ) {
         cout<<"END NOT FOUND ERROR "<<end<<endl;
         for(int i=0; i<boundary.size(); i++){
@@ -2204,119 +2193,156 @@ void fillMatrixWithBoundaryVert(const vector<int>& boundary, const int& start, c
             bid += boundLen;
         }
         int v1_oneSide = boundary[bid ];
+        if(v1_oneSide == 2887)cout<< mapToVg.row(v1_oneSide)<<" the side "<<endl;
         Vg_seam1to.row(i) = mapToVg.row(v1_oneSide);
 
     }
 
 }
+// set up with to Pattern
+void setUpMap( const std::vector<std::vector<int> >& boundaryL,map<int,int> & fullPatternVertToHalfPatternVert){
+    int count = 0;
+    for(int i=0; i<boundaryL.size(); i++){
+        int found = false;
+        for(int j=0; j< boundaryL[i].size(); j++){
+            if(found) break;
+            cout<<boundaryL[i][j]<<" ";
+            if(fullPatternVertToHalfPatternVert.find(boundaryL[i][j])!= fullPatternVertToHalfPatternVert.end()){
+                patchMapToHalfInverse[i]= count;
+                cout<<"Map patch "<<i<<" to "<<count<<endl ;
+                count ++;
+                found = true;
+            }
+        }
+
+    }
+    cout<<(fullPatternVertToHalfPatternVert.find(1512)== fullPatternVertToHalfPatternVert.end())<<" found? "<<endl;
+}
 void projectBackOnBoundary(const MatrixXd & mapToVg, MatrixXd& p, const vector<seam*>& seamsList
                            ,const vector<minusOneSeam*> & minusOneSeams,
                            const std::vector<std::vector<int> >& boundaryL_toPattern, const std::vector<std::vector<int> >& boundaryL,
-                           map<int, pair<int, int>> & releasedVert ,bool visFlag, map<int,int> & fullPatternVertToHalfPatternVert){
+                           map<int, pair<int, int>> & releasedVert ,bool inverseMap, map<int,int> & fromtoToVertMapIfSplit,map<int,int> & seamFullHalf ){
 
     int numSeams = seamsList.size();
     int count =0;
 
-
+    cout<<"in projection"<<endl;
     for (int j = 0; j<numSeams; j++){
+        cout<<j<<" / "<<numSeams-1<<endl;
         seam* currSeam  = seamsList[j];
         auto stP1= currSeam-> getStartAndPatch1();
         auto stP2 =  currSeam -> getStartAndPatch2ForCorres(); // attention this is with respect to the original pattern
 //
         MatrixXd Vg_seam1to, Vg_seam2to;
         // build the structure for closest search
-        if(fullPatternVertToHalfPatternVert.find(currSeam-> patch1startCornerIdOld) != fullPatternVertToHalfPatternVert.end()  ||
-            fullPatternVertToHalfPatternVert.find(currSeam-> patch1endCornerIdOld) != fullPatternVertToHalfPatternVert.end()){
-            fillMatrixWithBoundaryVert(boundaryL_toPattern[currSeam->getStartAndPatch1().second], currSeam-> patch1startCornerIdOld ,
-                                       currSeam-> patch1endCornerIdOld, mapToVg, Vg_seam1to, false , fullPatternVertToHalfPatternVert);
+        if(seamFullHalf.find(currSeam-> patch1startCornerIdOld) != seamFullHalf.end()  ||
+                seamFullHalf.find(currSeam-> patch1endCornerIdOld) != seamFullHalf.end()){
+            int toPatch = currSeam->getStartAndPatch1().second;
+            int start = currSeam-> patch1startCornerIdOld;
+            int end = currSeam-> patch1endCornerIdOld;
+            fillMatrixWithBoundaryVert(boundaryL_toPattern[toPatch], start ,end, mapToVg, Vg_seam1to, false , fromtoToVertMapIfSplit);
 
         }
-        if(fullPatternVertToHalfPatternVert.find(currSeam-> patch2startCornerIdOld) != fullPatternVertToHalfPatternVert.end()  ||
-           fullPatternVertToHalfPatternVert.find(currSeam-> patch2endCornerIdOld) != fullPatternVertToHalfPatternVert.end() ){
-            fillMatrixWithBoundaryVert(boundaryL_toPattern[currSeam->getStartAndPatch2().second], currSeam-> patch2startCornerIdOld ,
-                                       currSeam-> patch2endCornerIdOld, mapToVg, Vg_seam2to, true, fullPatternVertToHalfPatternVert );
+        if(seamFullHalf.find(currSeam-> patch2startCornerIdOld) != seamFullHalf.end()  ||
+                seamFullHalf.find(currSeam-> patch2endCornerIdOld) != seamFullHalf.end() ){
+
+            int toPatch = currSeam->getStartAndPatch2().second;
+            int start =  currSeam-> patch2startCornerIdOld;
+            int end =  currSeam-> patch2endCornerIdOld;
+            fillMatrixWithBoundaryVert(boundaryL_toPattern[toPatch], start, end, mapToVg, Vg_seam2to, true, fromtoToVertMapIfSplit );
+
         }
 
         bool shoulBeLeft =true; // for 2 case
-
         // for each interior (=not corner) vertex of the new boundary we need to find the closest position on the polyline and map it there
-        // todo never ever cut the corner or change the corner index
         pair<int, int> ends = currSeam->getEndCornerIds();
-        if(fullPatternVertToHalfPatternVert.find(currSeam->getStart1()) != fullPatternVertToHalfPatternVert.end() ||
-        fullPatternVertToHalfPatternVert.find(ends.first) != fullPatternVertToHalfPatternVert.end() ){// only if at least one of them exists on the half pattern iit makes sense to iterate
-            int bsize = boundaryL[stP1.second].size();
-            int next = currSeam -> getStart1();
+
+        if(seamFullHalf.find(currSeam->getStart1()) != seamFullHalf.end() ||
+                seamFullHalf.find(ends.first) != seamFullHalf.end() ){// only if at least one of them exists on the half pattern iit makes sense to iterate
+
+            int patchUsed = patchMapToHalfInverse[stP1.second];
+            if(!inverseMap) patchUsed = stP1.second;
+            int bsize = boundaryL[patchUsed].size();
+            int next = (inverseMap)? seamFullHalf[currSeam -> getStart1()] : currSeam -> getStart1();
             int nextIdx = 0 ;
-            while(boundaryL[stP1.second][nextIdx] != next && nextIdx < bsize){
+            while(boundaryL[patchUsed][nextIdx] != next && nextIdx < bsize){
                 nextIdx ++;
             }
-            if(boundaryL[stP1.second][nextIdx] != next){
+            if(boundaryL[patchUsed][nextIdx] != next){
                 cout<<"PROJECTION ERROR we dont find the index "<<endl;
             }
-            while(fullPatternVertToHalfPatternVert.find(boundaryL[stP1.second][nextIdx]) == fullPatternVertToHalfPatternVert.end()){nextIdx++; }
-            next = boundaryL[stP1.second][nextIdx];
-
-            while( next!= ends.first && (fullPatternVertToHalfPatternVert.find(next) != fullPatternVertToHalfPatternVert.end()) ){
+//
+            int endsFirst = (inverseMap)? seamFullHalf[ends.first] : ends.first;
+            int searchNExt;
+            while( next!= endsFirst ){
                 // it is not released, project on boundary
-                if(releasedVert.find(fullPatternVertToHalfPatternVert[next]) == releasedVert.end()){
-                    updatePositionToIntersection( p, fullPatternVertToHalfPatternVert[next],Vg_seam1to, true);
+                 searchNExt = (inverseMap) ? next : seamFullHalf[next];
+                if(releasedVert.find(searchNExt) == releasedVert.end()){
+                    updatePositionToIntersection( p, searchNExt,Vg_seam1to, true);
                 }
                     // else it is released somehow. But from which seam? If it is released from another seam then pull it to this boundary still
-                else if( std::find(releasedVertNew[fullPatternVertToHalfPatternVert[next]].begin(),
-                                   releasedVertNew[fullPatternVertToHalfPatternVert[next]].end(), j) == releasedVertNew[fullPatternVertToHalfPatternVert[next]].end()){
-                    updatePositionToIntersection( p, fullPatternVertToHalfPatternVert[next],Vg_seam1to, true);
+                else if( std::find(releasedVertNew[searchNExt].begin(),
+                                   releasedVertNew[searchNExt].end(), j) == releasedVertNew[searchNExt].end()){
+                    updatePositionToIntersection( p, searchNExt,Vg_seam1to, true);
                 }
                 nextIdx++;
-                next = boundaryL[stP1.second][(nextIdx) % bsize];
+                next = boundaryL[patchUsed][(nextIdx) % bsize];
             }
-            // the last corner. Again if it is constrained from another side pull it to boundary, else ignore since handled by corner
-            if(releasedVert.find(fullPatternVertToHalfPatternVert[next]) == releasedVert.end()){
-                updatePositionToIntersection( p, fullPatternVertToHalfPatternVert[next],Vg_seam1to, true);
+            searchNExt = (inverseMap) ? next : seamFullHalf[next];
 
-            } else if (std::find(releasedVertNew[fullPatternVertToHalfPatternVert[next]].begin(), releasedVertNew[fullPatternVertToHalfPatternVert[next]].end(), j) == releasedVertNew[fullPatternVertToHalfPatternVert[next]].end()){
-                updatePositionToIntersection( p, fullPatternVertToHalfPatternVert[next],Vg_seam1to, true);
+            // the last corner. Again if it is constrained from another side pull it to boundary, else ignore since handled by corner
+            if(releasedVert.find(searchNExt) == releasedVert.end()){
+                updatePositionToIntersection( p, searchNExt,Vg_seam1to, true);
+
+            } else if (std::find(releasedVertNew[searchNExt].begin(), releasedVertNew[searchNExt].end(), j) == releasedVertNew[searchNExt].end()){
+                updatePositionToIntersection( p, searchNExt,Vg_seam1to, true);
             }
         }
 
         /**********  second side  *********/
-        if(fullPatternVertToHalfPatternVert.find(currSeam->getStart2()) != fullPatternVertToHalfPatternVert.end() ||
-           fullPatternVertToHalfPatternVert.find(ends.second) != fullPatternVertToHalfPatternVert.end() ){
-            int bsize = boundaryL[stP2.second].size();
+        if(seamFullHalf.find(currSeam->getStart2()) != seamFullHalf.end() ||
+                seamFullHalf.find(ends.second) != seamFullHalf.end() ){
+            int patchUsed = (inverseMap)? patchMapToHalfInverse[stP2.second] : stP2.second;
+            int bsize = boundaryL[patchUsed].size();
             int nextIdx = 0;
-            int next = currSeam -> getStart2();
-            while (boundaryL[stP2.second][nextIdx] != next && nextIdx < bsize ){
+            int next = (inverseMap)? seamFullHalf[currSeam -> getStart2()]: currSeam -> getStart2();
+            while (boundaryL[patchUsed][nextIdx] != next && nextIdx < bsize ){
                 nextIdx ++;
             }
-            if(boundaryL[stP2.second][nextIdx] != next){
+            if(boundaryL[patchUsed][nextIdx] != next){
                 cout<<"PROJECTION ERROR 2 we dont find the index "<<next<<" should be on patch "<<stP2.second<<endl;
             }
-            while(fullPatternVertToHalfPatternVert.find(boundaryL[stP2.second][nextIdx]) == fullPatternVertToHalfPatternVert.end()){nextIdx++; }
-            next = boundaryL[stP2.second][nextIdx];
-            while( next!= ends.second && (fullPatternVertToHalfPatternVert.find(next) != fullPatternVertToHalfPatternVert.end())  ){
+            int endSecond = (inverseMap) ? seamFullHalf[ends.second]: ends.second;
+            int nextSeach;
+            while( next!= endSecond ){
+                if(j==2) cout<<next<<endl;
                 // general case an interior vertex , if it is not constrained pull it to boundary
-                if(releasedVert.find(fullPatternVertToHalfPatternVert[next]) == releasedVert.end() ){
-                    updatePositionToIntersection( p, fullPatternVertToHalfPatternVert[next],Vg_seam2to, shoulBeLeft);
-                } else if( std::find(releasedVertNew[fullPatternVertToHalfPatternVert[next]].begin(),
-                                     releasedVertNew[fullPatternVertToHalfPatternVert[next]].end(), j) == releasedVertNew[fullPatternVertToHalfPatternVert[next]].end()){
-                    updatePositionToIntersection( p, fullPatternVertToHalfPatternVert[next],Vg_seam2to, shoulBeLeft);
+                 nextSeach = (inverseMap)? next: seamFullHalf[next];
+                if(releasedVert.find(nextSeach) == releasedVert.end() ){
+                    updatePositionToIntersection( p, nextSeach,Vg_seam2to, shoulBeLeft);
+                } else if( std::find(releasedVertNew[nextSeach].begin(),
+                                     releasedVertNew[nextSeach].end(), j) == releasedVertNew[nextSeach].end()){
+                    updatePositionToIntersection( p,nextSeach ,Vg_seam2to, shoulBeLeft);
                 }
                 nextIdx -=1;// (nextidx - i2) % (bsize);
 
                 if(nextIdx < 0) {nextIdx += bsize;}
-                next = boundaryL[stP2.second][nextIdx];
+                next = boundaryL[patchUsed][nextIdx];
             }
-            if(releasedVert.find(fullPatternVertToHalfPatternVert[next]) == releasedVert.end()){
-                updatePositionToIntersection( p, fullPatternVertToHalfPatternVert[next],Vg_seam2to, shoulBeLeft);
-            }else if (std::find(releasedVertNew[fullPatternVertToHalfPatternVert[next]].begin(),
-                                releasedVertNew[fullPatternVertToHalfPatternVert[next]].end(), j) == releasedVertNew[fullPatternVertToHalfPatternVert[next]].end()){
-                updatePositionToIntersection( p, fullPatternVertToHalfPatternVert[next],Vg_seam2to, shoulBeLeft);
+            nextSeach = (inverseMap)? next: seamFullHalf[next];
+            if(releasedVert.find(nextSeach) == releasedVert.end()){
+                updatePositionToIntersection( p, nextSeach,Vg_seam2to, shoulBeLeft);
+            }else
+                if (std::find(releasedVertNew[nextSeach].begin(),
+                                releasedVertNew[nextSeach].end(), j) == releasedVertNew[nextSeach].end()){
+                updatePositionToIntersection( p, nextSeach,Vg_seam2to, shoulBeLeft);
             }
 
         }
 
         // also project all duplicates of interior cut vertices
         for(const auto & addedVert : currSeam->duplicates){
-            int avs =addedVert.second;
+            int avs = addedVert.second;
             if(releasedVert.find(avs) == releasedVert.end() ){
                 updatePositionToIntersection(p, avs, Vg_seam1to, true);
             } else if( std::find(releasedVertNew[avs].begin(), releasedVertNew[avs].end(), j) == releasedVertNew[avs].end()){
@@ -2333,72 +2359,76 @@ void projectBackOnBoundary(const MatrixXd & mapToVg, MatrixXd& p, const vector<s
                 updatePositionToIntersection(p, avs, Vg_seam2to, shoulBeLeft);
             }
         }
-
+//        if(j==2) return;
     }
-    for(int j = 0; j < minusOneSeams.size(); j++){
+    for(int j = 0; j <0; j++){// minusOneSeams.size()
 
         minusOneSeam* currSeam  = minusOneSeams[j];
         int patch = currSeam -> getPatch();
         int startVert = currSeam -> getStartVert();
-        int endVert = currSeam -> getEndVert();
-        int boundLen = boundaryL[patch].size();
+        int endVert =  currSeam -> getEndVert();
+
 
         // build the structure for closest search
         MatrixXd Vg_seamto;
-        if(fullPatternVertToHalfPatternVert.find(currSeam->startVertOld) == fullPatternVertToHalfPatternVert.end() &&
-                fullPatternVertToHalfPatternVert.find(currSeam->endVertOld) == fullPatternVertToHalfPatternVert.end()) continue;
+        if(seamFullHalf.find(currSeam->startVertOld) != seamFullHalf.end() ||
+                seamFullHalf.find(currSeam->endVertOld) != seamFullHalf.end()) {
+            cout<<seamFullHalf[currSeam->startVertOld]<<" "<<currSeam->startVertOld<<" map? "<<endl;
 
-        fillMatrixWithBoundaryVert(boundaryL_toPattern[patch], currSeam->startVertOld, currSeam->endVertOld,  mapToVg, Vg_seamto, false, fullPatternVertToHalfPatternVert );
 
-       int startidx = 0;
-       while ( boundaryL[patch][(startidx)] != startVert && startidx < boundLen+1){
-           startidx++;
-       }
-       if( boundaryL[patch][(startidx)] != startVert){
-           cout<<   "ERROR IN -1 SEAM , WE CANNOT FIND THE START VERT"<<endl ;
-       }
-       while (fullPatternVertToHalfPatternVert.find(boundaryL[patch][(startidx)]) == fullPatternVertToHalfPatternVert.end()){
-           startidx++;
-       }
+            fillMatrixWithBoundaryVert(boundaryL_toPattern[patch], currSeam->startVertOld, currSeam->endVertOld,
+                                       mapToVg, Vg_seamto, false, fromtoToVertMapIfSplit );
 
-        int next = boundaryL[patch][startidx];
-
-        while(next != endVert && fullPatternVertToHalfPatternVert.find(next) != fullPatternVertToHalfPatternVert.end()){
-            // general case, it is not released hence pull it to the boundary
-            if(releasedVert.find(fullPatternVertToHalfPatternVert[next]) == releasedVert.end()){
-                updatePositionToIntersection( p, fullPatternVertToHalfPatternVert[next],Vg_seamto , true);
-            }else if(std::find(releasedVertNew[fullPatternVertToHalfPatternVert[next]].begin(), releasedVertNew[fullPatternVertToHalfPatternVert[next]].end(),
-                               (-1)*(j+1)) == releasedVertNew[fullPatternVertToHalfPatternVert[next]].end()){
-                // it is released but not from this seam,thus it has to stay on the projection
-                updatePositionToIntersection( p, fullPatternVertToHalfPatternVert[next],Vg_seamto, true);
+            int patchUsed = (inverseMap)? patchMapToHalfInverse[patch] : patch;//
+            int boundLen = boundaryL[patchUsed].size();
+            int startidx = 0;
+            int next = (inverseMap)? seamFullHalf[startVert]: startVert;
+            endVert =  (inverseMap)? seamFullHalf[ currSeam -> getEndVert()] : currSeam -> getEndVert();
+            cout<<"before"<<endl;
+            while (boundaryL[patchUsed][startidx] != next){
+                startidx++;
             }
-            startidx++;
-            startidx = startidx % boundLen;
-            next = boundaryL[patch][ startidx];
-        }
-        // it is released for another side hence we have to pull it to our side
-        if(releasedVert.find(fullPatternVertToHalfPatternVert[next]) != releasedVert.end() && std::find(releasedVertNew[fullPatternVertToHalfPatternVert[next]].begin(),
-                                                                                                        releasedVertNew[fullPatternVertToHalfPatternVert[next]].end(),  (-1)*(j+1)) == releasedVertNew[fullPatternVertToHalfPatternVert[next]].end()){
-            updatePositionToIntersection( p, fullPatternVertToHalfPatternVert[next],Vg_seamto, true);
+            int nextSearch ;
+            cout<<"before other"<<endl;
 
-        }
-        // also map all projections
-        for(const auto & addedVert : currSeam -> duplicates){
-//            cout<<"added vert "<<addedVert.second<<endl;
-//            if (fullPatternVertToHalfPatternVert.find(addedVert.second) == fullPatternVertToHalfPatternVert.end()) continue;
-            int avs =addedVert.second;
-            if(releasedVert.find(avs) == releasedVert.end() ){
-//                cout<<"updated to insersection "<<avs <<endl;
-                updatePositionToIntersection(p, avs, Vg_seamto, true);
-            } else if( std::find(releasedVertNew[next].begin(), releasedVertNew[next].end(), j) == releasedVertNew[next].end()){
-                updatePositionToIntersection(p, avs, Vg_seamto, true);
+            while(next != endVert ){
+                cout<<next<<endl;
+                // general case, it is not released hence pull it to the boundary
+                nextSearch= (inverseMap) ? next : seamFullHalf[next];
+                if(releasedVert.find(nextSearch) == releasedVert.end()){
+                    updatePositionToIntersection( p,nextSearch,Vg_seamto , true);
+                }else if(std::find(releasedVertNew[nextSearch].begin(), releasedVertNew[nextSearch].end(),
+                                   (-1)*(j+1)) == releasedVertNew[nextSearch].end()){
+                    // it is released but not from this seam,thus it has to stay on the projection
+                    updatePositionToIntersection( p, nextSearch,Vg_seamto, true);
+                }
+                startidx++;
+                startidx = startidx % boundLen;
+                next = boundaryL[patchUsed][ startidx];
+            }// it is released for another side hence we have to pull it to our side
+            if(releasedVert.find(nextSearch) != releasedVert.end() && std::find(releasedVertNew[nextSearch].begin(),
+                                                                                releasedVertNew[nextSearch].end(),  (-1)*(j+1)) == releasedVertNew[nextSearch].end()){
+                updatePositionToIntersection( p, nextSearch,Vg_seamto, true);
+
             }
-//            updatePositionToIntersection(p, addedVert.second, Vg_seamto, true);
+            cout<<"finieshed loops"<<endl;
+            // also map all projections
+            for(const auto & addedVert : currSeam -> duplicates){
+                int avs = addedVert.second;
+                if(releasedVert.find(avs) == releasedVert.end() ){
+                    updatePositionToIntersection(p, avs, Vg_seamto, true);
+                } else if( std::find(releasedVertNew[next].begin(), releasedVertNew[next].end(), j) == releasedVertNew[next].end()){
+                    updatePositionToIntersection(p, avs, Vg_seamto, true);
+                }
 
+            }
         }
+
+
+
 
     }
-
+cout<<"fin projection"<<endl;
 }
 
 void updatePatchId(vector<cutVertEntry*>& cutPositions, const std::vector<std::vector<int> >& boundaryLnew, vector<seam*>& seamsList, vector<minusOneSeam*> & minusOneSeams,

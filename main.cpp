@@ -2405,7 +2405,8 @@ void solveCornerMappedVertices(){
 //            if(inverseMap){
 //                newSuggestedPos = mapToVg.row(vertIdx).leftCols(2);
 //            }else{
-                newSuggestedPos = mapToVg.row(get<0>(cpbj)).leftCols(2);
+                newSuggestedPos = mapToVg.row(abs(get<0>(cpbj))).leftCols(2);
+              cout<<newSuggestedPos.transpose()<<" new pos of "<<get<0>(cpbj)<<endl;
 //            }
             Vector2d dir = newSuggestedPos - p_adaption.row(vertIdx).leftCols(2).transpose();
             // TODO PARAMETER
@@ -2413,12 +2414,20 @@ void solveCornerMappedVertices(){
         }
     }
 
-}map<int,int> IdMap;
+}
+map<int,int> IdMap;
+
 void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
     Timer t(" Adaption time step ");
-for(int i=0; i<currPattern.rows(); i++){
-    IdMap[i]=i;
-}
+    if(adaptioncount ==0){
+        for(int i=0; i<currPattern.rows(); i++){
+            IdMap[i]=i;
+        }
+        setUpMap(boundaryL_toPattern , fullPatternVertToHalfPatternVert);
+
+    }
+
+
     adaptioncount++;
 //    if(adaptioncount>1)return;
     cout<<adaptioncount<<endl<<endl;
@@ -2444,14 +2453,23 @@ for(int i=0; i<currPattern.rows(); i++){
 //        solveStretchAdaptionViaEdgeLength();//
         t.printTime(" stretch stress ");
         // before cutting the boundaries should be the same
-//        map<int, int> mapUsed = fullPatternVertToHalfPatternVert;
-//        if(symetry && inverseMap) mapUsed = IdMap;
-//        projectBackOnBoundary( mapToVg, p_adaption, seamsList, minusOneSeamsList, boundaryL_toPattern,
-//                                boundaryLFrom, releasedVert ,false, mapUsed);
+        map<int, int> mapUsed = fullPatternVertToHalfPatternVert;
+        map<int, int> extFHV = fullPatternVertToHalfPatternVert;
+        if(symetry && inverseMap) {
+            mapUsed = IdMap;
+            for(auto item : mapCornerToCorner){
+                if(item.second<0){
+                    cout<<"adding negative"<<endl;
+                    extFHV[item.second]= (-1)* item.second;
+                }
+            }
+        }
+        projectBackOnBoundary( mapToVg, p_adaption, seamsList, minusOneSeamsList, boundaryL_toPattern,
+                                boundaryLFrom, releasedVert ,inverseMap,  mapUsed, extFHV);
 //        if(changedPos != -1){
 //            cout<<p_adaption.row(changedPos)<<" bound "<<endl;
 //        }
-//        t.printTime(" proj stress ");
+        t.printTime(" proj stress ");
 //        ensurePairwiseDist(p_adaption, toPattern, Fg_pattern);
         solveCornerMappedVertices();
         t.printTime(" corner  ");

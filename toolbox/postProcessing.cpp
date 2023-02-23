@@ -1375,6 +1375,7 @@ void updateCornerUtils(set<int>& cornerSet , // a set containing all corner vert
                        map<int, vector<pair<int, int>>>& seamIdPerCorner,    // contains corner id and a list of which seams start here (max 2),
                         map<int, int>& mapCornerToCorner,  VectorXd&   cornerVertices // 1 for each corner, 0 for all other vertices
 ){
+todo this is wrong. update with old and new for corner mapping
 
     cornerSet.clear();
 
@@ -1408,6 +1409,8 @@ void updateSeamCorner( vector<seam*>& seamsList,  vector<minusOneSeam*> & minusO
         auto ends =  seamsList[i]->getEndCornerIds();
         seamsList[i]->updateStartEnd( mapCornerToCorner[start1], mapCornerToCorner[start2],
                                       mapCornerToCorner[ends.first],  mapCornerToCorner[ends.second]) ;
+        cout<<"seam "<<i<<" "<<mapCornerToCorner[start1]<<" "<< mapCornerToCorner[start2]<<" "<<
+                mapCornerToCorner[ends.first]<<" "<<  mapCornerToCorner[ends.second]<<endl;
         int patch1 = seamsList[i]->getPatch1();
         int patch2 = seamsList[i]->getPatch2();
 

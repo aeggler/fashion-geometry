@@ -95,7 +95,7 @@ int findWhichEdgeOfFace(int face, int v1, int v2, MatrixXi& Fg);
 void updatePositionToIntersection(MatrixXd& p,int next,  const MatrixXd& Vg_bound);
 void projectBackOnBoundary(const MatrixXd & mapToVg, MatrixXd& p, const vector<seam*>& seamsList, const vector<minusOneSeam*> & minusOneSeams,
                       const std::vector<std::vector<int> >& boundaryL_toPattern, const std::vector<std::vector<int> >& boundaryL,
-                      map<int, pair<int, int>> & releasedVert, bool visFlag, map<int,int> & fullPatternVertToHalfPatternVert);
+                      map<int, pair<int, int>> & releasedVert, bool inverseMap, map<int,int> & fromtoToVertMapIfSplit,map<int,int> & seamFullHalf);
 
 int  tearFurther(vector<cutVertEntry*>& cutPositions,
                  MatrixXd&  currPattern,
@@ -126,6 +126,7 @@ int tearFurtherVisIdxHelper(vector<cutVertEntry*>& cutPositions, MatrixXd&  curr
                             bool& prioOuter );
 void smoothCuts(vector<cutVertEntry*>& cutPositions, MatrixXd&  currPattern, MatrixXi& Fg_pattern,vector<seam*>& seamsList, vector<minusOneSeam*>& minusOneSeams,
                 map<int, pair<int, int>> & releasedVert, set<int>& toPattern_boundaryVerticesSet,  std::vector<std::vector<int> >& boundaryL, set<int> & cornerSet );
+void setUpMap( const std::vector<std::vector<int> >& boundaryL,map<int,int> & fullPatternVertToHalfPatternVert);
 
 void updatePatchId(vector<cutVertEntry*>& cutPositions, const std::vector<std::vector<int> >& boundaryLnew, vector<seam*>& seamsList, vector<minusOneSeam*> & minusOneSeams, map<int, int >& fullPatternVertToHalfPatternVert);
 void fitVecToPointSet( MatrixXd& pointVec, VectorXd& vec );
