@@ -813,7 +813,7 @@ int main(int argc, char *argv[])
                     createMapCornersToNewCorner(currPattern, mapToVg, cornerPerBoundary, mapCornerToCorner, boundaryL, halfPatternVertToFullPatternVert, fullPatternVertToHalfPatternVert,
                     symetry, halfPatternFaceToFullPatternFace, fullPatternFaceToHalfPatternFace);
                     cornerVertices = VectorXd::Zero(currPattern.rows());
-                    updateCornerUtils(cornerSet, cornerPerBoundary, seamIdPerCorner, mapCornerToCorner, cornerVertices);
+                    updateCornerUtils(cornerSet, cornerPerBoundary, seamIdPerCorner, mapCornerToCorner, cornerVertices, fullPatternVertToHalfPatternVert);
                     updateSeamCorner(seamsList, minusOneSeamsList, mapCornerToCorner, boundaryL);
                 }
                 cout<<"ready for adaption"<<endl;
@@ -2388,12 +2388,13 @@ void solveCornerMappedVertices(){
 
     for(auto cpb: cornerPerBoundary){
         for(auto cpbj :  cpb ){
-            int vertIdx = mapCornerToCorner[get<0>(cpbj)];
-            if(vertIdx <0){vertIdx*= -1; }else{
-                if(fullPatternVertToHalfPatternVert.find(vertIdx) == fullPatternVertToHalfPatternVert.end()){
+            int vertIdx = get<0>(cpbj);
+            if(vertIdx <0){
+                vertIdx*= -1;
+            }else{
+                if(inverseMap && (get<1>(cpbj)==-1)){
                     continue;
                 }
-                vertIdx = fullPatternVertToHalfPatternVert[vertIdx];
             }
 
 
@@ -2402,15 +2403,17 @@ void solveCornerMappedVertices(){
                 continue;
             }
             Vector2d newSuggestedPos;
-//            if(inverseMap){
-//                newSuggestedPos = mapToVg.row(vertIdx).leftCols(2);
-//            }else{
-                newSuggestedPos = mapToVg.row(abs(get<0>(cpbj))).leftCols(2);
-              cout<<newSuggestedPos.transpose()<<" new pos of "<<get<0>(cpbj)<<endl;
-//            }
+            if(!inverseMap){
+                newSuggestedPos = mapToVg.row(vertIdx).leftCols(2);
+            }else{
+                newSuggestedPos = mapToVg.row(get<1>(cpbj)).leftCols(2);
+//              cout<<newSuggestedPos.transpose()<<" new pos of "<<get<1>(cpbj)<<endl;
+            }
             Vector2d dir = newSuggestedPos - p_adaption.row(vertIdx).leftCols(2).transpose();
             // TODO PARAMETER
+            if(vertIdx==0)cout<< p_adaption.row(vertIdx)<<endl;
             p_adaption.row(vertIdx).leftCols(2) += boundaryStiffness * dir;
+            if(vertIdx==0) cout<<p_adaption.row(vertIdx)<<"after"<<endl;
         }
     }
 
@@ -2450,6 +2453,7 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
         t.printTime(" init stress ");
 
         solveStretchAdaption();
+        cout<<p_adaption.row(0)<<"after stretch"<<endl;
 //        solveStretchAdaptionViaEdgeLength();//
         t.printTime(" stretch stress ");
         // before cutting the boundaries should be the same
@@ -2466,6 +2470,7 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
         }
         projectBackOnBoundary( mapToVg, p_adaption, seamsList, minusOneSeamsList, boundaryL_toPattern,
                                 boundaryLFrom, releasedVert ,inverseMap,  mapUsed, extFHV);
+        cout<<p_adaption.row(0)<<"after projection "<<endl;
 //        if(changedPos != -1){
 //            cout<<p_adaption.row(changedPos)<<" bound "<<endl;
 //        }

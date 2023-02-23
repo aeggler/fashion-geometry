@@ -2226,9 +2226,9 @@ void projectBackOnBoundary(const MatrixXd & mapToVg, MatrixXd& p, const vector<s
     int numSeams = seamsList.size();
     int count =0;
 
-    cout<<"in projection"<<endl;
+    cout<<"in projection "<<endl;
     for (int j = 0; j<numSeams; j++){
-        cout<<j<<" / "<<numSeams-1<<endl;
+        cout<<j<<" / "<<numSeams-1<<" "<<p.row(0)<<endl;
         seam* currSeam  = seamsList[j];
         auto stP1= currSeam-> getStartAndPatch1();
         auto stP2 =  currSeam -> getStartAndPatch2ForCorres(); // attention this is with respect to the original pattern

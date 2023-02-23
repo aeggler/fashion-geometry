@@ -1140,13 +1140,13 @@ void initialGuessAdaption(MatrixXd& currPattern_nt, MatrixXd& mapToVg_nt, Matrix
         if(newCorner ==-1){
             cout<<"no new corner found "<<i<<endl;
         }else{
-            cout<<i<<" new corner is "<<newCorner<<endl;
+//            cout<<i<<" new corner is "<<newCorner<<endl;
             if(newCorner>origHalfSize){
-                cout<<"added neg"<<endl;
+//                cout<<"added neg"<<endl;
                 newCorner *= -1;
             }else{
-                newCorner = halfPatternVertToFullPatternVertT[newCorner];
-                cout<<"updated to "<<newCorner<<endl;
+//                newCorner = halfPatternVertToFullPatternVertT[newCorner];
+//                cout<<"updated to "<<newCorner<<endl;
             }
             mapCornerToCorner[i]= newCorner;
         }
@@ -1373,9 +1373,10 @@ void createMapCornersToNewCorner(MatrixXd& currPattern,MatrixXd& mapToVg, vector
 void updateCornerUtils(set<int>& cornerSet , // a set containing all corner vertices
                        vector<vector<pair<int, int>>>& cornerPerBoundary,
                        map<int, vector<pair<int, int>>>& seamIdPerCorner,    // contains corner id and a list of which seams start here (max 2),
-                        map<int, int>& mapCornerToCorner,  VectorXd&   cornerVertices // 1 for each corner, 0 for all other vertices
+                        map<int, int>& mapCornerToCorner,  VectorXd&   cornerVertices, // 1 for each corner, 0 for all other vertices ,
+                        map<int, int>& fullToHalfVert
 ){
-todo this is wrong. update with old and new for corner mapping
+//todo this is wrong. update with old and new for corner mapping
 
     cornerSet.clear();
 
@@ -1383,14 +1384,20 @@ todo this is wrong. update with old and new for corner mapping
 
     for(int i=0; i<cornerPerBoundary.size(); i++){
         for(int j=0; j<cornerPerBoundary[i].size(); j++){
-            newSeamIdPerCorner[mapCornerToCorner[ cornerPerBoundary[i][j].first]] = seamIdPerCorner[cornerPerBoundary[i][j].first];
-            cornerPerBoundary[i][j].first = mapCornerToCorner[ cornerPerBoundary[i][j].first];
-            cornerSet.insert(cornerPerBoundary[i][j].first);
-            cornerVertices(cornerPerBoundary[i][j].first) = 1;
+            if(mapCornerToCorner.find( cornerPerBoundary[i][j].first) != mapCornerToCorner.end()) {
+                newSeamIdPerCorner[mapCornerToCorner[cornerPerBoundary[i][j].first]] = seamIdPerCorner[cornerPerBoundary[i][j].first];
+                cornerPerBoundary[i][j].second= cornerPerBoundary[i][j].first;
+                cornerPerBoundary[i][j].first = mapCornerToCorner[cornerPerBoundary[i][j].first];
+            }else{  cornerPerBoundary[i][j].second =-1;}
+                cornerSet.insert(cornerPerBoundary[i][j].first);
+                cornerVertices(cornerPerBoundary[i][j].first) = 1;
+
+
         }
     }
     seamIdPerCorner.clear();
     seamIdPerCorner = newSeamIdPerCorner;
+
 }
 
 void updateSeamCorner( vector<seam*>& seamsList,  vector<minusOneSeam*> & minusOneSeams, map<int, int>& mapCornerToCorner,
@@ -1409,8 +1416,8 @@ void updateSeamCorner( vector<seam*>& seamsList,  vector<minusOneSeam*> & minusO
         auto ends =  seamsList[i]->getEndCornerIds();
         seamsList[i]->updateStartEnd( mapCornerToCorner[start1], mapCornerToCorner[start2],
                                       mapCornerToCorner[ends.first],  mapCornerToCorner[ends.second]) ;
-        cout<<"seam "<<i<<" "<<mapCornerToCorner[start1]<<" "<< mapCornerToCorner[start2]<<" "<<
-                mapCornerToCorner[ends.first]<<" "<<  mapCornerToCorner[ends.second]<<endl;
+//        cout<<"seam "<<i<<" "<<mapCornerToCorner[start1]<<" "<< mapCornerToCorner[start2]<<" "<<
+//                mapCornerToCorner[ends.first]<<" "<<  mapCornerToCorner[ends.second]<<endl;
         int patch1 = seamsList[i]->getPatch1();
         int patch2 = seamsList[i]->getPatch2();
 
@@ -1444,7 +1451,7 @@ void updateSeamCorner( vector<seam*>& seamsList,  vector<minusOneSeam*> & minusO
         if(fTHVert.find(start)== fTHVert.end())continue; // no need to update, it is not in the half pattern
 
         minusOneSeams[i]->updateStartEnd( mapCornerToCorner[start], mapCornerToCorner[end]) ;
-        cout<<"From "<<start<<" "<<end<<" to "<<mapCornerToCorner[start]<<" "<<mapCornerToCorner[end]<<endl;
+//        cout<<"From "<<start<<" "<<end<<" to "<<mapCornerToCorner[start]<<" "<<mapCornerToCorner[end]<<endl;
         int patch = minusOneSeams[i]->getPatch();
 //        int startidx=0;
 //        while(boundaryL[patch][startidx] != mapCornerToCorner[start] && startidx <= boundaryL[patch].size()){
