@@ -2205,10 +2205,10 @@ void setUpMap( const std::vector<std::vector<int> >& boundaryL,map<int,int> & fu
         int found = false;
         for(int j=0; j< boundaryL[i].size(); j++){
             if(found) break;
-            cout<<boundaryL[i][j]<<" ";
+//            cout<<boundaryL[i][j]<<" ";
             if(fullPatternVertToHalfPatternVert.find(boundaryL[i][j])!= fullPatternVertToHalfPatternVert.end()){
                 patchMapToHalfInverse[i]= count;
-                cout<<"Map patch "<<i<<" to "<<count<<endl ;
+//                cout<<"Map patch "<<i<<" to "<<count<<endl ;
                 count ++;
                 found = true;
             }
@@ -2224,9 +2224,8 @@ void projectBackOnBoundary(const MatrixXd & mapToVg, MatrixXd& p, const vector<s
 
     int numSeams = seamsList.size();
     int count =0;
-
-    cout<<"in projection "<<endl;
     for (int j = 0; j<numSeams; j++){
+
         seam* currSeam  = seamsList[j];
         auto stP1= currSeam-> getStartAndPatch1();
         auto stP2 =  currSeam -> getStartAndPatch2ForCorres(); // attention this is with respect to the original pattern
@@ -2254,13 +2253,8 @@ void projectBackOnBoundary(const MatrixXd & mapToVg, MatrixXd& p, const vector<s
         bool shoulBeLeft =true; // for 2 case
         // for each interior (=not corner) vertex of the new boundary we need to find the closest position on the polyline and map it there
         pair<int, int> ends = currSeam->getEndCornerIds();
-        cout<< j<<" seam, "<<currSeam->usedInHalf1<<" "<<currSeam->usedInHalf2<<endl;
 
-        if(j==7){
-            cout<<currSeam->usedInHalf1<<" "<<currSeam->usedInHalf2<<endl;
-            cout<<(seamFullHalf.find(currSeam->getStart1()) != seamFullHalf.end() ||
-            seamFullHalf.find(ends.first) != seamFullHalf.end())<<" found 7 ? "<<currSeam->getStart1()<<" "<<ends.first<<endl;
-        }
+
         if(seamFullHalf.find(currSeam->getStart1()) != seamFullHalf.end() ||
                 seamFullHalf.find(ends.first) != seamFullHalf.end() ){// only if at least one of them exists on the half pattern iit makes sense to iterate
 
@@ -2273,7 +2267,9 @@ void projectBackOnBoundary(const MatrixXd & mapToVg, MatrixXd& p, const vector<s
                 nextIdx ++;
             }
             if(boundaryL[patchUsed][nextIdx] != next){
+                cout<<patchUsed<<" patch, ,searched for "<<next<<endl;
                 cout<<"PROJECTION ERROR we dont find the index "<<endl;
+                for(auto it:boundaryL[patchUsed] ){cout<<it<<" "; }cout<<endl;
             }
 //
             int endsFirst = (inverseMap)? seamFullHalf[ends.first] : ends.first;

@@ -1287,7 +1287,7 @@ void ensurePairwiseDist(MatrixXd& p, MatrixXd& toPattern, MatrixXi& Fg_pattern){
 //map<int, int> patchMapToHalf;
 map<int, int> htFFace ,pMapToHalf,
 //        fullPatternFaceToHalfPatternFace,
-        fTHVert;
+        fTHVert, hTFVert;
 //        halfPatternVertToFullPatternVert;
 
 void createMapCornersToNewCorner(MatrixXd& currPattern,MatrixXd& mapToVg, vector<vector<pair<int, int>>>& cornerPerBoundary,// first is vert id, second ins loop id, but thats bullshit
@@ -1297,6 +1297,7 @@ void createMapCornersToNewCorner(MatrixXd& currPattern,MatrixXd& mapToVg, vector
     currPattern.col(2).setConstant(200);
     mapToVg.col(2).setConstant(200);
     fTHVert = fullPatternVertToHalfPatternVertT;
+    hTFVert = halfPatternVertToFullPatternVertT;
     double eps = 0.1; int count = 0;
 //    for(int i = 0; i<cornerPerBoundary.size(); i++){
 //        vector<pair<int, int>> cornersOfB = cornerPerBoundary[i];
@@ -1415,15 +1416,21 @@ void updateSeamCorner( vector<seam*>& seamsList,  vector<minusOneSeam*> & minusO
         auto ends =  seamsList[i]->getEndCornerIds();
         int end1 = ends.first; int end2 = ends.second;
         if(fTHVert.find(start1) != fTHVert.end() && fTHVert.find(end1) != fTHVert.end()) {
-            start1 = mapCornerToCorner[start1];
+            start1 = mapCornerToCorner[start1];// this is certainly in half pattern. therefore we need half to full to get it right
+            if(start1 > 0) start1= hTFVert[start1];
             end1 = mapCornerToCorner[end1];
-            seamsList[i]->usedinHalf1 = true;
+            if(end1 > 0 ) end1 = hTFVert[end1];
+            seamsList[i]->usedInHalf1 = true;
         }else{ seamsList[i]->usedInHalf1 = false;
 
         }
         if(fTHVert.find(start2) != fTHVert.end()){
             start2 = mapCornerToCorner[start2];
             end2 = mapCornerToCorner[end2];
+
+            if(start2 > 0) start2 = hTFVert[start2];
+            if(end2 > 0 ) end2 = hTFVert[end2];
+
             seamsList[i]->usedInHalf2= true;
         } else{ seamsList[i]->usedInHalf2 = false;
 
@@ -1438,8 +1445,13 @@ void updateSeamCorner( vector<seam*>& seamsList,  vector<minusOneSeam*> & minusO
         int start =  minusOneSeams[i]->getStartVert();
         int end =  minusOneSeams[i]->getEndVert();
         if(fTHVert.find(start)== fTHVert.end())continue; // no need to update, it is not in the half pattern
+        start = mapCornerToCorner[start];
+        end = mapCornerToCorner[end];
+        if(start > 0) start = hTFVert[start];
+        if(end > 0) end = hTFVert[end];
 
-        minusOneSeams[i]->updateStartEnd( mapCornerToCorner[start], mapCornerToCorner[end]) ;
+        minusOneSeams[i]->updateStartEnd( start, end ) ;
+        cout<<"negative seam "<<i<<" "<<start<<",  "<< end<<" "<<endl;
         //TODO
 //        cout<<"From "<<start<<" "<<end<<" to "<<mapCornerToCorner[start]<<" "<<mapCornerToCorner[end]<<endl;
         int patch = minusOneSeams[i]->getPatch();

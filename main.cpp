@@ -2320,7 +2320,6 @@ void solveStretchAdaption(){
         targetPositions.col(0)=  p_adaption.row(Fg_pattern_curr(j, 0)).leftCols(2).transpose() ;
         targetPositions.col(1)=  p_adaption.row(Fg_pattern_curr(j, 1)).leftCols(2).transpose() ;
         targetPositions.col(2)=  p_adaption.row(Fg_pattern_curr(j, 2)).leftCols(2).transpose() ;
-        if(j==0) cout<<patternCoords<<endl<<endl<<targetPositions<<endl<<endl;
         int uOrv = 1;
 //        if( i == 5549  ) uOrv = 11;
 //        TODO STIFFNESS PARAMETER
@@ -2451,9 +2450,10 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
 //    t.printTime(" init ");
     for(int i=0; i<1; i++){
         t.printTime(" init stress ");
+        cout<<p_adaption.row(1496)<<"before stretch"<<endl;
 
         solveStretchAdaption();
-        cout<<p_adaption.row(0)<<"after stretch"<<endl;
+        cout<<p_adaption.row(1496)<<"after stretch"<<endl;
 //        solveStretchAdaptionViaEdgeLength();//
         t.printTime(" stretch stress ");
         // before cutting the boundaries should be the same
@@ -2470,7 +2470,7 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
         }
         projectBackOnBoundary( mapToVg, p_adaption, seamsList, minusOneSeamsList, boundaryL_toPattern,
                                 boundaryLFrom, releasedVert ,inverseMap,  mapUsed, extFHV);
-        cout<<p_adaption.row(0)<<"after projection "<<endl;
+        cout<<p_adaption.row(1495)<<"after projection "<<endl;
 //        if(changedPos != -1){
 //            cout<<p_adaption.row(changedPos)<<" bound "<<endl;
 //        }
