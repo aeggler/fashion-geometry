@@ -147,6 +147,11 @@ void computeMidVecBasedOnStress(VectorXd& midVec, vector<vector<int>>& vfAdj, Ma
 
 map<int, vector<int>> releasedVertNew;
 map<int, vector<int>> cornerToSeams;
+
+map<int, int> patchMapToHalf, patchMapToHalfInverse;bool inverseMapping, sym;
+int addoncount=0;
+MatrixXd uperFace, vperFace;
+
 void addToMapIfNotExisting( int key, int i){
     if(cornerToSeams.find(key) != cornerToSeams.end()){
         cornerToSeams[key].push_back(i);
@@ -200,7 +205,6 @@ void computeOrientationOfFaces(VectorXd& signs,vector<int> vfAdj, MatrixXi& Fg, 
     }
 }
 
-map<int, int> patchMapToHalf, patchMapToHalfInverse;
 void findCorrectSeamAndAddToDuplicates(vector<seam*>& seamsList, vector<minusOneSeam*> & minusOneSeams, int vertIdx,
                                        int duplVertIdx, vector<int> boundary, int patch, map<int, int> & fullPatternVertToHalfPatternVert ){
     cout<<"finding Corrrect dupl"<<endl;
@@ -408,46 +412,32 @@ void splitVertexFromCVE( cutVertEntry*& cve,
                             boundaryL[cve->patch][minusOneId], boundaryL[cve->patch][plusOneId],nextVertOnBoundary );
 
         Vector3d cutDirection = Vg.row(nextVertOnBoundary) - Vg.row(cve->vert); //cve-> continuedDirection;
-        if (cornerSet.find(halfPatternVertToFullPatternVert[cve->vert]) != cornerSet.end() && cve->vert != cve-> cornerInitial){
+
+
+        if (halfPatternVertToFullPatternVert.find(cve->vert) != halfPatternVertToFullPatternVert.end() ||
+        (cornerSet.find(halfPatternVertToFullPatternVert[cve->vert]) != cornerSet.end() && cve->vert != cve-> cornerInitial)){
             cutDirection = (toLeft(0) == cutDirection(0) && toLeft(1) == cutDirection(1)) ? toRight : toLeft;
 
         }
         VectorXd ws;
         vector<int> fn = vfAdj[cve->vert]; // the face neighbors
         bool tearIsUseful = false;
-        for(int faceIdx =0; faceIdx <fn.size(); faceIdx++){
-           int adjFace = halfPatternFaceToFullPatternFace[fn[faceIdx]];
-           VectorXd faceBary = (Vg_pattern_orig.row(Fg_pattern_orig(adjFace, 0))+
-                                Vg_pattern_orig.row(Fg_pattern_orig(adjFace, 1))+
-                                Vg_pattern_orig.row(Fg_pattern_orig(adjFace, 2))).transpose();
-           faceBary /= 3;
-           VectorXd faceBaryKeep = faceBary;
-           //90* angle to cut direrction is where we measure the stress
-           faceBary(0) -= cutDirection(1);
-           faceBary(1) += cutDirection(0); // perp to midvec measure stress
-           MatrixXd distB;
-           MatrixXd input(1, 3);
-           input.row(0)= faceBary;
-           // is the face elongated in cut direction compared to its original shape ? (=> rest shape)
-           igl::barycentric_coordinates(input, Vg_pattern_orig.row(Fg_pattern_orig(adjFace, 0)), Vg_pattern_orig.row(Fg_pattern_orig(adjFace, 1)),
-                                        Vg_pattern_orig.row(Fg_pattern_orig(adjFace, 2)), distB);
-           double lenThen = cutDirection.norm();
+        for(auto faceIdx : vfAdj[cve->vert]){
+            auto cd = cutDirection.normalized();
+            cd(0)= -cutDirection.normalized()(1);
+            cd(1)= cutDirection.normalized()(0);
 
-           VectorXd distNow = (Vg.row(Fg(fn[faceIdx], 0)) * distB(0)+
-                               Vg.row(Fg(fn[faceIdx], 1)) * distB(1) +
-                               Vg.row(Fg(fn[faceIdx], 2))* distB(2)).transpose();
-           distNow -= (Vg.row(Fg(fn[faceIdx], 0)) * (1./3)+
-                       Vg.row(Fg(fn[faceIdx], 1)) *  (1./3) +
-                       Vg.row(Fg(fn[faceIdx], 2))*  (1./3) ).transpose();
-           double lenNow = distNow.norm();
+            auto dot = uperFace.row(faceIdx).normalized().transpose().dot( cd);
+            double actU = abs(dot);
+            auto dotv = vperFace.row(faceIdx).normalized().transpose().dot( cd);
+            double actV = abs(dotv);
 
-                // we could use fiber direction dot product with perp cut direction
-                //idea a lower thereshold for the last one? better to cut through immediately
-
-            cout<<lenNow/lenThen << " ratio of side, thereshold "<<boundThereshold<<endl;
-           if(lenNow/lenThen > boundThereshold ){
-               tearIsUseful= true;
-           }
+           double w = actU * uperFace.row(faceIdx).norm() + vperFace.row(faceIdx).norm() * actV;
+//            cout<<vperFace.row(faceIdx).norm()<<" theory"<<endl;
+            cout<<w <<", "<<actU<<" , "<<actV<< " contribution,  u norm "<<uperFace.row(faceIdx).norm()<<" ,v norm"<<vperFace.row(faceIdx).norm()<<", direction "<<cutDirection.transpose()<<endl;
+            if(w > boundThereshold ){
+                tearIsUseful= true;
+            }
            /*END TEST IF USEFUL*/
        }
 
@@ -846,7 +836,6 @@ void splitVertexFromCVE( cutVertEntry*& cve,
     }
     addToDulicateList(cve,seamsList, minusOneSeams, newVertIdx, true );
 
-
     cve-> vert = insertIdx;
     cve->levelOne = false;
 
@@ -859,8 +848,65 @@ void splitVertexFromCVE( cutVertEntry*& cve,
 |
  if we open the cut horizontally at a, we want to open at b as well since the two together form a seam (though the common seam has it's cut in the middle)
  */
+int openParallelPositionInvSym(int& cornerInitial, int& seamType, vector<seam*>& seamsList, vector <cutVertEntry*>& cutPositions,
+                         map<int, int> & fullPatternVertToHalfPatternVert, map<int, int> & halfPatternVertToFullPatternVert ){
+    // if a paralell cut position exists we find and open it . But attention, it is not guaranteed the position exists. But we don't enforce it (might be worth a thought tough)
+    // what is a parallel position? If we tear along the boundary we effectivelyy open another seam (the one we release from). This behaviour should be mirrored on the other side of the released from seam
+    if(seamType < 0){
+        return -1; // no parallel to open
+    }
+    seam* currSeam = seamsList[seamType];
+    // figure out if the initial was pos or neg side, the one we are searching is the other side
+    int searchedVert;
+    int cI = (-1)*cornerInitial ; if(halfPatternVertToFullPatternVert.find(cornerInitial) != halfPatternVertToFullPatternVert.end())cI = halfPatternVertToFullPatternVert[cornerInitial];
+    if(currSeam->getStart1() == halfPatternVertToFullPatternVert[cornerInitial]){
+        searchedVert = currSeam->getStart2();
+    }else if(currSeam->getStart2() == halfPatternVertToFullPatternVert[ cornerInitial]) {
+        searchedVert = currSeam->getStart1();
+    }else if(currSeam->getEndCornerIds().first == halfPatternVertToFullPatternVert[cornerInitial] ) {
+        searchedVert = currSeam-> getEndCornerIds().second;
+    }else if(currSeam->getEndCornerIds().second == halfPatternVertToFullPatternVert[cornerInitial] ) {
+        searchedVert = currSeam-> getEndCornerIds().first;
+    }else{
+//        cout<<" partner not found, we have a huge problem in opening the parallel positions "<<seamType<<endl;
+        return -1;
+    }
+    cout<<currSeam->getStart1()<<" "<<currSeam->getEndCornerIds().first<<"; "<< currSeam->getStart2()<<" "<<currSeam->getEndCornerIds().second<<endl;
+    cout<<searchedVert<<" searched vert for corner initial "<<cornerInitial ;
+    if(fullPatternVertToHalfPatternVert.find(searchedVert) == fullPatternVertToHalfPatternVert.end() ){
+        cout<<" parallell is on other half. Not here. "<<endl;
+        return -1;
+    }
+    searchedVert = fullPatternVertToHalfPatternVert[searchedVert];
+    cout<<" updated to "<<searchedVert;
+
+//    int size =  cornerToSeams[searchedVert].size();
+//    if( size != 2) {
+//        cout<<searchedVert<<" the size is not 2, it's "<<size<<endl;
+//    }
+    int otherSeamId;
+    if(cornerToSeams[searchedVert][0] == seamType){
+
+        otherSeamId = cornerToSeams[searchedVert][1];
+
+    }else{
+        otherSeamId = cornerToSeams[searchedVert][0];
+    }
+
+    // identify the index of the paralell cut postion by comparing the vertex with the one we search
+    for(int i=0; i<cutPositions.size(); i++){
+        int cI = searchedVert ; if(halfPatternVertToFullPatternVert.find(searchedVert) != halfPatternVertToFullPatternVert.end()) cI = halfPatternVertToFullPatternVert[searchedVert];
+        if(cutPositions[i]->vert == halfPatternVertToFullPatternVert[searchedVert] || cutPositions[i]->cornerInitial == halfPatternVertToFullPatternVert[searchedVert]){
+            if(cutPositions[i]->seamIdInList == otherSeamId){
+                return i;
+            }
+        }
+    }
+    return -1;
+
+}
  int openParallelPosition(int& cornerInitial, int& seamType, vector<seam*>& seamsList, vector <cutVertEntry*>& cutPositions,
- map<int, int> & fullPatternVertToHalfPatternVert, map<int, int> & halfPatternVertToFullPatternVert ){
+        map<int, int> & fullPatternVertToHalfPatternVert, map<int, int> & halfPatternVertToFullPatternVert ){
      // if a paralell cut position exists we find and open it . But attention, it is not guaranteed the position exists. But we don't enforce it (might be worth a thought tough)
     // what is a parallel position? If we tear along the boundary we effectivelyy open another seam (the one we release from). This behaviour should be mirrored on the other side of the released from seam
      if(seamType < 0){
@@ -1009,8 +1055,6 @@ void findCorrespondingCounterCutPosition(vector<cutVertEntry*>& cutPositions, in
     return;
 }
 
-int addoncount=0;
- MatrixXd uperFace, vperFace;
  void computePerFaceUV( const MatrixXi& Fg_pattern_curr, const MatrixXi&  mapFromFg, const MatrixXd& mapFromVg,const MatrixXd& currPattern, map<int, int>& halfPatternFaceToFullPatternFace, bool inverseMap){
      uperFace.resize(Fg_pattern_curr.rows(), 3);
      vperFace.resize(Fg_pattern_curr.rows(), 3);
@@ -1260,11 +1304,12 @@ void getStressAtVert(int seamType, int seamId, int vert, int & prevVert, int & n
         if(patch != -1)break;
     }
     if(patch == -1) cout<< "no patch found ERROR"<<endl;
-
     if(seamType == -1 ){
         // ensure it is not the end
         if(fullPatternVertToHalfPatternVert[ minusOneSeams[seamId]->getEndVert()] != vert)nextVert = minusOneSeams[seamId]->getNextVert(vert, boundaryL[patch]);
         if(fullPatternVertToHalfPatternVert[ minusOneSeams[seamId]->getStartVert()] != vert)prevVert= minusOneSeams[seamId]->getPrevVert(vert, boundaryL[patch]);
+        cout<<patch<<"Computing stress for "<<vert<<" with adj "<<prevVert<<" "<<nextVert<<" of Seam"<<seamType<<seamId<<endl;
+
 
     }else if(seamId>=0){
         if(inverted){
@@ -1273,10 +1318,13 @@ void getStressAtVert(int seamType, int seamId, int vert, int & prevVert, int & n
         }
         if(fullPatternVertToHalfPatternVert[ seamsList[seamId ]->getEndCornerIds().first] != vert) nextVert = seamsList[seamId]->getNextVert1(vert, boundaryL[patch]);
         if(fullPatternVertToHalfPatternVert[ seamsList[seamId ]->getStart1()] != vert) prevVert = seamsList[seamId]->getPrevVert1(vert, boundaryL[patch]);
+        cout<<patch<<"Computing stress for "<<vert<<" with adj "<<prevVert<<" "<<nextVert<<" of Seam"<<seamType<<seamId<<endl;
 
     }else{
         if(fullPatternVertToHalfPatternVert[seamsList[(seamId +1)*(-1) ]-> getStart2() ] != vert) nextVert = seamsList[(seamId +1)*(-1)]->getPrevVert2(vert, boundaryL[patch]);
         if(fullPatternVertToHalfPatternVert[ seamsList[(seamId +1)*(-1) ]-> getEndCornerIds().second ] != vert) prevVert = seamsList[(seamId +1)*(-1)]->getNextVert2(vert, boundaryL[patch]);
+        cout<<patch<<"Computing stress for "<<vert<<" with adj "<<prevVert<<" "<<nextVert<<" of Seam"<<seamType<<seamId<<endl;
+
     }
 
     double w_init = 0;
@@ -1299,6 +1347,9 @@ void getStressAtVert(int seamType, int seamId, int vert, int & prevVert, int & n
 
         w_init += uperFace.row(faceIdx).norm() * (actU);
         w_init += vperFace.row(faceIdx).norm() * (actV);
+        if(faceIdx == 1658) cout<< uperFace.row(faceIdx).norm()<<" "<<vperFace.row(faceIdx).norm()<<" "<<w_init<<endl;
+        if(faceIdx == 1658) cout<< dot<<" "<<dotv<<" "<<w_init<<endl;
+
 
     }
     w_init/= count;
@@ -1713,7 +1764,6 @@ void updateStress(vector<cutVertEntry*>& cutPositions, vector<seam*>& seamsList,
             inverted = seamsList[(cve->seamIdInList + 1)*(-1)]->inverted;
         }
 
-
         getStressAtVert(cve -> seamType, cve -> seamIdInList, cve -> vert, prevVert, nextVert, Stress,
                                      seamsList, minusOneSeams, boundaryL, Fg_pattern, currPattern, vfAdj, inverted, fullPatternVertToHalfPatternVert );
 
@@ -1765,8 +1815,7 @@ int tearFurther(vector<cutVertEntry*>& cutPositions, MatrixXd&  currPattern, Mat
     int returnPosition = -1;
     vector<vector<int> > vfAdj;
     createVertexFaceAdjacencyList(Fg_pattern, vfAdj);
-//todo add
-//    computePerFaceUV(Fg_pattern, Fg_pattern_orig, Vg_pattern_orig, currPattern, halfPatternFaceToFullPatternFace, inverseMap);
+    computePerFaceUV(Fg_pattern, Fg_pattern_orig, Vg_pattern_orig, currPattern, halfPatternFaceToFullPatternFace, inverseMapping);
     updateStress( cutPositions, seamsList, minusOneSeams, boundaryL,  Fg_pattern, vfAdj,  prioInner, prioOuter, currPattern, fullPatternVertToHalfPatternVert, halfPatternVertToFullPatternVert);
 
 //
@@ -1778,9 +1827,7 @@ int tearFurther(vector<cutVertEntry*>& cutPositions, MatrixXd&  currPattern, Mat
 //            findCorrespondingCounterCutPosition(cutPositions, i, cutPositions[i], currPattern, Fg_pattern, vfAdj, boundaryL,
 //                                                seamsList, minusOneSeams, releasedVert, toPattern_boundaryVerticesSet, handledVerticesSet,
 //                                                fullPatternVertToHalfPatternVert, halfPatternVertToFullPatternVert );
-//
 //        }
-
     }
 //
     int  count = 0 ;
@@ -1803,7 +1850,13 @@ int tearFurther(vector<cutVertEntry*>& cutPositions, MatrixXd&  currPattern, Mat
                 releasedVertNew.find( cutPositions[count]->cornerInitial) != releasedVertNew.end() ){
                 int seamPotentiallyReleasedFrom = (cornerToSeams[cutPositions[count]-> cornerInitial][0] == thisSeam) ? cornerToSeams[cutPositions[count]-> cornerInitial][1] : cornerToSeams[cutPositions[count]-> cornerInitial][0];
                 if(releasedVertNew[ cutPositions[count]->cornerInitial].end() != std::find( releasedVertNew[ cutPositions[count]->cornerInitial].begin(), releasedVertNew[ cutPositions[count]->cornerInitial].end(), seamPotentiallyReleasedFrom)){
-                    parallel = openParallelPosition(cutPositions[count]-> cornerInitial, seamPotentiallyReleasedFrom, seamsList, cutPositions,fullPatternVertToHalfPatternVert, halfPatternVertToFullPatternVert );//releasedVertNew[cutPositions[count]->cornerInitial]
+                    if(sym && inverseMapping) {
+                        parallel = openParallelPositionInvSym(cutPositions[count]->cornerInitial,
+                                                              seamPotentiallyReleasedFrom, seamsList, cutPositions,
+                                                              fullPatternVertToHalfPatternVert,
+                                                              halfPatternVertToFullPatternVert);
+                    }else parallel = openParallelPosition(cutPositions[count]-> cornerInitial, seamPotentiallyReleasedFrom,
+                                                          seamsList, cutPositions,fullPatternVertToHalfPatternVert, halfPatternVertToFullPatternVert );//releasedVertNew[cutPositions[count]->cornerInitial]
                     if(parallel >= 0) parallelFinFlag = cutPositions[parallel]->finFlag;
                     if(parallelFinFlag){
                         i--;
@@ -1829,7 +1882,7 @@ int tearFurther(vector<cutVertEntry*>& cutPositions, MatrixXd&  currPattern, Mat
 //
         }else{
 //
-            cout<<endl<< cutPositions[count]->vert<<" vertex up next handling with i= "<<count<<" /"<<cutPositions.size()-1<<endl;
+            cout<<endl<< cutPositions[count]->vert<<" vertex up next handling with i= "<<count<<" /"<<cutPositions.size()-1<<" the stress here is "<<cutPositions[count]->stress<<endl;
             returnPosition = cutPositions[count] ->vert;
             splitVertexFromCVE(cutPositions[count], currPattern, Fg_pattern, vfAdj, boundaryL, seamsList, minusOneSeams, releasedVert,
                                    toPattern_boundaryVerticesSet, cornerSet, handledVerticesSet, LShapeAllowed, Vg_pattern_orig, Fg_pattern_orig,
@@ -1843,12 +1896,19 @@ int tearFurther(vector<cutVertEntry*>& cutPositions, MatrixXd&  currPattern, Mat
 //                // once we finished cutting one side, check if it was a side opening. If so we can go on with the other side
 //                //this is the released seam, so the other one is the one we have in common
                 int seamPotentiallyReleasedFrom = (cornerToSeams[cutPositions[count]-> cornerInitial][0] == thisSeam) ? cornerToSeams[cutPositions[count]-> cornerInitial][1] : cornerToSeams[cutPositions[count]-> cornerInitial][0];
-                parallel = openParallelPosition(cutPositions[count]-> cornerInitial, seamPotentiallyReleasedFrom, seamsList, cutPositions, fullPatternVertToHalfPatternVert, halfPatternVertToFullPatternVert);
-//                // open the other side of a released seam .
+                if(inverseMapping && sym) {
+                    parallel = openParallelPositionInvSym(cutPositions[count]->cornerInitial,
+                                                          seamPotentiallyReleasedFrom, seamsList, cutPositions,
+                                                          fullPatternVertToHalfPatternVert,
+                                                          halfPatternVertToFullPatternVert);
+                }else {
+                    // open the other side of a released seam .
 //                // attention this is not the other side of the seam but the same 3D corner of a different patch.
-//                // note that there is no guarantee there is a cut position. If not, we do not enforce it.
+                    parallel = openParallelPosition(cutPositions[count]->cornerInitial, seamPotentiallyReleasedFrom,
+                                                    seamsList, cutPositions, fullPatternVertToHalfPatternVert,
+                                                    halfPatternVertToFullPatternVert);
+                }
             }
-//
             if(parallel<0) {
                 cout<<"no proper parallel found, only avalilable for boundary cuts "<<endl;
                 continue;
@@ -1884,6 +1944,8 @@ int computeTear(bool inverseMap, Eigen::MatrixXd & fromPattern, MatrixXd&  currP
                  map<int, int> & halfPatternFaceToFullPatternFace,
                  bool& symetry )
                  {
+     inverseMapping = inverseMap;
+     sym = symetry;
     middleThereshold = setTheresholdlMid;
     boundThereshold = setTheresholdBound;
 
@@ -1992,7 +2054,6 @@ int computeTear(bool inverseMap, Eigen::MatrixXd & fromPattern, MatrixXd&  currP
 //
 //    }
     cout<<" found all counter positions "<<endl;
-    return 0;
     int count=0;
     prevFinished = false;
     int returnPosition = -1;
@@ -2011,13 +2072,19 @@ int computeTear(bool inverseMap, Eigen::MatrixXd & fromPattern, MatrixXd&  currP
         splitVertexFromCVE(cutPositions[count], currPattern, Fg_pattern_curr, vfAdj, boundaryL, seamsList,
                            minusOneSeams, releasedVert, toPattern_boundaryVerticesSet,
                            cornerSet, handledVerticesSet, LShapeAllowed, fromPattern, mapFromFg, fullPatternVertToHalfPatternVert, halfPatternVertToFullPatternVert, halfPatternFaceToFullPatternFace);
+        cout<<"after split vert"<<endl;
         prevFinished = cutPositions[count] -> finFlag;
 
         if( releasedVertNew.find(currVert) != releasedVertNew.end()){
             // dann können müssen wir ja auch die passende andere seite des cuts öffnen
             // achtung, das ist nicht die corresponding seam
             // es kann aber noch nicht von einer anderen Seite geöffnett sein. daher nimm idx [0] von den released vert
-            int parallel = openParallelPosition(cutPositions[count]-> cornerInitial, releasedVertNew[currVert][0], seamsList, cutPositions, fullPatternVertToHalfPatternVert, halfPatternVertToFullPatternVert);
+            int parallel;
+            if(symetry && inverseMap){
+                parallel = openParallelPositionInvSym(cutPositions[count]-> cornerInitial, releasedVertNew[currVert][0], seamsList, cutPositions, fullPatternVertToHalfPatternVert, halfPatternVertToFullPatternVert);
+
+            }else parallel = openParallelPosition(cutPositions[count]-> cornerInitial, releasedVertNew[currVert][0], seamsList, cutPositions, fullPatternVertToHalfPatternVert, halfPatternVertToFullPatternVert);
+            cout<<"after parallel finding"<<endl;
             if(parallel<0) {cout<<"no proper parallel found"<<endl;continue;}else{
                 cout<<endl<<"Working on parallel: "<<parallel<<endl<<endl;
             }
@@ -2344,7 +2411,6 @@ void projectBackOnBoundary(const MatrixXd & mapToVg, MatrixXd& p, const vector<s
 
 
     }
-cout<<"fin projection"<<endl;
 }
 
 void updatePatchId(vector<cutVertEntry*>& cutPositions, const std::vector<std::vector<int> >& boundaryLnew, vector<seam*>& seamsList, vector<minusOneSeam*> & minusOneSeams,

@@ -823,8 +823,8 @@ int main(int argc, char *argv[])
                     updateSeamCorner(seamsList, minusOneSeamsList, mapCornerToCorner, boundaryL);
                 }
                 cout<<"ready for adaption"<<endl;
-//                viewer.core().is_animating = true;
-//                adaptionFlag = true;
+                viewer.core().is_animating = true;
+                adaptionFlag = true;
             }
             ImGui::InputDouble("Taylor Lazyness ", &(taylor_lazyness),  0, 0, "%0.2f");
             ImGui::InputDouble("Thereshold Mid  ", &(setTheresholdlMid),  0, 0, "%0.4f");
@@ -2443,7 +2443,6 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
 
     adaptioncount++;
 //    if(adaptioncount>1)return;
-    cout<<adaptioncount<<endl<<endl;
 
  //   std::cout<<"-------------- Time Step ------------"<<adaptioncount<<endl;
     // we have no velocity or collision, but we do have stretch, constrainedStretch and bending
@@ -2460,11 +2459,11 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
     changedPos = -1;
 //    t.printTime(" init ");
     for(int i=0; i<1; i++){
-        t.printTime(" init stress ");
+//        t.printTime(" init stress ");
 
         solveStretchAdaption();
 //        solveStretchAdaptionViaEdgeLength();//
-        t.printTime(" stretch stress ");
+//        t.printTime(" stretch stress ");
         // before cutting the boundaries should be the same
         map<int, int> mapUsed = fullPatternVertToHalfPatternVert;
         map<int, int> extFHV = fullPatternVertToHalfPatternVert;
@@ -2472,7 +2471,7 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
             mapUsed = IdMap;
             for(auto item : mapCornerToCorner){
                 if(item.second<0){
-                    cout<<"adding negative"<<endl;
+//                    cout<<"adding negative"<<endl;
                     extFHV[item.second]= (-1)* item.second;
                 }
             }
@@ -2482,10 +2481,10 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
 //        if(changedPos != -1){
 //            cout<<p_adaption.row(changedPos)<<" bound "<<endl;
 //        }
-        t.printTime(" proj stress ");
+//        t.printTime(" proj stress ");
 //        ensurePairwiseDist(p_adaption, toPattern, Fg_pattern);
         solveCornerMappedVertices();
-        t.printTime(" corner  ");
+//        t.printTime(" corner  ");
         // this causes the weired ange issue
 //        ensureAngle(p_adaption, mapFromVg, Fg_pattern_curr, mapFromFg);
 
