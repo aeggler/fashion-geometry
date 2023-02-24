@@ -1380,7 +1380,6 @@ void updateCornerUtils(set<int>& cornerSet , // a set containing all corner vert
 //todo this is wrong. update with old and new for corner mapping
 
     cornerSet.clear();
-
     map<int, vector<pair<int, int>>> newSeamIdPerCorner;
 
     for(int i=0; i<cornerPerBoundary.size(); i++){
@@ -1393,12 +1392,39 @@ void updateCornerUtils(set<int>& cornerSet , // a set containing all corner vert
                 cornerSet.insert(cornerPerBoundary[i][j].first);
                 cornerVertices(cornerPerBoundary[i][j].first) = 1;
 
+        }
+    }
+    seamIdPerCorner.clear();
+    seamIdPerCorner = newSeamIdPerCorner;
+}
+void updateCornerUtilsInverse(set<int>& cornerSet , // a set containing all corner vertices
+                       vector<vector<pair<int, int>>>& cornerPerBoundary,
+                       map<int, vector<pair<int, int>>>& seamIdPerCorner,    // contains corner id and a list of which seams start here (max 2),
+                       map<int, int>& mapCornerToCorner,  VectorXd&   cornerVertices, // 1 for each corner, 0 for all other vertices ,
+                       map<int, int>& fullToHalfVert
+){
+    cornerSet.clear();
+    map<int, vector<pair<int, int>>> newSeamIdPerCorner;
+
+    for(int i=0; i<cornerPerBoundary.size(); i++){
+        for(int j=0; j<cornerPerBoundary[i].size(); j++){
+            if(fTHVert.find( cornerPerBoundary[i][j].first) != fTHVert.end()) {
+//                cout<<"vert "<<cornerPerBoundary[i][j].first<<" is also in the half mapping. The new corner is ";
+                cornerPerBoundary[i][j].second= cornerPerBoundary[i][j].first;
+                int newC = mapCornerToCorner[cornerPerBoundary[i][j].first];
+//                cout<<newC<<" but we bring it back to big with ";
+                if(newC> 0 ) newC = hTFVert[newC];
+//                cout<<newC<<endl;
+                newSeamIdPerCorner[newC] = seamIdPerCorner[cornerPerBoundary[i][j].first];
+                cornerPerBoundary[i][j].first = newC;
+            }else{  cornerPerBoundary[i][j].second =-1;}
+            cornerSet.insert(cornerPerBoundary[i][j].first);
+            cornerVertices(cornerPerBoundary[i][j].first) = 1;
 
         }
     }
     seamIdPerCorner.clear();
     seamIdPerCorner = newSeamIdPerCorner;
-
 }
 
 void updateSeamCorner( vector<seam*>& seamsList,  vector<minusOneSeam*> & minusOneSeams, map<int, int>& mapCornerToCorner,
@@ -1406,10 +1432,7 @@ void updateSeamCorner( vector<seam*>& seamsList,  vector<minusOneSeam*> & minusO
     for(int i=0; i<seamsList.size(); i++){
         int start1 =  seamsList[i]->getStart1();
         int start2 =  seamsList[i]->getStart2();
-
-
-        //issue: some verts are in half-pattern
-        // half-pattern gets some new verts
+        //issue: some verts are in half-pattern half-pattern gets some new verts
         // but these new verts of half pattern are not in halfMap
         // which is ok bc they are not in full, but maybe it is needed in some mappings?
 
@@ -1452,19 +1475,7 @@ void updateSeamCorner( vector<seam*>& seamsList,  vector<minusOneSeam*> & minusO
 
         minusOneSeams[i]->updateStartEnd( start, end ) ;
         cout<<"negative seam "<<i<<" "<<start<<",  "<< end<<" "<<endl;
-        //TODO
-//        cout<<"From "<<start<<" "<<end<<" to "<<mapCornerToCorner[start]<<" "<<mapCornerToCorner[end]<<endl;
-        int patch = minusOneSeams[i]->getPatch();
-//        int startidx=0;
-//        while(boundaryL[patch][startidx] != mapCornerToCorner[start] && startidx <= boundaryL[patch].size()){
-//            startidx ++;
-//        }if (boundaryL[patch][startidx] != mapCornerToCorner[start] ){ cout<<"start not found" <<endl; }
-//        int endidx=0;
-//        while(boundaryL[patch][endidx] != mapCornerToCorner[end] && endidx <= boundaryL[patch].size()){
-//            endidx ++;
-//        } if (boundaryL[patch][endidx] != mapCornerToCorner[end]){ cout<<"end not fond "<<endl ; }
-//        minusOneSeams[i]->updateStartEndIdx( startidx, endidx) ;
-
+//
     }
     cout<<"updated all corners :) "<<endl;
 }

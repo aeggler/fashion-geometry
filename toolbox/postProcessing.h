@@ -47,6 +47,8 @@ void createMapCornersToNewCorner(MatrixXd& currPattern,MatrixXd& mapToVg, vector
 
 void updateCornerUtils(set<int>& cornerSet, vector<vector<pair<int, int>>>& cornerPerBoundary,
                        map<int, vector<pair<int, int>>>& seamIdPerCorner, map<int, int>& mapCornerToCorner, VectorXd& cornerVertices , map<int, int>& fullToHalfVert);
+void updateCornerUtilsInverse(set<int>& cornerSet, vector<vector<pair<int, int>>>& cornerPerBoundary,
+                       map<int, vector<pair<int, int>>>& seamIdPerCorner, map<int, int>& mapCornerToCorner, VectorXd& cornerVertices , map<int, int>& fullToHalfVert);
 
 void updateSeamCorner( vector<seam*>& seamsList,  vector<minusOneSeam*> & minusOneSeams, map<int, int>& mapCornerToCorner,
                        vector<vector<int>>& boundaryL);

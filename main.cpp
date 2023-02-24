@@ -813,7 +813,13 @@ int main(int argc, char *argv[])
                     createMapCornersToNewCorner(currPattern, mapToVg, cornerPerBoundary, mapCornerToCorner, boundaryL, halfPatternVertToFullPatternVert, fullPatternVertToHalfPatternVert,
                     symetry, halfPatternFaceToFullPatternFace, fullPatternFaceToHalfPatternFace);
                     cornerVertices = VectorXd::Zero(currPattern.rows());
-                    updateCornerUtils(cornerSet, cornerPerBoundary, seamIdPerCorner, mapCornerToCorner, cornerVertices, fullPatternVertToHalfPatternVert);
+                    if(symetry){
+                        updateCornerUtilsInverse(cornerSet, cornerPerBoundary, seamIdPerCorner, mapCornerToCorner,
+                                          cornerVertices, fullPatternVertToHalfPatternVert);
+                    }else {
+                        updateCornerUtils(cornerSet, cornerPerBoundary, seamIdPerCorner, mapCornerToCorner,
+                                          cornerVertices, fullPatternVertToHalfPatternVert);
+                    }
                     updateSeamCorner(seamsList, minusOneSeamsList, mapCornerToCorner, boundaryL);
                 }
                 cout<<"ready for adaption"<<endl;
@@ -1537,6 +1543,7 @@ void preComputeAdaption(){
     // use with PBD_adaption
     baryCoordsUPattern.resize(mapFromFg.rows(), 3);
     baryCoordsVPattern.resize(mapFromFg.rows(), 3);
+    cout<< mapFromFg.rows()<<endl<<"IMPORTANT ROWS "<<endl;
     for(int i=0; i<Fg_pattern_curr.rows(); i++){
         int id0 = mapFromFg(i, 0);
         int id1 = mapFromFg(i, 1);
@@ -1549,16 +1556,24 @@ void preComputeAdaption(){
         p2 = mapFromVg.block(id2, 0, 1, 2).transpose();
 
         G = (1./3.) * p0 + (1./3.) * p1 + (1./3.) * p2;
+        if(i==2744) cout<<G.transpose()<<" initial bary "<<endl;
 
         Gu = G; Gu(0) += 1;
         Gv = G; Gv(1) += 1;
+        if(i==2744) cout<<Gu.transpose()<<" initial Gu "<<endl;
+
         Vector3d uInBary, vInBary;
+
         MathFunctions mathFun;
         mathFun.Barycentric(Gu, p0, p1, p2, uInBary);
         mathFun.Barycentric(Gv, p0, p1, p2, vInBary);
+        if(i==2744) cout<< uInBary( 0) * p0 +uInBary( 1) * p1 +uInBary( 2) * p2 <<" recovered Gu first  "<<endl;
 
-        baryCoordsUPattern.row(i) = uInBary;
-        baryCoordsVPattern.row(i) = vInBary;
+
+        baryCoordsUPattern.row(i) = uInBary.transpose();
+        baryCoordsVPattern.row(i) = vInBary.transpose();
+        if(i==2744) cout<< baryCoordsUPattern(i, 0) * p0 +baryCoordsUPattern(i, 1) * p1 +baryCoordsUPattern(i, 2) * p2 <<" recovered Gu "<<endl;
+
 
     }
 
@@ -2303,7 +2318,6 @@ void solveStretchAdaption(){
 
     MatrixXd correctionTerm = MatrixXd::Zero(currPattern.rows(), 3);
     VectorXd itemCount = VectorXd::Zero(currPattern.rows());
-    cout<<"stretch adaption"<<endl<<endl;
 //    oneShotLengthSolve( p_adaption,  Fg_pattern_curr, baryCoordsUPattern, baryCoordsVPattern, mapFromVg, mapFromFg);
         // force that pulls back to the original position in fromPattern
     // it does not quite work after tthe 3rd cut. Jacobian seems to be fine but it messes up
@@ -2321,7 +2335,7 @@ void solveStretchAdaption(){
         targetPositions.col(1)=  p_adaption.row(Fg_pattern_curr(j, 1)).leftCols(2).transpose() ;
         targetPositions.col(2)=  p_adaption.row(Fg_pattern_curr(j, 2)).leftCols(2).transpose() ;
         int uOrv = 1;
-//        if( i == 5549  ) uOrv = 11;
+
 //        TODO STIFFNESS PARAMETER
         VectorXd thisFaceU = baryCoordsUPattern(i,0) * targetPositions.col(0) +  baryCoordsUPattern(i,1) * targetPositions.col(1) + baryCoordsUPattern(i,2) * targetPositions.col(2) ;
         VectorXd thisFaceV = baryCoordsVPattern(i,0) * targetPositions.col(0) +  baryCoordsVPattern(i,1) * targetPositions.col(1) + baryCoordsVPattern(i,2) * targetPositions.col(2) ;
@@ -2396,23 +2410,20 @@ void solveCornerMappedVertices(){
                 }
             }
 
-
-            if(releasedVert.find(vertIdx)!= releasedVert.end()){
-//                if(adaptioncount%20==0) cout<<vertIdx<<" released"<<endl;
+            if(releasedVert.find(fullPatternVertToHalfPatternVert[vertIdx])!= releasedVert.end()){
                 continue;
             }
             Vector2d newSuggestedPos;
-            if(!inverseMap){
+            if(!inverseMap || !symetry){
                 newSuggestedPos = mapToVg.row(vertIdx).leftCols(2);
             }else{
                 newSuggestedPos = mapToVg.row(get<1>(cpbj)).leftCols(2);
+
 //              cout<<newSuggestedPos.transpose()<<" new pos of "<<get<1>(cpbj)<<endl;
             }
-            Vector2d dir = newSuggestedPos - p_adaption.row(vertIdx).leftCols(2).transpose();
+            Vector2d dir = newSuggestedPos - p_adaption.row(fullPatternVertToHalfPatternVert[vertIdx]).leftCols(2).transpose();
             // TODO PARAMETER
-            if(vertIdx==0)cout<< p_adaption.row(vertIdx)<<endl;
-            p_adaption.row(vertIdx).leftCols(2) += boundaryStiffness * dir;
-            if(vertIdx==0) cout<<p_adaption.row(vertIdx)<<"after"<<endl;
+            p_adaption.row(fullPatternVertToHalfPatternVert[vertIdx]).leftCols(2) += boundaryStiffness * dir;
         }
     }
 
@@ -2450,10 +2461,8 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
 //    t.printTime(" init ");
     for(int i=0; i<1; i++){
         t.printTime(" init stress ");
-        cout<<p_adaption.row(1496)<<"before stretch"<<endl;
 
         solveStretchAdaption();
-        cout<<p_adaption.row(1496)<<"after stretch"<<endl;
 //        solveStretchAdaptionViaEdgeLength();//
         t.printTime(" stretch stress ");
         // before cutting the boundaries should be the same
@@ -2470,7 +2479,6 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
         }
         projectBackOnBoundary( mapToVg, p_adaption, seamsList, minusOneSeamsList, boundaryL_toPattern,
                                 boundaryLFrom, releasedVert ,inverseMap,  mapUsed, extFHV);
-        cout<<p_adaption.row(1495)<<"after projection "<<endl;
 //        if(changedPos != -1){
 //            cout<<p_adaption.row(changedPos)<<" bound "<<endl;
 //        }
