@@ -199,6 +199,7 @@ bool callback_mouse_down(igl::opengl::glfw::Viewer& viewer, int button, int modi
 void updateChangedBaryCoordinates(int changedPosition, vector<vector<int>>& vfFromPatt);
 int pos;
 bool symetry = true;
+MatrixXd R_symetry; VectorXd T_symetry;
 bool pre_draw(igl::opengl::glfw::Viewer& viewer){
     viewer.data().dirty |= igl::opengl::MeshGL::DIRTY_DIFFUSE | igl::opengl::MeshGL::DIRTY_SPECULAR;
     if(simulate){
@@ -463,18 +464,44 @@ int main(int argc, char *argv[])
 
     if(symetry && !inverseMap) {
         createHalfSewingPattern(Vg_orig, Fg_orig, Vg_pattern, Fg_pattern, Vg_pattern_half, Fg_pattern_half,
-                                halfPatternFaceToFullPatternFace, fullPatternFaceToHalfPatternFace,
-                                halfPatternVertToFullPatternVert,
-                                fullPatternVertToHalfPatternVert, insertedIdxToPatternVert, isLeftVertPattern);
+                                halfPatternFaceToFullPatternFace, fullPatternFaceToHalfPatternFace,halfPatternVertToFullPatternVert,
+                                fullPatternVertToHalfPatternVert, insertedIdxToPatternVert, isLeftVertPattern, R_symetry, T_symetry);
         cout << " FINISHED PATTERN SPLIT Operation" << endl;
 
     }else if (symetry && inverseMap){
         // map from is already split in two sides,
         // do the same for map to
         createHalfSewingPattern(Vg_orig, Fg_orig, mapToVg, mapToFg, Vg_pattern_half, Fg_pattern_half,
-                                halfPatternFaceToFullPatternFace, fullPatternFaceToHalfPatternFace,
-                                halfPatternVertToFullPatternVert,
-                                fullPatternVertToHalfPatternVert, insertedIdxToPatternVert, isLeftVertPattern );
+                                halfPatternFaceToFullPatternFace, fullPatternFaceToHalfPatternFace,halfPatternVertToFullPatternVert,
+                                fullPatternVertToHalfPatternVert, insertedIdxToPatternVert, isLeftVertPattern,  R_symetry, T_symetry );
+//        viewer.selected_data_index = 0;
+//        viewer.data().clear();
+//        MatrixXd res = Vg_pattern_half*R_symetry;
+//        MatrixXi Fg_pattern_other = Fg_pattern_half;
+//        Fg_pattern_other.col(1) = Fg_pattern_other.col(2);
+//        Fg_pattern_other.col(2)= Fg_pattern_half.col(1);
+//
+//        for(int i=0; i<res.rows(); i++){
+//            res(i, 0) += T_symetry(0);
+//            res(i, 1) += T_symetry(1);
+//            res(i, 2) += T_symetry(2);
+//        }
+//        MatrixXd doubleV(Vg_pattern_half.rows() + res.rows(), 3); doubleV <<Vg_pattern_half, res;
+////        Vg_pattern_half.resize(Vg_pattern_half.rows()+ res.rows(), 3);
+////        Vg_pattern_half.block(Vg_pattern_half.rows()- res.rows(), 0,res.rows(), 3 ) = res;
+//        cout<<res.rows()<<" sanity 3 "<<res.cols()<<endl;
+//
+//        MatrixXi offset(Fg_pattern_other.rows() ,Fg_pattern_other.cols());
+//        offset.setConstant(Vg_pattern_half.rows());
+//        Fg_pattern_other += offset;
+//        MatrixXi doubleF( Fg_pattern_half.rows()+ Fg_pattern_other.rows(),3);
+//        doubleF<<Fg_pattern_half, Fg_pattern_other;
+////        Fg_pattern_half.resize(Fg_pattern_half.rows()+ Fg_pattern_other.rows(),3 );
+////        Fg_pattern_half.block(Fg_pattern_half.rows()- Fg_pattern_other.rows(), 0,Fg_pattern_other.rows(), 3 )= (Fg_pattern_other+offset);
+//        cout<<res.rows()<<" sanity 4 "<<res.cols()<<endl;
+//
+//        viewer.data().set_mesh(doubleV, doubleF);
+
     }
     else{
         for(int i= 0; i< Vg_pattern.rows(); i++){
@@ -977,6 +1004,39 @@ int main(int argc, char *argv[])
             if(ImGui::Button("Remove priorities ", ImVec2(-1, 0))){
                 prioInner = false;
                 prioOuter = false;
+            }
+            if(ImGui::Button("Recover Symmetry",ImVec2(-1, 0) )){
+                viewer.selected_data_index = 0;
+                viewer.data().clear();
+                auto temp = R_symetry * currPattern.transpose();
+
+                MatrixXd res = temp.transpose();
+
+
+
+                MatrixXi Fg_pattern_other = Fg_pattern_curr;
+                Fg_pattern_other.col(1) = Fg_pattern_other.col(2);
+                Fg_pattern_other.col(2)= Fg_pattern_curr.col(1);
+
+                for(int i=0; i<res.rows(); i++){
+                    res(i, 0) += T_symetry(0);
+                    res(i, 1) += T_symetry(1);
+                    res(i, 2) += T_symetry(2);
+                }
+
+                MatrixXd doubleV(currPattern.rows() + res.rows(), 3);
+                doubleV <<currPattern, res;
+
+                MatrixXi offset(Fg_pattern_curr.rows() ,Fg_pattern_curr.cols());
+                offset.setConstant(currPattern.rows());
+                Fg_pattern_other += offset;
+                MatrixXi doubleF( Fg_pattern_curr.rows()+ Fg_pattern_other.rows(),3);
+                doubleF<<Fg_pattern_curr, Fg_pattern_other;
+                cout<<res.rows()<<" sanity 4 "<<res.cols()<<endl;
+                currPattern.resize(doubleV.rows(), 3); currPattern=doubleV;
+                Fg_pattern_curr.resize(doubleF.rows(), 3); Fg_pattern_curr=doubleF;
+
+                viewer.data().set_mesh(doubleV, doubleF);
             }
 
         }

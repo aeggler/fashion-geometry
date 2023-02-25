@@ -28,5 +28,5 @@ void setupCollisionConstraintsCall(Eigen::MatrixXi& collisionVert, vector<int> &
 
 void createHalfSewingPattern(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg_pattern, MatrixXd& Vg_pattern_half, MatrixXi& Fg_pattern_half,
                              map<int, int>& halfPatternFaceToFullPatternFace, map<int, int>& fullPatternFaceToHalfPatternFace, map<int, int>& halfPatternVertToFullPatternVert ,
-                             map<int, int>& fullPatternVertToHalfPatternVert, map<int, int>& insertedIdxToPatternVert, VectorXi& isLeftVertPattern );
+                             map<int, int>& fullPatternVertToHalfPatternVert, map<int, int>& insertedIdxToPatternVert, VectorXi& isLeftVertPattern , MatrixXd& R_sym, VectorXd& T_sym);
 //void oneShotLengthSolve(MatrixXd& p_adaption, MatrixXi& Fg_pattern_curr, MatrixXd& baryCoordsUPattern, MatrixXd& baryCoordsVPattern, MatrixXd& mapFromVg, MatrixXi& mapFromFg);
