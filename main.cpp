@@ -2328,7 +2328,8 @@ void solveStretchAdaption(){
         patternCoords.col(1) = mapFromVg.row(mapFromFg(i, 1)).leftCols(2).transpose();
         patternCoords.col(2) = mapFromVg.row(mapFromFg(i, 2)).leftCols(2).transpose();
         // where they would go to if no stretch in u
-        Vector2r tarUV0, tarUV1 , tarUV2;
+        vector<Vector2r> tar(3);
+        vector<Vector2r> tarAngle(3);
 
         Eigen::MatrixXd targetPositions(2, 3);
         targetPositions.col(0)=  p_adaption.row(Fg_pattern_curr(j, 0)).leftCols(2).transpose() ;
@@ -2340,18 +2341,24 @@ void solveStretchAdaption(){
         VectorXd thisFaceU = baryCoordsUPattern(i,0) * targetPositions.col(0) +  baryCoordsUPattern(i,1) * targetPositions.col(1) + baryCoordsUPattern(i,2) * targetPositions.col(2) ;
         VectorXd thisFaceV = baryCoordsVPattern(i,0) * targetPositions.col(0) +  baryCoordsVPattern(i,1) * targetPositions.col(1) + baryCoordsVPattern(i,2) * targetPositions.col(2) ;
         VectorXd bary = (targetPositions.col(0) + targetPositions.col(1) + targetPositions.col(2)) / 3;
+//        if(true){//j<=1546 && j>= 1530
+//            cout<<j<<" "<<(thisFaceU - bary).norm()<<" u and v "<<(thisFaceV - bary).norm()<<endl;
+//        }
         PBD_adaption.init_UVStretchPattern( thisFaceU- bary,  thisFaceV - bary, patternCoords,targetPositions,
-                                                tarUV0, tarUV1,tarUV2, uOrv,  stretchStiffnessD);
-//
-        Vector2d dir0 = tarUV0 - p_adaption.row(Fg_pattern_curr(j, 0)).leftCols(2).transpose() ;
-        Vector2d dir1 = tarUV1 - p_adaption.row(Fg_pattern_curr(j, 1)).leftCols(2).transpose() ;
-        Vector2d dir2 = tarUV2 - p_adaption.row(Fg_pattern_curr(j, 2)).leftCols(2).transpose() ;
-        correctionTerm.row(Fg_pattern_curr(j,0)).leftCols(2) += ( stretchStiffnessU * dir0);
-        correctionTerm.row(Fg_pattern_curr(j,1)).leftCols(2) += ( stretchStiffnessU * dir1);
-        correctionTerm.row(Fg_pattern_curr(j,2)).leftCols(2) += ( stretchStiffnessU * dir2);
-        itemCount(Fg_pattern_curr(j,0))++;
-        itemCount(Fg_pattern_curr(j,1))++;
-        itemCount(Fg_pattern_curr(j,2))++;
+                                            tar[0], tar[1],tar[2], uOrv,  stretchStiffnessD);
+        PBD_adaption.init_UVStretchPatternCorrectAngle( thisFaceU- bary,  thisFaceV - bary, patternCoords,targetPositions,
+                                                        tarAngle[0], tarAngle[1],tarAngle[2], uOrv,  1);
+
+        for(int l=0; l<3; l++){
+            Vector2d dir0 = tar[l] - p_adaption.row(Fg_pattern_curr(j, l)).leftCols(2).transpose() ;
+            correctionTerm.row(Fg_pattern_curr(j,l)).leftCols(2) += ( stretchStiffnessU * dir0);
+            itemCount(Fg_pattern_curr(j,l))++;
+
+            dir0 = tarAngle[l] - p_adaption.row(Fg_pattern_curr(j, l)).leftCols(2).transpose() ;
+            correctionTerm.row(Fg_pattern_curr(j,l)).leftCols(2) += ( stretchStiffnessD * dir0);
+            itemCount(Fg_pattern_curr(j,l))++;
+
+        }
 
     }
     for(int i=0; i<p_adaption.rows(); i++){

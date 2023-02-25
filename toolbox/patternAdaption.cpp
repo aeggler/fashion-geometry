@@ -412,13 +412,13 @@ void splitVertexFromCVE( cutVertEntry*& cve,
                             boundaryL[cve->patch][minusOneId], boundaryL[cve->patch][plusOneId],nextVertOnBoundary );
 
         Vector3d cutDirection = Vg.row(nextVertOnBoundary) - Vg.row(cve->vert); //cve-> continuedDirection;
+        cout<<"next vert on boundary "<<nextVertOnBoundary<<" "<<cutDirection.transpose()<<endl;
 
-
-        if (halfPatternVertToFullPatternVert.find(cve->vert) != halfPatternVertToFullPatternVert.end() ||
-        (cornerSet.find(halfPatternVertToFullPatternVert[cve->vert]) != cornerSet.end() && cve->vert != cve-> cornerInitial)){
-            cutDirection = (toLeft(0) == cutDirection(0) && toLeft(1) == cutDirection(1)) ? toRight : toLeft;
-
-        }
+//        if (halfPatternVertToFullPatternVert.find(cve->vert) != halfPatternVertToFullPatternVert.end() ||
+//        (cornerSet.find(halfPatternVertToFullPatternVert[cve->vert]) != cornerSet.end() && cve->vert != cve-> cornerInitial)){
+//            cutDirection = (toLeft(0) == cutDirection(0) && toLeft(1) == cutDirection(1)) ? toRight : toLeft;
+//
+//        }
         VectorXd ws;
         vector<int> fn = vfAdj[cve->vert]; // the face neighbors
         bool tearIsUseful = false;
@@ -434,7 +434,7 @@ void splitVertexFromCVE( cutVertEntry*& cve,
 
            double w = actU * uperFace.row(faceIdx).norm() + vperFace.row(faceIdx).norm() * actV;
 //            cout<<vperFace.row(faceIdx).norm()<<" theory"<<endl;
-            cout<<w <<", "<<actU<<" , "<<actV<< " contribution,  u norm "<<uperFace.row(faceIdx).norm()<<" ,v norm"<<vperFace.row(faceIdx).norm()<<", direction "<<cutDirection.transpose()<<endl;
+            cout<<w <<"=w, "<<actU<<" , "<<actV<< " contribution,  u norm "<<uperFace.row(faceIdx).norm()<<" ,v norm"<<vperFace.row(faceIdx).norm()<<", direction "<<cutDirection.transpose()<<endl;
             if(w > boundThereshold ){
                 tearIsUseful= true;
             }
@@ -504,6 +504,7 @@ void splitVertexFromCVE( cutVertEntry*& cve,
         return;
 
     }
+//todo enforce 90* more to make it more rigid!!
 
     Vector3d midVec;
     double lenMidVec;
@@ -1308,7 +1309,7 @@ void getStressAtVert(int seamType, int seamId, int vert, int & prevVert, int & n
         // ensure it is not the end
         if(fullPatternVertToHalfPatternVert[ minusOneSeams[seamId]->getEndVert()] != vert)nextVert = minusOneSeams[seamId]->getNextVert(vert, boundaryL[patch]);
         if(fullPatternVertToHalfPatternVert[ minusOneSeams[seamId]->getStartVert()] != vert)prevVert= minusOneSeams[seamId]->getPrevVert(vert, boundaryL[patch]);
-        cout<<patch<<"Computing stress for "<<vert<<" with adj "<<prevVert<<" "<<nextVert<<" of Seam"<<seamType<<seamId<<endl;
+        cout<<patch<<" Computing stress for "<<vert<<" with adj "<<prevVert<<" "<<nextVert<<" of Seam"<<seamType<<seamId<<endl;
 
 
     }else if(seamId>=0){
@@ -1318,12 +1319,12 @@ void getStressAtVert(int seamType, int seamId, int vert, int & prevVert, int & n
         }
         if(fullPatternVertToHalfPatternVert[ seamsList[seamId ]->getEndCornerIds().first] != vert) nextVert = seamsList[seamId]->getNextVert1(vert, boundaryL[patch]);
         if(fullPatternVertToHalfPatternVert[ seamsList[seamId ]->getStart1()] != vert) prevVert = seamsList[seamId]->getPrevVert1(vert, boundaryL[patch]);
-        cout<<patch<<"Computing stress for "<<vert<<" with adj "<<prevVert<<" "<<nextVert<<" of Seam"<<seamType<<seamId<<endl;
+        cout<<patch<<" Computing stress for "<<vert<<" with adj "<<prevVert<<" "<<nextVert<<" of Seam"<<seamType<<seamId<<endl;
 
     }else{
         if(fullPatternVertToHalfPatternVert[seamsList[(seamId +1)*(-1) ]-> getStart2() ] != vert) nextVert = seamsList[(seamId +1)*(-1)]->getPrevVert2(vert, boundaryL[patch]);
         if(fullPatternVertToHalfPatternVert[ seamsList[(seamId +1)*(-1) ]-> getEndCornerIds().second ] != vert) prevVert = seamsList[(seamId +1)*(-1)]->getNextVert2(vert, boundaryL[patch]);
-        cout<<patch<<"Computing stress for "<<vert<<" with adj "<<prevVert<<" "<<nextVert<<" of Seam"<<seamType<<seamId<<endl;
+        cout<<patch<<" Computing stress for "<<vert<<" with adj "<<prevVert<<" "<<nextVert<<" of Seam"<<seamType<<seamId<<endl;
 
     }
 
@@ -1347,12 +1348,12 @@ void getStressAtVert(int seamType, int seamId, int vert, int & prevVert, int & n
 
         w_init += uperFace.row(faceIdx).norm() * (actU);
         w_init += vperFace.row(faceIdx).norm() * (actV);
-        if(faceIdx == 1658) cout<< uperFace.row(faceIdx).norm()<<" "<<vperFace.row(faceIdx).norm()<<" "<<w_init<<endl;
-        if(faceIdx == 1658) cout<< dot<<" "<<dotv<<" "<<w_init<<endl;
+        cout<< uperFace.row(faceIdx).norm()<<" * "<<actU<<" + "<<vperFace.row(faceIdx).norm()<<" * "<<actV<<" = ";
 
 
     }
     w_init/= count;
+    cout<<w_init<<endl;
     Stress = w_init ;
 
 }
@@ -1882,7 +1883,7 @@ int tearFurther(vector<cutVertEntry*>& cutPositions, MatrixXd&  currPattern, Mat
 //
         }else{
 //
-            cout<<endl<< cutPositions[count]->vert<<" vertex up next handling with i= "<<count<<" /"<<cutPositions.size()-1<<" the stress here is "<<cutPositions[count]->stress<<endl;
+            cout<<endl<< cutPositions[count]->vert<<" vertex up next from seam  "<<cutPositions[count]->seamType<<" "<<cutPositions[count]->seamIdInList<<" the stress here is "<<cutPositions[count]->stress<<endl;
             returnPosition = cutPositions[count] ->vert;
             splitVertexFromCVE(cutPositions[count], currPattern, Fg_pattern, vfAdj, boundaryL, seamsList, minusOneSeams, releasedVert,
                                    toPattern_boundaryVerticesSet, cornerSet, handledVerticesSet, LShapeAllowed, Vg_pattern_orig, Fg_pattern_orig,

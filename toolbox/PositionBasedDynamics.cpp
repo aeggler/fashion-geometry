@@ -142,6 +142,78 @@ bool PositionBasedDynamics::solve_DistanceConstraint(
     return true;
 }
 // ----------------------------------------------------------------------------------------------
+bool PositionBasedDynamics::init_UVStretchPatternCorrectAngle( const Vector2r& perFaceU, const Vector2r& perFaceV,
+                                                   const Eigen::MatrixXd& patternCoords,const Eigen::MatrixXd& targetPositions,
+                                                   Vector2r &tarUV0, Vector2r &tarUV1, Vector2r &tarUV2, int uORv, double DiagStiffness ){
+    Eigen::MatrixXd Jnorm(2, 2);
+    Jnorm.col(0)= perFaceU; Jnorm.col(1)= perFaceV;
+    Vector2d Jn_0 =  Jnorm.col(0);//.normalized();
+    Vector2d Jn_1 = Jnorm.col(1);//.normalized();
+// J ist für original auf current, dh auch pattern coords muss aus original sein
+
+    if(uORv==1|| uORv==11){// we want to relax u stretch, hence go in direction where u is not stretched i.e it is normalized
+        Jnorm.col(0) = Jn_0;
+        Jnorm.col(1) = Jn_1;
+    }
+//    if(uORv ==11){
+//        cout<<endl<<" new face: "<<endl<<Jnorm<< " jnorm" <<endl;
+//    }
+    double dot = Jn_0.normalized().dot(Jn_1.normalized());
+    double angle = acos(max(-1., min(1., dot)) );
+    double deg = angle*180/M_PI;
+    if(uORv ==11){
+        cout<<endl<<" new face: "<<endl<<Jnorm<< " jnorm  and deg "<<deg <<endl;
+    }
+    double delta = abs(90-deg)/2;
+    delta = delta/180 * M_PI;
+
+
+    Eigen::Matrix2d newRot= Eigen::MatrixXd::Identity(2, 2);
+    newRot(0, 0)= cos(DiagStiffness * delta);
+    newRot(1, 1) = newRot(0, 0);
+    newRot(0, 1) = - sin (DiagStiffness * delta);
+    newRot(1, 0) =  sin ( DiagStiffness * delta);
+
+    if(uORv==11)cout<<deg<<" "<<angle<<" the deg and rotated by  "<<DiagStiffness * delta*180/ M_PI <<endl;
+    if(uORv==11)cout<<newRot<<"  rotated by  " <<endl;
+
+    if(deg<=90){
+        Jnorm.col(0) = newRot.transpose() * Jnorm.col(0);
+        Jnorm.col(1) = newRot * Jnorm.col(1);
+    }else{
+        Jnorm.col(1) = newRot.transpose() * Jnorm.col(1);
+        Jnorm.col(0) = newRot * Jnorm.col(0);
+    }
+
+    Eigen::MatrixXd jacobiStretchedPattern = Jnorm * patternCoords;
+//    if(uORv ==11) cout<<endl<<patternCoords<<" pattern coords"<<endl ;
+    if(uORv ==11) cout<<endl<<jacobiStretchedPattern<<" jacobi coords"<<endl ;
+//    if(uORv ==11) cout<<endl<<Jnorm<<" jacobian norm coords after angle spread"<<endl ;
+
+    // compute rotation and translation of that matrix to best fit the original
+    Eigen::MatrixXd R_est;
+    Eigen::VectorXd T_est;
+
+    Eigen::VectorXd pb = jacobiStretchedPattern.rowwise().mean();
+    Eigen::VectorXd qb = targetPositions.rowwise().mean();
+
+    R_est = MatrixXd::Identity(2, 2);
+    T_est = qb - R_est * pb;
+
+
+//    procrustesWORef(jacobiStretchedPattern.transpose(), targetPositions.transpose(), R_est, T_est);
+//
+    Eigen::MatrixXd rotTargetPos =   R_est* jacobiStretchedPattern ;
+    Eigen::MatrixXd refTargetPos = rotTargetPos.colwise() + T_est;
+    if(uORv ==11) cout<<endl<<refTargetPos<<" rot trans coords"<<endl ;
+
+    tarUV0 = refTargetPos.col(0);
+    tarUV1 = refTargetPos.col(1);
+    tarUV2 = refTargetPos.col(2);
+
+    return true;
+
+}
 
 bool PositionBasedDynamics::init_UVStretchPattern( const Vector2r& perFaceU, const Vector2r& perFaceV,
                                             const Eigen::MatrixXd& patternCoords,const Eigen::MatrixXd& targetPositions,
@@ -164,7 +236,7 @@ bool PositionBasedDynamics::init_UVStretchPattern( const Vector2r& perFaceU, con
     double deg = angle*180/M_PI;
     double delta = abs(90-deg)/2;
      delta = delta/180 * M_PI;
-    DiagStiffness = abs(90-deg)/90;
+    DiagStiffness = 1;//abs(90-deg)/90;
 
     Eigen::Matrix2d newRot= Eigen::MatrixXd::Identity(2, 2);
     newRot(0, 0)= cos(DiagStiffness * delta);
