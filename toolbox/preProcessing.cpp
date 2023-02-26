@@ -144,7 +144,7 @@ void createHalfSewingPattern(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, M
                              MatrixXd& R_sym, VectorXd& T_sym, MatrixXd& rightVert){
    int n = Vg.rows();
    int m  = Fg.rows();
-   cout<<endl<<"in half sewing pattern"<<endl;
+//   cout<<endl<<"in half sewing pattern"<<endl;
     VectorXi isLeftVert(Vg.rows());
     VectorXi isRightVert(Vg.rows());
 
@@ -162,7 +162,7 @@ void createHalfSewingPattern(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, M
             rightCount++;
         }
     }
-    cout<<leftCount<<" left and right in 3D "<<rightCount<<endl;
+//    cout<<leftCount<<" left and right in 3D "<<rightCount<<endl;
     MatrixXd Vg_half(leftCount, 3);
     map<int, int> halfVertToFullVert, fullVertToHalfVert;
     int idx=0;
@@ -225,7 +225,7 @@ void createHalfSewingPattern(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, M
     }
     idx=0; int rightIdx = 0;
 
-    cout<<isLeftVertPattern.sum()<<" and right side sum "<<isRightVertPattern.sum()<<endl;
+//    cout<<isLeftVertPattern.sum()<<" and right side sum "<<isRightVertPattern.sum()<<endl;
     int patternHalfVert = isLeftVertPattern.sum();
     Vg_pattern_half.resize(patternHalfVert, 3);
      rightVert.resize(isRightVertPattern.sum(), 3);
@@ -267,13 +267,13 @@ void createHalfSewingPattern(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, M
 
     // we hve rightVert adn Vg_pattern_half for right and left vertices.
     // now find the syymetry using procrustes with reflection
-    cout<<rightVert.rows()<<" right and left 2D verts "<<Vg_pattern_half.rows()<<endl;
+//    cout<<rightVert.rows()<<" right and left 2D verts "<<Vg_pattern_half.rows()<<endl;
     MatrixXd R; VectorXd T;
     MatrixXd input = Vg_pattern_half.block(0,0,Vg_pattern_half.rows(), 2);
     MatrixXd input2 = rightVert.block(0,0,rightVert.rows(), 2);
 
     procrustes( input, input2,R, T);
-    cout<<R<<" rotation pro "<<endl<<T<<endl;
+//    cout<<R<<" rotation pro "<<endl<<T<<endl;
 
 //    procrustesWORef( input, input2,R, T);
 //
@@ -285,7 +285,7 @@ void createHalfSewingPattern(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, M
     R_sym.col(2).setConstant(0);
     R_sym(2,2) = 1;
 
-    cout<<R_sym<<" after"<<endl;
+//    cout<<R_sym<<" after"<<endl;
     T_sym.resize(3);T_sym(0)= T(0); T_sym(1) = T(1);  T_sym(2) = 0;
 
 }

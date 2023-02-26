@@ -475,48 +475,10 @@ int main(int argc, char *argv[])
                                 halfPatternFaceToFullPatternFace, fullPatternFaceToHalfPatternFace,halfPatternVertToFullPatternVert,
                                 fullPatternVertToHalfPatternVert, insertedIdxToPatternVert, isLeftVertPattern,  R_symetry, T_symetry, rightVert );
 
-        viewer.selected_data_index = 1;
-        viewer.data().clear();
-        viewer.data().set_mesh(mapToVg, mapToFg);
-        MatrixXd res; // = Vg_pattern_half*R_symetry;
         R_symetry= MatrixXd::Identity(3,3); R_symetry(0,0)= -1;
 
         MatrixXd resT = (R_symetry * Vg_pattern_half.transpose());
         T_symetry= rightVert.colwise().mean() -resT.transpose().colwise().mean();
-        cout<<T_symetry<<" t sym"<<endl;
-        resT = resT.colwise() + T_symetry;
-//        MatrixXd Ri;VectorXd Ti;
-//        cout<<"next"<<endl;
-//        procrustesWORef(res, rightVert, Ri, Ti);
-//        cout<<Ri<<" new R, t"<<Ti.transpose()<<endl;
-//        MatrixXd resT = Vg_pattern_half.transpose().colwise() - T_symetry;
-//        resT = R_symetry * resT;
-        res = resT.transpose();
-
-        viewer.selected_data_index = 0;
-        viewer.data().clear();
-        viewer.data().set_mesh(res, Fg_pattern_half);
-
-//        MatrixXi Fg_pattern_other = Fg_pattern_half;
-//        Fg_pattern_other.col(1) = Fg_pattern_other.col(2);
-//        Fg_pattern_other.col(2)= Fg_pattern_half.col(1);
-//
-//        MatrixXd doubleV(Vg_pattern_half.rows() + res.rows(), 3); doubleV <<Vg_pattern_half, res;
-////        Vg_pattern_half.resize(Vg_pattern_half.rows()+ res.rows(), 3);
-////        Vg_pattern_half.block(Vg_pattern_half.rows()- res.rows(), 0,res.rows(), 3 ) = res;
-//        cout<<res.rows()<<" sanity 3 "<<res.cols()<<endl;
-//
-//        MatrixXi offset(Fg_pattern_other.rows() ,Fg_pattern_other.cols());
-//        offset.setConstant(Vg_pattern_half.rows());
-//        Fg_pattern_other += offset;
-//        MatrixXi doubleF( Fg_pattern_half.rows()+ Fg_pattern_other.rows(),3);
-//        doubleF<<Fg_pattern_half, Fg_pattern_other;
-////        Fg_pattern_half.resize(Fg_pattern_half.rows()+ Fg_pattern_other.rows(),3 );
-////        Fg_pattern_half.block(Fg_pattern_half.rows()- Fg_pattern_other.rows(), 0,Fg_pattern_other.rows(), 3 )= (Fg_pattern_other+offset);
-//        cout<<res.rows()<<" sanity 4 "<<res.cols()<<endl;
-//
-//        viewer.data().set_mesh(doubleV, doubleF);
-
     }
     else{
         for(int i= 0; i< Vg_pattern.rows(); i++){
@@ -1003,10 +965,10 @@ int main(int argc, char *argv[])
                     viewer.data().clear();
                     viewer.data().set_mesh(currPattern, Fg_pattern_curr);
                 }
-                if(!changeFlag){
+//                if(!changeFlag){
                     viewer.core().is_animating = true;
                     adaptionFlag = true;
-                }
+//                }
 
             }
             if(ImGui::Checkbox("Allow L-shaped fabric insertion", &LShapeAllowed)){}
@@ -1042,8 +1004,6 @@ int main(int argc, char *argv[])
                 MatrixXi Fg_pattern_other = Fg_pattern_curr;
                 Fg_pattern_other.col(1) = Fg_pattern_other.col(2);
                 Fg_pattern_other.col(2)= Fg_pattern_curr.col(1);
-
-//
 
                 MatrixXd doubleV(currPattern.rows() + res.rows(), 3);
                 doubleV <<currPattern, res;

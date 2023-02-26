@@ -162,6 +162,33 @@ void addToMapIfNotExisting( int key, int i){
     }
 
 }
+void getBoundaryPrevVert(const bool& startCorner ,const int seamType, const int seamIdInList, const int minusOne, const int plusOne, int& next){
+    if(startCorner){// does not matter if it is a starter or not
+
+        if(seamType>0){
+            if(seamIdInList>=0){
+                next = plusOne;
+            }else{
+                next = minusOne;
+            }
+        }else{
+            cout<<"the next one is "<<minusOne<<endl;
+
+            next = plusOne;
+        }
+
+    }else{
+        if(seamType > 0){
+            if(seamIdInList >= 0){
+                next = minusOne;
+            }else{
+                next = plusOne;
+            }
+        }else{
+            next = minusOne;
+        }
+    }
+}
 void getBoundaryNextVert(const bool& startCorner ,const int seamType, const int seamIdInList, const int minusOne, const int plusOne, int& next ){
 
     if(startCorner){// does not matter if it is a starter or not
@@ -410,6 +437,15 @@ void splitVertexFromCVE( cutVertEntry*& cve,
         int nextVertOnBoundary;
         getBoundaryNextVert(cve-> startCorner , cve-> seamType, cve-> seamIdInList,
                             boundaryL[cve->patch][minusOneId], boundaryL[cve->patch][plusOneId],nextVertOnBoundary );
+
+        if(cve->vert!= cve->cornerInitial && (cornerSet.find(cve->vert) != cornerSet.end()|| cornerSet.find((-1)*cve->vert) != cornerSet.end())){
+            getBoundaryPrevVert(cve-> startCorner , cve-> seamType, cve-> seamIdInList,
+                                boundaryL[cve->patch][minusOneId], boundaryL[cve->patch][plusOneId],nextVertOnBoundary );
+            cout<<" we should thake the previous vert to get the right direction!"<<endl;
+            for(auto it: cornerSet){
+                cout<<it<<" corner"<<endl;
+            }
+        }
 
         Vector3d cutDirection = Vg.row(nextVertOnBoundary) - Vg.row(cve->vert); //cve-> continuedDirection;
         cout<<"next vert on boundary "<<nextVertOnBoundary<<" "<<cutDirection.transpose()<<endl;
