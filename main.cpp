@@ -459,13 +459,13 @@ int main(int argc, char *argv[])
 
 
     MatrixXi Fg_pattern_half;
-    MatrixXd Vg_pattern_half;
+    MatrixXd Vg_pattern_half, rightVert;
     VectorXi isLeftVertPattern;
 
     if(symetry && !inverseMap) {
         createHalfSewingPattern(Vg_orig, Fg_orig, Vg_pattern, Fg_pattern, Vg_pattern_half, Fg_pattern_half,
                                 halfPatternFaceToFullPatternFace, fullPatternFaceToHalfPatternFace,halfPatternVertToFullPatternVert,
-                                fullPatternVertToHalfPatternVert, insertedIdxToPatternVert, isLeftVertPattern, R_symetry, T_symetry);
+                                fullPatternVertToHalfPatternVert, insertedIdxToPatternVert, isLeftVertPattern, R_symetry, T_symetry,rightVert );
         cout << " FINISHED PATTERN SPLIT Operation" << endl;
 
     }else if (symetry && inverseMap){
@@ -473,19 +473,34 @@ int main(int argc, char *argv[])
         // do the same for map to
         createHalfSewingPattern(Vg_orig, Fg_orig, mapToVg, mapToFg, Vg_pattern_half, Fg_pattern_half,
                                 halfPatternFaceToFullPatternFace, fullPatternFaceToHalfPatternFace,halfPatternVertToFullPatternVert,
-                                fullPatternVertToHalfPatternVert, insertedIdxToPatternVert, isLeftVertPattern,  R_symetry, T_symetry );
-//        viewer.selected_data_index = 0;
-//        viewer.data().clear();
-//        MatrixXd res = Vg_pattern_half*R_symetry;
+                                fullPatternVertToHalfPatternVert, insertedIdxToPatternVert, isLeftVertPattern,  R_symetry, T_symetry, rightVert );
+
+        viewer.selected_data_index = 1;
+        viewer.data().clear();
+        viewer.data().set_mesh(mapToVg, mapToFg);
+        MatrixXd res; // = Vg_pattern_half*R_symetry;
+        R_symetry= MatrixXd::Identity(3,3); R_symetry(0,0)= -1;
+
+        MatrixXd resT = (R_symetry * Vg_pattern_half.transpose());
+        T_symetry= rightVert.colwise().mean() -resT.transpose().colwise().mean();
+        cout<<T_symetry<<" t sym"<<endl;
+        resT = resT.colwise() + T_symetry;
+//        MatrixXd Ri;VectorXd Ti;
+//        cout<<"next"<<endl;
+//        procrustesWORef(res, rightVert, Ri, Ti);
+//        cout<<Ri<<" new R, t"<<Ti.transpose()<<endl;
+//        MatrixXd resT = Vg_pattern_half.transpose().colwise() - T_symetry;
+//        resT = R_symetry * resT;
+        res = resT.transpose();
+
+        viewer.selected_data_index = 0;
+        viewer.data().clear();
+        viewer.data().set_mesh(res, Fg_pattern_half);
+
 //        MatrixXi Fg_pattern_other = Fg_pattern_half;
 //        Fg_pattern_other.col(1) = Fg_pattern_other.col(2);
 //        Fg_pattern_other.col(2)= Fg_pattern_half.col(1);
 //
-//        for(int i=0; i<res.rows(); i++){
-//            res(i, 0) += T_symetry(0);
-//            res(i, 1) += T_symetry(1);
-//            res(i, 2) += T_symetry(2);
-//        }
 //        MatrixXd doubleV(Vg_pattern_half.rows() + res.rows(), 3); doubleV <<Vg_pattern_half, res;
 ////        Vg_pattern_half.resize(Vg_pattern_half.rows()+ res.rows(), 3);
 ////        Vg_pattern_half.block(Vg_pattern_half.rows()- res.rows(), 0,res.rows(), 3 ) = res;
@@ -1006,23 +1021,29 @@ int main(int argc, char *argv[])
                 prioOuter = false;
             }
             if(ImGui::Button("Recover Symmetry",ImVec2(-1, 0) )){
+                simulate = false;
+                adaptionFlag = false;
+                viewer.core().is_animating = false;
                 viewer.selected_data_index = 0;
                 viewer.data().clear();
-                auto temp = R_symetry * currPattern.transpose();
-
+                MatrixXd temp = R_symetry * currPattern.transpose();
+                temp = temp.colwise() + T_symetry;
                 MatrixXd res = temp.transpose();
 
-
+//                R_symetry= MatrixXd::Identity(3,3); R_symetry(0,0)= -1;
+//
+//                MatrixXd resT = (R_symetry * Vg_pattern_half.transpose());
+//                T_symetry= rightVert.colwise().mean() -resT.transpose().colwise().mean();
+/*
+ *   MatrixXd resT = Vg_pattern_half.transpose().colwise() + T_symetry;
+        resT = R_symetry * resT;
+        res = resT.transpose();*/
 
                 MatrixXi Fg_pattern_other = Fg_pattern_curr;
                 Fg_pattern_other.col(1) = Fg_pattern_other.col(2);
                 Fg_pattern_other.col(2)= Fg_pattern_curr.col(1);
 
-                for(int i=0; i<res.rows(); i++){
-                    res(i, 0) += T_symetry(0);
-                    res(i, 1) += T_symetry(1);
-                    res(i, 2) += T_symetry(2);
-                }
+//
 
                 MatrixXd doubleV(currPattern.rows() + res.rows(), 3);
                 doubleV <<currPattern, res;

@@ -140,7 +140,8 @@ void setupCollisionConstraintsCall(Eigen::MatrixXi& collisionVert, vector<int> &
 // decision if it is in the half pattern depends on x- coordinate on 3D garment
 void createHalfSewingPattern(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg_pattern, MatrixXd& Vg_pattern_half, MatrixXi& Fg_pattern_half,
                              map<int, int>& halfPatternFaceToFullPatternFace, map<int, int>& fullPatternFaceToHalfPatternFace, map<int, int>& halfPatternVertToFullPatternVert ,
-                             map<int, int>& fullPatternVertToHalfPatternVert, map<int, int>& insertedIdxToPatternVert, VectorXi& isLeftVertPattern, MatrixXd& R_sym, VectorXd& T_sym){
+                             map<int, int>& fullPatternVertToHalfPatternVert, map<int, int>& insertedIdxToPatternVert, VectorXi& isLeftVertPattern,
+                             MatrixXd& R_sym, VectorXd& T_sym, MatrixXd& rightVert){
    int n = Vg.rows();
    int m  = Fg.rows();
    cout<<endl<<"in half sewing pattern"<<endl;
@@ -227,7 +228,7 @@ void createHalfSewingPattern(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, M
     cout<<isLeftVertPattern.sum()<<" and right side sum "<<isRightVertPattern.sum()<<endl;
     int patternHalfVert = isLeftVertPattern.sum();
     Vg_pattern_half.resize(patternHalfVert, 3);
-    MatrixXd rightVert(isRightVertPattern.sum(), 3);
+     rightVert.resize(isRightVertPattern.sum(), 3);
 
     for(int i=0; i< Vg_pattern.rows(); i++){
         if(isLeftVertPattern(i)){
@@ -265,10 +266,28 @@ void createHalfSewingPattern(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, M
 
 
     // we hve rightVert adn Vg_pattern_half for right and left vertices.
-    // now find the syymetry unsing procrustes with reflection
+    // now find the syymetry using procrustes with reflection
     cout<<rightVert.rows()<<" right and left 2D verts "<<Vg_pattern_half.rows()<<endl;
-    procrustes( Vg_pattern_half, rightVert,R_sym, T_sym);
-    cout<<R_sym<<" rotation, translation: "<<T_sym<<endl;
+    MatrixXd R; VectorXd T;
+    MatrixXd input = Vg_pattern_half.block(0,0,Vg_pattern_half.rows(), 2);
+    MatrixXd input2 = rightVert.block(0,0,rightVert.rows(), 2);
+
+    procrustes( input, input2,R, T);
+    cout<<R<<" rotation pro "<<endl<<T<<endl;
+
+//    procrustesWORef( input, input2,R, T);
+//
+//
+//    cout<<R<<" rotation wo ref "<<endl;
+    R_sym.resize(3, 3);
+    R_sym.block(0,0,2,2) = R;
+    R_sym.row(2).setConstant(0);
+    R_sym.col(2).setConstant(0);
+    R_sym(2,2) = 1;
+
+    cout<<R_sym<<" after"<<endl;
+    T_sym.resize(3);T_sym(0)= T(0); T_sym(1) = T(1);  T_sym(2) = 0;
+
 }
 
 
