@@ -318,10 +318,7 @@ int main(int argc, char *argv[])
     cornerVertices = VectorXd::Zero(Vg_pattern.rows());
     t.printTime(" init");
     preComputeConstraintsForRestshape();
-    t.printTime(" preComputeConstraintsForRestshape");
-
     preComputeStretch();
-    t.printTime( " preComputeStretch");
     jacFlag=false;
 
     setNewGarmentMesh(viewer);
@@ -368,12 +365,9 @@ int main(int argc, char *argv[])
     }
 
     setNewMannequinMesh(viewer);
-    t.printTime( " set collision mesh ");
-
     std::map<int,int> vertexMapPattToGar;
     std::map<std::pair<int, int>,int> vertexMapGarAndIdToPatch;
     vertexMapPatternToGarment(Fg, Fg_pattern,vertexMapPattToGar);
-    t.printTime( " vertexMapPatternToGarment ");
 
     igl::boundary_loop(Fg_pattern, boundaryL);
 
@@ -476,7 +470,7 @@ int main(int argc, char *argv[])
         R_symetry= MatrixXd::Identity(3,3); R_symetry(0,0)= -1;
 
         MatrixXd resT = (R_symetry * Vg_pattern_half.transpose());
-        T_symetry= rightVert.colwise().mean() -resT.transpose().colwise().mean();
+        T_symetry =Vg_pattern_orig.row(1444) - resT.transpose().row(0);
     }
     else{
         for(int i= 0; i< Vg_pattern.rows(); i++){
