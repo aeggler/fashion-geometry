@@ -441,10 +441,10 @@ void splitVertexFromCVE( cutVertEntry*& cve,
         if(cve->vert!= cve->cornerInitial && (cornerSet.find(cve->vert) != cornerSet.end()|| cornerSet.find((-1)*cve->vert) != cornerSet.end())){
             getBoundaryPrevVert(cve-> startCorner , cve-> seamType, cve-> seamIdInList,
                                 boundaryL[cve->patch][minusOneId], boundaryL[cve->patch][plusOneId],nextVertOnBoundary );
-            cout<<" we should thake the previous vert to get the right direction!"<<endl;
-            for(auto it: cornerSet){
-                cout<<it<<" corner"<<endl;
-            }
+            cout<<" we should take the previous vert to get the right direction!"<<endl;
+//            for(auto it: cornerSet){
+//                cout<<it<<" corner"<<endl;
+//            }
         }
 
         Vector3d cutDirection = Vg.row(nextVertOnBoundary) - Vg.row(cve->vert); //cve-> continuedDirection;
@@ -470,8 +470,8 @@ void splitVertexFromCVE( cutVertEntry*& cve,
 
            double w = actU * uperFace.row(faceIdx).norm() + vperFace.row(faceIdx).norm() * actV;
 //            cout<<vperFace.row(faceIdx).norm()<<" theory"<<endl;
-            cout<<w <<"=w, "<<actU<<" , "<<actV<< " contribution,  u norm "<<uperFace.row(faceIdx).norm()<<" ,v norm"<<vperFace.row(faceIdx).norm()<<", direction "<<cutDirection.transpose()<<endl;
-            if(w > boundThereshold ){
+            cout<<w <<" = w, "<<actU<<" , "<<actV<< " contribution,  u norm "<<uperFace.row(faceIdx).norm()<<" ,v norm"<<vperFace.row(faceIdx).norm()<<", direction "<<cutDirection.transpose()<<endl;
+            if(w > boundThereshold && (uperFace.row(faceIdx).norm()>1 || vperFace.row(faceIdx).norm()>1) ){
                 tearIsUseful= true;
             }
            /*END TEST IF USEFUL*/
@@ -498,20 +498,27 @@ void splitVertexFromCVE( cutVertEntry*& cve,
         }
         // this is the seam in which we make the decision to release,(!) not from this seam but from the subsequent
         releasedVert[cve->vert]= valPair;
-        cout<<"released from seam "<<valPair.first<<" "<<valPair.second<<endl;
+        cout<<cve->vert<<"released from seam "<<valPair.first<<" "<<valPair.second<<endl;
         // now we need to find the seam from which we release.
         // each corner is adjacent to two seams. If one is the one we make the decision from, then the other is the one from which it is released
 
+        int currComp ;
         if(cornerToSeams[cve->cornerInitial][0] == seamComp ){
+            currComp = cornerToSeams[cve->cornerInitial][1];
             // if we allow releasing from two seams this has to be a vec
             if(releasedVertNew.find(cve->vert)!= releasedVertNew.end()){
                 releasedVertNew[cve->vert].push_back( cornerToSeams[cve->cornerInitial][1]);
+
             }else{
                 vector<int> temp;
                 temp.push_back(cornerToSeams[cve->cornerInitial][1]);
                 releasedVertNew[cve->vert] = temp;
             }
+//            if(endInsert) releasedVertNew[cve->vert].push_back( furtherSeam);
+
         }else if (cornerToSeams[cve->cornerInitial][1] == seamComp ){
+            currComp = cornerToSeams[cve->cornerInitial][0];
+
             // if we allow releasing from two seams this has to be a vec
             if(releasedVertNew.find(cve->vert)!= releasedVertNew.end()){
                 releasedVertNew[cve->vert].push_back( cornerToSeams[cve->cornerInitial][0]);
@@ -520,7 +527,6 @@ void splitVertexFromCVE( cutVertEntry*& cve,
                 temp.push_back(cornerToSeams[cve->cornerInitial][0]);
                 releasedVertNew[cve->vert] = temp;
             }
-
 
         }else{
             cout<<cornerToSeams[cve->cornerInitial][0]<<" we have a problem, it is not found "<<cornerToSeams[cve->cornerInitial][1]<<" but what we have is "
@@ -852,13 +858,6 @@ void splitVertexFromCVE( cutVertEntry*& cve,
 
     Vg.resize(newVg.rows(), 3);
     Vg = newVg;
-
-//    //doubt this is ever used
-//    if(toPattern_boundaryVerticesSet.find(insertIdx)!= toPattern_boundaryVerticesSet.end()){
-//            cout<<"we are nearly done here, it's cut through! "<<endl;
-//            cve-> vert = insertIdx;
-//            cve -> bridgeFlag = true;
-//    }
 
     // only the first level i.e. boundary duplicate has to be projected, hence only this one is to be added
     if(cve->levelOne) {
@@ -1853,12 +1852,13 @@ int tearFurther(vector<cutVertEntry*>& cutPositions, MatrixXd&  currPattern, Mat
     vector<vector<int> > vfAdj;
     createVertexFaceAdjacencyList(Fg_pattern, vfAdj);
     computePerFaceUV(Fg_pattern, Fg_pattern_orig, Vg_pattern_orig, currPattern, halfPatternFaceToFullPatternFace, inverseMapping);
-    updateStress( cutPositions, seamsList, minusOneSeams, boundaryL,  Fg_pattern, vfAdj,  prioInner, prioOuter, currPattern, fullPatternVertToHalfPatternVert, halfPatternVertToFullPatternVert);
 
 //
     if(prevFinished || preferManySmallCuts){
         // if we want many small cuts we sort always and there is no need to finish a seam before handling the next one!
         cout<<"It's time to sort again"<<endl;
+        updateStress( cutPositions, seamsList, minusOneSeams, boundaryL,  Fg_pattern, vfAdj,  prioInner, prioOuter, currPattern, fullPatternVertToHalfPatternVert, halfPatternVertToFullPatternVert);
+
         sort(cutPositions.begin(), cutPositions.end(), []( cutVertEntry* &a,  cutVertEntry* &b) { return a->stress > b-> stress; });
 //        for(int i = 0; i < cutPositions.size(); i++){
 //            findCorrespondingCounterCutPosition(cutPositions, i, cutPositions[i], currPattern, Fg_pattern, vfAdj, boundaryL,
@@ -2189,7 +2189,6 @@ void fillMatrixWithBoundaryVert(const vector<int>& boundary, const int& start, c
     int countLen = 2;
     int startIdx = 0;
     int boundLen = boundary.size();
-//    cout<<start<<" "<<end<<" "<<boundLen<<endl;
 
     while(boundary[startIdx] != start && startIdx <= boundLen){
         startIdx++;
@@ -2231,10 +2230,8 @@ void setUpMap( const std::vector<std::vector<int> >& boundaryL,map<int,int> & fu
         int found = false;
         for(int j=0; j< boundaryL[i].size(); j++){
             if(found) break;
-//            cout<<boundaryL[i][j]<<" ";
             if(fullPatternVertToHalfPatternVert.find(boundaryL[i][j])!= fullPatternVertToHalfPatternVert.end()){
                 patchMapToHalfInverse[i]= count;
-//                cout<<"Map patch "<<i<<" to "<<count<<endl ;
                 count ++;
                 found = true;
             }
@@ -2384,7 +2381,6 @@ void projectBackOnBoundary(const MatrixXd & mapToVg, MatrixXd& p, const vector<s
                 updatePositionToIntersection(p, avs, Vg_seam2to, shoulBeLeft);
             }
         }
-//        if(j==2) return;
     }
     for(int j = 0; j < minusOneSeams.size(); j++){//
 
@@ -2393,12 +2389,10 @@ void projectBackOnBoundary(const MatrixXd & mapToVg, MatrixXd& p, const vector<s
         int startVert = currSeam -> getStartVert();
         int endVert =  currSeam -> getEndVert();
 
-
         // build the structure for closest search
         MatrixXd Vg_seamto;
         if(seamFullHalf.find(currSeam->startVertOld) != seamFullHalf.end() ||
                 seamFullHalf.find(currSeam->endVertOld) != seamFullHalf.end()) {
-
 
             fillMatrixWithBoundaryVert(boundaryL_toPattern[patch], currSeam->startVertOld, currSeam->endVertOld,
                                        mapToVg, Vg_seamto, false, fromtoToVertMapIfSplit );
@@ -2412,7 +2406,6 @@ void projectBackOnBoundary(const MatrixXd & mapToVg, MatrixXd& p, const vector<s
                 startidx++;
             }
             int nextSearch ;
-
             while(next != endVert ){
                 // general case, it is not released hence pull it to the boundary
                 nextSearch= (inverseMap) ? next : seamFullHalf[next];
@@ -2427,11 +2420,13 @@ void projectBackOnBoundary(const MatrixXd & mapToVg, MatrixXd& p, const vector<s
                 startidx = startidx % boundLen;
                 next = boundaryL[patchUsed][ startidx];
             }// it is released for another side hence we have to pull it to our side
-            if(releasedVert.find(nextSearch) != releasedVert.end() && std::find(releasedVertNew[nextSearch].begin(),
-                                                                                releasedVertNew[nextSearch].end(),  (-1)*(j+1)) == releasedVertNew[nextSearch].end()){
+            nextSearch= (inverseMap) ? next : seamFullHalf[next];
+            if(releasedVert.find(nextSearch) != releasedVert.end() && std::find(releasedVertNew[nextSearch].begin(),releasedVertNew[nextSearch].end(),  (-1)*(j+1)) == releasedVertNew[nextSearch].end()){
                 updatePositionToIntersection( p, nextSearch,Vg_seamto, true);
 
             }
+            
+
             // also map all projections
             for(const auto & addedVert : currSeam -> duplicates){
                 int avs = addedVert.second;
