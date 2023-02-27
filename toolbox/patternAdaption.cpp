@@ -482,7 +482,7 @@ void splitVertexFromCVE( cutVertEntry*& cve,
        }
 
         if(!tearIsUseful){
-            cout<<"stopping now because of adj face stress condition  "<<endl;
+            cout<<"STOP now because of adj face stress condition  "<<endl;
 
             cve->finFlag = true;
             return;
@@ -541,7 +541,8 @@ void splitVertexFromCVE( cutVertEntry*& cve,
         newVg.row(newVertIdx) = Vg.row(cve->vert);
 
         cve->continuedCorner = true;
-        cve->finFlag = (cornerSet.find(halfPatternVertToFullPatternVert[cve->vert]) != cornerSet.end() && cve->vert != cve-> cornerInitial); //if it is a corner we are done
+        int searchVert= (halfPatternVertToFullPatternVert.find(cve->vert) == halfPatternVertToFullPatternVert.end()) ? (-1)*(cve->vert) : halfPatternVertToFullPatternVert[cve->vert];
+        cve->finFlag = (cornerSet.find(searchVert) != cornerSet.end() && cve->vert != cve-> cornerInitial); //if it is a corner we are done
         int nextVertComp;
         getBoundaryNextVert(cve-> startCorner ,cve-> seamType, cve-> seamIdInList, boundary[minusOneId], boundary[ plusOneId], nextVertComp );
         cve->vert = nextVertComp;
@@ -1145,11 +1146,6 @@ void addVarToModel (bool inverseMap, int vert, int prevVert, int nextVert, vecto
         double actU = abs(dot);
         auto dotv = vperFace.row(faceIdx).normalized().transpose().dot( nextDir.normalized());
         double actV = abs(dotv);
-        if(vert==1495){
-            cout<<endl<<endl<<endl<<endl;
-            cout<<nextDir.transpose()<<" direction, prev and next are "<<prevVert<<" "<<nextVert<<endl;
-            cout<<vert<<" and face: "<<faceIdx<<" "<<uperFace.row(faceIdx).norm()<<" u and v "<<vperFace.row(faceIdx).norm()<<" and contiburtions "<<actU<<" "<<actV<<endl;
-        }
 
         w_init += uperFace.row(faceIdx).norm() * (actU);
         w_init += vperFace.row(faceIdx).norm() * (actV);
@@ -1168,7 +1164,7 @@ void addVarToModel (bool inverseMap, int vert, int prevVert, int nextVert, vecto
         }else{
 
             int tailorLazyFactor = 1; if(corner) tailorLazyFactor*= tailor_lazyness;
-            cout<<tailorLazyFactor<<" "<<vert <<" taylor lazy factor and weight "<<w_init<< " "<<count<<endl;
+//            cout<<tailorLazyFactor<<" "<<vert <<" taylor lazy factor and weight "<<w_init<< " "<<count<<endl;
             try{
                 cutVar[varCount].set(GRB_DoubleAttr_Obj, tailorLazyFactor * w_init);
 
@@ -1192,7 +1188,7 @@ void addVarToModel (bool inverseMap, int vert, int prevVert, int nextVert, vecto
 
             int tailorLazyFactor = 1;
             if (corner) tailorLazyFactor *= tailor_lazyness;
-            cout <<vert<<" "<< tailorLazyFactor << " taylor lazy factor and weight " << w_init << " " << varCount << endl;
+//            cout <<vert<<" "<< tailorLazyFactor << " taylor lazy factor and weight " << w_init << " " << varCount << endl;
             try {
                 cutVar[varCount].set(GRB_DoubleAttr_Obj, tailorLazyFactor * w_init);
 
@@ -1217,11 +1213,7 @@ void addVarToModel (bool inverseMap, int vert, int prevVert, int nextVert, vecto
         seamIdToCompare = (seamIdInList+1 )*(-1);
     }
     int thisVar = varCount;
-    if(vert == 0|| vert == 1463) cout<<(mapVertAndSeamToVar.find(make_pair(counterpart, seamIdToCompare))!= mapVertAndSeamToVar.end())<<" it is there for "<<vert<<" and seam "<<seamIdToCompare<<endl;
-    if(vert == 1463) cout<<" should be there. Looking for "<<counterpart<<" "<<seamIdToCompare<<endl;
-    if(counterpart == vert) cout<<"counterpart is mesed up"<<endl;
     if(mapVertAndSeamToVar.find(make_pair(counterpart, seamIdToCompare))!= mapVertAndSeamToVar.end()){
-        cout<<counterpart<<" and "<<vert<<" share a xnor"<<endl;
         // if the counterpart exists already, we use another variable for the XNOR constraint
         //https://yetanothermathprogrammingconsultant.blogspot.com/2022/06/xnor-as-linear-inequalities.html
         int otherVar = mapVertAndSeamToVar[make_pair(counterpart, seamIdToCompare)];
@@ -1237,7 +1229,6 @@ void addVarToModel (bool inverseMap, int vert, int prevVert, int nextVert, vecto
 
     }
     else{
-        if( vert == 1463&& seamIdToCompare == 7) cout<<vert<<" "<<seamIdToCompare<<" and key "<<thisVar<<endl;
         mapVertAndSeamToVar[make_pair(vert, seamIdToCompare)] = thisVar;
     }
     varCount++;
@@ -1404,11 +1395,11 @@ void setLP(bool inverseMap, std::vector<std::vector<int> >& boundaryL , vector<v
         MatrixXd& currPattern, const bool & LShapeAllowed, const MatrixXd & fromPattern, const MatrixXi mapFromFg, map<int, int>& fullPatternVertToHalfPatternVert,
         map<int, int>& halfPatternVertToFullPatternVert,map<int, int>& halfPatternFaceToFullPatternFace ){
     computePerFaceUV(Fg_pattern, mapFromFg, fromPattern, currPattern,halfPatternFaceToFullPatternFace, inverseMap );
-for(auto it:fullPatternVertToHalfPatternVert ){
-    if(it.first<0){
-        cout<<"it is in!!"<<it.first<<" "<<it.second<<endl;
+    for(auto it:fullPatternVertToHalfPatternVert ){
+        if(it.first<0){
+            cout<<"it is in!!"<<it.first<<" "<<it.second<<endl;
+        }
     }
-}
     // Create an environment
     GRBEnv env = GRBEnv(true);
     env.set("LogFile", "mip1.log");
@@ -1760,8 +1751,9 @@ for(auto it:fullPatternVertToHalfPatternVert ){
             if(seamId<0) inverted = seamsList[(-1)*(seamId+1)]->inverted;
             getStressAtVert( seamType, seamId, vert, prevVert, nextVert, Stress,
                      seamsList, minusOneSeams,  boundaryL, Fg_pattern, currPattern,vfAdj, inverted , fullPatternVertToHalfPatternVert);
-            cout<<"after stress at vcert"<<endl;
-            if(cornerVert[halfPatternVertToFullPatternVert[vert]]==1){
+            int searchedVert = ( halfPatternVertToFullPatternVert.find(vert) == halfPatternVertToFullPatternVert.end()) ? (-1)*vert : vert;
+//            for(int ll=0; ll<cornerVert.size(); ll++){if(cornerVert[ll]==0) cout<<ll<<" "; }
+            if( inverseMap|| cornerVert[halfPatternVertToFullPatternVert[vert]]==1 ){
                 cout<<"corner "<<endl;
                 cve->cornerInitial = vert;
 //                // left or right corner?

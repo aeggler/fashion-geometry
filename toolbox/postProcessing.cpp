@@ -385,7 +385,7 @@ void computeAllBetweensConnectPatches(vector<VectorXd>& polylineSelected,vector<
             }
         }
     }
-    bool toAsc = isAsc(idx(3), idx(4), idx(5));
+    bool toAsc =( isAsc(idx(3), idx(4), idx(5))||isAsc(idx(9), idx(10), idx(11)) );
     cout<<idx.transpose()<<" the indices "<<endl;
 
     int currIdx = idx(0);
