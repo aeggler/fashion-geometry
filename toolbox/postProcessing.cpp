@@ -220,21 +220,39 @@ void backTo3Dmapping(MatrixXd& adaptedPattern, MatrixXi& adaptedPattern_faces, M
 
     VectorXd S; VectorXi I;//face index of smallest distance
     MatrixXd C,N;
-    cout<<"Starting with signed distance "<<endl;
+    Eigen::VectorXi componentIdPerVert;
+    igl::vertex_components(adaptedPattern_faces, componentIdPerVert);
+    cout<<componentIdPerVert(1493)<<" 1493, "<<componentIdPerVert(839)<<" 839, "<<componentIdPerVert(2559)<<" 2559, "<<componentIdPerVert(3213)<<" 3213"<<endl;
+
+    for(int i= 0; i<adaptedPattern.rows(); i++){
+        if(componentIdPerVert(i) == 1 || componentIdPerVert(i) == 3){
+            adaptedPattern(i, 0) += 100;
+        }else if (componentIdPerVert(i) == 5 || componentIdPerVert(i) == 7){
+            adaptedPattern(i, 0)  -= 100;
+        }
+    }
+    // 1,5 und 3,6 für links
+    Eigen::VectorXi componentIdPerVertP;
+    igl::vertex_components(perfectPattern_faces, componentIdPerVertP);
+    for(int i =0; i< perfectPattern.rows(); i++){
+        if(componentIdPerVertP(i) == 1 || componentIdPerVertP(i) == 5){
+            perfectPattern(i, 0) += 100;
+        }else if (componentIdPerVertP(i) == 3 || componentIdPerVertP(i) == 6){
+            perfectPattern(i, 0) -= 100;
+        }
+    }
     igl::signed_distance(adaptedPattern, perfectPattern, perfectPattern_faces, igl::SIGNED_DISTANCE_TYPE_UNSIGNED, S, I, C, N);
-    cout<<"Finished signed distance "<<endl;
 
     MatrixXd B(adaptedPattern.rows(), 3); // contains all barycentric coordinates
     for(int i=0; i< adaptedPattern.rows(); i++){
         VectorXd bary;
         auto face = perfectPattern_faces.row(I(i));
+
         igl::barycentric_coordinates(adaptedPattern.row(i), perfectPattern.row(face(0)), perfectPattern.row(face(1)),
                                      perfectPattern.row(face(2)), bary);
         B.row(i) = bary;
     }
-    cout<<"Got all barycentric coords"<<endl;
     igl::barycentric_interpolation(perfectPatternIn3d, perfectPatternIn3d_faces, B, I, adaptedPatternIn3d);
-    cout<<"Got interpolation"<<endl;
 
 }
 
@@ -469,15 +487,6 @@ void computeAllBetweensNew(vector<VectorXd>& polylineSelected,vector<int>& polyl
                                boundaryL_adaptedFromPattern, boundaryL_toPattern, currPattern, Vg_to, polyLineInput, connectedVertVec, patchId, isAscVec);
         return;
     }
-    cout<<"--------------------- -------------------------"<<endl;
-    cout<<"--------------------- -------------------------"<<endl;
-    cout<<"--------------------- -------------------------"<<endl;
-    cout<<"--------------------- -------------------------"<<endl;
-    cout<<" WE ARE IN THE CASE OF NOT HAVING not 12 nor 2. WHAT TO DO NOW IS UNCLEAR"<<endl;
-    cout<<"--------------------- -------------------------"<<endl;
-    cout<<"--------------------- -------------------------"<<endl;
-    cout<<"--------------------- -------------------------"<<endl;
-    cout<<"--------------------- -------------------------"<<endl;
 
     /* given 6 positions in total
      *   we assume v0 is on the from mesh ,adapted pattern
@@ -1154,14 +1163,16 @@ void initialGuessAdaption(MatrixXd& currPattern_nt, MatrixXd& mapToVg_nt, Matrix
 
 cout<<"fin init guess "<<currPattern_nt.rows()<<endl;
 }
-void initialGuessAdaptionWithoutT(MatrixXd& currPattern, MatrixXd& mapToVg, MatrixXd& perfectPattern,  MatrixXi& Fg_pattern_curr, MatrixXi& mapToFg){
+void initialGuessAdaptionWithoutT(MatrixXd& currPattern, MatrixXd& mapToVg, MatrixXd& perfectPattern,  MatrixXi& Fg_pattern_curr, MatrixXi& mapToFg, MatrixXi pPFg){
+//    initialGuessAdaptionWithoutT( fracturedInverseVg,  oneDirMapV,  mapFromV, fracturedInverseFg,oneDirMapF,   mapFromF);
+    // currPattern is localized in perfect pattern and brought to mapToVg
 //perfect pattern is the initial perfect pattern for the new shape, and curr is the existing adapted to the perfect, thus is has more faces and its own Fg
 // note that mapToVg was the one we started with, and it has face correspondance with perfect pattern, therefore they both use mapToFg
     VectorXd S;
     VectorXi I;//face index of smallest distance
     MatrixXd C,N, initGuess;
     cout<<"Starting with signed distance "<<endl;
-    igl::signed_distance(currPattern, perfectPattern, mapToFg, igl::SIGNED_DISTANCE_TYPE_UNSIGNED, S, I, C, N);
+    igl::signed_distance(currPattern, perfectPattern, pPFg, igl::SIGNED_DISTANCE_TYPE_UNSIGNED, S, I, C, N);
 
     MatrixXd B(currPattern.rows(), 3); // contains all barycentric coordinates
     for(int i = 0; i < currPattern.rows(); i++){

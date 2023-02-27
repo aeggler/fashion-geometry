@@ -1754,7 +1754,7 @@ void setLP(bool inverseMap, std::vector<std::vector<int> >& boundaryL , vector<v
             int searchedVert = ( halfPatternVertToFullPatternVert.find(vert) == halfPatternVertToFullPatternVert.end()) ? (-1)*vert : vert;
 //            for(int ll=0; ll<cornerVert.size(); ll++){if(cornerVert[ll]==0) cout<<ll<<" "; }
             if( inverseMap|| cornerVert[halfPatternVertToFullPatternVert[vert]]==1 ){
-                cout<<"corner "<<endl;
+                cout<<"corner   TODO CHECK IF STARTER OR END! "<<endl;
                 cve->cornerInitial = vert;
 //                // left or right corner?
                 int firstInSeam;
