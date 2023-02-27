@@ -438,7 +438,11 @@ void splitVertexFromCVE( cutVertEntry*& cve,
         getBoundaryNextVert(cve-> startCorner , cve-> seamType, cve-> seamIdInList,
                             boundaryL[cve->patch][minusOneId], boundaryL[cve->patch][plusOneId],nextVertOnBoundary );
 
-        if(cve->vert!= cve->cornerInitial && (cornerSet.find(cve->vert) != cornerSet.end()|| cornerSet.find((-1)*cve->vert) != cornerSet.end())){
+        if(cve->vert!= cve->cornerInitial &&
+        (cornerSet.find(cve->vert) != cornerSet.end()||
+        cornerSet.find((-1)*cve->vert) != cornerSet.end()||
+        cveStartPositionsSet.find(cve->vert) != cveStartPositionsSet.end() )
+        ){
             getBoundaryPrevVert(cve-> startCorner , cve-> seamType, cve-> seamIdInList,
                                 boundaryL[cve->patch][minusOneId], boundaryL[cve->patch][plusOneId],nextVertOnBoundary );
             cout<<" we should take the previous vert to get the right direction!"<<endl;
@@ -2425,7 +2429,7 @@ void projectBackOnBoundary(const MatrixXd & mapToVg, MatrixXd& p, const vector<s
                 updatePositionToIntersection( p, nextSearch,Vg_seamto, true);
 
             }
-            
+
 
             // also map all projections
             for(const auto & addedVert : currSeam -> duplicates){
