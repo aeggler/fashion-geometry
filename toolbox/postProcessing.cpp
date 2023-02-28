@@ -220,14 +220,13 @@ void backTo3Dmapping(MatrixXd& adaptedPattern, MatrixXi& adaptedPattern_faces, M
 
     VectorXd S; VectorXi I;//face index of smallest distance
     MatrixXd C,N;
-    Eigen::VectorXi componentIdPerVert;
+    Eigen::VectorXi componentIdPerVert;int sizeVert2 = adaptedPattern.rows()/2;
     igl::vertex_components(adaptedPattern_faces, componentIdPerVert);
-    cout<<componentIdPerVert(1493)<<" 1493, "<<componentIdPerVert(839)<<" 839, "<<componentIdPerVert(2559)<<" 2559, "<<componentIdPerVert(3213)<<" 3213"<<endl;
 
     for(int i= 0; i<adaptedPattern.rows(); i++){
         if(componentIdPerVert(i) == 1 || componentIdPerVert(i) == 3){
             adaptedPattern(i, 0) += 100;
-        }else if (componentIdPerVert(i) == 5 || componentIdPerVert(i) == 7){
+        }else if (componentIdPerVert(i) == componentIdPerVert(sizeVert2 +839)|| componentIdPerVert(i) == componentIdPerVert(sizeVert2 +1493)){
             adaptedPattern(i, 0)  -= 100;
         }
     }

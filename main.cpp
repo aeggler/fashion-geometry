@@ -1217,7 +1217,7 @@ int main(int argc, char *argv[])
         if (ImGui::CollapsingHeader("Inverse direction: remove fractures  ", ImGuiTreeNodeFlags_OpenOnArrow)) {
             if(ImGui::Button("Map back   ", ImVec2(-1, 0))){
                 mouse_mode = NONE; // this isi the pattern after the second mapping direction, it is in shape of mapFrom
-                string fracturedInverse  = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/writtenPattern_fin_oneSide.obj";//inverseMapped.obj";//writtenPatternMaternitySmoothedFractures.obj"; //
+                string fracturedInverse  = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/writtenPattern_fin_oneSide.obj"; //inverseMapped.obj";//writtenPatternMaternitySmoothedFractures.obj"; //
                 MatrixXd fracturedInverseVg; MatrixXi fracturedInverseFg;
                 igl::readOBJ(fracturedInverse, fracturedInverseVg, fracturedInverseFg);
 
@@ -1235,14 +1235,15 @@ int main(int argc, char *argv[])
                 MatrixXd oneDirMapV; MatrixXi oneDirMapF;
                 igl::readOBJ(helperToLocate, helperV, helperF);
                 igl::readOBJ(helperToLocate, oneDirMapV, oneDirMapF);
+                fracturedInverseVg = helperV; fracturedInverseFg = helperF ;
                 // helper is localized in mapToV (= the perfect pattern), and mapped to mapFromV (= the shape we start with)
-                initialGuessAdaption( helperV,  mapFromV,  mapToV, helperF,  mapToF, symetry,    cornerSet,  mapCornerToCorner, halfPatternVertToFullPatternVert.size()
-                ,  halfPatternVertToFullPatternVert);
+//                initialGuessAdaption( helperV,  mapFromV,  mapToV, helperF,  mapToF, symetry,    cornerSet,  mapCornerToCorner, halfPatternVertToFullPatternVert.size()
+//                ,  halfPatternVertToFullPatternVert);
 
                 // facturedInverse is localized in helper(the adapted also be mapFromV) , and mapped to mapTo (= the target shape, ,could also be final but who cares)
                 // note: translation does not work well here because the fracture might have introduced more components, then the translation is off ;(
                 // we denote in local bary coord, thus we need face corresp between oneDirMap and where we locate it -> helper is needed!
-                initialGuessAdaptionWithoutT( fracturedInverseVg,  oneDirMapV,  helperV, fracturedInverseFg,oneDirMapF,   helperF);
+               // initialGuessAdaptionWithoutT( fracturedInverseVg,  oneDirMapV,  helperV, fracturedInverseFg,oneDirMapF,   helperF);
                 currPattern.resize(fracturedInverseVg.rows(), fracturedInverseVg.cols());
                 currPattern = fracturedInverseVg;
                 Fg_pattern_curr.resize(fracturedInverseFg.rows(), fracturedInverseFg.cols());
@@ -1351,6 +1352,7 @@ int main(int argc, char *argv[])
 
                 MatrixXi perfectPattern_faces = mapToF;
                 MatrixXi perfectPatternIn3d_faces = Fg;
+                // translation targeted to leggins!!!
                 backTo3Dmapping(mapToV, mapToF, perfectPatternForThisShape, perfectPattern_faces, perfectPatternIn3d,
                                 perfectPatternIn3d_faces, adaptedPatternIn3d);
 
