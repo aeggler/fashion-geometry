@@ -241,7 +241,6 @@ void backTo3Dmapping(MatrixXd& adaptedPattern, MatrixXi& adaptedPattern_faces, M
     //idea: we have with perfectPatternForThisShape the perfect pattern and also in 3d
     // since the adapted pattern is a subset of the perfect pattern, we can locate every vertex of adapted pattern in perfectPattern and apply it using barycentric coordinates in 3d
     // maybe we have to do some manual stitching later but that should be ok.
-
     VectorXd S; VectorXi I;//face index of smallest distance
     MatrixXd C,N;
     Eigen::VectorXi componentIdPerVert;int sizeVert2 = adaptedPattern.rows()/2;
@@ -265,18 +264,17 @@ void backTo3Dmapping(MatrixXd& adaptedPattern, MatrixXi& adaptedPattern_faces, M
         }
     }
     igl::signed_distance(adaptedPattern, perfectPattern, perfectPattern_faces, igl::SIGNED_DISTANCE_TYPE_UNSIGNED, S, I, C, N);
-
+    int ppf = perfectPattern_faces.rows();
     MatrixXd B(adaptedPattern.rows(), 3); // contains all barycentric coordinates
     for(int i=0; i< adaptedPattern.rows(); i++){
         VectorXd bary;
         auto face = perfectPattern_faces.row(I(i));
-
+        if(I(i)>= ppf )continue; //cout<<I(i)<<" bigger"<<endl;
         igl::barycentric_coordinates(adaptedPattern.row(i), perfectPattern.row(face(0)), perfectPattern.row(face(1)),
                                      perfectPattern.row(face(2)), bary);
         B.row(i) = bary;
     }
     igl::barycentric_interpolation(perfectPatternIn3d, perfectPatternIn3d_faces, B, I, adaptedPatternIn3d);
-
 }
 
 bool vertOnEdge(const VectorXd& R, const VectorXd& Q, VectorXd& p,int v, int v1){

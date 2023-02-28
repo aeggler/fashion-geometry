@@ -420,11 +420,21 @@ int main(int argc, char *argv[])
     igl::readOBJ(perfPatternFile, perfPattVg_orig, perfPattFg_orig);
     perfPattVg_orig.col(2).setConstant(200);
     // copy the matrices to not mess with them
+
+
+    string startFile = "writtenPattern_nicelyRetri.obj";
+    string helperToLocate = "/Users/annaeggler/Desktop/"+startFile;
+    MatrixXd addedFabricPatternVg;
+    MatrixXi addedFabricPatternFg;
+//                MatrixXd oneDirMapV; MatrixXi oneDirMapF;
+    igl::readOBJ(helperToLocate, addedFabricPatternVg, addedFabricPatternFg);
+
+
     inverseMap = true;
     if(inverseMap){
-        string fromPatternFile = "/Users/annaeggler/Desktop/writtenPattern_nicelyRetri.obj";
-        igl::readOBJ(fromPatternFile, mapFromVg, mapFromFg);
-        Fg_pattern_curr = mapFromFg;
+        mapFromVg = addedFabricPatternVg;
+        mapFromFg = addedFabricPatternFg;
+//        Fg_pattern_curr = mapFromFg;
         mapToVg =  Vg_pattern_orig ;// curr = the current shape of the garment, something in between
         mapToFg = Fg_pattern_orig ;// the stress is computed between the rest shape and the current, ie mapFromVg and currPattern
 
@@ -484,9 +494,7 @@ int main(int argc, char *argv[])
             fullPatternFaceToHalfPatternFace[i] = i;
         }
     }
-//    viewer.selected_data_index = 0;
-//    viewer.data().clear();
-//    viewer.data().set_mesh(Vg_pattern_half, Fg_pattern_half);
+
 
     menu.callback_draw_viewer_menu = [&]() {
         if (ImGui::CollapsingHeader("Garment", ImGuiTreeNodeFlags_OpenOnArrow)) {
@@ -564,7 +572,6 @@ int main(int argc, char *argv[])
             }
 
         }
-
         if (ImGui::CollapsingHeader("Mannequin", ImGuiTreeNodeFlags_OpenOnArrow)) {
 
             ImGui::InputFloat("Translation X", &(mannequin_translation[0]),  0, 0, "%0.4f");
@@ -1218,7 +1225,9 @@ int main(int argc, char *argv[])
         }
         if (ImGui::CollapsingHeader("Inverse direction: remove fractures  ", ImGuiTreeNodeFlags_OpenOnArrow)) {
             if(ImGui::Button("Map back ", ImVec2(-1, 0))){
-                mouse_mode = NONE; // this isi the pattern after the second mapping direction, it is in shape of mapFrom
+                mouse_mode = NONE;
+                simulate = false;
+                adaptionFlag = false; // this isi the pattern after the second mapping direction, it is in shape of mapFrom
 //                string fracturedInverse  = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/writtenPattern_fin_oneSide.obj"; //inverseMapped.obj";//writtenPatternMaternitySmoothedFractures.obj"; //
 //                MatrixXd fracturedInverseVg; MatrixXi fracturedInverseFg;
 //                igl::readOBJ(fracturedInverse, fracturedInverseVg, fracturedInverseFg);
@@ -1230,13 +1239,6 @@ int main(int argc, char *argv[])
 //                MatrixXd mapFromV; MatrixXi mapFromF;
 //                mapFromV = Vg_pattern_orig; mapFromF= Fg_pattern_orig;
 
-                // this is the pattern after the first mapping direction , it is in shpae of mapTo
-                string startFile = "writtenPattern_nicelyRetri.obj";
-                string helperToLocate = "/Users/annaeggler/Desktop/"+startFile;// "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/writtenPattern_fullyRetri.obj";
-                MatrixXd addedFabricPatternVg;
-                MatrixXi addedFabricPatternFg;
-//                MatrixXd oneDirMapV; MatrixXi oneDirMapF;
-                igl::readOBJ(helperToLocate, addedFabricPatternVg, addedFabricPatternFg);
 //                igl::readOBJ(helperToLocate, oneDirMapV, oneDirMapF);
 
                 // helper is localized in mapToV (= the perfect pattern), and mapped to mapFromV (= the shape we start with)
@@ -1258,8 +1260,8 @@ int main(int argc, char *argv[])
                 MatrixXi perfectPattern_faces = perfPattFg_orig;
                 MatrixXi perfectPatternIn3d_faces = Fg;
 
-                backTo3Dmapping(currPattern, Fg_pattern_curr, perfectPatternForThisShape, perfectPattern_faces, perfectPatternIn3d,
-                                perfectPatternIn3d_faces, adaptedPatternIn3d);
+                backTo3Dmapping(currPattern, Fg_pattern_curr, perfectPatternForThisShape, perfectPattern_faces, Vg,
+                                Fg, adaptedPatternIn3d);
 
                 viewer.selected_data_index = 0;
                 viewer.data().clear();
