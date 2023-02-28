@@ -158,9 +158,13 @@ void computeAllSeams(const std::vector<std::vector<int> >& boundaryL, std::map<i
 
     // we would like a seam to seam mapping where a seam is defined by its two endpoints
     Eigen::VectorXi isBoundaryVertexVec= Eigen::VectorXi::Zero(componentIdPerVert.rows());
+//    cout<<boundaryL.size()<<" patches"<<endl;
+
     for(int i=0; i< boundaryL.size(); i++){
+//        cout<<endl<<"patch i ="<<i<<" of size "<<boundaryL[i].size()<<endl;
         for(int j=0; j < boundaryL[i].size(); j++){
             isBoundaryVertexVec(boundaryL[i][j]) = 1;
+//            cout<<boundaryL[i][j]<<" ";
         }
 
     }
@@ -312,7 +316,7 @@ void computeAllSeams(const std::vector<std::vector<int> >& boundaryL, std::map<i
                             counter++;
                         }
                         if(boundaryL[otherPatchId][counter]!= idBeforeStartOther){
-                            cout<<"issue detected, not found"<<endl;
+                            cout<<myPatchId<<"issue detected, not found"<<otherPatchId<<" "<<idBeforeStartOther<<endl;
                         // if partner not boundary vertex then issue solved we oonly look at thiis one
                         }
 
