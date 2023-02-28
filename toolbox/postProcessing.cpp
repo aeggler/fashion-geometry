@@ -211,7 +211,31 @@ void startRetriangulation(vector<VectorXd>& polylineSelected, MatrixXd& V2, Matr
     triangulateFAKE(V, E, H, flags, V2, F2 );
 
 }
+void duplicatePattern(MatrixXd& currPattern, MatrixXi& Fg_pattern_curr, MatrixXd& addedFabricPatternVg, MatrixXi& addedFabricPatternFg, MatrixXd& R_symetry, VectorXd& T_symetry){
+// create symmetric vertices and add them to matrix
+    MatrixXd temp = R_symetry * addedFabricPatternVg.transpose();
+    temp = temp.colwise() + T_symetry;
+    MatrixXd res = temp.transpose();
+    MatrixXd doubleV(addedFabricPatternVg.rows() + res.rows(), 3);
+    doubleV <<addedFabricPatternVg, res;
+// create syymmetric faces, attention change their normal by flipping two ids
+    MatrixXi Fg_pattern_other = addedFabricPatternFg;
+    Fg_pattern_other.col(1) = addedFabricPatternFg.col(2);
+    Fg_pattern_other.col(2)= addedFabricPatternFg.col(1);
+    // make sure the new faces correspond to the new vertices by adding an offset
+    MatrixXi offset(addedFabricPatternFg.rows() ,3);
+    offset.setConstant(addedFabricPatternVg.rows());
+    Fg_pattern_other += offset;
+    MatrixXi doubleF( addedFabricPatternFg.rows()+ Fg_pattern_other.rows(),3);
+    doubleF<<addedFabricPatternFg, Fg_pattern_other;
 
+    currPattern.resize(doubleV.rows(), 3);
+    currPattern = doubleV;
+    Fg_pattern_curr.resize(2*addedFabricPatternFg.rows(), 3);
+    Fg_pattern_curr = doubleF;
+
+
+}
 void backTo3Dmapping(MatrixXd& adaptedPattern, MatrixXi& adaptedPattern_faces, MatrixXd& perfectPattern, MatrixXi& perfectPattern_faces ,
                      MatrixXd& perfectPatternIn3d, MatrixXi& perfectPatternIn3d_faces, MatrixXd& adaptedPatternIn3d){
     //idea: we have with perfectPatternForThisShape the perfect pattern and also in 3d

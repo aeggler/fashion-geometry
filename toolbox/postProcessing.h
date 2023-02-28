@@ -16,6 +16,7 @@ using namespace Eigen;
 
 void smoothBetweenVertices(MatrixXd& currPattern, MatrixXi& Fg_pattern,vector<int>& startAndEnd);
 //void startRetriangulation(vector<VectorXd>& polylineSelected);
+void duplicatePattern( MatrixXd& currPattern, MatrixXi&  Fg_pattern_curr, MatrixXd& addedFabricPatternVg, MatrixXi& addedFabricPatternFg, MatrixXd& R_symetry, VectorXd& T_symetry);
 
 
 void backTo3Dmapping(MatrixXd& adaptedPattern, MatrixXi& adaptedPattern_faces, MatrixXd& perfectPattern, MatrixXi& perfectPattern_faces ,
