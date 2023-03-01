@@ -284,7 +284,21 @@ void computeAllSeams(const std::vector<std::vector<int> >& boundaryL, std::map<i
 
                         int theirDist = startIdOtherInBoundaryIdx- endIdOtherInBoundaryIdx;
                         int mydist = endIdx - startIdInBoundaryIdx;
+                        /* trial */
+                        cout<<myPatchId<<" "<<otherPatchId<<" "<<startId<<" "<< startIdOther<<" "<< v1<<" "<< endIdOther<<" "<<
+                                startIdInBoundaryIdx<<" "<< startIdOtherInBoundaryIdx<<" "<< endIdx<<" "<<
+                                endIdOtherInBoundaryIdx<<" "<< theirDist<<endl;
+                        cout<<boundaryL[myPatchId][(endIdx-startIdInBoundaryIdx)/2+ startIdInBoundaryIdx]<<"trial"<<endl;
+                        int newmid = boundaryL[myPatchId][(endIdx-startIdInBoundaryIdx)/2+ startIdInBoundaryIdx];
+                        cornerVertices[newmid]= 1;
+                        v1= newmid;
+                        endIdOther = newmid;
+                        endIdx = (endIdx-startIdInBoundaryIdx)/2+ startIdInBoundaryIdx;
+                        endIdOtherInBoundaryIdx= (endIdx-startIdInBoundaryIdx)/2+ startIdInBoundaryIdx;
+                        theirDist/=2;
+                        edgesForThisBoundary.push_back(make_pair(newmid,(endIdx-startIdInBoundaryIdx)/2+ startIdInBoundaryIdx ));
 
+                        /*end trial */
                         seam* newSeam = new seam (myPatchId, otherPatchId,startId, startIdOther, v1, endIdOther,
                                                   startIdInBoundaryIdx, startIdOtherInBoundaryIdx, endIdx,
                                                   endIdOtherInBoundaryIdx, theirDist, false
@@ -293,7 +307,9 @@ void computeAllSeams(const std::vector<std::vector<int> >& boundaryL, std::map<i
 
 //                        cout<<"seam no "<<  seamsList.size()<< " with start "<<startId<<" "<<startIdOther<<endl;
                         int seamListsize = seamsList.size();
+                        cout<<seamListsize<<"size"<<endl;
                         push_to_Map(1, seamListsize, startId, startIdOther, seamIdPerCorner);
+                        seamsList.push_back(newSeam);
 //                        cout<<seamIdPerCorner.size()<<" the size of the map int first"<<endl;
 
 

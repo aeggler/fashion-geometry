@@ -349,11 +349,11 @@ int main(int argc, char *argv[])
     string morphBody1 =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/CLO_avatars_oneComponent/"+ avName +".ply";//
     string morphBody1left =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/CLO_avatars_oneComponent/"+ avName +"_left.ply";
     string morphBody1right =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/CLO_avatars_oneComponent/"+ avName +"_right.ply";
-//
+//     avName = "dress_4Avatar";
 //    string morphBody1 =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/avatar/avatar_one_component.ply";
 //    string morphBody1left =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/avatar/avatar_one_component_left.ply";
 //    string morphBody1right =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/avatar/avatar_one_component_right.ply";
-
+//
     igl::readPLY(morphBody1, testMorph_V1, testMorph_F1);
     igl::readPLY(morphBody1left, testMorph_V1left, testMorph_F1left);
     igl::readPLY(morphBody1right, testMorph_V1right, testMorph_F1right);
@@ -1759,21 +1759,25 @@ void computeBaryCoordsGarOnNewMannequin(igl::opengl::glfw::Viewer& viewer){
     createVertexFaceAdjacencyList(Fg, vfAdj);
     int boundarycount = 0;
 
-    igl::signed_distance_pseudonormal(Vg, Vm, Fm, col_tree, FN_m, VN_m, EN_m, EMAP_m, distVec, closestFaceId, C, N);
-//    MatrixXd newManeqNormals;
-//    igl::per_face_normals(testMorph_V1, Fm, newManeqNormals);
+    igl::signed_distance(Vg, Vm, Fm, igl::SIGNED_DISTANCE_TYPE_UNSIGNED, distVec, closestFaceId, C, N);
+
     for(int i=0; i<Vg.rows(); i++){
         int closestFace = closestFaceId(i);
         Vector3d a = Vm.row(Fm(closestFace, 0));
         Vector3d b = Vm.row(Fm(closestFace, 1));
         Vector3d c = Vm.row(Fm(closestFace, 2));
 //don't quite understand why it is not the normal of the new mannequin
-        Vector3d normalVec = N.row(i);
-        Vector3d currVert = C.row(i);
+        Vector3d normalVec = FN_m.row(closestFace);// N.row(i);
 
-        Vector3d currInBary;
-        MathFunctions mathFun;
-        mathFun.Barycentric3D(currVert, a, b, c, currInBary);
+        Vector3d currVert = Vg.row(i) - ( distVec(i) * normalVec).transpose();
+        MatrixXd input(1, 3);
+        input.row(0) = currVert;
+        MatrixXd Bary;
+        igl::barycentric_coordinates(input, Vm.row(Fm(closestFace, 0)), Vm.row(Fm(closestFace, 1)),
+                                     Vm.row(Fm(closestFace, 2)), Bary);
+
+        Vector3d currInBary = Bary.row(0);
+
         if(isBoundaryVertex(Vg, i, vvAdj, vfAdj)){
             constrainedVertexIds.emplace_back(i); // (i)= 1;
             boundarycount++;
@@ -1786,10 +1790,20 @@ void computeBaryCoordsGarOnNewMannequin(igl::opengl::glfw::Viewer& viewer){
         b = testMorph_V1.row(Fm(closestFace, 1));
         c = testMorph_V1.row(Fm(closestFace, 2));
         Vector3d newPos = currInBary(0) * a + currInBary(1) * b + currInBary(2) * c;
-//        normalVec = (b-a).cross(c-a);
-//        normalVec = normalVec.normalized();
+
+//        if((Vg.row(i).transpose()-  newPos + distVec(i) * normalVec).norm()> 0.1){
+//            cout<<"vert i "<<i<<" is wrong."<<(Vg.row(i).transpose()-  newPos + distVec(i) * normalVec).norm()<<endl;
+//           cout<<newPos.transpose()<<endl<<currVert.transpose()<<endl<<(newPos-currVert).norm();
+//
+//            cout<<Vg.row(i) - ( distVec(i) * normalVec).transpose()<<endl;
+//            cout<<newPos.transpose()<<endl;//= c
+//            cout<<C.row(i)<<endl;
+//        }
 
         Vg.row(i) = newPos + distVec(i) * normalVec;
+    }
+    if(Vm != testMorph_V1){
+        cout<<" tey are not equal!"<<endl;
     }
 
 }
