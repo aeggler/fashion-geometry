@@ -14,6 +14,7 @@
 #include <map>
 #include<Eigen/SparseCholesky>
 #include "constraint_utils.h"
+#include <igl/writeOBJ.h>
 
 using namespace std;
 using namespace Eigen;
@@ -291,13 +292,71 @@ void createHalfSewingPattern(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, M
 }
 
 void preProcessGarment(MatrixXd& Vg, MatrixXi& Fg){
-//    Vg(344, 0) = 0;
-//    Vg(0,0) = 0;
-//    for(int i = 378; i <= 395; i++){
-//        Vg(i, 0) = 0;
-//    }
-//    for(int i = 52; i <= 71; i++){
-//        Vg(i, 0) = 0;
-//    }
-//    igl::writeOBJ("top_3d.obj", Vg, Fg);
+    for(int i=0; i<Fg.rows(); i++){
+        bool hasLeft = false;
+        bool hasRight = false;
+        Vector3i LR;
+        for (int j=0; j<3; j++){
+            double x = Vg(Fg(i, j), 0);
+            if(x==0) {
+                continue;
+            }
+            if(x<0){
+                hasLeft = true;
+                LR(j)= 1;
+            }else{
+                hasRight = true;
+                LR(j) = 0;
+            }
+        }
+        if(hasLeft && hasRight){
+            cout<<i<<" is in the middle"<<endl;
+            int otherSide=0;
+
+            if(LR.sum()==1){
+                // search for the single left
+                while(LR(otherSide) != 1){
+                    otherSide++;
+                }
+            }else{
+                while(LR(otherSide) != 0){
+                    otherSide++;
+                }
+            }
+            // otherSide is the index that has cuts on both sideds!
+            int v1 = Fg(i, otherSide);
+            int v2 = Fg(i, (otherSide+1) % 3 );
+            int v3 = Fg(i, (otherSide+2) % 3 );
+            VectorXd edge2 = Vg.row(v2) - Vg.row(v1);
+            VectorXd edge3 = Vg.row(v3) - Vg.row(v1);
+            double t2 = -Vg(v1,0) / edge2(0);
+            double t3 = -Vg(v1,0) / edge3(0);
+            VectorXd newPos1 = Vg.row(v1) + t2 * edge2.transpose();
+            newPos1(0)= 0;
+            VectorXd newPos2 = Vg.row(v1) + t3 * edge3.transpose();
+            newPos2(0) = 0;
+            int vgrow =  Vg.rows();
+            MatrixXd Vgnew( vgrow + 2, 3);
+            Vgnew.block(0,0,vgrow, 3) = Vg;
+            Vgnew.row(vgrow ) = newPos1;
+            Vgnew.row(vgrow+1) = newPos2;
+            Vg.resize(vgrow+2, 3);
+            Vg = Vgnew;
+
+            int fgrow = Fg.rows();
+            MatrixXi Fgnew (fgrow+2, 3);
+            Fgnew.block(0,0,fgrow, 3) = Fg;
+
+            Fgnew(i, (otherSide+1) % 3 ) = vgrow;
+            Fgnew(i, (otherSide+2) % 3 ) = vgrow+1;
+            Fgnew(fgrow, 0) = v2; Fgnew(fgrow, 1) = v3; Fgnew(fgrow, 2) = vgrow;
+            Fgnew(fgrow + 1, 0) = vgrow; Fgnew(fgrow + 1, 1) = v3; Fgnew(fgrow + 1, 2) = vgrow+1;
+            Fg.resize(Fgnew.rows(), 3);
+            Fg= Fgnew; 
+
+
+
+        }
+    }
+     igl::writeOBJ("top_3d.obj", Vg, Fg);
 }

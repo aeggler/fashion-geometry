@@ -279,6 +279,8 @@ int main(int argc, char *argv[])
 //    string garment_file_name = prefix+ "leggins/leggins_3d/leggins_3d_merged.obj"; //smaller collision thereshold to make sure it is not "eaten" after intial step , 3.5 instead of 4.5
     garment = "dress";
    string garmentExt = garment +"_4";
+//    garment = "top";
+//    string garmentExt = garment+ "_1";
     string garment_file_name = prefix + "moreGarments/"+ garmentExt+"/"+garment+"_3d.obj";
     //    string garment_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/patternComputed3D_converged.obj";// smaller collision thereshold to make sure it is not "eaten" after intial step , 3.5 instead of 4.5 is ok
 //    string garment_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/dress_2/dress_3d_lowres/dress_3d_lowres_merged_inlay.obj";// for the dress
@@ -1760,7 +1762,8 @@ void computeBaryCoordsGarOnNewMannequin(igl::opengl::glfw::Viewer& viewer){
     int boundarycount = 0;
 
     igl::signed_distance(Vg, Vm, Fm, igl::SIGNED_DISTANCE_TYPE_UNSIGNED, distVec, closestFaceId, C, N);
-
+    cout<<"sttart bary"<<endl;
+    N.resize(Vg.rows(), 3);
     for(int i=0; i<Vg.rows(); i++){
         int closestFace = closestFaceId(i);
         Vector3d a = Vm.row(Fm(closestFace, 0));
@@ -1789,19 +1792,20 @@ void computeBaryCoordsGarOnNewMannequin(igl::opengl::glfw::Viewer& viewer){
         a = testMorph_V1.row(Fm(closestFace, 0));
         b = testMorph_V1.row(Fm(closestFace, 1));
         c = testMorph_V1.row(Fm(closestFace, 2));
+        N.row(i) = ((b-a).cross(c-a)).normalized();
         Vector3d newPos = currInBary(0) * a + currInBary(1) * b + currInBary(2) * c;
 
 //        if((Vg.row(i).transpose()-  newPos + distVec(i) * normalVec).norm()> 0.1){
 //            cout<<"vert i "<<i<<" is wrong."<<(Vg.row(i).transpose()-  newPos + distVec(i) * normalVec).norm()<<endl;
-//           cout<<newPos.transpose()<<endl<<currVert.transpose()<<endl<<(newPos-currVert).norm();
 //
 //            cout<<Vg.row(i) - ( distVec(i) * normalVec).transpose()<<endl;
 //            cout<<newPos.transpose()<<endl;//= c
 //            cout<<C.row(i)<<endl;
 //        }
 
-        Vg.row(i) = newPos + distVec(i) * normalVec;
+        Vg.row(i) = newPos.transpose() + distVec(i) * N.row(i);
     }
+    cout<<" end bary"<<endl;
     if(Vm != testMorph_V1){
         cout<<" tey are not equal!"<<endl;
     }
@@ -2615,15 +2619,22 @@ void dotimeStep(igl::opengl::glfw::Viewer& viewer){
     //(9)-(11), the loop should be repeated several times per timestep (according to Jan Bender)
     for(int i = 0; i < num_const_iterations; i++){
         solveBendingConstraint();
+        t.printTime(" bend   ");
+
         solveStretchConstraint();
+        t.printTime("  stretch ");
+
         solveStretchUV();
+        t.printTime("  uv  ");
+
         solveConstrainedVertices();
+        t.printTime("  constr ");
 
         /* we precomputed the normal and collision point of each vertex, now add the constraint (instead of checking collision in each iteration
          this is imprecise but much faster and acc to paper works fine in practice*/
         solveCollisionConstraint();
 
-//        t.printTime(" collision ");
+        t.printTime(" collision ");
     }
 
         // (13) velocity and position update
