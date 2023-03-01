@@ -7,6 +7,7 @@
 #include "iostream"
 #include "Eigen/Dense"
 #include <map>
+#include <set>
 #include "adjacency.h"
 #include <igl/facet_components.h>
 #include <igl/vertex_components.h>
@@ -158,8 +159,13 @@ void computeAllSeams(const std::vector<std::vector<int> >& boundaryL, std::map<i
 
     // we would like a seam to seam mapping where a seam is defined by its two endpoints
     Eigen::VectorXi isBoundaryVertexVec= Eigen::VectorXi::Zero(componentIdPerVert.rows());
-//    cout<<boundaryL.size()<<" patches"<<endl;
-
+    set<int> additionalCorners;
+    additionalCorners.insert(958);
+    additionalCorners.insert( 726);
+    additionalCorners.insert( 615);
+    additionalCorners.insert( 388);
+    additionalCorners.insert( 13);
+    additionalCorners.insert( 1045);
     for(int i=0; i< boundaryL.size(); i++){
 //        cout<<endl<<"patch i ="<<i<<" of size "<<boundaryL[i].size()<<endl;
         for(int j=0; j < boundaryL[i].size(); j++){
@@ -191,7 +197,7 @@ void computeAllSeams(const std::vector<std::vector<int> >& boundaryL, std::map<i
             bool samePatch = (face1id1==face0id1 && face1id2 == face0id2);
             bool samePatchCrossover = (face1id1==face0id2 && face1id2 == face0id1);
 
-            if(!(samePatch || samePatchCrossover)) {
+            if(!(samePatch || samePatchCrossover) || (additionalCorners.find(v1) != additionalCorners.end())) {
                 // two consecutive edges are not the same patch. We have found a corner
                 cornerVertices(v1) = 1;
                 edgesForThisBoundary.push_back(make_pair(v1, (j + 1) % boundary.size())); //pattern id
@@ -225,7 +231,7 @@ void computeAllSeams(const std::vector<std::vector<int> >& boundaryL, std::map<i
             bool samePatch = (face1id1==face0id1 && face1id2 == face0id2);
             bool samePatchCrossover = (face1id1==face0id2 && face1id2 == face0id1);
 
-            if(!(samePatch || samePatchCrossover)){
+            if(!(samePatch || samePatchCrossover)|| (additionalCorners.find(v1) != additionalCorners.end())){
 //
                 edgesForThisBoundary.push_back(make_pair(v1, (j + 1) % boundary.size())); //pattern id
                 // but one must be the same since they are from the same patch
@@ -247,15 +253,18 @@ void computeAllSeams(const std::vector<std::vector<int> >& boundaryL, std::map<i
 
                         int startIdOther = vertexMapGarAndIdToPatch[make_pair(vertexMapPattToGar[startId], otherPatchId)];
                         int maxID = componentIdPerVert.maxCoeff();
-                        if( startIdOther == startId) startIdOther = vertexMapGarAndIdToPatch[make_pair(vertexMapPattToGar[startId], maxID+1+ otherPatchId)];
+                        if( startIdOther == startId &&
+                        vertexMapGarAndIdToPatch.find(make_pair(vertexMapPattToGar[startId], maxID+1+ otherPatchId)) != vertexMapGarAndIdToPatch.end()) startIdOther = vertexMapGarAndIdToPatch[make_pair(vertexMapPattToGar[startId], maxID+1+ otherPatchId)];
+
                         if(vertexMapPattToGar[startIdOther] != vertexMapPattToGar[startId]){
-                            cout<<"---------------------------the beginnings of a same patch pair do not match ------------------"<<endl;
+                            cout<<startId<<" "<<startIdInBoundaryIdx<<" "<<startIdOther<<" ------------------------the beginnings of a same patch pair do not match ------------------"<<endl;
+                            cout<<(vertexMapGarAndIdToPatch.find(make_pair(vertexMapPattToGar[startId], maxID+1+ otherPatchId)) == vertexMapGarAndIdToPatch.end())<<endl;
                         }
 
                         // iterate over edges for this boundary since we only look for indices smaller than start id in boundary index and upt to there its same as edgesPerBoundary[i]
                         int counter=0;
                         int startIdOtherInBoundaryIdx;
-                        while(edgesForThisBoundary[counter].first != startIdOther && counter < startIdInBoundaryIdx){//edgesForThisBoundary.size()
+                        while(edgesForThisBoundary[counter].first != startIdOther && counter <= startIdInBoundaryIdx){//edgesForThisBoundary.size()
                             counter++;
                         }
                         if(edgesForThisBoundary[counter].first != startIdOther) {
@@ -267,7 +276,9 @@ void computeAllSeams(const std::vector<std::vector<int> >& boundaryL, std::map<i
                         counter=0;
                         int endIdOtherInBoundaryIdx;
                         int endIdOther = vertexMapGarAndIdToPatch[std::make_pair(v1g, otherPatchId)];
-                        if(endIdOther == v1) endIdOther = vertexMapGarAndIdToPatch[make_pair(vertexMapPattToGar[v1], maxID+1+ otherPatchId)];
+                        if(endIdOther == v1 &&
+                                vertexMapGarAndIdToPatch.find(make_pair(vertexMapPattToGar[v1], maxID+1+ otherPatchId)) != vertexMapGarAndIdToPatch.end()
+                        ) endIdOther = vertexMapGarAndIdToPatch[make_pair(vertexMapPattToGar[v1], maxID+1+ otherPatchId)];
                         if(vertexMapPattToGar[endIdOther] != vertexMapPattToGar[v1]){
                             cout<<"--------------------------- the ends of a same patch pair do not match ------------------"<<endl;
                         }
@@ -289,14 +300,14 @@ void computeAllSeams(const std::vector<std::vector<int> >& boundaryL, std::map<i
                                 startIdInBoundaryIdx<<" "<< startIdOtherInBoundaryIdx<<" "<< endIdx<<" "<<
                                 endIdOtherInBoundaryIdx<<" "<< theirDist<<endl;
                         cout<<boundaryL[myPatchId][(endIdx-startIdInBoundaryIdx)/2+ startIdInBoundaryIdx]<<"trial"<<endl;
-                        int newmid = boundaryL[myPatchId][(endIdx-startIdInBoundaryIdx)/2+ startIdInBoundaryIdx];
-                        cornerVertices[newmid]= 1;
-                        v1= newmid;
-                        endIdOther = newmid;
-                        endIdx = (endIdx-startIdInBoundaryIdx)/2+ startIdInBoundaryIdx;
-                        endIdOtherInBoundaryIdx= (endIdx-startIdInBoundaryIdx)/2+ startIdInBoundaryIdx;
-                        theirDist/=2;
-                        edgesForThisBoundary.push_back(make_pair(newmid,(endIdx-startIdInBoundaryIdx)/2+ startIdInBoundaryIdx ));
+//                        int newmid = boundaryL[myPatchId][(endIdx-startIdInBoundaryIdx)/2+ startIdInBoundaryIdx];
+//                        cornerVertices[newmid]= 1;
+//                        v1= newmid;
+//                        endIdOther = newmid;
+//                        endIdx = (endIdx-startIdInBoundaryIdx)/2+ startIdInBoundaryIdx;
+//                        endIdOtherInBoundaryIdx= (endIdx-startIdInBoundaryIdx)/2+ startIdInBoundaryIdx;
+//                        theirDist/=2;
+//                        edgesForThisBoundary.push_back(make_pair(newmid,(endIdx-startIdInBoundaryIdx)/2+ startIdInBoundaryIdx ));
 
                         /*end trial */
                         seam* newSeam = new seam (myPatchId, otherPatchId,startId, startIdOther, v1, endIdOther,

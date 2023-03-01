@@ -277,17 +277,17 @@ int main(int argc, char *argv[])
 //    string garment_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/retriBackIn3d.obj"; //smaller collision thereshold to make sure it is not "eaten" after intial step , 3.5 instead of 4.5
     string prefix = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/";
 //    string garment_file_name = prefix+ "leggins/leggins_3d/leggins_3d_merged.obj"; //smaller collision thereshold to make sure it is not "eaten" after intial step , 3.5 instead of 4.5
-    garment = "dress";
-   string garmentExt = garment +"_4";
-//    garment = "top";
-//    string garmentExt = garment+ "_1";
+//    garment = "dress";
+//   string garmentExt = garment +"_4";
+    garment = "top";
+    string garmentExt = garment+ "_1";
     string garment_file_name = prefix + "moreGarments/"+ garmentExt+"/"+garment+"_3d.obj";
     //    string garment_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/patternComputed3D_converged.obj";// smaller collision thereshold to make sure it is not "eaten" after intial step , 3.5 instead of 4.5 is ok
 //    string garment_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/dress_2/dress_3d_lowres/dress_3d_lowres_merged_inlay.obj";// for the dress
 //    string garment_file_name =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/moreGarments/dress_4/dress_3d.obj";// for the dress
 
     igl::readOBJ(garment_file_name, Vg, Fg);
-    preProcessGarment(Vg, Fg);
+//    preProcessGarment(Vg, Fg);
 //    int rears = 68;
 //    VectorXi idxrear ( rears);
 //    ifstream in("seamOut3D.txt");
@@ -316,6 +316,7 @@ int main(int argc, char *argv[])
 //    string garment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/dress_2/dress_2d_lowres/dress_2d_lowres.obj"; //dress
 
     igl::readOBJ(garment_pattern_file_name, Vg_pattern, Fg_pattern);
+    preProcessGarment(Vg, Fg, Vg_pattern, Fg_pattern);
     Vg_pattern_orig = Vg_pattern;
     Fg_pattern_orig = Fg_pattern;
     patternPreInterpol = Vg_pattern;

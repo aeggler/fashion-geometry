@@ -438,9 +438,10 @@ void vertexMapGarmentAndPatchIdToPattern(const MatrixXi& Fg, const  MatrixXi& Fg
 
         if(auto search = vertexMapGarAndIdToPatch.find(std::make_pair(Fg(i,2), comp2)); search != vertexMapGarAndIdToPatch.end() ){
 
+
             if(vertexMapGarAndIdToPatch[std::make_pair(Fg(i,2), comp2)] != v2p){
                 vertexMapGarAndIdToPatch[std::make_pair(Fg(i,2), maxID+1+ comp2)]= v2p;
-
+                if(v2p == 4 )cout<<maxID+1+ comp2<<" vert 4 at this component with garment id "<<Fg(i,2)<<endl;
             }
 
         }else{
@@ -448,4 +449,5 @@ void vertexMapGarmentAndPatchIdToPattern(const MatrixXi& Fg, const  MatrixXi& Fg
 
         }
     }
+    cout<< vertexMapGarAndIdToPatch[std::make_pair(4, 1)]<<endl;
 }

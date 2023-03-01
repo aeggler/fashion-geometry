@@ -267,12 +267,13 @@ void backTo3Dmapping(MatrixXd& adaptedPattern, MatrixXi& adaptedPattern_faces, M
     int ppf = perfectPattern_faces.rows();
     MatrixXd B(adaptedPattern.rows(), 3); // contains all barycentric coordinates
     for(int i=0; i< adaptedPattern.rows(); i++){
-        VectorXd bary;
+        MatrixXd bary;
         auto face = perfectPattern_faces.row(I(i));
         if(I(i)>= ppf )continue; //cout<<I(i)<<" bigger"<<endl;
         igl::barycentric_coordinates(adaptedPattern.row(i), perfectPattern.row(face(0)), perfectPattern.row(face(1)),
                                      perfectPattern.row(face(2)), bary);
-        B.row(i) = bary;
+        //todo changed
+        B.row(i) = bary.row(0);
     }
     igl::barycentric_interpolation(perfectPatternIn3d, perfectPatternIn3d_faces, B, I, adaptedPatternIn3d);
 }
