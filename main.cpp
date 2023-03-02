@@ -539,11 +539,12 @@ int main(int argc, char *argv[])
 //                        int len = firstSeam->getLength();
                         int boundLen1 = boundaryL[stP1.second].size();
                         int boundLen2 = boundaryL[stP2.second].size();
-                        MatrixXi edgesMat (2*(len-1), 2);
+                        MatrixXi edgesMat (2*(len), 2);
                         for(int i=0; i<=len; i++){
                             testCol(boundaryL[stP1.second][(stP1.first+i)% boundLen1],0) = 1.;
-                            if (i!= 0) edgesMat(2*(i-1), 1) = boundaryL[stP1.second][(stP1.first+i)% boundLen1];
-                            edgesMat(2*i, 0) = boundaryL[stP1.second][(stP1.first+i)% boundLen1];
+                            int next = (stP1.first+i)% boundLen1;
+                            if (i!= 0) edgesMat(2*(i-1), 1) = boundaryL[stP1.second][next];
+                            if(i!=len)edgesMat(2*i, 0) = boundaryL[stP1.second][next];
 //                            if (i!= 0) edgesMat((i-1), 1) = boundaryL[patch][(firstSeam->getStartIdx() +i)];
 //                            cout<<boundaryL[patch][(firstSeam->getStartIdx() +i)]<<endl;
 //                            edgesMat(i, 0) = boundaryL[patch][(firstSeam->getStartIdx() +i) ];
@@ -560,7 +561,7 @@ int main(int argc, char *argv[])
 //                            cout<<setAccess<<endl;
                             testCol(boundaryL[stP2.second][setAccess], 0) = 1.;
                             if (i!= 0) edgesMat(2*i-1, 1) = boundaryL[stP2.second][setAccess];
-                            edgesMat(2*i+1, 0) = boundaryL[stP2.second][setAccess];
+                            if (i!= len)edgesMat(2*i+1, 0) = boundaryL[stP2.second][setAccess];
 //
                         }
                         viewer.selected_data_index = 1;
@@ -582,7 +583,7 @@ int main(int argc, char *argv[])
                 //remove wireframe
                 viewer.data().show_lines = false;
                 // if 0 -> no face colour
-                viewer.data().set_colors(testCol);
+//                viewer.data().set_colors(testCol);
 
             }
             if(ImGui::Button("Visualize Corner", ImVec2(-1, 0))){
@@ -618,7 +619,7 @@ int main(int argc, char *argv[])
                 viewer.selected_data_index = 1;
                 viewer.data().clear();
                 viewer.data().point_size = 8.f;
-                viewer.data().set_points(corners, RowVector3d(1.0, 0.0, 0.0));
+//                viewer.data().set_points(corners, RowVector3d(1.0, 0.0, 0.0));
 
             }
 

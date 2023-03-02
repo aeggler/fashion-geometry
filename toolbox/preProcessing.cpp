@@ -141,13 +141,12 @@ void setupCollisionConstraintsCall(Eigen::MatrixXi& collisionVert, vector<int> &
 // decision if it is in the half pattern depends on x- coordinate on 3D garment
 void createHalfSewingPattern(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg_pattern, MatrixXd& Vg_pattern_half, MatrixXi& Fg_pattern_half,
                              map<int, int>& halfPatternFaceToFullPatternFace, map<int, int>& fullPatternFaceToHalfPatternFace, map<int, int>& halfPatternVertToFullPatternVert ,
-                             map<int, int>& fullPatternVertToHalfPatternVert, map<int, int>& insertedIdxToPatternVert, VectorXi& isLeftVertPattern,
-                             MatrixXd& R_sym, VectorXd& T_sym, MatrixXd& rightVert){
+                             map<int, int>& fullPatternVertToHalfPatternVert, map<int, int>& insertedIdxToPatternVert, VectorXi& isLeftVertPattern,MatrixXd& rightVert){
    int n = Vg.rows();
    int m  = Fg.rows();
 //   cout<<endl<<"in half sewing pattern"<<endl;
-    VectorXi isLeftVert(Vg.rows());
-    VectorXi isRightVert(Vg.rows());
+    VectorXi isLeftVert(n);
+    VectorXi isRightVert(n);
 
     isLeftVert.setConstant(-1);
     isRightVert.setConstant(-1);
@@ -163,12 +162,12 @@ void createHalfSewingPattern(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, M
             rightCount++;
         }
     }
-    cout<<leftCount<<" left and right in 3D "<<rightCount<<endl;
+//    cout<<leftCount<<" left and right in 3D "<<rightCount<<endl;
     MatrixXd Vg_half(leftCount, 3);
     map<int, int> halfVertToFullVert, fullVertToHalfVert;
     int idx=0;
     for(int i=0; i<n; i++){
-        if(isLeftVert(i)){
+        if(isLeftVert(i)==1){
             Vg_half.row(idx) = Vg.row(i);
             halfVertToFullVert[idx] = i;
             fullVertToHalfVert[i] = idx;
@@ -176,7 +175,7 @@ void createHalfSewingPattern(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, M
 
         }
     }
-    cout<<leftCount<<" left and right in 3D after "<<rightCount<<endl;
+//    cout<<leftCount<<" left and right in 3D after "<<rightCount<<endl;
 
     VectorXi isRightVertPattern(Vg_pattern.rows());
     isRightVertPattern.setConstant(-1);
@@ -185,7 +184,7 @@ void createHalfSewingPattern(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, M
     VectorXi isLeftFace(m);
     isLeftFace.setConstant(0);
     int faceCount = 0;
-    cout<<"start iterating"<<endl;
+//    cout<<"start iterating"<<endl;
     for(int i=0; i<m; i++) {
         int v0 = Fg(i, 0);
         int v1 = Fg(i, 1);
@@ -228,7 +227,7 @@ void createHalfSewingPattern(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, M
     }
     idx=0; int rightIdx = 0;
 
-    cout<<isLeftVertPattern.sum()<<" and right side sum "<<isRightVertPattern.sum()<<endl;
+//    cout<<isLeftVertPattern.sum()<<" and right side sum "<<isRightVertPattern.sum()<<endl;
     int patternHalfVert = isLeftVertPattern.sum();
     Vg_pattern_half.resize(patternHalfVert, 3);
      rightVert.resize(isRightVertPattern.sum(), 3);
@@ -246,8 +245,6 @@ void createHalfSewingPattern(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, M
             rightIdx ++;
         }
     }
-
-
 
     vector<VectorXd> addedVert;
     int newIdx = leftCount;
@@ -270,22 +267,9 @@ void createHalfSewingPattern(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, M
 
     // we hve rightVert adn Vg_pattern_half for right and left vertices.
     // now find the syymetry using procrustes with reflection
-    cout<<rightVert.rows()<<" right and left 2D verts "<<Vg_pattern_half.rows()<<endl;
-    MatrixXd R; VectorXd T;
-    MatrixXd input = Vg_pattern_half.block(0,0,Vg_pattern_half.rows(), 2);
-    MatrixXd input2 = rightVert.block(0,0,rightVert.rows(), 2);
+//    cout<<rightVert.rows()<<" right and left 2D verts "<<Vg_pattern_half.rows()<<endl;
 
-    procrustes( input, input2,R, T);
-//    cout<<R<<" rotation pro "<<endl<<T<<endl;
-//    cout<<R<<" rotation wo ref "<<endl;
-    R_sym.resize(3, 3);
-    R_sym.block(0,0,2,2) = R;
-    R_sym.row(2).setConstant(0);
-    R_sym.col(2).setConstant(0);
-    R_sym(2,2) = 1;
-
-    T_sym.resize(3);T_sym(0)= T(0); T_sym(1) = T(1);  T_sym(2) = 0;
-        cout<<R_sym<<" after"<<endl;
+    cout<<" after"<<endl;
 
 
 }
