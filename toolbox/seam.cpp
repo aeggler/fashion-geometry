@@ -167,10 +167,8 @@ void computeAllSeams(const std::vector<std::vector<int> >& boundaryL, std::map<i
     additionalCorners.insert( 13);
     additionalCorners.insert( 1045);
     for(int i=0; i< boundaryL.size(); i++){
-//        cout<<endl<<"patch i ="<<i<<" of size "<<boundaryL[i].size()<<endl;
         for(int j=0; j < boundaryL[i].size(); j++){
             isBoundaryVertexVec(boundaryL[i][j]) = 1;
-//            cout<<boundaryL[i][j]<<" ";
         }
 
     }

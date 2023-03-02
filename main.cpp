@@ -416,29 +416,28 @@ int main(int argc, char *argv[])
     preComputeConstraintsForRestshape();
     preComputeStretch();
     computeStress(viewer);
-cout<<"reading further input"<<endl;
+    cout<<"reading further input"<<endl;
     setCollisionMesh();
 
     MatrixXd perfPattVg, perfPattVg_orig, addedFabricPatternVg;
     MatrixXi perfPattFg, perfPattFg_orig, addedFabricPatternFg;
 
-    bool patternExists = false;
+    bool patternExists = true;
+    inverseMap = false;
     string startFile = "writtenPattern_nicelyRetri.obj";
     if(patternExists){
-        string perfPatternFile = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/patternComputed_" + avName +".obj"; //_Added_duplRem_unrefRem
+        string prefPattern = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/";
+        string perfPatternFile = prefPattern+ "patternComputed_"+avName+"_"+garment+".obj";
         igl::readOBJ(perfPatternFile, perfPattVg_orig, perfPattFg_orig);
         perfPattVg_orig.col(2).setConstant(200);
+        cout<<"reading the computed pattern"<<endl;
         // copy the matrices to not mess with them
 
 
 
-        string helperToLocate = "/Users/annaeggler/Desktop/"+startFile;
-
-//                MatrixXd oneDirMapV; MatrixXi oneDirMapF;
-        igl::readOBJ(helperToLocate, addedFabricPatternVg, addedFabricPatternFg);
-
-        inverseMap = false;
         if(inverseMap){
+            string helperToLocate = "/Users/annaeggler/Desktop/"+startFile;
+            igl::readOBJ(helperToLocate, addedFabricPatternVg, addedFabricPatternFg);
             mapFromVg = addedFabricPatternVg;
             mapFromFg = addedFabricPatternFg;
 //        Fg_pattern_curr = mapFromFg;
@@ -453,6 +452,7 @@ cout<<"reading further input"<<endl;
             mapToFg =  perfPattFg_orig;
             mapFromVg = Vg_pattern;
             mapFromFg = Fg_pattern;
+            cout<<" no inverse mappiing"<<endl;
         }
     }
 
@@ -476,6 +476,7 @@ cout<<"reading further input"<<endl;
     int numFacesOneSide ;
     if(patternExists) {
         if (symetry && !inverseMap) {
+            cout<<"doing half pattern"<<endl;
             createHalfSewingPattern(Vg_orig, Fg_orig, Vg_pattern, Fg_pattern, Vg_pattern_half, Fg_pattern_half,
                                     halfPatternFaceToFullPatternFace, fullPatternFaceToHalfPatternFace,
                                     halfPatternVertToFullPatternVert,
@@ -530,31 +531,48 @@ cout<<"reading further input"<<endl;
                     // testCol.col(0)= edgeVertices;
                     for(int j=whichSeam; j<whichSeam+1; j++){
                         seam* firstSeam = seamsList[j];
+//
                         auto stP1 = firstSeam-> getStartAndPatch1();
                         auto stP2 = firstSeam-> getStartAndPatch2ForCorres();
-
+//
                         int len = firstSeam -> seamLength();
+//                        int len = firstSeam->getLength();
                         int boundLen1 = boundaryL[stP1.second].size();
                         int boundLen2 = boundaryL[stP2.second].size();
-
+                        MatrixXi edgesMat (2*(len-1), 2);
                         for(int i=0; i<=len; i++){
                             testCol(boundaryL[stP1.second][(stP1.first+i)% boundLen1],0) = 1.;
+                            if (i!= 0) edgesMat(2*(i-1), 1) = boundaryL[stP1.second][(stP1.first+i)% boundLen1];
+                            edgesMat(2*i, 0) = boundaryL[stP1.second][(stP1.first+i)% boundLen1];
+//                            if (i!= 0) edgesMat((i-1), 1) = boundaryL[patch][(firstSeam->getStartIdx() +i)];
+//                            cout<<boundaryL[patch][(firstSeam->getStartIdx() +i)]<<endl;
+//                            edgesMat(i, 0) = boundaryL[patch][(firstSeam->getStartIdx() +i) ];
+//
                             if(i==0)testCol(boundaryL[stP1.second][(stP1.first+i)% boundLen1],1) = 1.;
                             if(i==len)testCol(boundaryL[stP1.second][(stP1.first+i)% boundLen1],2) = 1.;
 
                             int setAccess = (stP2.first-i)% boundLen2;
                             if(setAccess < 0) {
                                 setAccess +=boundLen2;
-//                                testCol(boundaryL[stP2.second][(stP2.first-i)% boundLen2], 0) = 1.;
+                                testCol(boundaryL[stP2.second][(stP2.first-i)% boundLen2], 0) = 1.;
                             }
                             if(seamsList[j]->inverted) setAccess = (stP2.first + i) % boundLen2;
 //                            cout<<setAccess<<endl;
                             testCol(boundaryL[stP2.second][setAccess], 0) = 1.;
-
+                            if (i!= 0) edgesMat(2*i-1, 1) = boundaryL[stP2.second][setAccess];
+                            edgesMat(2*i+1, 0) = boundaryL[stP2.second][setAccess];
+//
                         }
+                        viewer.selected_data_index = 1;
+                        viewer.data().clear();
+                        viewer.data().set_edges(Vg_pattern, edgesMat, Eigen::RowVector3d(1, 0, 0));
                     }
 
+
                 }
+//                viewer.selected_data_index = 1;
+//                viewer.data().clear();
+
                 viewer.selected_data_index = 0;
                 viewer.data().clear();
                 viewer.data().set_mesh(Vg_pattern, Fg_pattern);
@@ -565,11 +583,25 @@ cout<<"reading further input"<<endl;
                 viewer.data().show_lines = false;
                 // if 0 -> no face colour
                 viewer.data().set_colors(testCol);
+
             }
             if(ImGui::Button("Visualize Corner", ImVec2(-1, 0))){
                 MatrixXd testCol= MatrixXd::Zero(Vg_pattern.rows(), 3);
+
+                int coutn=0;
                 for(int i=0; i<Vg_pattern.rows(); i++){
                     if(cornerVertices(i)){
+//                        corners.row(coutn) = Vg_pattern.row(i);
+                        coutn++;
+                        testCol(i,0)=1;
+                    }
+                }
+                MatrixXd corners(coutn, 3);
+                coutn =0;
+                for(int i=0; i<Vg_pattern.rows(); i++){
+                    if(cornerVertices(i)){
+                        corners.row(coutn) = Vg_pattern.row(i);
+                        coutn++;
                         testCol(i,0)=1;
                     }
                 }
@@ -582,7 +614,12 @@ cout<<"reading further input"<<endl;
                 //remove wireframe
                 viewer.data().show_lines = false;
                 // if 0 -> no face colour
-                viewer.data().set_colors(testCol);
+//                viewer.data().set_colors(testCol);
+                viewer.selected_data_index = 1;
+                viewer.data().clear();
+                viewer.data().point_size = 8.f;
+                viewer.data().set_points(corners, RowVector3d(1.0, 0.0, 0.0));
+
             }
 
         }
@@ -624,24 +661,34 @@ cout<<"reading further input"<<endl;
                 ImGui::InputFloat("Translation Y", & movePatternY , 0, 0, "%0.4f");
 
                 if(ImGui::Button("Move ", ImVec2(-1, 0))){
-                    MatrixXd testCol= MatrixXd::Zero(Vg_pattern.rows(), 3);
+                    MatrixXd testCol= MatrixXd::Ones(Vg_pattern.rows(), 3);
+                    testCol.col(0).setConstant(0.01);
+                    MatrixXd Vg_patternNew= Vg_pattern;
                     for(int i=0; i<Vg_pattern.rows(); i++){
                         if( componentIdPerVert(i) == whichPatchMove){
-                            Vg_pattern(i, 0) += movePatternX;
-                            Vg_pattern(i, 1) += movePatternY;
-                            testCol(i,0)=1;
+                            Vg_patternNew(i, 2) +=1;// movePatternX;
+//                            Vg_pattern(i, 1) += movePatternY;
+                            testCol(i,0)=1; testCol(i,1)=0; testCol(i,2)=0;
+
                         }
                     }
-                    viewer.selected_data_index = 0;
+                    viewer.selected_data_index = 1;
                     viewer.data().clear();
                     viewer.data().set_mesh(Vg_pattern, Fg_pattern);
                     viewer.data().uniform_colors(ambient, diffuse, specular);
                     viewer.data().show_texture = false;
                     viewer.data().set_face_based(false);
-                    //remove wireframe
                     viewer.data().show_lines = false;
-                    // if 0 -> no face colour
+
+                    viewer.selected_data_index = 0;
+                    viewer.data().clear();
+                    viewer.data().set_mesh(Vg_patternNew, Fg_pattern);
+                    viewer.data().show_texture = false;
+                    viewer.data().set_face_based(false);
+                    viewer.data().show_lines = false;
                     viewer.data().set_colors(testCol);
+
+
 
                     igl::writeOBJ("patternComputed_translated.obj", Vg_pattern, Fg_pattern);
                     cout<<"pattern written to *patternComputed_translated*"<<endl;
