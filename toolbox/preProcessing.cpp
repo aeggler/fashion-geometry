@@ -282,7 +282,114 @@ void createHalfSewingPattern(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, M
 
 }
 
-void preProcessGarment(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg_pattern){
+void preProcessGarment(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg_pattern, bool insertPlane){
+    if(insertPlane){
+        // do the split first
+    }
+    VectorXd leftFaces = VectorXd::Zero(Fg.rows());
+    VectorXd leftVert = VectorXd::Zero(Vg.rows());
+
+
+    for(int i=0; i<Fg.rows(); i++){
+        bool isLeft= false;
+        for (int j=0; j<3; j++){
+            if(Vg(Fg(i,j),0) < 0){
+                isLeft = true;
+            }
+        }
+        if(isLeft) {
+            leftFaces(i) = 1;
+            for (int j=0; j<3; j++) {
+                leftVert(Fg(i, j)) = 1;
+            }
+        }
+    }
+
+    VectorXi mapVert(Vg.rows());
+    int newVert = leftVert.sum();
+    MatrixXd newVg (newVert, 3);
+    VectorXd onSeam = VectorXd::Zero(newVert);
+    int count=0;
+    for(int i=0; i<Vg.rows(); i++){
+        if(leftVert(i) == 1){
+            newVg.row(count) = Vg.row(i);
+            mapVert(i) = count;
+            count++;
+        }
+    }
+
+    int newFace = leftFaces.sum();
+    MatrixXi newFg (newFace, 3);
+    count = 0;
+    for(int i=0; i<Fg.rows(); i++){
+        if(leftFaces(i) == 1){
+            for(int j = 0; j < 3; j++){
+                newFg(count, j) = mapVert(Fg(i,j));
+                if(Vg(Fg(i,j),0) == 0){
+                    onSeam( mapVert(Fg(i,j))) = 1;
+                }
+            }
+            count++;
+        }
+    }
+    igl::writeOBJ("leftGarment.obj", newVg, newFg );
+    // finished the split, now duplicate to make it one again
+
+
+
+    //first duplicate all vertices and faces, then remove the ones that are on the seam
+
+    VectorXi mapDupl(newVg.rows());
+    count = 0;
+    for(int i =0; i<newVg.rows(); i++){
+        if(onSeam(i) == 0){
+            mapDupl(i) = count;
+            count++;
+        }
+    }
+    MatrixXd VgDupl (count ,3);
+    count = 0;
+    for(int i=0; i<newVg.rows(); i++){
+        if(onSeam(i) == 0){
+            VgDupl.row(count)= newVg.row(i);
+            count++;
+        }
+    }
+
+    MatrixXd rot = MatrixXd::Identity(3,3); rot(0,0)= -1; // reflection
+
+    VgDupl = (rot * VgDupl.transpose()).transpose();
+    MatrixXi FgDupl( newFg.rows(), 3);
+    int offset = newVg.rows();
+
+    for(int i=0; i<newFg.rows(); i++){
+        for(int j=0; j<3; j++){
+            // if the vertex is on the seam, we take the same one!
+            if( onSeam(newFg(i,j )) == 1){
+                FgDupl(i,j) = newFg(i,j);
+            }else{
+                // else we take the duplicated vertex
+                FgDupl(i,j) = mapDupl(newFg(i,j)) + offset;
+            }
+        }
+    }
+    MatrixXd fullVg(VgDupl.rows() + newVg.rows(), 3);
+    fullVg<<newVg, VgDupl;
+    // change the normal to alilgn!
+    VectorXi temp = FgDupl.col(1);
+    FgDupl.col(1) = FgDupl.col(2);
+    FgDupl.col(2) = temp;
+
+    igl::writeOBJ("rightGarment.obj", fullVg, FgDupl);
+
+    MatrixXi fullFg (FgDupl.rows()*2, 3);
+    fullFg<<newFg, FgDupl;
+
+    igl::writeOBJ("fullGarment.obj", fullVg, fullFg);
+
+
+
+
 //    map<double, std::pair<int, int>> yToFaceAndIdx;
 //    int vgsize = Vg_pattern.rows();
 //    for(int i=0; i<Fg.rows(); i++){
