@@ -211,27 +211,17 @@ void startRetriangulation(vector<VectorXd>& polylineSelected, MatrixXd& V2, Matr
     triangulateFAKE(V, E, H, flags, V2, F2 );
 
 }
-void duplicatePattern(MatrixXd& currPattern, MatrixXi& Fg_pattern_curr, MatrixXd& addedFabricPatternVg, MatrixXi& addedFabricPatternFg, MatrixXd& R_symetry, VectorXd& T_symetry){
+void duplicatePattern(MatrixXd& currPattern, MatrixXi& Fg_pattern_curr, MatrixXd& addedFabricPatternVg, MatrixXi& addedFabricPatternFg, VectorXd& T_symetry){
 // create symmetric vertices and add them to matrix
-    cout<<" duplicating pattern "<<currPattern.rows()<<endl ;
-    R_symetry = MatrixXd::Identity(3, 3);
+    MatrixXd R_symetry = MatrixXd::Identity(3, 3);
     R_symetry(0, 0) = -1;
-    int translIdxNew = 0;
-    int translIdxOrig = 1356;
-    cout<<" duplicating vmm "<<endl ;
-
 
     MatrixXd temp = R_symetry * addedFabricPatternVg.transpose();
-    cout<<" duplicating bbv "<<endl ;
-
-    T_symetry = addedFabricPatternVg.row(translIdxOrig) - (temp.transpose()).row(translIdxNew);
-    cout<<" duplicating bv "<<endl ;
 
     temp = temp.colwise() + T_symetry;
     MatrixXd res = temp.transpose();
     MatrixXd doubleV(addedFabricPatternVg.rows() + res.rows(), 3);
     doubleV <<addedFabricPatternVg, res;
-    cout<<" duplicating v "<<endl ;
 
 // create syymmetric faces, attention change their normal by flipping two ids
     MatrixXi Fg_pattern_other = addedFabricPatternFg;
@@ -243,15 +233,12 @@ void duplicatePattern(MatrixXd& currPattern, MatrixXi& Fg_pattern_curr, MatrixXd
     Fg_pattern_other += offset;
     MatrixXi doubleF( addedFabricPatternFg.rows()+ Fg_pattern_other.rows(),3);
     doubleF<<addedFabricPatternFg, Fg_pattern_other;
-    cout<<" duplicating f "<<endl ;
 
     currPattern.resize(doubleV.rows(), 3);
     currPattern = doubleV;
     Fg_pattern_curr.resize(2*addedFabricPatternFg.rows(), 3);
     Fg_pattern_curr = doubleF;
     cout<<" duplicating fin "<<currPattern.rows()<<endl ;
-    cout<<Fg_pattern_curr.row(0)<<" "<<Fg_pattern_curr.row(0+addedFabricPatternVg.rows());
-
 
 }
 void backTo3Dmapping(MatrixXd& adaptedPattern, MatrixXi& adaptedPattern_faces, MatrixXd& perfectPattern, MatrixXi& perfectPattern_faces ,
@@ -259,7 +246,7 @@ void backTo3Dmapping(MatrixXd& adaptedPattern, MatrixXi& adaptedPattern_faces, M
     //idea: we have with perfectPatternForThisShape the perfect pattern and also in 3d
     // since the adapted pattern is a subset of the perfect pattern, we can locate every vertex of adapted pattern in perfectPattern and apply it using barycentric coordinates in 3d
     // maybe we have to do some manual stitching later but that should be ok.
-    cout<<adaptedPattern.rows()<<" back to 3d of garment "<<garment<<endl;
+    cout<<adaptedPattern_faces.rows()<<" faces of pattern "<<garment<<endl;
 
     VectorXd S; VectorXi I;//face index of smallest distance
     MatrixXd C,N;
@@ -287,7 +274,7 @@ void backTo3Dmapping(MatrixXd& adaptedPattern, MatrixXi& adaptedPattern_faces, M
         comps(1) = 3;
         compsP.resize(2);
         compsP(0) = 1;
-        compsP(1) = 5;
+        compsP(1) = 3;
     }
     cout<<"Do we need to translate the patches before we can to signed distance? "<<pullApart<<endl;
     if(pullApart){
@@ -334,35 +321,37 @@ void backTo3Dmapping(MatrixXd& adaptedPattern, MatrixXi& adaptedPattern_faces, M
         B.row(i) = bary.row(0);
     }
     igl::barycentric_interpolation(perfectPatternIn3d, perfectPatternIn3d_faces, B, I, adaptedPatternIn3d);
+    igl::writeOBJ("lhs.obj" ,adaptedPatternIn3d, adaptedPattern_faces);
 
     if(symmetry){
-        // we have to duplicate it !
-        MatrixXd dupl3D = adaptedPatternIn3d;
-        MatrixXd R_symetry = MatrixXd::Identity(3, 3);
-        R_symetry(0, 0) = -1;
-        dupl3D = (R_symetry * dupl3D.transpose()).transpose();
 
-//        //test
-//        adaptedPatternIn3d = dupl3D;
-//        adaptedPatternIn3d_faces = adaptedPattern_faces;
-//        //end test
-        VectorXd T_symetry = perfectPatternIn3d.row(798) - dupl3D.row(839);
-        dupl3D.rowwise() += T_symetry.transpose();
+        VectorXi faceOffset( I.rows());
+        faceOffset.setConstant(perfectPatternIn3d_faces.rows()/2);
+        I += faceOffset;
+        VectorXd btemp = B.col(1);
+        B.col(1) = B.col(2);
+        B.col(2)= btemp;
+        MatrixXd adaptedPatternIn3dRight ;
+        igl::barycentric_interpolation(perfectPatternIn3d, perfectPatternIn3d_faces, B, I, adaptedPatternIn3dRight);
 
-        MatrixXi duplFace = adaptedPattern_faces;
-        MatrixXi offset(duplFace.rows(), duplFace.cols());
-        offset.setConstant( dupl3D.rows());
-        duplFace += offset;
-        VectorXi tempCol = duplFace.col(1);
-        duplFace.col(1)= duplFace.col(2);
-        duplFace.col(2) = tempCol;
+        MatrixXi adaptedPattern_facesRight = adaptedPattern_faces;
+        VectorXi rtemp = adaptedPattern_facesRight.col(1);
+        adaptedPattern_facesRight.col(1)= adaptedPattern_facesRight.col(2);
+        adaptedPattern_facesRight.col(2)= rtemp ;
+        igl::writeOBJ("rhs.obj" ,adaptedPatternIn3dRight, adaptedPattern_facesRight);
 
-        adaptedPatternIn3d_faces.resize(2*adaptedPattern_faces.rows(), 3);
-        adaptedPatternIn3d_faces<<adaptedPattern_faces, duplFace;
-        auto temp = adaptedPatternIn3d;
-        adaptedPatternIn3d.resize(2*offset.rows(), 3);
-        adaptedPatternIn3d<< temp, dupl3D;
+        MatrixXd Vgtemp = adaptedPatternIn3d;
+        adaptedPatternIn3d.resize(adaptedPatternIn3d.rows()+adaptedPatternIn3dRight.rows(), 3 );
+        adaptedPatternIn3d<<Vgtemp, adaptedPatternIn3dRight;
 
+        adaptedPatternIn3d_faces.resize(adaptedPattern_faces.rows()+ adaptedPattern_facesRight.rows(), 3);
+
+        int vertOffset = adaptedPatternIn3d.rows()/2;
+        MatrixXi offsetMat(adaptedPattern_facesRight.rows(), 3);
+        offsetMat.setConstant(vertOffset);
+        adaptedPattern_facesRight += offsetMat;
+
+        adaptedPatternIn3d_faces<<adaptedPattern_faces, adaptedPattern_facesRight;
 
     }else{
         adaptedPatternIn3d_faces = adaptedPattern_faces;

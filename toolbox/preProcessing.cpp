@@ -282,12 +282,13 @@ void createHalfSewingPattern(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, M
 
 }
 
-void preProcessGarment(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg_pattern, bool insertPlane){
+void preProcessGarment(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg_pattern, bool insertPlane, int symVert1, int symVert2 ,VectorXd& T_sym){
     if(insertPlane){
         // do the split first
     }
     VectorXd leftFaces = VectorXd::Zero(Fg.rows());
     VectorXd leftVert = VectorXd::Zero(Vg.rows());
+    VectorXd leftVert_pattern = VectorXd::Zero(Vg_pattern.rows());
 
 
     for(int i=0; i<Fg.rows(); i++){
@@ -301,15 +302,23 @@ void preProcessGarment(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixX
             leftFaces(i) = 1;
             for (int j=0; j<3; j++) {
                 leftVert(Fg(i, j)) = 1;
+                leftVert_pattern(Fg_pattern(i, j)) = 1;
             }
         }
     }
 
     VectorXi mapVert(Vg.rows());
+    VectorXi mapVert_pattern(Vg_pattern.rows());
+
     int newVert = leftVert.sum();
+    int newVert_pattern = leftVert_pattern.sum();
+
     MatrixXd newVg (newVert, 3);
+    MatrixXd newVg_pattern(newVert_pattern, 3);
+
+    // for now no on seam for the pattern. just copy them all
     VectorXd onSeam = VectorXd::Zero(newVert);
-    int count=0;
+    int count=0; int count_pattern= 0;
     for(int i=0; i<Vg.rows(); i++){
         if(leftVert(i) == 1){
             newVg.row(count) = Vg.row(i);
@@ -317,14 +326,24 @@ void preProcessGarment(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixX
             count++;
         }
     }
+    for(int i=0; i<Vg_pattern.rows(); i++){
+        if(leftVert_pattern(i) ==1){
+            newVg_pattern.row(count_pattern) = Vg_pattern.row(i);
+            mapVert_pattern(i) = count_pattern;
+            count_pattern++;
+        }
+    }
+
 
     int newFace = leftFaces.sum();
     MatrixXi newFg (newFace, 3);
+    MatrixXi newFg_pattern(newFace, 3);
     count = 0;
     for(int i=0; i<Fg.rows(); i++){
         if(leftFaces(i) == 1){
             for(int j = 0; j < 3; j++){
                 newFg(count, j) = mapVert(Fg(i,j));
+                newFg_pattern(count, j) = mapVert_pattern(Fg_pattern(i,j));
                 if(Vg(Fg(i,j),0) == 0){
                     onSeam( mapVert(Fg(i,j))) = 1;
                 }
@@ -333,6 +352,7 @@ void preProcessGarment(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixX
         }
     }
     igl::writeOBJ("leftGarment.obj", newVg, newFg );
+    igl::writeOBJ("leftPattern.obj", newVg_pattern, newFg_pattern);
     // finished the split, now duplicate to make it one again
 
 
@@ -387,7 +407,27 @@ void preProcessGarment(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixX
 
     igl::writeOBJ("fullGarment.obj", fullVg, fullFg);
 
+    MatrixXi FgDupl_pattern =  newFg_pattern;
+    VectorXi tempF = FgDupl_pattern.col(1);
+    FgDupl_pattern.col(1) = FgDupl_pattern.col(2);
+    FgDupl_pattern.col(2) = tempF;
+    MatrixXd VgDupl_pattern (newVg_pattern.rows(), 3);
+    VgDupl_pattern = (rot*newVg_pattern.transpose()).transpose();
 
+    T_sym = Vg_pattern.row(symVert1 ) - VgDupl_pattern.row(symVert2);
+    VgDupl_pattern.rowwise() += T_sym.transpose();
+    offset = newVg_pattern.rows();
+    MatrixXi offsetM(FgDupl_pattern.rows(), FgDupl_pattern.cols()); offsetM.setConstant(offset);
+    FgDupl_pattern+= offsetM;
+
+    MatrixXi fullFg_pattern (FgDupl_pattern.rows() * 2, 3); fullFg_pattern << newFg_pattern, FgDupl_pattern;
+    MatrixXd fullVg_pattern(newVg_pattern.rows() * 2, 3); fullVg_pattern << newVg_pattern, VgDupl_pattern;
+    igl::writeOBJ("fullPattern.obj", fullVg_pattern, fullFg_pattern);
+
+    Vg.resize(fullVg.rows(), 3);  Vg = fullVg;
+    Fg.resize(fullFg.rows(), 3);  Fg = fullFg;
+    Vg_pattern.resize(fullVg_pattern.rows(), 3);  Vg_pattern = fullVg_pattern;
+    Fg_pattern.resize(fullFg_pattern.rows(), 3);  Fg_pattern = fullFg_pattern;
 
 
 //    map<double, std::pair<int, int>> yToFaceAndIdx;

@@ -138,7 +138,6 @@ bool prevTearFinished;// indicating if a cut is finished or not to make sure we 
 bool preferManySmallCuts= false;
 bool startTri = false;
 std::vector<std::pair<double,double>> perFaceTargetNorm;
-bool jacFlag=false;// not used anymore
 
 // pattern adaption
 bool adaptionFlag = false;
@@ -200,7 +199,7 @@ bool callback_mouse_down(igl::opengl::glfw::Viewer& viewer, int button, int modi
 void updateChangedBaryCoordinates(int changedPosition, vector<vector<int>>& vfFromPatt);
 int pos;
 bool symetry ;
-MatrixXd R_symetry; VectorXd T_symetry;
+MatrixXd R_symetry; VectorXd T_sym_pattern;
 bool pre_draw(igl::opengl::glfw::Viewer& viewer){
     viewer.data().dirty |= igl::opengl::MeshGL::DIRTY_DIFFUSE | igl::opengl::MeshGL::DIRTY_SPECULAR;
     if(simulate){
@@ -287,25 +286,7 @@ int main(int argc, char *argv[])
 //    string garment_file_name = prefix + "moreGarments/"+ garmentExt+"/"+garment+"_3d.obj";
 
     igl::readOBJ(garment_file_name, Vg, Fg);
-    symetry = true;
-    if(symetry){
-        preProcessGarment(Vg, Fg);
-    }
-
-//    int rears = 68;
-//    VectorXi idxrear ( rears);
-//    ifstream in("seamOut3D.txt");
-////    ifstream in2("seamOut2D.txt");
-//
-//    for(int i=0; i<rears/2; i++){
-//        Vg(idxrear(i), 0) = 0; // ensure the vertex is exactly on the symetry plane!
-//    }
-
-
     Timer t("Setup");
-    garmentPreInterpol = Vg;
-    Vg_orig = Vg; Fg_orig= Fg;
-//    igl::writeOBJ("readjustedPos.obj", Vg, Fg);
 
 //    cout<<"choose garment 2D"<<endl;
 //    string garment_pattern_file_name= igl::file_dialog_open();
@@ -313,9 +294,22 @@ int main(int argc, char *argv[])
 
     string garment_pattern_file_name = prefix +"leggins/leggins_2d/leggins_2d.obj"; //
 //    string garment_pattern_file_name = prefix +"moreGarments/"+garmentExt+"/"+garment+"_2d.obj";
-
     igl::readOBJ(garment_pattern_file_name, Vg_pattern, Fg_pattern);
-    preProcessGarment(Vg, Fg, Vg_pattern, Fg_pattern);
+
+    symetry = true;
+    if(symetry){
+        bool insertPlane = true;
+
+        int symVert1 ,symVert2;
+        if (garment == "leggins"){ insertPlane = false;
+            symVert1 = 1467;
+            symVert2 = 23;
+        }
+        preProcessGarment(Vg, Fg, Vg_pattern, Fg_pattern, insertPlane, symVert1, symVert2, T_sym_pattern);
+    }
+    garmentPreInterpol = Vg;
+    Vg_orig = Vg; Fg_orig= Fg;
+
     Vg_pattern_orig = Vg_pattern;
     Fg_pattern_orig = Fg_pattern;
     patternPreInterpol = Vg_pattern;
@@ -324,7 +318,6 @@ int main(int argc, char *argv[])
     t.printTime(" init");
     preComputeConstraintsForRestshape();
     preComputeStretch();
-    jacFlag=false;
 
     setNewGarmentMesh(viewer);
 
@@ -396,7 +389,6 @@ int main(int argc, char *argv[])
     gar_adapt->computeJacobian();
     perFaceTargetNorm = gar_adapt->perFaceTargetNorm;
     Vg_orig = Vg;
-    jacFlag = true;// not needed anymore...  was when we computed stress without reference jacobian
 
     setCollisionMesh();
     //todo
@@ -429,8 +421,8 @@ int main(int argc, char *argv[])
     }
     if(patternExists){
         string prefPattern = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/";
-//        string perfPatternFile = prefPattern+ "patternComputed_"+avName+"_"+garment+".obj";
-        string perfPatternFile = "/Users/annaeggler/Desktop/AvatarToMaternity_01/patternComputed_maternity_01.obj";
+        string perfPatternFile = prefPattern+ "patternComputed_"+avName+"_"+garment+".obj";
+//        string perfPatternFile = "/Users/annaeggler/Desktop/AvatarToMaternity_01/patternComputed_maternity_01.obj";
         igl::readOBJ(perfPatternFile, perfPattVg_orig, perfPattFg_orig);
         perfPattVg_orig.col(2).setConstant(200);
         cout<<"reading the computed pattern"<<endl;
@@ -503,6 +495,7 @@ int main(int argc, char *argv[])
                                     fullPatternVertToHalfPatternVert, insertedIdxToPatternVert, isLeftVertPattern,rightVert);
             cout << " FINISHED PATTERN SPLIT Operation" << endl;
             numFacesOneSide = Fg_pattern_half.rows();
+            cout<<numFacesOneSide<<" num Faces one side"<<endl;
 
         } else if (symetry && inverseMap) {
             // map from is already split in two sides,
@@ -512,11 +505,7 @@ int main(int argc, char *argv[])
                                     halfPatternVertToFullPatternVert,
                                     fullPatternVertToHalfPatternVert, insertedIdxToPatternVert, isLeftVertPattern,rightVert);
             numFacesOneSide = Fg_pattern_half.rows();
-            R_symetry = MatrixXd::Identity(3, 3);
-            R_symetry(0, 0) = -1;
 
-            MatrixXd resT = (R_symetry * Vg_pattern_half.transpose());
-            T_symetry = Vg_pattern_orig.row(vertIdOf0InDuplicated) - resT.transpose().row(0);
         } else {
             for (int i = 0; i < Vg_pattern.rows(); i++) {
                 halfPatternVertToFullPatternVert[i] = i;
@@ -544,11 +533,8 @@ int main(int argc, char *argv[])
             ImGui::InputInt("Vis Seam No", &whichSeam, 0, 0);
             if(ImGui::Button("Visualize Seam", ImVec2(-1, 0))){
                 MatrixXd testCol= MatrixXd::Zero(Vg_pattern.rows(), 3);
-                if(jacFlag){
-//                    std::vector<std::vector<int> > boundaryL;
-//                    igl::boundary_loop(Fg_pattern, boundaryL);
-                    // testCol.col(0)= edgeVertices;
-                    for(int j=whichSeam; j<whichSeam+1; j++){
+
+                for(int j=whichSeam; j<whichSeam+1; j++){
                         seam* firstSeam = seamsList[j];
                         auto stP1 = firstSeam-> getStartAndPatch1();
                         auto stP2 = firstSeam-> getStartAndPatch2ForCorres();
@@ -588,8 +574,6 @@ int main(int argc, char *argv[])
                         viewer.data().set_edges(Vg_pattern, edgesMat, Eigen::RowVector3d(1, 0, 0));
                     }
 
-
-                }
 //                viewer.selected_data_index = 1;
 //                viewer.data().clear();
 
@@ -685,7 +669,6 @@ int main(int argc, char *argv[])
                 if(ImGui::Button("Move ", ImVec2(-1, 0))){
                     MatrixXd testCol= MatrixXd::Ones(Vg_pattern.rows(), 3);
                     testCol.col(0).setConstant(0.01);
-                    MatrixXd Vg_patternNew= Vg_pattern;
                     for(int i=0; i<Vg_pattern.rows(); i++){
                         if( componentIdPerVert(i) == whichPatchMove){
                             Vg_pattern(i, 0) += movePatternX;
@@ -704,13 +687,6 @@ int main(int argc, char *argv[])
 
                     viewer.selected_data_index = 0;
                     viewer.data().clear();
-//                    viewer.data().set_mesh(Vg_patternNew, Fg_pattern);
-//                    viewer.data().show_texture = false;
-//                    viewer.data().set_face_based(false);
-//                    viewer.data().show_lines = false;
-//                    viewer.data().set_colors(testCol);
-
-
 
                     igl::writeOBJ("patternComputed_translated.obj", Vg_pattern, Fg_pattern);
                     cout<<"pattern written to *patternComputed_translated*"<<endl;
@@ -911,8 +887,8 @@ int main(int argc, char *argv[])
                     updateSeamCorner(seamsList, minusOneSeamsList, mapCornerToCorner, boundaryL);
                 }
                 cout<<"ready for adaption"<<endl;
-                viewer.core().is_animating = true;
-                adaptionFlag = true;
+//                viewer.core().is_animating = true;
+//                adaptionFlag = true;
             }
             ImGui::InputDouble("Taylor Lazyness ", &(taylor_lazyness),  0, 0, "%0.2f");
             ImGui::InputDouble("Thereshold Mid  ", &(setTheresholdlMid),  0, 0, "%0.4f");
@@ -1073,33 +1049,33 @@ int main(int argc, char *argv[])
                 prioInner = false;
                 prioOuter = false;
             }
-            if(ImGui::Button("Recover Symmetry",ImVec2(-1, 0) )){
-                simulate = false;
-                adaptionFlag = false;
-                viewer.core().is_animating = false;
-                viewer.selected_data_index = 0;
-                viewer.data().clear();
-                MatrixXd temp = R_symetry * currPattern.transpose();
-                temp = temp.colwise() + T_symetry;
-                MatrixXd res = temp.transpose();
-
-                MatrixXi Fg_pattern_other = Fg_pattern_curr;
-                Fg_pattern_other.col(1) = Fg_pattern_other.col(2);
-                Fg_pattern_other.col(2)= Fg_pattern_curr.col(1);
-
-                MatrixXd doubleV(currPattern.rows() + res.rows(), 3);
-                doubleV <<currPattern, res;
-
-                MatrixXi offset(Fg_pattern_curr.rows() ,Fg_pattern_curr.cols());
-                offset.setConstant(currPattern.rows());
-                Fg_pattern_other += offset;
-                MatrixXi doubleF( Fg_pattern_curr.rows()+ Fg_pattern_other.rows(),3);
-                doubleF<<Fg_pattern_curr, Fg_pattern_other;
-                currPattern.resize(doubleV.rows(), 3); currPattern=doubleV;
-                Fg_pattern_curr.resize(doubleF.rows(), 3); Fg_pattern_curr=doubleF;
-
-                viewer.data().set_mesh(doubleV, doubleF);
-            }
+//            if(ImGui::Button("Recover Symmetry",ImVec2(-1, 0) )){
+//                simulate = false;
+//                adaptionFlag = false;
+//                viewer.core().is_animating = false;
+//                viewer.selected_data_index = 0;
+//                viewer.data().clear();
+//                MatrixXd temp = R_symetry * currPattern.transpose();
+//                temp = temp.colwise() + T_symetry;
+//                MatrixXd res = temp.transpose();
+//
+//                MatrixXi Fg_pattern_other = Fg_pattern_curr;
+//                Fg_pattern_other.col(1) = Fg_pattern_other.col(2);
+//                Fg_pattern_other.col(2)= Fg_pattern_curr.col(1);
+//
+//                MatrixXd doubleV(currPattern.rows() + res.rows(), 3);
+//                doubleV <<currPattern, res;
+//
+//                MatrixXi offset(Fg_pattern_curr.rows() ,Fg_pattern_curr.cols());
+//                offset.setConstant(currPattern.rows());
+//                Fg_pattern_other += offset;
+//                MatrixXi doubleF( Fg_pattern_curr.rows()+ Fg_pattern_other.rows(),3);
+//                doubleF<<Fg_pattern_curr, Fg_pattern_other;
+//                currPattern.resize(doubleV.rows(), 3); currPattern=doubleV;
+//                Fg_pattern_curr.resize(doubleF.rows(), 3); Fg_pattern_curr=doubleF;
+//
+//                viewer.data().set_mesh(doubleV, doubleF);
+//            }
 
         }
         if (ImGui::CollapsingHeader("Modify adapted Pattern ", ImGuiTreeNodeFlags_DefaultOpen)){
@@ -1401,8 +1377,7 @@ int main(int argc, char *argv[])
 
         }
         if (ImGui::CollapsingHeader("Inverse direction", ImGuiTreeNodeFlags_OpenOnArrow)) {
-            MatrixXd adaptedPatternIn3d;
-            MatrixXi adaptedPatternIn3d_faces;
+
             if(ImGui::Button("Map back ", ImVec2(-1, 0))){
                 string modifiedPattern  = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/finished_retri_writtenPattern_avatar_maternity_01_OC_leggins.obj";
                MatrixXd addedFabricPatternVg; MatrixXi addedFabricPatternFg;
@@ -1415,11 +1390,9 @@ int main(int argc, char *argv[])
                 currPattern = addedFabricPatternVg;
                 Fg_pattern_curr.resize(addedFabricPatternFg.rows(), addedFabricPatternFg.cols());
                 Fg_pattern_curr = addedFabricPatternFg;
-                if(symetry){
-                    duplicatePattern(currPattern, Fg_pattern_curr,addedFabricPatternVg, addedFabricPatternFg , R_symetry, T_symetry);
-                    igl::writeOBJ("duplicate_final_of_" + startFile+"_"+avName+"_"+garment+".obj" , currPattern, Fg_pattern_curr);
-                }
 
+                MatrixXd adaptedPatternIn3d;
+                MatrixXi adaptedPatternIn3d_faces;
                 backTo3Dmapping(currPattern, Fg_pattern_curr, perfPattVg_orig, perfPattFg_orig, Vg,
                                 Fg, adaptedPatternIn3d, adaptedPatternIn3d_faces ,symetry, garment);
 
@@ -1429,17 +1402,25 @@ int main(int argc, char *argv[])
                 viewer.data().set_mesh(adaptedPatternIn3d, adaptedPatternIn3d_faces);
                 viewer.data().uniform_colors(ambient, diffuse, specular);
                 igl::writeOBJ(startFile+"_"+avName+"_"+garment+"_backIn3d.obj", adaptedPatternIn3d, adaptedPatternIn3d_faces);
+
                 showMannequin(viewer);
+                if(symetry){
+                    duplicatePattern(currPattern, Fg_pattern_curr,addedFabricPatternVg, addedFabricPatternFg, T_sym_pattern);
+                    igl::writeOBJ("duplicate_final_of_" + startFile+"_"+avName+"_"+garment+".obj" , currPattern, Fg_pattern_curr);
+                }
 
 
             }
             bool origIn3D = false;
             if(ImGui::Button("Show inserted in 3D ", ImVec2(-1, 0))){
+                MatrixXd adaptedPatternIn3d;
+                MatrixXi adaptedPatternIn3d_faces;
                 cout<< newFaces.size()<<"new faces size"<<endl;
 
                 if(newFaces.size() ==0){
                     cout<<"reading new faces from file"<<endl;
-                    patchcount = 4;
+                    if(garment == "leggins")patchcount = 5;
+
                     string filename = "newFacesAfterPatch_"+avName+"_"+garment+"_"+ to_string(patchcount) +".txt";
                     ifstream in("/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/" + filename);
                     int size ; in>>size;
@@ -1450,14 +1431,16 @@ int main(int argc, char *argv[])
                         newFaces.push_back(newFace);
                     }
                 }
-                cout<< newFaces.size()<<"new faces size"<<endl;
                 igl::readOBJ(startFile+"_"+avName+"_"+garment+"_backIn3d.obj", adaptedPatternIn3d, adaptedPatternIn3d_faces);
                 MatrixXd C = MatrixXd::Zero(adaptedPatternIn3d_faces.rows(), 3);
-                cout<< C.rows()<<" c faces size"<<endl;
                 C.col(1).setConstant(1);
                 C.col(0).setConstant(1);
+                int offset = C.rows()/2;
                 for(auto i: newFaces){
                     C(i, 0) =0;
+                    if(symetry){
+                        C(i+offset, 0) =0;
+                    }
                 }
                 viewer.selected_data_index = 0;
                 viewer.data().clear();
@@ -2446,15 +2429,13 @@ void computeStress(igl::opengl::glfw::Viewer& viewer){
         normU(j)= (Gu-G).norm();
         normV(j) = (Gv-G).norm();
         double y;
-        if(jacFlag){
-            double diffU = (normU(j)-perFaceTargetNorm[j].first)/ perFaceTargetNorm[j].first;
-            double diffV = (normV(j)-perFaceTargetNorm[j].second)/ perFaceTargetNorm[j].second;
-           y = diffU + diffV ;
+
+        double diffU = (normU(j)-perFaceTargetNorm[j].first)/ perFaceTargetNorm[j].first;
+        double diffV = (normV(j)-perFaceTargetNorm[j].second)/ perFaceTargetNorm[j].second;
+        y = diffU + diffV ;
 //           y*= 3; // to better see the difference
-            colJacDiff.row(j)=  Vector3d (  y,  y, 0.0);
-        }else{
-            colJacDiff.row(j)=  Vector3d ( 1. , 1., 0.0);
-        }
+        colJacDiff.row(j)=  Vector3d (  y,  y, 0.0);
+
 
         // this is an experiment
         y = (abs(normV(j)-1)+ abs(normU(j)-1))*3;
@@ -2514,7 +2495,7 @@ void solveStretchAdaption(){
     MatrixXd correctionTerm = MatrixXd::Zero(currPattern.rows(), 3);
     VectorXd itemCount = VectorXd::Zero(currPattern.rows());
     VectorXd dblA;
-    igl::doublearea(currPattern, Fg_pattern_curr);
+    igl::doublearea(currPattern, Fg_pattern_curr, dblA);
 //    oneShotLengthSolve( p_adaption,  Fg_pattern_curr, baryCoordsUPattern, baryCoordsVPattern, mapFromVg, mapFromFg);
         // force that pulls back to the original position in fromPattern
     // it does not quite work after tthe 3rd cut. Jacobian seems to be fine but it messes up
@@ -2652,7 +2633,8 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
     adaptioncount++;
 //    if(adaptioncount>1)return;
 
- //   std::cout<<"-------------- Time Step ------------"<<adaptioncount<<endl;
+//    std::cout<<"-------------- Time Step ------------"<<adaptioncount<<endl;
+
     // we have no velocity or collision, but we do have stretch, constrainedStretch and bending
     // for the stretch, the current pattern is the reference, then its corners are mapped to another position
 // the stretch as a simple solve stretch of the rest position and the stretched position?
@@ -2668,6 +2650,8 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
 //    t.printTime(" init ");
     for(int i=0; i<7; i++){
         solveStretchAdaption();
+//        t.printTime(" stretch ");
+
 
         // before cutting the boundaries should be the same
         map<int, int> mapUsed = fullPatternVertToHalfPatternVert;
@@ -2683,14 +2667,16 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
         }
         projectBackOnBoundary( mapToVg, p_adaption, seamsList, minusOneSeamsList, boundaryL_toPattern,
                                 boundaryLFrom, releasedVert ,inverseMap,  mapUsed, extFHV);
+
 //        ensurePairwiseDist(p_adaption, toPattern, Fg_pattern);
         solveCornerMappedVertices();
+
         // this causes the weired ange issue
 //        ensureAngle(p_adaption, mapFromVg, Fg_pattern_curr, mapFromFg);
     }
 
-    currPattern = p_adaption;
 
+    currPattern = p_adaption;
     viewer.selected_data_index = 1;
     viewer.data().clear();
     viewer.data().line_width= 30.f;
@@ -2701,6 +2687,7 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
     viewer.selected_data_index = 0;
     viewer.data().clear();
     viewer.data().set_mesh(currPattern, Fg_pattern_curr);
+
     viewer.data().uniform_colors(ambient, diffuse, specular);
     viewer.data().show_texture = false;
     viewer.data().set_face_based(false);
@@ -2720,9 +2707,6 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
         Vector3d v1new = currPattern.row(Fg_pattern_curr(i, 1)).transpose();
         Vector3d v2new = currPattern.row(Fg_pattern_curr(i, 2)).transpose();
         startPerEdge.row(i) = ( (v0new + v1new + v2new)/3).transpose();
-//        if(i<5){
-//            igl::writeOBJ("halfPattern.txt", currPattern, Fg_pattern_curr);
-//            cout<<i<<" i and in the full pattern it was "<<halfPatternFaceToFullPatternFace[i]<<endl; }
         int idx = (inverseMap)? i: halfPatternFaceToFullPatternFace[i];
         Vector3d ubary = baryCoordsUPattern.row(idx );
         Vector3d vbary = baryCoordsVPattern.row(idx);
@@ -2739,6 +2723,7 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
         coluPerEdge(i, 1) = vlen;
 
     }
+
     VectorXd uHelp = coluPerEdge.col(0);
     VectorXd vHelp = coluPerEdge.col(1);
     igl::jet(uHelp, 0.5, 1.5, coluPerEdge);
