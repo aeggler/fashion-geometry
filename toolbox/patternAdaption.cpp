@@ -373,9 +373,6 @@ void splitVertexFromCVE( cutVertEntry*& cve,
     vector<int> adjacentFaces = vfAdj[cve->vert];
 
     int newVertIdx = Vg.rows();
-    MatrixXd newVg (newVertIdx + 1, 3);
-    newVg.block(0,0, newVertIdx, 3)= Vg;
-    handledVerticesSet.insert(newVertIdx);
     handledVerticesSet.insert(cve-> vert);
 
     int idx = 0;
@@ -446,19 +443,11 @@ void splitVertexFromCVE( cutVertEntry*& cve,
             getBoundaryPrevVert(cve-> startCorner , cve-> seamType, cve-> seamIdInList,
                                 boundaryL[cve->patch][minusOneId], boundaryL[cve->patch][plusOneId],nextVertOnBoundary );
             cout<<" we should take the previous vert to get the right direction!"<<endl;
-//            for(auto it: cornerSet){
-//                cout<<it<<" corner"<<endl;
-//            }
         }
 
         Vector3d cutDirection = Vg.row(nextVertOnBoundary) - Vg.row(cve->vert); //cve-> continuedDirection;
         cout<<"next vert on boundary "<<nextVertOnBoundary<<" "<<cutDirection.transpose()<<endl;
 
-//        if (halfPatternVertToFullPatternVert.find(cve->vert) != halfPatternVertToFullPatternVert.end() ||
-//        (cornerSet.find(halfPatternVertToFullPatternVert[cve->vert]) != cornerSet.end() && cve->vert != cve-> cornerInitial)){
-//            cutDirection = (toLeft(0) == cutDirection(0) && toLeft(1) == cutDirection(1)) ? toRight : toLeft;
-//
-//        }
         VectorXd ws;
         vector<int> fn = vfAdj[cve->vert]; // the face neighbors
         bool tearIsUseful = false;
@@ -473,7 +462,6 @@ void splitVertexFromCVE( cutVertEntry*& cve,
             double actV = abs(dotv);
 
            double w = actU * uperFace.row(faceIdx).norm() + vperFace.row(faceIdx).norm() * actV;
-//            cout<<vperFace.row(faceIdx).norm()<<" theory"<<endl;
             cout<<w <<" = w, "<<actU<<" , "<<actV<< " contribution,  u norm "<<uperFace.row(faceIdx).norm()<<" ,v norm"<<vperFace.row(faceIdx).norm()<<", direction "<<cutDirection.transpose()<<endl;
             if(w > boundThereshold && (uperFace.row(faceIdx).norm()>1 || vperFace.row(faceIdx).norm()>1) ){
                 tearIsUseful= true;
@@ -502,7 +490,6 @@ void splitVertexFromCVE( cutVertEntry*& cve,
         }
         // this is the seam in which we make the decision to release,(!) not from this seam but from the subsequent
         releasedVert[cve->vert]= valPair;
-        cout<<cve->vert<<"released from seam "<<valPair.first<<" "<<valPair.second<<endl;
         // now we need to find the seam from which we release.
         // each corner is adjacent to two seams. If one is the one we make the decision from, then the other is the one from which it is released
 
@@ -538,7 +525,7 @@ void splitVertexFromCVE( cutVertEntry*& cve,
             cout<<endl<<endl<<"------------"<<endl<<endl<<"----------"<<endl<<endl;
         }
 
-        newVg.row(newVertIdx) = Vg.row(cve->vert);
+//        newVg.row(newVertIdx) = Vg.row(cve->vert);
 
         cve->continuedCorner = true;
         int searchVert= (halfPatternVertToFullPatternVert.find(cve->vert) == halfPatternVertToFullPatternVert.end()) ? (-1)*(cve->vert) : halfPatternVertToFullPatternVert[cve->vert];
@@ -546,8 +533,9 @@ void splitVertexFromCVE( cutVertEntry*& cve,
         int nextVertComp;
         getBoundaryNextVert(cve-> startCorner ,cve-> seamType, cve-> seamIdInList, boundary[minusOneId], boundary[ plusOneId], nextVertComp );
         cve->vert = nextVertComp;
-        Vg.resize(Vg.rows()+1, 3);
-        Vg= newVg;
+//        Vg.resize(Vg.rows()+1, 3);
+//        Vg= newVg;
+
         return;
 
     }
@@ -690,11 +678,15 @@ void splitVertexFromCVE( cutVertEntry*& cve,
         }
 
     }
+
     if(!tearIsUseful){
             cout<<"Not useful. STOP"<<endl;
             cve->finFlag = true;
             return;
     }
+    MatrixXd newVg (newVertIdx + 1, 3);
+    newVg.block(0,0, newVertIdx, 3)= Vg;
+    newVg.row(newVertIdx) = Vg.row(cve->vert);
 
     // todo no face found, maybe one is exactly on the intersection? might be! in that case we have to search again...
     if(intersectingFace == -1 || insertIdx ==-1){
@@ -742,15 +734,12 @@ void splitVertexFromCVE( cutVertEntry*& cve,
                                  Vg.row(Fg(intersectingFace, 2)), insertIdxInBary);
 
     newVg.row(insertIdx) = newPos;
-//    cout<<newPos.transpose()<<" new pos"<<endl;
 
     VectorXd updatedRestShapeVertPos = insertIdxInBary(0) * Vg_pattern_orig.row(Fg_pattern_orig(halfPatternFaceToFullPatternFace[intersectingFace], 0)) ;
     updatedRestShapeVertPos += insertIdxInBary(1) * Vg_pattern_orig.row(Fg_pattern_orig(halfPatternFaceToFullPatternFace[intersectingFace], 1)) ;
     updatedRestShapeVertPos += insertIdxInBary(2) * Vg_pattern_orig.row(Fg_pattern_orig(halfPatternFaceToFullPatternFace[intersectingFace], 2) );
     //  update all original edge lengths -> in main
-//    cout<<  Vg_pattern_orig.row(halfPatternVertToFullPatternVert[insertIdx])<<" before restshape "<<endl;
     Vg_pattern_orig.row(halfPatternVertToFullPatternVert[insertIdx]) = updatedRestShapeVertPos;
-//    cout<<  Vg_pattern_orig.row(halfPatternVertToFullPatternVert[insertIdx])<<" after restshape"<<endl;
 
     computeOrientationOfFaces(signsAfter, vfAdj[insertIdx], Fg, Vg);
     if(signsAfter != signs){
@@ -796,7 +785,7 @@ void splitVertexFromCVE( cutVertEntry*& cve,
 
         }
     }
-
+    handledVerticesSet.insert(newVertIdx);
     newVg.row(newVertIdx) = Vg.row(cve->vert);
 
     if(releasedVertNew.find(cve->vert) != releasedVertNew.end() ){
@@ -1960,6 +1949,7 @@ int tearFurther(vector<cutVertEntry*>& cutPositions, MatrixXd&  currPattern, Mat
 
     }
     cout<<prevFinished<<" --------------------"<<endl;
+    cout<<currPattern.rows()<<" in end  "<<endl;
 
     return returnPosition;
 }
@@ -2103,7 +2093,7 @@ int computeTear(bool inverseMap, Eigen::MatrixXd & fromPattern, MatrixXd&  currP
         splitVertexFromCVE(cutPositions[count], currPattern, Fg_pattern_curr, vfAdj, boundaryL, seamsList,
                            minusOneSeams, releasedVert, toPattern_boundaryVerticesSet,
                            cornerSet, handledVerticesSet, LShapeAllowed, fromPattern, mapFromFg, fullPatternVertToHalfPatternVert, halfPatternVertToFullPatternVert, halfPatternFaceToFullPatternFace);
-        cout<<"after split vert"<<endl;
+
         prevFinished = cutPositions[count] -> finFlag;
 
         if( releasedVertNew.find(currVert) != releasedVertNew.end()){
@@ -2115,7 +2105,6 @@ int computeTear(bool inverseMap, Eigen::MatrixXd & fromPattern, MatrixXd&  currP
                 parallel = openParallelPositionInvSym(cutPositions[count]-> cornerInitial, releasedVertNew[currVert][0], seamsList, cutPositions, fullPatternVertToHalfPatternVert, halfPatternVertToFullPatternVert);
 
             }else parallel = openParallelPosition(cutPositions[count]-> cornerInitial, releasedVertNew[currVert][0], seamsList, cutPositions, fullPatternVertToHalfPatternVert, halfPatternVertToFullPatternVert);
-            cout<<"after parallel finding"<<endl;
             if(parallel<0) {cout<<"no proper parallel found"<<endl;continue;}else{
                 cout<<endl<<"Working on parallel: "<<parallel<<endl<<endl;
             }
@@ -2129,7 +2118,7 @@ int computeTear(bool inverseMap, Eigen::MatrixXd & fromPattern, MatrixXd&  currP
         }
 
     }
-    cout<<"fin compute tear "<<prevFinished<<endl ;
+
     return returnPosition;
 }
 void updatePositionToIntersection(MatrixXd& p,int next, const MatrixXd& Vg_bound, bool shouldBeLeft){

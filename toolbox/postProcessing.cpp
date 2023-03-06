@@ -213,11 +213,26 @@ void startRetriangulation(vector<VectorXd>& polylineSelected, MatrixXd& V2, Matr
 }
 void duplicatePattern(MatrixXd& currPattern, MatrixXi& Fg_pattern_curr, MatrixXd& addedFabricPatternVg, MatrixXi& addedFabricPatternFg, MatrixXd& R_symetry, VectorXd& T_symetry){
 // create symmetric vertices and add them to matrix
+    cout<<" duplicating pattern "<<currPattern.rows()<<endl ;
+    R_symetry = MatrixXd::Identity(3, 3);
+    R_symetry(0, 0) = -1;
+    int translIdxNew = 0;
+    int translIdxOrig = 1356;
+    cout<<" duplicating vmm "<<endl ;
+
+
     MatrixXd temp = R_symetry * addedFabricPatternVg.transpose();
+    cout<<" duplicating bbv "<<endl ;
+
+    T_symetry = addedFabricPatternVg.row(translIdxOrig) - (temp.transpose()).row(translIdxNew);
+    cout<<" duplicating bv "<<endl ;
+
     temp = temp.colwise() + T_symetry;
     MatrixXd res = temp.transpose();
     MatrixXd doubleV(addedFabricPatternVg.rows() + res.rows(), 3);
     doubleV <<addedFabricPatternVg, res;
+    cout<<" duplicating v "<<endl ;
+
 // create syymmetric faces, attention change their normal by flipping two ids
     MatrixXi Fg_pattern_other = addedFabricPatternFg;
     Fg_pattern_other.col(1) = addedFabricPatternFg.col(2);
@@ -228,11 +243,14 @@ void duplicatePattern(MatrixXd& currPattern, MatrixXi& Fg_pattern_curr, MatrixXd
     Fg_pattern_other += offset;
     MatrixXi doubleF( addedFabricPatternFg.rows()+ Fg_pattern_other.rows(),3);
     doubleF<<addedFabricPatternFg, Fg_pattern_other;
+    cout<<" duplicating f "<<endl ;
 
     currPattern.resize(doubleV.rows(), 3);
     currPattern = doubleV;
     Fg_pattern_curr.resize(2*addedFabricPatternFg.rows(), 3);
     Fg_pattern_curr = doubleF;
+    cout<<" duplicating fin "<<currPattern.rows()<<endl ;
+    cout<<Fg_pattern_curr.row(0)<<" "<<Fg_pattern_curr.row(0+addedFabricPatternVg.rows());
 
 
 }
@@ -241,7 +259,7 @@ void backTo3Dmapping(MatrixXd& adaptedPattern, MatrixXi& adaptedPattern_faces, M
     //idea: we have with perfectPatternForThisShape the perfect pattern and also in 3d
     // since the adapted pattern is a subset of the perfect pattern, we can locate every vertex of adapted pattern in perfectPattern and apply it using barycentric coordinates in 3d
     // maybe we have to do some manual stitching later but that should be ok.
-    cout<<" back to 3d of garment "<<garment<<endl;
+    cout<<adaptedPattern.rows()<<" back to 3d of garment "<<garment<<endl;
 
     VectorXd S; VectorXi I;//face index of smallest distance
     MatrixXd C,N;
