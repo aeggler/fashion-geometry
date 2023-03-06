@@ -14,6 +14,7 @@
 using namespace std;
 using namespace Eigen;
 
+void vertex_componentsBasedOnFacet(MatrixXi& Fg_pattern, VectorXi& componentIdPerFace,VectorXi& componentIdPerVert, int n);
 void initCollMeshCall( MatrixXd& Vm_left, MatrixXi& Fm_left,
                        MatrixXd& Vm_right, MatrixXi& Fm_right);
 

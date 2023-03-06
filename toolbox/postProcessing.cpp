@@ -237,32 +237,72 @@ void duplicatePattern(MatrixXd& currPattern, MatrixXi& Fg_pattern_curr, MatrixXd
 
 }
 void backTo3Dmapping(MatrixXd& adaptedPattern, MatrixXi& adaptedPattern_faces, MatrixXd& perfectPattern, MatrixXi& perfectPattern_faces ,
-                     MatrixXd& perfectPatternIn3d, MatrixXi& perfectPatternIn3d_faces, MatrixXd& adaptedPatternIn3d){
+                     MatrixXd& perfectPatternIn3d, MatrixXi& perfectPatternIn3d_faces, MatrixXd& adaptedPatternIn3d,  MatrixXi& adaptedPatternIn3d_faces, bool symmetry, string garment ){
     //idea: we have with perfectPatternForThisShape the perfect pattern and also in 3d
     // since the adapted pattern is a subset of the perfect pattern, we can locate every vertex of adapted pattern in perfectPattern and apply it using barycentric coordinates in 3d
     // maybe we have to do some manual stitching later but that should be ok.
+    cout<<" back to 3d of garment "<<garment<<endl;
+
     VectorXd S; VectorXi I;//face index of smallest distance
     MatrixXd C,N;
     Eigen::VectorXi componentIdPerVert;int sizeVert2 = adaptedPattern.rows()/2;
     igl::vertex_components(adaptedPattern_faces, componentIdPerVert);
+    VectorXd comps,compsR, compsP,compsRP ;
+    int translIdxOrig, translIdxNew;
 
-    for(int i= 0; i<adaptedPattern.rows(); i++){
-        if(componentIdPerVert(i) == 1 || componentIdPerVert(i) == 3){
-            adaptedPattern(i, 0) += 100;
-        }else if (componentIdPerVert(i) == componentIdPerVert(sizeVert2 +839)|| componentIdPerVert(i) == componentIdPerVert(sizeVert2 +1493)){
-            adaptedPattern(i, 0)  -= 100;
+    bool pullApart = false;
+    if(garment == "leggins" ){
+        pullApart = true;
+        if(!symmetry){
+            compsR.resize(2);
+            compsR(0) = componentIdPerVert(sizeVert2 +839);
+            compsR(1) = componentIdPerVert(sizeVert2 +1493);
+            compsRP.resize(2);
+            compsRP(0) = 3;
+            compsRP(1) = 6;
+
         }
+        translIdxNew = 0;
+        translIdxOrig = 1356;
+        comps.resize(2);
+        comps(0) = 1;
+        comps(1) = 3;
+        compsP.resize(2);
+        compsP(0) = 1;
+        compsP(1) = 5;
     }
+    cout<<"Do we need to translate the patches before we can to signed distance? "<<pullApart<<endl;
+    if(pullApart){
+        for(int i= 0; i<adaptedPattern.rows(); i++){
+            if(componentIdPerVert(i) == comps(0) || componentIdPerVert(i) == comps(1)){
+                adaptedPattern(i, 0) += 100;
+            }
+            if(!symmetry){
+                if (componentIdPerVert(i) == compsR(0)|| componentIdPerVert(i) == compsR(1)){
+                    adaptedPattern(i, 0)  -= 100;
+                }
+            }
+
+        }
+
+        Eigen::VectorXi componentIdPerVertP;
+        igl::vertex_components(perfectPattern_faces, componentIdPerVertP);
+        for(int i =0; i< perfectPattern.rows(); i++){
+            if(componentIdPerVertP(i) == compsP(0) || componentIdPerVertP(i) == compsP(1)){
+                perfectPattern(i, 0) += 100;
+            }
+            if(!symmetry){
+                if (componentIdPerVertP(i) == compsRP(0) || componentIdPerVertP(i) == compsRP(0)){
+                    perfectPattern(i, 0) -= 100;
+                }
+            }
+
+        }
+
+    }
+
     // 1,5 und 3,6 für links
-    Eigen::VectorXi componentIdPerVertP;
-    igl::vertex_components(perfectPattern_faces, componentIdPerVertP);
-    for(int i =0; i< perfectPattern.rows(); i++){
-        if(componentIdPerVertP(i) == 1 || componentIdPerVertP(i) == 5){
-            perfectPattern(i, 0) += 100;
-        }else if (componentIdPerVertP(i) == 3 || componentIdPerVertP(i) == 6){
-            perfectPattern(i, 0) -= 100;
-        }
-    }
+
     igl::signed_distance(adaptedPattern, perfectPattern, perfectPattern_faces, igl::SIGNED_DISTANCE_TYPE_UNSIGNED, S, I, C, N);
     int ppf = perfectPattern_faces.rows();
     MatrixXd B(adaptedPattern.rows(), 3); // contains all barycentric coordinates
@@ -276,6 +316,39 @@ void backTo3Dmapping(MatrixXd& adaptedPattern, MatrixXi& adaptedPattern_faces, M
         B.row(i) = bary.row(0);
     }
     igl::barycentric_interpolation(perfectPatternIn3d, perfectPatternIn3d_faces, B, I, adaptedPatternIn3d);
+
+    if(symmetry){
+        // we have to duplicate it !
+        MatrixXd dupl3D = adaptedPatternIn3d;
+        MatrixXd R_symetry = MatrixXd::Identity(3, 3);
+        R_symetry(0, 0) = -1;
+        dupl3D = (R_symetry * dupl3D.transpose()).transpose();
+
+//        //test
+//        adaptedPatternIn3d = dupl3D;
+//        adaptedPatternIn3d_faces = adaptedPattern_faces;
+//        //end test
+        VectorXd T_symetry = perfectPatternIn3d.row(798) - dupl3D.row(839);
+        dupl3D.rowwise() += T_symetry.transpose();
+
+        MatrixXi duplFace = adaptedPattern_faces;
+        MatrixXi offset(duplFace.rows(), duplFace.cols());
+        offset.setConstant( dupl3D.rows());
+        duplFace += offset;
+        VectorXi tempCol = duplFace.col(1);
+        duplFace.col(1)= duplFace.col(2);
+        duplFace.col(2) = tempCol;
+
+        adaptedPatternIn3d_faces.resize(2*adaptedPattern_faces.rows(), 3);
+        adaptedPatternIn3d_faces<<adaptedPattern_faces, duplFace;
+        auto temp = adaptedPatternIn3d;
+        adaptedPatternIn3d.resize(2*offset.rows(), 3);
+        adaptedPatternIn3d<< temp, dupl3D;
+
+
+    }else{
+        adaptedPatternIn3d_faces = adaptedPattern_faces;
+    }
 }
 
 bool vertOnEdge(const VectorXd& R, const VectorXd& Q, VectorXd& p,int v, int v1){
@@ -629,13 +702,13 @@ void computeAllBetweensNew(vector<VectorXd>& polylineSelected,vector<int>& polyl
                 idx0 = i;
                 patchFrom = j;
 
-            }else if(boundaryToSearch[j][i] == polylineIndex[1]){
+            } if(boundaryToSearch[j][i] == polylineIndex[1]){
                 cout<<i<<"found vertex 1 "<<polylineIndex[1]<<" on patch "<<j<<endl;
                 idx1 = i;
-            }else if(boundaryToSearch[j][i] == polylineIndex[4]){
+            } if(boundaryToSearch[j][i] == polylineIndex[4]){
                 cout<<i<<"found vertex 4 "<<polylineIndex[4]<<" on patch "<<j<<endl;
                 idx4 = i;
-            }else if(boundaryToSearch[j][i] == polylineIndex[5]){
+            } if(boundaryToSearch[j][i] == polylineIndex[5]){
                 cout<<i<<"found vertex 5 "<<polylineIndex[5]<<" on patch "<<j<<endl;
                 idx5 = i;
             }
@@ -839,15 +912,16 @@ void replaceInFaces(int id, int newId, MatrixXi& Fg){
         }
     }
 }
+int patchCount = 0;
 void mergeTriagulatedAndPattern(const vector<vector<int>>& connectedVertVec, const vector<int>& patchId,const vector<bool>& isAscVec,
-                           MatrixXd& Vg_retri, MatrixXi& Fg_retri, MatrixXd& currPattern, MatrixXi& Fg_pattern, vector<int> & newFaces){
+                           MatrixXd& Vg_retri, MatrixXi& Fg_retri, MatrixXd& currPattern, MatrixXi& Fg_pattern, vector<int> & newFaces, string avName, string garment){
     currPattern.col(2).setConstant(200);
     vector<vector<int>> boundaryLinsert, boundaryLGar;
     igl::boundary_loop(Fg_retri, boundaryLinsert);
     igl::boundary_loop(Fg_pattern, boundaryLGar);
     VectorXi mergedIds(Vg_retri.rows());
     mergedIds.setConstant(-1);
-    igl::writeOBJ("retriPatch.obj", Vg_retri, Fg_retri);
+    igl::writeOBJ("retriPatch_"+ to_string(patchCount) +".obj", Vg_retri, Fg_retri); patchCount++;
     // insertion on each pattern individually
     for(int i=0; i<isAscVec.size(); i++){
         int vertId = connectedVertVec[i][0];
@@ -959,6 +1033,9 @@ void mergeTriagulatedAndPattern(const vector<vector<int>>& connectedVertVec, con
     int faceOffset = Fg_pattern.rows();
     MatrixXi Fg_new (faceOffset+ Fg_retri.rows(), 3);
     MatrixXd currPattern_new (offset + count, 3);
+    for(int i= faceOffset; i<currPattern_new.rows(); i++){
+        newFaces.push_back(i);
+    }
     Fg_new.block(0,0,Fg_pattern.rows(), 3 ) = Fg_pattern;
     Fg_new.block(faceOffset, 0, Fg_retri.rows(), 3) = Fg_retri;
     currPattern_new.block(0,0,currPattern.rows(), 3 ) = currPattern;
@@ -968,6 +1045,12 @@ void mergeTriagulatedAndPattern(const vector<vector<int>>& connectedVertVec, con
     currPattern.resize(currPattern_new.rows(), 3); currPattern = currPattern_new;
     for(int i= faceOffset; i<Fg_pattern.rows(); i++){
         newFaces.push_back(i);
+    }
+
+    ofstream out("newFacesAfterPatch_"+avName+"_"+garment+"_"+ to_string(patchCount-1) +".txt");
+    int size = newFaces.size(); out<<size<<" ";
+    for(auto it: newFaces){
+        out<<it<<" ";
     }
 }
 

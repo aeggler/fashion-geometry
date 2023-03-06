@@ -31,7 +31,15 @@ MatrixXd Cleft, Cright, Nleft, Nright;
 VectorXd Sleft, Sright;
 igl::AABB<Eigen::MatrixXd, 3> col_treeLeft, col_treeRight;
 VectorXi closestFaceIdLeft, closestFaceIdright;
+void vertex_componentsBasedOnFacet(MatrixXi& Fg_pattern, VectorXi& componentIdPerFace,VectorXi& componentIdPerVert, int n){
+    componentIdPerVert.resize(n);
+    for(int i=0; i<Fg_pattern.rows(); i++){
+        for(int j=0; j<3; j++){
+            componentIdPerVert(Fg_pattern(i,j)) = componentIdPerFace(i);
+        }
+    }
 
+}
 
 void initCollMeshCall( MatrixXd& Vm_left, MatrixXi& Fm_left,
                       MatrixXd& Vm_right, MatrixXi& Fm_right){

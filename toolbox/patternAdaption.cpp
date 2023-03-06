@@ -691,6 +691,7 @@ void splitVertexFromCVE( cutVertEntry*& cve,
 
     }
     if(!tearIsUseful){
+            cout<<"Not useful. STOP"<<endl;
             cve->finFlag = true;
             return;
     }
@@ -912,14 +913,11 @@ int openParallelPositionInvSym(int& cornerInitial, int& seamType, vector<seam*>&
 //        cout<<" partner not found, we have a huge problem in opening the parallel positions "<<seamType<<endl;
         return -1;
     }
-    cout<<currSeam->getStart1()<<" "<<currSeam->getEndCornerIds().first<<"; "<< currSeam->getStart2()<<" "<<currSeam->getEndCornerIds().second<<endl;
-    cout<<searchedVert<<" searched vert for corner initial "<<cornerInitial ;
     if(fullPatternVertToHalfPatternVert.find(searchedVert) == fullPatternVertToHalfPatternVert.end() ){
         cout<<" parallell is on other half. Not here. "<<endl;
         return -1;
     }
     searchedVert = fullPatternVertToHalfPatternVert[searchedVert];
-    cout<<" updated to "<<searchedVert;
 
 //    int size =  cornerToSeams[searchedVert].size();
 //    if( size != 2) {
@@ -1915,7 +1913,7 @@ int tearFurther(vector<cutVertEntry*>& cutPositions, MatrixXd&  currPattern, Mat
 //
         }else{
 //
-            cout<<endl<< cutPositions[count]->vert<<" vertex up next from seam  "<<cutPositions[count]->seamType<<" "<<cutPositions[count]->seamIdInList<<" the stress here is "<<cutPositions[count]->stress<<endl;
+            cout<<endl<<endl << cutPositions[count]->vert<<" vertex up next from seam  "<<cutPositions[count]->seamType<<" "<<cutPositions[count]->seamIdInList<<" the stress here is "<<cutPositions[count]->stress<<endl;
             returnPosition = cutPositions[count] ->vert;
             splitVertexFromCVE(cutPositions[count], currPattern, Fg_pattern, vfAdj, boundaryL, seamsList, minusOneSeams, releasedVert,
                                    toPattern_boundaryVerticesSet, cornerSet, handledVerticesSet, LShapeAllowed, Vg_pattern_orig, Fg_pattern_orig,
