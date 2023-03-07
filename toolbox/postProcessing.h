@@ -37,7 +37,7 @@ void createHalfAvatarMap(MatrixXd& testMorph_V1, MatrixXi& testMorph_F1,
                          map<int, int>& leftHalfToFullFaceMap,  map<int, int>& rightHalfToFullFaceMap);
 
 void initialGuessAdaption(MatrixXd& currPattern, MatrixXd& mapToVg, MatrixXd& perfectPattern,  MatrixXi& Fg_pattern_curr, MatrixXi& mapToFg, bool symetry,
-                          set<int> & cornerSet, map<int, int >& mapCornerToCorner, int origHalfSize, map<int, int>& halfPatternVertToFullPatternVertT);
+                          set<int> & cornerSet, map<int, int >& mapCornerToCorner, int origHalfSize, map<int, int>& halfPatternVertToFullPatternVertT, string garment);
 void initialGuessAdaptionWithoutT(MatrixXd& currPattern, MatrixXd& mapToVg, MatrixXd& perfectPattern,  MatrixXi& Fg_pattern_curr, MatrixXi& mapToFg, MatrixXi pPFg);
 void ensureAngle(MatrixXd& currPattern, MatrixXd& toPattern, MatrixXi& Fg_pattern, MatrixXi& fromPatternFg);
 void ensurePairwiseDist(MatrixXd& currPattern, MatrixXd& toPattern, MatrixXi& Fg_pattern);

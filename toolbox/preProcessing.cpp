@@ -15,6 +15,7 @@
 #include<Eigen/SparseCholesky>
 #include "constraint_utils.h"
 #include <igl/writeOBJ.h>
+#include <igl/vertex_components.h>
 
 using namespace std;
 using namespace Eigen;
@@ -281,10 +282,234 @@ void createHalfSewingPattern(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, M
 
 
 }
+void insertPlane(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg_pattern){
+    // we insert a plane along the x=0 axis, add vertices and introduce new faces
+    // this ensures we can split the garment safely in the pre processing
+    // we do the same for the pattern and duplicate x=0 vertices -> to make sure the patch is acutally disconnected and we can take only the half patch for symetry
+    map<double, std::pair<int, int>> yToFaceAndIdx;
+    int vgsize = Vg_pattern.rows();
+    for(int i=0; i<Fg.rows(); i++){
+        bool hasLeft = false;
+        bool hasRight = false;
+        Vector3i LR;
+        for (int j=0; j<3; j++){
+            double x = Vg(Fg(i, j), 0);
+            if(x==0) {
+                continue;
+            }
+            if(x<0){
+                hasLeft = true;
+                LR(j)= 1;
+            }else{
+                hasRight = true;
+                LR(j) = 0;
+            }
+        }
+        if(hasLeft && hasRight){
+            cout<<i<<" is in the middle"<<endl;
+            int otherSide=0;
 
-void preProcessGarment(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg_pattern, bool insertPlane, int symVert1, int symVert2 ,VectorXd& T_sym){
-    if(insertPlane){
+            if(LR.sum()==1){
+                // search for the single left
+                while(LR(otherSide) != 1){
+                    otherSide++;
+                }
+            }else{
+                while(LR(otherSide) != 0){
+                    otherSide++;
+                }
+            }
+            // otherSide is (one of the two) index that has cuts on both sides!
+            int v1 = Fg(i, otherSide);
+            int v2 = Fg(i, (otherSide+1) % 3 );
+            int v3 = Fg(i, (otherSide+2) % 3 );
+            VectorXd edge2 = Vg.row(v2) - Vg.row(v1);
+            VectorXd edge3 = Vg.row(v3) - Vg.row(v1);
+            double t2 = -Vg(v1,0) / edge2(0);
+            double t3 = -Vg(v1,0) / edge3(0);
+            VectorXd newPos1 = Vg.row(v1) + t2 * edge2.transpose();
+            newPos1(0)= 0;
+            VectorXd newPos2 = Vg.row(v1) + t3 * edge3.transpose();
+            newPos2(0) = 0;
+
+            int idx1 , idx2; int fac1, idfac1, fac2, idfac2;
+            bool new1= false; bool new2 = false;
+
+            if(yToFaceAndIdx.find(newPos1(1)) == yToFaceAndIdx.end()){
+                yToFaceAndIdx[newPos1(1)] = std::make_pair(i, (otherSide+1) % 3 );
+
+                int vgrow =  Vg.rows();
+                MatrixXd Vgnew( vgrow + 1, 3);
+                Vgnew.block(0,0,vgrow, 3) = Vg;
+                Vgnew.row(vgrow ) = newPos1;
+                Vg.resize(vgrow+1, 3);
+                Vg = Vgnew;
+                idx1 = vgrow; new1= true;
+            }else{
+                fac1 = yToFaceAndIdx[newPos1(1)].first;
+                idfac1 = yToFaceAndIdx[newPos1(1)].second;
+
+                idx1 =Fg (fac1, idfac1 );
+
+            }
+            if(yToFaceAndIdx.find(newPos2(1)) == yToFaceAndIdx.end()){
+                yToFaceAndIdx[newPos2(1)] = std::make_pair(i, (otherSide+2) % 3 );
+
+                int vgrow =  Vg.rows();
+                MatrixXd Vgnew( vgrow + 1, 3);
+                Vgnew.block(0,0,vgrow, 3) = Vg;
+                Vgnew.row(vgrow ) = newPos2;
+                Vg.resize(vgrow+1, 3);
+                Vg = Vgnew;
+                idx2 = vgrow;
+                new2= true;
+            }else{
+                fac2 = yToFaceAndIdx[newPos2(1)].first;
+                idfac2 = yToFaceAndIdx[newPos2(1)].second;
+                idx2 =Fg ( fac2, idfac2 );
+//                cout<<"found at idx "<<idx2<<endl;
+
+            }
+
+            int fgrow = Fg.rows();
+            MatrixXi Fgnew (fgrow+2, 3);
+            Fgnew.block(0,0,fgrow, 3) = Fg;
+
+            Fgnew(i, (otherSide+1) % 3 ) = idx1;
+            Fgnew(i, (otherSide+2) % 3 ) = idx2;
+            Fgnew(fgrow, 0) = v2;
+            Fgnew(fgrow, 1) = v3;
+            Fgnew(fgrow, 2) = idx1;
+            Fgnew(fgrow + 1, 0) = idx1;
+            Fgnew(fgrow + 1, 1) = v3;
+            Fgnew(fgrow + 1, 2) = idx2;
+            Fg.resize(Fgnew.rows(), 3);
+            Fg= Fgnew;
+
+            // now change the pattern too!
+            MatrixXd bary, bary2;
+            MatrixXd input (1, 3);
+            input.row(0) = newPos1;
+
+            igl::barycentric_coordinates(input, Vg.row(v1), Vg.row(v2), Vg.row(v3), bary);
+            newPos1 = bary(0,0) * Vg_pattern.row(Fg_pattern(i, otherSide))+
+                    bary(0,1) * Vg_pattern.row(Fg_pattern(i, (otherSide+1) % 3 ))+
+                    bary(0,2) * Vg_pattern.row(Fg_pattern(i, (otherSide+2) % 3 )) ;
+
+            input.row(0) = newPos2;
+            igl::barycentric_coordinates(input, Vg.row(v1), Vg.row(v2), Vg.row(v3), bary2);
+
+            newPos2 = bary2(0,0) * Vg_pattern.row(Fg_pattern(i, otherSide))+
+                      bary2(0,1) * Vg_pattern.row(Fg_pattern(i, (otherSide+1) % 3 ))+
+                      bary2(0,2) * Vg_pattern.row(Fg_pattern(i, (otherSide+2) % 3 )) ;
+
+            if(new1){
+                int vgrow =  Vg_pattern.rows();
+                MatrixXd Vgnew( vgrow + 2, 3);
+                Vgnew.block(0,0,vgrow, 3) = Vg_pattern;
+
+                Vgnew.row(vgrow ) = newPos1;
+                Vgnew.row(vgrow+1 ) = newPos1;
+                Vg_pattern.resize(vgrow+2, 3);
+                Vg_pattern = Vgnew;
+                idx1 = vgrow;
+            }
+
+            if(new2){
+                int vgrow =  Vg_pattern.rows();
+                MatrixXd Vgnew( vgrow + 2, 3);
+                Vgnew.block(0,0,vgrow, 3) = Vg_pattern;
+                Vgnew.row(vgrow ) = newPos2;
+                Vgnew.row(vgrow +1) = newPos2;
+
+                Vg_pattern.resize(vgrow + 2, 3);
+                Vg_pattern = Vgnew;
+                idx2 = vgrow;
+            }
+
+
+            fgrow = Fg_pattern.rows();
+            Fgnew.resize (fgrow+2, 3);
+            Fgnew.block(0,0,fgrow, 3) = Fg_pattern;
+            if (!new1)  idx1 = Fg_pattern(fac1, idfac1);
+            if (!new2)  idx2 = Fg_pattern(fac2, idfac2);
+
+            Fgnew(i, (otherSide+1) % 3 ) = idx1;   // if(LR.sum()==1)   Fgnew(i, (otherSide+1) % 3 )++;
+            Fgnew(i, (otherSide+2) % 3 ) = idx2; //   if(LR.sum()==1)   Fgnew(i, (otherSide+2) % 3 )++;
+
+            Fgnew(fgrow, 0) = Fg_pattern(i, (otherSide + 1) % 3 );
+            Fgnew(fgrow, 1) = Fg_pattern(i, (otherSide + 2) % 3 );
+            Fgnew(fgrow, 2) = idx1;           //      if(LR.sum()==2 && new1) Fgnew(fgrow, 2)= idx1+1;
+////
+            Fgnew(fgrow + 1, 0) = idx1;          //   if(LR.sum()==2) Fgnew(fgrow +1 , 0)++;
+            Fgnew(fgrow + 1, 1) = Fg_pattern(i, (otherSide + 2) % 3 );
+            Fgnew(fgrow + 1, 2) = idx2;           //  if(LR.sum()==2) Fgnew(fgrow +1 , 2)++;
+
+            Fg_pattern.resize(Fgnew.rows(), 3);
+            Fg_pattern= Fgnew;
+
+
+
+        }
+    }
+
+    igl::writeOBJ("dress_3d.obj", Vg, Fg);
+    igl::writeOBJ("dress_2d.obj", Vg_pattern, Fg_pattern);
+    int added = Vg_pattern.rows()- vgsize;
+    int vgnewsize = Vg_pattern.rows();
+    MatrixXd Vgp (Vg_pattern.rows()+ added, 3);
+    Vgp.block(0,0,vgnewsize, 3) = Vg_pattern;
+    Vgp.block(vgnewsize, 0, added, 3) = Vg_pattern.block(vgsize, 0, added, 3);
+    cout<<"continue"<<endl;
+    // we duplicate the new vertices to split them
+    for (int i=0; i<Fg_pattern.rows(); i++){
+        for(int j=0; j<3; j++){
+            cout<<i<<" j"<<j<<" " <<Fg_pattern(i,j)<<endl;
+            if(Fg_pattern(i,j)>= vgsize){
+
+                int other = (j+1)%3; if(i== 553){
+                    cout<< " other "<<other <<endl;
+                }
+                if(i== 553){
+                    cout<<Fg.rows()<< " rows "<<endl;
+                    cout<<Fg(i, other)<< " element "<<endl;
+                    cout<< Vg.row(Fg(i, other))<< endl;
+
+                }
+                while(Vg(Fg(i, other), 0) == 0){
+                    other++;
+                    other %= 3;
+                    cout<<"update "<<other<<endl;
+                }// find one that is not 0
+                if(i== 553){
+                    cout<< " other "<<endl;
+                }
+                bool isLeft = false;
+                if(Vg(Fg(i, other), 0)<0){
+                    isLeft= true;
+                    if(i== 553){
+                        cout<< " left "<<endl;
+                    }
+                }
+                if(i== 553){
+                    cout<< " before "<<endl;
+                }
+                if(isLeft){
+                    Fg_pattern(i,j) +=added;
+                }
+                if(i== 553){
+                    cout<< " fin "<<endl;
+                }
+            }
+        }
+    }
+    igl::writeOBJ("dress_2d_dupl.obj", Vgp, Fg_pattern);
+}
+void preProcessGarment(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg_pattern, bool insPlane, int symVert1, int symVert2 ,VectorXd& T_sym){
+    if(insPlane){
         // do the split first
+        insertPlane(Vg, Fg, Vg_pattern, Fg_pattern);
+
     }
     VectorXd leftFaces = VectorXd::Zero(Fg.rows());
     VectorXd leftVert = VectorXd::Zero(Vg.rows());
@@ -351,6 +576,17 @@ void preProcessGarment(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixX
             count++;
         }
     }
+    if(newVg_pattern.rows() == 691){// risky tweak for shirt
+        VectorXi componentIdPerVert;
+        igl::vertex_components(newFg_pattern, componentIdPerVert);
+        for(int i=0; i<newVg_pattern.rows(); i++){
+            if(componentIdPerVert(i) == 1){
+                newVg_pattern(i,0) -= 50;
+                newVg_pattern(i,1) -= 50;
+            }
+        }
+    }
+
     igl::writeOBJ("leftGarment.obj", newVg, newFg );
     igl::writeOBJ("leftPattern.obj", newVg_pattern, newFg_pattern);
     // finished the split, now duplicate to make it one again
@@ -415,6 +651,7 @@ void preProcessGarment(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixX
     VgDupl_pattern = (rot*newVg_pattern.transpose()).transpose();
 
     T_sym = Vg_pattern.row(symVert1 ) - VgDupl_pattern.row(symVert2);
+
     VgDupl_pattern.rowwise() += T_sym.transpose();
     offset = newVg_pattern.rows();
     MatrixXi offsetM(FgDupl_pattern.rows(), FgDupl_pattern.cols()); offsetM.setConstant(offset);
@@ -430,230 +667,7 @@ void preProcessGarment(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixX
     Fg_pattern.resize(fullFg_pattern.rows(), 3);  Fg_pattern = fullFg_pattern;
 
 
-//    map<double, std::pair<int, int>> yToFaceAndIdx;
-//    int vgsize = Vg_pattern.rows();
-//    for(int i=0; i<Fg.rows(); i++){
-//        bool hasLeft = false;
-//        bool hasRight = false;
-//        Vector3i LR;
-//        for (int j=0; j<3; j++){
-//            double x = Vg(Fg(i, j), 0);
-//            if(x==0) {
-//                continue;
-//            }
-//            if(x<0){
-//                hasLeft = true;
-//                LR(j)= 1;
-//            }else{
-//                hasRight = true;
-//                LR(j) = 0;
-//            }
-//        }
-//        if(hasLeft && hasRight){
-//            cout<<i<<" is in the middle"<<endl;
-//            int otherSide=0;
 //
-//            if(LR.sum()==1){
-//                // search for the single left
-//                while(LR(otherSide) != 1){
-//                    otherSide++;
-//                }
-//            }else{
-//                while(LR(otherSide) != 0){
-//                    otherSide++;
-//                }
-//            }
-//            // otherSide is the index that has cuts on both sideds!
-//            int v1 = Fg(i, otherSide);
-//            int v2 = Fg(i, (otherSide+1) % 3 );
-//            int v3 = Fg(i, (otherSide+2) % 3 );
-//            VectorXd edge2 = Vg.row(v2) - Vg.row(v1);
-//            VectorXd edge3 = Vg.row(v3) - Vg.row(v1);
-//            double t2 = -Vg(v1,0) / edge2(0);
-//            double t3 = -Vg(v1,0) / edge3(0);
-//            VectorXd newPos1 = Vg.row(v1) + t2 * edge2.transpose();
-//            newPos1(0)= 0;
-//            VectorXd newPos2 = Vg.row(v1) + t3 * edge3.transpose();
-//            newPos2(0) = 0;
-//
-//            int idx1 , idx2; int fac1, idfac1, fac2, idfac2;
-//            bool new1= false; bool new2 = false;
-//            if(i==1132){
-//                cout<<newPos1(1)<<" "<<(yToFaceAndIdx.find(newPos1(1)) == yToFaceAndIdx.end())<<" ad vert "<<Vg(1804,1)<< " "<<(newPos1(1) == Vg(1804,1))<<endl;
-//                fac1= 457;
-//                idfac1 = 0;
-//                idx1= 1804;
-//            }else
-//            if(yToFaceAndIdx.find(newPos1(1)) == yToFaceAndIdx.end()){
-//                yToFaceAndIdx[newPos1(1)] = std::make_pair(i, (otherSide+1) % 3 );
-//
-//                int vgrow =  Vg.rows();
-//                MatrixXd Vgnew( vgrow + 1, 3);
-//                Vgnew.block(0,0,vgrow, 3) = Vg;
-//                Vgnew.row(vgrow ) = newPos1;
-//                Vg.resize(vgrow+1, 3);
-//                Vg = Vgnew;
-//                idx1 = vgrow; new1= true;
-//            }else{
-//                fac1 = yToFaceAndIdx[newPos1(1)].first;
-//                idfac1 = yToFaceAndIdx[newPos1(1)].second;
-//
-//                idx1 =Fg (fac1, idfac1 );
-////                cout<<"found at idx "<<idx1<<endl;
-//
-//            }
-//            if(yToFaceAndIdx.find(newPos2(1)) == yToFaceAndIdx.end()){
-//                yToFaceAndIdx[newPos2(1)] = std::make_pair(i, (otherSide+2) % 3 );
-//
-//                int vgrow =  Vg.rows();
-//                MatrixXd Vgnew( vgrow + 1, 3);
-//                Vgnew.block(0,0,vgrow, 3) = Vg;
-//                Vgnew.row(vgrow ) = newPos2;
-//                Vg.resize(vgrow+1, 3);
-//                Vg = Vgnew;
-//                idx2 = vgrow;
-//                new2= true;
-//            }else{
-//                fac2 = yToFaceAndIdx[newPos2(1)].first;
-//                idfac2 = yToFaceAndIdx[newPos2(1)].second;
-//                idx2 =Fg ( fac2, idfac2 );
-////                cout<<"found at idx "<<idx2<<endl;
-//
-//            }
-//
-//            int fgrow = Fg.rows();
-//            MatrixXi Fgnew (fgrow+2, 3);
-//            Fgnew.block(0,0,fgrow, 3) = Fg;
-//
-//            Fgnew(i, (otherSide+1) % 3 ) = idx1;
-//            Fgnew(i, (otherSide+2) % 3 ) = idx2;
-//            Fgnew(fgrow, 0) = v2;
-//            Fgnew(fgrow, 1) = v3;
-//            Fgnew(fgrow, 2) = idx1;
-//            Fgnew(fgrow + 1, 0) = idx1;
-//            Fgnew(fgrow + 1, 1) = v3;
-//            Fgnew(fgrow + 1, 2) = idx2;
-//            Fg.resize(Fgnew.rows(), 3);
-//            Fg= Fgnew;
-//
-//            // now change the pattern too!
-//            MatrixXd bary, bary2;
-//            MatrixXd input (1, 3);
-//            input.row(0) = newPos1;
-//
-//            igl::barycentric_coordinates(input, Vg.row(v1), Vg.row(v2), Vg.row(v3), bary);
-//            newPos1 = bary(0,0) * Vg_pattern.row(Fg_pattern(i, otherSide))+
-//                    bary(0,1) * Vg_pattern.row(Fg_pattern(i, (otherSide+1) % 3 ))+
-//                    bary(0,2) * Vg_pattern.row(Fg_pattern(i, (otherSide+2) % 3 )) ;
-//
-//            input.row(0) = newPos2;
-//            igl::barycentric_coordinates(input, Vg.row(v1), Vg.row(v2), Vg.row(v3), bary2);
-//
-//            newPos2 = bary2(0,0) * Vg_pattern.row(Fg_pattern(i, otherSide))+
-//                      bary2(0,1) * Vg_pattern.row(Fg_pattern(i, (otherSide+1) % 3 ))+
-//                      bary2(0,2) * Vg_pattern.row(Fg_pattern(i, (otherSide+2) % 3 )) ;
-//
-//            if(new1){
-//                int vgrow =  Vg_pattern.rows();
-//                MatrixXd Vgnew( vgrow + 2, 3);
-//                Vgnew.block(0,0,vgrow, 3) = Vg_pattern;
-//
-//                Vgnew.row(vgrow ) = newPos1;
-//                Vgnew.row(vgrow+1 ) = newPos1;
-//                Vg_pattern.resize(vgrow+2, 3);
-//                Vg_pattern = Vgnew;
-//                idx1 = vgrow;
-//            }
-//
-//            if(new2){
-//                int vgrow =  Vg_pattern.rows();
-//                MatrixXd Vgnew( vgrow + 2, 3);
-//                Vgnew.block(0,0,vgrow, 3) = Vg_pattern;
-//                Vgnew.row(vgrow ) = newPos2;
-//                Vgnew.row(vgrow +1) = newPos2;
-//
-//                Vg_pattern.resize(vgrow + 2, 3);
-//                Vg_pattern = Vgnew;
-//                idx2 = vgrow;
-//            }
-//
-//
-//            fgrow = Fg_pattern.rows();
-//            Fgnew.resize (fgrow+2, 3);
-//            Fgnew.block(0,0,fgrow, 3) = Fg_pattern;
-//            if (!new1)  idx1 = Fg_pattern(fac1, idfac1);
-//            if (!new2)  idx2 = Fg_pattern(fac2, idfac2);
-//
-//            Fgnew(i, (otherSide+1) % 3 ) = idx1;   // if(LR.sum()==1)   Fgnew(i, (otherSide+1) % 3 )++;
-//            Fgnew(i, (otherSide+2) % 3 ) = idx2; //   if(LR.sum()==1)   Fgnew(i, (otherSide+2) % 3 )++;
-//
-//            Fgnew(fgrow, 0) = Fg_pattern(i, (otherSide + 1) % 3 );
-//            Fgnew(fgrow, 1) = Fg_pattern(i, (otherSide + 2) % 3 );
-//            Fgnew(fgrow, 2) = idx1;           //      if(LR.sum()==2 && new1) Fgnew(fgrow, 2)= idx1+1;
-//////
-//            Fgnew(fgrow + 1, 0) = idx1;          //   if(LR.sum()==2) Fgnew(fgrow +1 , 0)++;
-//            Fgnew(fgrow + 1, 1) = Fg_pattern(i, (otherSide + 2) % 3 );
-//            Fgnew(fgrow + 1, 2) = idx2;           //  if(LR.sum()==2) Fgnew(fgrow +1 , 2)++;
-//
-//            Fg_pattern.resize(Fgnew.rows(), 3);
-//            Fg_pattern= Fgnew;
-//
-//
-//
-//        }
-//    }
-//
-//    igl::writeOBJ("dress_3d.obj", Vg, Fg);
-//    igl::writeOBJ("dress_2d.obj", Vg_pattern, Fg_pattern);
-//    int added = Vg_pattern.rows()- vgsize;
-//    int vgnewsize = Vg_pattern.rows();
-//    MatrixXd Vgp (Vg_pattern.rows()+ added, 3);
-//    Vgp.block(0,0,vgnewsize, 3) = Vg_pattern;
-//    Vgp.block(vgnewsize, 0, added, 3) = Vg_pattern.block(vgsize, 0, added, 3);
-//    cout<<"continue"<<endl;
-//    // we duplicate the new vertices to split them
-//    for (int i=0; i<Fg_pattern.rows(); i++){
-//        for(int j=0; j<3; j++){
-//            cout<<i<<" j"<<j<<" " <<Fg_pattern(i,j)<<endl;
-//            if(Fg_pattern(i,j)>= vgsize){
-//
-//                int other = (j+1)%3; if(i== 553){
-//                    cout<< " other "<<other <<endl;
-//                }
-//                if(i== 553){
-//                    cout<<Fg.rows()<< " rows "<<endl;
-//                    cout<<Fg(i, other)<< " element "<<endl;
-//                    cout<< Vg.row(Fg(i, other))<< endl;
-//
-//                }
-//                while(Vg(Fg(i, other), 0) == 0){
-//                    other++;
-//                    other %= 3;
-//                    cout<<"update "<<other<<endl;
-//                }// find one that is not 0
-//                if(i== 553){
-//                    cout<< " other "<<endl;
-//                }
-//                bool isLeft = false;
-//                if(Vg(Fg(i, other), 0)<0){
-//                    isLeft= true;
-//                    if(i== 553){
-//                        cout<< " left "<<endl;
-//                    }
-//                }
-//                if(i== 553){
-//                    cout<< " before "<<endl;
-//                }
-//                if(isLeft){
-//                    Fg_pattern(i,j) +=added;
-//                }
-//                if(i== 553){
-//                    cout<< " fin "<<endl;
-//                }
-//            }
-//        }
-//    }
-//    igl::writeOBJ("dress_2d_dupl.obj", Vgp, Fg_pattern);
 
 
 }

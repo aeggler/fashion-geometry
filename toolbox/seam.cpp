@@ -154,21 +154,22 @@ void push_to_Map(int whichKindOfSeam, int& idx, int& startId,int& startIdOther, 
 void computeAllSeams(const std::vector<std::vector<int> >& boundaryL, std::map<int,int>& vertexMapPattToGar, std::map<std::pair<int, int>,int>& vertexMapGarAndIdToPatch,
                      std::vector<std::vector<int> >& vfAdj, Eigen::VectorXi& componentIdPerFace, Eigen::VectorXi& componentIdPerVert,
                      Eigen::VectorXd& cornerVertices, std::vector<std::vector<std::pair<int, int>>>& vertAndLoopIdxPerCornerPerBoundary, std::vector<seam*>& seamsList, std::vector<minusOneSeam*>& minusSeams,
-                     map<int, vector<pair<int, int>>>& seamIdPerCorner
+                     map<int, vector<pair<int, int>>>& seamIdPerCorner, string garment
                      ){
 
     // we would like a seam to seam mapping where a seam is defined by its two endpoints
     Eigen::VectorXi isBoundaryVertexVec= Eigen::VectorXi::Zero(componentIdPerVert.rows());
     set<int> additionalCorners;
+    if(garment == "top"){
+        additionalCorners.insert(958);
+        additionalCorners.insert( 726);
+        additionalCorners.insert( 354);
+        additionalCorners.insert( 267);
+        additionalCorners.insert( 35);
+        additionalCorners.insert( 1045);
+    }
 
-    cout<<componentIdPerFace(1925)<<" and component of "<<componentIdPerFace(1905)<< componentIdPerFace(3111)<<endl;
-    cout<<componentIdPerVert(1029)<<" "<<componentIdPerVert(1104)<<endl;
-//    additionalCorners.insert(958);
-//    additionalCorners.insert( 726);
-//    additionalCorners.insert( 615);
-//    additionalCorners.insert( 388);
-//    additionalCorners.insert( 13);
-//    additionalCorners.insert( 1045);
+//
     for(int i=0; i< boundaryL.size(); i++){
         for(int j=0; j < boundaryL[i].size(); j++){
             isBoundaryVertexVec(boundaryL[i][j]) = 1;

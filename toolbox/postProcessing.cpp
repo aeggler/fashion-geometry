@@ -364,34 +364,35 @@ bool vertOnEdge(const VectorXd& R, const VectorXd& Q, VectorXd& p,int v, int v1)
     auto Qp = Q-p;
 //    cout<<"v= "<<v<<endl;
     VectorXd diff = (Qp).normalized() - (QR).normalized();
-//    if((v==2967 && v1 ==2968) ||(v==2968 && v1 ==2967) ){
-//        cout<<diff.transpose()<<" diff"<<endl;
-//        double tt = (p-R)(0)/(QR)(0);
-//        double t2 =  (p-R)(1)/(QR)(1);
-//        cout<<tt<<" = t=  "<<t2<<", and makes "<<endl<<(R+tt*(Q-R)).transpose()<<endl<<(R+t2*(Q-R)).transpose()<<endl<<p.transpose()<<" =? "<<endl;
-//    }
+    if((v==282 && v1 ==283) ||(v==283 && v1 ==282) ){
+        cout<<diff.transpose()<<" diff"<<endl;
+        double tt = (p-R)(0)/(QR)(0);
+        double t2 =  (p-R)(1)/(QR)(1);
+        cout<<tt<<" = t=  "<<t2<<", and makes "<<endl<<(R+tt*(Q-R)).transpose()<<endl<<(R+t2*(Q-R)).transpose()<<endl<<p.transpose()<<" =? "<<endl;
+    }
     if (abs(diff(0))+abs(diff(1)) >eps) return false;
 
     double t = (p-R)(0)/(QR)(0);
     double tt=  (p-R)(1)/(QR)(1);
 // numerically instable as quite often the x or y corrdinate is the same... compute both and take better choice
-    double finalT;
+    double finalT = t;
     if (0 > t || t > 1 ) {// t does not work anyways ,try with tt
-        finalT =tt;
-    }
-    if (0> finalT || finalT>1 ) return false;
-    // both are possible, choose the better
-    if( ((R+t*(QR))-p).norm()< ((R+tt*(QR))-p).norm())
+        finalT =tt; if((v==282 && v1 ==283) ||(v==283 && v1 ==282) )cout<<" t is illegal";
+    }else if (0> tt || tt>1 )  {
+        finalT =t; if((v==282 && v1 ==283) ||(v==283 && v1 ==282) )cout<<" tt is illegal";
+    }else if( ((R+t*(QR))-p).norm()< ((R+tt*(QR))-p).norm())
     {
-        finalT = t;
+        finalT = t; if((v==282 && v1 ==283) ||(v==283 && v1 ==282) ) cout<<"use t "<<t<<endl;
     }else{
-        finalT = tt;
+        finalT = tt;  if((v==282 && v1 ==283) ||(v==283 && v1 ==282) ) cout<<"use tt "<<tt<<endl;
     }
     VectorXd posdiff = R+finalT*(Q-R) - p;
-    cout<<"diff from real pos " << abs(posdiff(0)) + abs(posdiff(1)) <<endl;
-//    if(v==1556|| v==1557){
-//        cout<<posdiff.transpose()<<" posdiff"<<endl;
-//    }
+    cout<<finalT <<"diff from real pos " << abs(posdiff(0)) + abs(posdiff(1)) <<endl;
+    if((v==282 && v1 ==283) ||(v==283 && v1 ==282) ){
+        cout<<posdiff.transpose()<<" posdiff"<<endl;
+
+    }
+
     return (abs(posdiff(0)) + abs(posdiff(1)) < 1);
 
 
@@ -583,6 +584,7 @@ void computeAllBetweensNew(vector<VectorXd>& polylineSelected,vector<int>& polyl
                            MatrixXd& currPattern, MatrixXd& Vg_to, vector<VectorXd>& polyLineInput, vector<vector<int>>& connectedVertVec, vector<int>& patchId, vector<bool>& isAscVec) {
     polyLineInput.clear();
     connectedVertVec.clear();
+    Vg_to.col(2).setConstant(200);
     cout<<endl<<"Seam Size "<<polylineSelected.size()<<endl<<endl;
     if(polylineSelected.size() == 12){
         computeAllBetweensConnectPatches(polylineSelected, polylineIndex, polyLineMeshIndicator,
@@ -1168,7 +1170,7 @@ void createHalfAvatarMap(MatrixXd& testMorph_V1, MatrixXi& testMorph_F1,
 }
 
 void initialGuessAdaption(MatrixXd& currPattern_nt, MatrixXd& mapToVg_nt, MatrixXd& perfectPattern_nt,  MatrixXi& Fg_pattern_curr, MatrixXi& mapToFg, bool symetry,
-                          set<int> & cornerSet, map<int, int >& mapCornerToCorner, int origHalfSize, map<int, int>& halfPatternVertToFullPatternVertT){
+                          set<int> & cornerSet, map<int, int >& mapCornerToCorner, int origHalfSize, map<int, int>& halfPatternVertToFullPatternVertT, string garment){
 //perfect pattern is the initial perfect pattern for the new shape, and curr is the existing adapted to the perfect, thus is has more faces and its own Fg
 // note that mapToVg was the one we started with, and it has face correspondence with perfect pattern, therefore they both use mapToFg
     cout<<"start init guess"<<endl ;
@@ -1178,15 +1180,16 @@ void initialGuessAdaption(MatrixXd& currPattern_nt, MatrixXd& mapToVg_nt, Matrix
     MatrixXd currPattern = currPattern_nt;
 
     vector<int> right, left, rightFull, leftFull;
-    rightFull.push_back(1); rightFull.push_back(5);
-    leftFull.push_back(3); leftFull.push_back(6);
-    if(!symetry){
-        right = rightFull;
-        left = leftFull;
-    }else{
-        right.push_back(1); right.push_back(3); // maybe switched!!
-        left.push_back(100); left.push_back(3000);
+    if(garment == "leggins"){
+        rightFull.push_back(1); rightFull.push_back(3);
+        leftFull.push_back(6); leftFull.push_back(8);
+    }else if (garment =="top" ){
+        rightFull.push_back(9); rightFull.push_back(9);// none
+        leftFull.push_back(1); leftFull.push_back(3);
     }
+
+    right = rightFull;
+    left = leftFull;
 
     for(int i=0; i < currPattern_nt.rows(); i++){
         if(componentIdPerVert_curr(i)== right[0] ||componentIdPerVert_curr(i)== right[1]){

@@ -87,7 +87,10 @@ int computeTear(bool inverseMap,
                  double& setTheresholdlMid,
                  double& setTheresholdBound,
                  map<int, int> & fullPatternVertToHalfPatternVert, map<int, int>& halfPatternVertToFullPatternVert,
-                 map<int, int> & halfPatternFaceToFullPatternFace, bool& symetry );
+                 map<int, int> & halfPatternFaceToFullPatternFace,
+                 bool& symetry,
+                 map<int>& tipVert
+                 );
 
 
 

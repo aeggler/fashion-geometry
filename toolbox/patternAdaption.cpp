@@ -21,6 +21,7 @@ using namespace std;
 using namespace Eigen;
 
 MatrixXd lengthsOrig;
+map<int> tipVertices;
 map<int, cutVertEntry *> cveStartPositionsSet;
 set<int> cutThroughCornerVertices;
 double boundThereshold ;
@@ -434,7 +435,7 @@ void splitVertexFromCVE( cutVertEntry*& cve,
         int nextVertOnBoundary;
         getBoundaryNextVert(cve-> startCorner , cve-> seamType, cve-> seamIdInList,
                             boundaryL[cve->patch][minusOneId], boundaryL[cve->patch][plusOneId],nextVertOnBoundary );
-
+        bool endcorner = false;
         if(cve->vert!= cve->cornerInitial &&
         (cornerSet.find(cve->vert) != cornerSet.end()||
         cornerSet.find((-1)*cve->vert) != cornerSet.end()||
@@ -442,7 +443,7 @@ void splitVertexFromCVE( cutVertEntry*& cve,
         ){
             getBoundaryPrevVert(cve-> startCorner , cve-> seamType, cve-> seamIdInList,
                                 boundaryL[cve->patch][minusOneId], boundaryL[cve->patch][plusOneId],nextVertOnBoundary );
-            cout<<" we should take the previous vert to get the right direction!"<<endl;
+            cout<<" we should take the previous vert to get the right direction!"<<endl;endcorner = true;
         }
 
         Vector3d cutDirection = Vg.row(nextVertOnBoundary) - Vg.row(cve->vert); //cve-> continuedDirection;
@@ -462,6 +463,22 @@ void splitVertexFromCVE( cutVertEntry*& cve,
             double actV = abs(dotv);
 
            double w = actU * uperFace.row(faceIdx).norm() + vperFace.row(faceIdx).norm() * actV;
+           if(faceIdx == 322)cout<<endcorner<<" endcorner? "<<endl;
+           if(endcorner){
+               int fidx;
+               if(Fg(faceIdx, 0)==cve->vert){ fidx = 0; }
+               else if(Fg(faceIdx, 1)==cve->vert){ fidx = 1; }
+               else if(Fg(faceIdx, 2)==cve->vert){ fidx = 2; }
+                else cout<<"CRITICAL NOT FOUND "<<endl;
+                if(handledVerticesSet.find(Fg(faceIdx, (fidx+2) % 3)) == handledVerticesSet.end()&&
+                        handledVerticesSet.find(Fg(faceIdx, (fidx+1) % 3)) == handledVerticesSet.end()
+                ){
+                    w/= 1.15; // weight them less if it is a final boudnary
+                    cout<<"reduce weight!"<<endl;
+                }
+
+
+           }
             cout<<w <<" = w, "<<actU<<" , "<<actV<< " contribution,  u norm "<<uperFace.row(faceIdx).norm()<<" ,v norm"<<vperFace.row(faceIdx).norm()<<", direction "<<cutDirection.transpose()<<endl;
             if(w > boundThereshold && (uperFace.row(faceIdx).norm()>1 || vperFace.row(faceIdx).norm()>1) ){
                 tearIsUseful= true;
@@ -469,7 +486,7 @@ void splitVertexFromCVE( cutVertEntry*& cve,
            /*END TEST IF USEFUL*/
        }
 
-        if(!tearIsUseful){
+        if(!tearIsUseful|| tipVertices.find(cve->vert) != tipVertices.end()){
             cout<<"STOP now because of adj face stress condition  "<<endl;
 
             cve->finFlag = true;
@@ -539,7 +556,6 @@ void splitVertexFromCVE( cutVertEntry*& cve,
         return;
 
     }
-//todo enforce 90* more to make it more rigid!!
 
     Vector3d midVec;
     double lenMidVec;
@@ -548,7 +564,6 @@ void splitVertexFromCVE( cutVertEntry*& cve,
     computeMidVecBasedOnStress(stressMidVec, vfAdj, Vg, Vg_pattern_orig, Fg, Fg_pattern_orig, cve->vert, lenMidVec, halfPatternVertToFullPatternVert, fullPatternVertToHalfPatternVert, halfPatternFaceToFullPatternFace );
 
     midVec = (-1) * stressMidVec; // newMidVec;
-    // todo sketchy, for whatever reason it breaks without this. does it do the transposing?
     cout<<" stress midvec "<<midVec.transpose()<<endl;//<<stressMidVec.transpose()
 
     Vector3d cutDirection = midVec;
@@ -1963,8 +1978,9 @@ int computeTear(bool inverseMap, Eigen::MatrixXd & fromPattern, MatrixXd&  currP
                  bool& prioOuter, double tailor_lazyness, const MatrixXi& mapFromFg, double& setTheresholdlMid, double& setTheresholdBound,
                  map<int, int> & fullPatternVertToHalfPatternVert, map<int, int>& halfPatternVertToFullPatternVert,
                  map<int, int> & halfPatternFaceToFullPatternFace,
-                 bool& symetry )
+                 bool& symetry  ,map<int>& tipVert )
                  {
+    tipVertices = tipVert;
      inverseMapping = inverseMap;
      sym = symetry;
     middleThereshold = setTheresholdlMid;
