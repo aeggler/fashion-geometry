@@ -893,7 +893,7 @@ int main(int argc, char *argv[])
 
                 bool fin = false;
                 auto copyPattern = mapFromVg;
-                map<int> tipVert; 
+                set<int> tipVert;
                 if(garment == "top"){
                     tipVert.insert(958);
                     tipVert.insert( 726);

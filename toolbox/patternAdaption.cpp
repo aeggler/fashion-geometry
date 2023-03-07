@@ -21,7 +21,7 @@ using namespace std;
 using namespace Eigen;
 
 MatrixXd lengthsOrig;
-map<int> tipVertices;
+set<int> tipVertices;
 map<int, cutVertEntry *> cveStartPositionsSet;
 set<int> cutThroughCornerVertices;
 double boundThereshold ;
@@ -1978,7 +1978,7 @@ int computeTear(bool inverseMap, Eigen::MatrixXd & fromPattern, MatrixXd&  currP
                  bool& prioOuter, double tailor_lazyness, const MatrixXi& mapFromFg, double& setTheresholdlMid, double& setTheresholdBound,
                  map<int, int> & fullPatternVertToHalfPatternVert, map<int, int>& halfPatternVertToFullPatternVert,
                  map<int, int> & halfPatternFaceToFullPatternFace,
-                 bool& symetry  ,map<int>& tipVert )
+                 bool& symetry  , set<int>& tipVert )
                  {
     tipVertices = tipVert;
      inverseMapping = inverseMap;
