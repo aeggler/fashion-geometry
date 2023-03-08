@@ -276,12 +276,12 @@ int main(int argc, char *argv[])
 
     string prefix = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/";
 //    garment = "leggins";
-    garment = "top";
+//    garment = "top";
 //    string garment_file_name = prefix+ "leggins/leggins_3d/leggins_3d_merged.obj"; //smaller collision thereshold to make sure it is not "eaten" after intial step , 3.5 instead of 4.5
-//    garment = "dress";
-//   string garmentExt = garment +"_4";
+    garment = "dress";
+   string garmentExt = garment +"_4";
 //    garment = "skirt";
-    string garmentExt = garment+ "_1";
+//    string garmentExt = garment+ "_1";
 
 //    string garmentExt = garment+ "_2";
     string garment_file_name = prefix + "moreGarments/"+ garmentExt+"/"+garment+"_3d.obj";
@@ -310,6 +310,9 @@ int main(int argc, char *argv[])
             insertPlane = false;
             symVert1 = 353;// from orig
             symVert2 = 0;//from dupl
+        }else if(garment == "top"){
+            symVert1 = 2525;
+            symVert2 = 2525;
         }
         preProcessGarment(Vg, Fg, Vg_pattern, Fg_pattern, insertPlane, symVert1, symVert2, T_sym_pattern);
     }

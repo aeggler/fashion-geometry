@@ -448,8 +448,6 @@ void insertPlane(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg_
             Fg_pattern.resize(Fgnew.rows(), 3);
             Fg_pattern= Fgnew;
 
-
-
         }
     }
 
@@ -504,6 +502,8 @@ void insertPlane(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg_
         }
     }
     igl::writeOBJ("dress_2d_dupl.obj", Vgp, Fg_pattern);
+    Vg_pattern.resize(Vgp.rows(), Vgp.cols()); Vg_pattern = Vgp;
+
 }
 void preProcessGarment(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg_pattern, bool insPlane, int symVert1, int symVert2 ,VectorXd& T_sym){
     if(insPlane){

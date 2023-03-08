@@ -364,12 +364,12 @@ bool vertOnEdge(const VectorXd& R, const VectorXd& Q, VectorXd& p,int v, int v1)
     auto Qp = Q-p;
 //    cout<<"v= "<<v<<endl;
     VectorXd diff = (Qp).normalized() - (QR).normalized();
-    if((v==282 && v1 ==283) ||(v==283 && v1 ==282) ){
-        cout<<diff.transpose()<<" diff"<<endl;
-        double tt = (p-R)(0)/(QR)(0);
-        double t2 =  (p-R)(1)/(QR)(1);
-        cout<<tt<<" = t=  "<<t2<<", and makes "<<endl<<(R+tt*(Q-R)).transpose()<<endl<<(R+t2*(Q-R)).transpose()<<endl<<p.transpose()<<" =? "<<endl;
-    }
+//    if((v==282 && v1 ==283) ||(v==283 && v1 ==282) ){
+//        cout<<diff.transpose()<<" diff"<<endl;
+//        double tt = (p-R)(0)/(QR)(0);
+//        double t2 =  (p-R)(1)/(QR)(1);
+//        cout<<tt<<" = t=  "<<t2<<", and makes "<<endl<<(R+tt*(Q-R)).transpose()<<endl<<(R+t2*(Q-R)).transpose()<<endl<<p.transpose()<<" =? "<<endl;
+//    }
     if (abs(diff(0))+abs(diff(1)) >eps) return false;
 
     double t = (p-R)(0)/(QR)(0);
@@ -921,7 +921,7 @@ void replaceInFaces(int id, int newId, MatrixXi& Fg){
         }
     }
 }
-int patchCount = 0;
+int patchCount = 0; vector<int> faceSizes;
 void mergeTriagulatedAndPattern(const vector<vector<int>>& connectedVertVec, const vector<int>& patchId,const vector<bool>& isAscVec,
                            MatrixXd& Vg_retri, MatrixXi& Fg_retri, MatrixXd& currPattern, MatrixXi& Fg_pattern, vector<int> & newFaces, string avName, string garment){
     currPattern.col(2).setConstant(200);
@@ -953,6 +953,8 @@ void mergeTriagulatedAndPattern(const vector<vector<int>>& connectedVertVec, con
         }
 
         mergedIds(boundaryIns[insertIdx])= boundary[garIdx];
+        for(auto it : boundaryIns) cout<<it<<" ";
+        cout<<"merge "<<boundaryIns[insertIdx]<< " and "<< boundary[garIdx]<<endl;
 
         int currVertIdGar = boundary[garIdx];
         int currVertIdInsert = boundaryIns[insertIdx];
@@ -972,8 +974,9 @@ void mergeTriagulatedAndPattern(const vector<vector<int>>& connectedVertVec, con
                 nextVertIdInserted = boundaryIns[(insertIdx + j) % patchSizeIns];
 
             }
-            if((Vg_retri.row(nextVertIdInserted) - currPattern.row(nextVertId )).norm() >0.0001){
-                cout<<" We have to insert a vertex "<<endl ;
+            if((Vg_retri.row(nextVertIdInserted) - currPattern.row(nextVertId )).norm() >0.01){
+                if(currVertIdGar > 800)return;
+                cout<<nextVertIdInserted<<" We have to insert a vertex "<<currVertIdGar<<" "<<nextVertId<<endl ;
                 vector<vector<int>> vfAdj;
                 createVertexFaceAdjacencyList(Fg_pattern, vfAdj);
                 int faceToDupl = adjacentFaceToEdge(nextVertId,currVertIdGar, -1, vfAdj);
@@ -982,6 +985,7 @@ void mergeTriagulatedAndPattern(const vector<vector<int>>& connectedVertVec, con
                 Fg_new.block(0,0,Fg_pattern.rows(), 3 ) = Fg_pattern;
                 Fg_new.row(Fg_pattern.rows()) = Fg_pattern.row(faceToDupl);
                 currPattern_new.block(0,0,currPattern.rows(), 3 ) = currPattern;
+                cout<<faceToDupl<<" face tp dupl with new vert "<<Vg_retri.row(nextVertIdInserted)  <<endl;
                 currPattern_new.row(currPattern.rows()) = Vg_retri.row(nextVertIdInserted);
 
                 if(Fg_new(Fg_pattern.rows(), 0) == nextVertId){
@@ -989,6 +993,7 @@ void mergeTriagulatedAndPattern(const vector<vector<int>>& connectedVertVec, con
                 }else if(Fg_new(Fg_pattern.rows(), 1) == nextVertId ){
                     Fg_new(Fg_pattern.rows(), 1) = currPattern.rows();
                 }else{
+                    if(Fg_new(Fg_pattern.rows(), 2) != nextVertId )cout<<"NOT FOUND"<<endl;
                     Fg_new(Fg_pattern.rows(), 2) = currPattern.rows();
                 }
                 if(Fg_new(faceToDupl, 0) == currVertIdGar ){
@@ -996,6 +1001,7 @@ void mergeTriagulatedAndPattern(const vector<vector<int>>& connectedVertVec, con
                 }else if(Fg_new(Fg_pattern.rows(), 1) == currVertIdGar ){
                     Fg_new(faceToDupl, 1) = currPattern.rows();
                 }else{
+                    if(Fg_new(Fg_pattern.rows(), 2) == currVertIdGar )cout<<"NOT FOUND duple"<<endl;
                     Fg_new(faceToDupl, 2) = currPattern.rows();
                 }
 
@@ -1052,15 +1058,23 @@ void mergeTriagulatedAndPattern(const vector<vector<int>>& connectedVertVec, con
 
     Fg_pattern.resize(Fg_new.rows(), 3); Fg_pattern = Fg_new;
     currPattern.resize(currPattern_new.rows(), 3); currPattern = currPattern_new;
+    int countFace =0;
     for(int i= faceOffset; i<Fg_pattern.rows(); i++){
-        newFaces.push_back(i);
+        newFaces.push_back(i); countFace++;
+    }
+    faceSizes.push_back(countFace);
+    ofstream out("newFacesAfterPatch_"+avName+"_"+garment+"_"+ to_string(patchCount-1) +".txt");
+    int size = newFaces.size(); int globC=0;
+    out<<patchCount<<" ";
+    for(int i=0; i<faceSizes.size(); i++){
+        out<< faceSizes[i] <<" ";
+        for(int j=0; j<faceSizes[i]; j++){
+            out<< newFaces[globC] <<" ";
+            globC++;
+        }
     }
 
-    ofstream out("newFacesAfterPatch_"+avName+"_"+garment+"_"+ to_string(patchCount-1) +".txt");
-    int size = newFaces.size(); out<<size<<" ";
-    for(auto it: newFaces){
-        out<<it<<" ";
-    }
+
 }
 
 vector<int> toVecInt(VectorXi& v){

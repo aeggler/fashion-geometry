@@ -318,6 +318,25 @@ void findCorrectSeamAndAddToDuplicates(vector<seam*>& seamsList, vector<minusOne
     cout<<"No seam found on which we could locate "<<vertIdx<<endl;
 
 }
+void checkIfCutIsUsefulForAdjFace(bool& tearIsUseful,  vector<vector<int> >& vfAdj,cutVertEntry*& cve,
+                                  Vector3d& cutDirection, MatrixXi& Fg, set<int>& handledVerticesSet ,bool isBound ){
+    for(auto faceIdx : vfAdj[cve->vert]){
+        auto cd = cutDirection.normalized();
+        cd(0)= -cutDirection.normalized()(1);
+        cd(1)= cutDirection.normalized()(0);
+
+        auto dot = uperFace.row(faceIdx).normalized().transpose().dot( cd);
+        double actU = abs(dot);
+        auto dotv = vperFace.row(faceIdx).normalized().transpose().dot( cd);
+        double actV = abs(dotv);
+
+        double w = actU * uperFace.row(faceIdx).norm() + vperFace.row(faceIdx).norm() * actV;
+        cout<<w <<" = w, "<<actU<<" , "<<actV<< " contribution,  u norm "<<uperFace.row(faceIdx).norm()<<" ,v norm"<<vperFace.row(faceIdx).norm()<<", direction "<<cutDirection.transpose()<<endl;
+        if(w > boundThereshold && (uperFace.row(faceIdx).norm()>1.05 || vperFace.row(faceIdx).norm()>1.05) ){
+            tearIsUseful= true;
+        }
+    }
+}
 
 void splitVertexFromCVE( cutVertEntry*& cve,
                          MatrixXd& Vg, // this is the current pattern we modify
@@ -443,7 +462,8 @@ void splitVertexFromCVE( cutVertEntry*& cve,
         ){
             getBoundaryPrevVert(cve-> startCorner , cve-> seamType, cve-> seamIdInList,
                                 boundaryL[cve->patch][minusOneId], boundaryL[cve->patch][plusOneId],nextVertOnBoundary );
-            cout<<" we should take the previous vert to get the right direction!"<<endl;endcorner = true;
+            cout<<" we should take the previous vert to get the right direction!"<<endl;
+            endcorner = true;
         }
 
         Vector3d cutDirection = Vg.row(nextVertOnBoundary) - Vg.row(cve->vert); //cve-> continuedDirection;
@@ -452,39 +472,7 @@ void splitVertexFromCVE( cutVertEntry*& cve,
         VectorXd ws;
         vector<int> fn = vfAdj[cve->vert]; // the face neighbors
         bool tearIsUseful = false;
-        for(auto faceIdx : vfAdj[cve->vert]){
-            auto cd = cutDirection.normalized();
-            cd(0)= -cutDirection.normalized()(1);
-            cd(1)= cutDirection.normalized()(0);
-
-            auto dot = uperFace.row(faceIdx).normalized().transpose().dot( cd);
-            double actU = abs(dot);
-            auto dotv = vperFace.row(faceIdx).normalized().transpose().dot( cd);
-            double actV = abs(dotv);
-
-           double w = actU * uperFace.row(faceIdx).norm() + vperFace.row(faceIdx).norm() * actV;
-           if(faceIdx == 322)cout<<endcorner<<" endcorner? "<<endl;
-           if(endcorner){
-               int fidx;
-               if(Fg(faceIdx, 0)==cve->vert){ fidx = 0; }
-               else if(Fg(faceIdx, 1)==cve->vert){ fidx = 1; }
-               else if(Fg(faceIdx, 2)==cve->vert){ fidx = 2; }
-                else cout<<"CRITICAL NOT FOUND "<<endl;
-                if(handledVerticesSet.find(Fg(faceIdx, (fidx+2) % 3)) == handledVerticesSet.end()&&
-                        handledVerticesSet.find(Fg(faceIdx, (fidx+1) % 3)) == handledVerticesSet.end()
-                ){
-                    w/= 1.15; // weight them less if it is a final boudnary
-                    cout<<"reduce weight!"<<endl;
-                }
-
-
-           }
-            cout<<w <<" = w, "<<actU<<" , "<<actV<< " contribution,  u norm "<<uperFace.row(faceIdx).norm()<<" ,v norm"<<vperFace.row(faceIdx).norm()<<", direction "<<cutDirection.transpose()<<endl;
-            if(w > boundThereshold && (uperFace.row(faceIdx).norm()>1 || vperFace.row(faceIdx).norm()>1) ){
-                tearIsUseful= true;
-            }
-           /*END TEST IF USEFUL*/
-       }
+        checkIfCutIsUsefulForAdjFace(tearIsUseful, vfAdj, cve, cutDirection, Fg, handledVerticesSet, true );
 
         if(!tearIsUseful|| tipVertices.find(cve->vert) != tipVertices.end()){
             cout<<"STOP now because of adj face stress condition  "<<endl;
