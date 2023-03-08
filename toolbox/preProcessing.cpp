@@ -657,8 +657,10 @@ void preProcessGarment(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixX
     MatrixXi offsetM(FgDupl_pattern.rows(), FgDupl_pattern.cols()); offsetM.setConstant(offset);
     FgDupl_pattern+= offsetM;
 
-    MatrixXi fullFg_pattern (FgDupl_pattern.rows() * 2, 3); fullFg_pattern << newFg_pattern, FgDupl_pattern;
-    MatrixXd fullVg_pattern(newVg_pattern.rows() * 2, 3); fullVg_pattern << newVg_pattern, VgDupl_pattern;
+    MatrixXi fullFg_pattern (FgDupl_pattern.rows() * 2, 3);
+    fullFg_pattern << newFg_pattern, FgDupl_pattern;
+    MatrixXd fullVg_pattern(newVg_pattern.rows() * 2, 3);
+    fullVg_pattern << newVg_pattern, VgDupl_pattern;
     igl::writeOBJ("fullPattern.obj", fullVg_pattern, fullFg_pattern);
 
     Vg.resize(fullVg.rows(), 3);  Vg = fullVg;

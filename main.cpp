@@ -311,8 +311,8 @@ int main(int argc, char *argv[])
             symVert1 = 353;// from orig
             symVert2 = 0;//from dupl
         }else if(garment == "top"){
-            symVert1 = 2525;
-            symVert2 = 2525;
+            symVert1 = 2097;
+            symVert2 = 1034;
         }
         preProcessGarment(Vg, Fg, Vg_pattern, Fg_pattern, insertPlane, symVert1, symVert2, T_sym_pattern);
     }
