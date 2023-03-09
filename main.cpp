@@ -276,12 +276,12 @@ int main(int argc, char *argv[])
 
     string prefix = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/";
 //    garment = "leggins";
-//    garment = "top";
+    garment = "top";
 //    string garment_file_name = prefix+ "leggins/leggins_3d/leggins_3d_merged.obj"; //smaller collision thereshold to make sure it is not "eaten" after intial step , 3.5 instead of 4.5
-    garment = "dress";
-   string garmentExt = garment +"_4";
+//    garment = "dress";
+//   string garmentExt = garment +"_4";
 //    garment = "skirt";
-//    string garmentExt = garment+ "_1";
+    string garmentExt = garment+ "_1";
 
 //    string garmentExt = garment+ "_2";
     string garment_file_name = prefix + "moreGarments/"+ garmentExt+"/"+garment+"_3d.obj";
@@ -1357,7 +1357,7 @@ int main(int argc, char *argv[])
         if (ImGui::CollapsingHeader("Inverse direction", ImGuiTreeNodeFlags_OpenOnArrow)) {
 
             if(ImGui::Button("Map back ", ImVec2(-1, 0))){
-                string modifiedPattern  = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/finished_retri_writtenPattern_avatar_maternity_01_OC_leggins.obj";
+                string modifiedPattern  = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/finished_retri_writtenPattern_"+ avName +"_"+ garment +".obj";
                MatrixXd addedFabricPatternVg; MatrixXi addedFabricPatternFg;
                 igl::readOBJ(modifiedPattern, addedFabricPatternVg, addedFabricPatternFg);
 
@@ -1394,32 +1394,44 @@ int main(int argc, char *argv[])
                 MatrixXd adaptedPatternIn3d;
                 MatrixXi adaptedPatternIn3d_faces;
                 cout<< newFaces.size()<<"new faces size"<<endl;
+                int size; vector<vector<int>> perFaceNewFaces;
 
-                if(newFaces.size() ==0){
-                    cout<<"reading new faces from file"<<endl;
-                    if(garment == "leggins")patchcount = 5;
+                cout<<"reading new faces from file"<<endl;
+                if(garment == "leggins"|| "top") patchcount = 5;
 
-                    string filename = "newFacesAfterPatch_"+avName+"_"+garment+"_"+ to_string(patchcount) +".txt";
-                    ifstream in("/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/" + filename);
-                    int size ; in>>size;
-                    cout<<size<<" new files"<<endl;
-                    for(int i=0; i<size; i++ ){
+                string filename = "newFacesAfterPatch_"+avName+"_"+garment+"_"+ to_string(patchcount) +".txt";
+//                     filename  = "newFacesAfterPatch_"+avName+"_"+garment+"_final" +".txt";
+                ifstream in("/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/" + filename);
+                in>>size;
+                for(int i=0; i<size; i++ ){
+                    int faceSize; in>>faceSize;
+                    vector<int> currF;
+                    for(int j=0;j<faceSize; j++){
                         int newFace;
                         in>>newFace;
-                        newFaces.push_back(newFace);
+                        currF.push_back(newFace);
                     }
+                    perFaceNewFaces.push_back(currF);
                 }
+
                 igl::readOBJ(startFile+"_"+avName+"_"+garment+"_backIn3d.obj", adaptedPatternIn3d, adaptedPatternIn3d_faces);
                 MatrixXd C = MatrixXd::Zero(adaptedPatternIn3d_faces.rows(), 3);
                 C.col(1).setConstant(1);
                 C.col(0).setConstant(1);
                 int offset = C.rows()/2;
-                for(auto i: newFaces){
-                    C(i, 0) =0;
-                    if(symetry){
-                        C(i+offset, 0) =0;
+                for(int i=0; i<size; i++){
+                    for(int j=0; j<perFaceNewFaces[i].size(); j++){
+                        double val = (((double)i)/((double)(size+1)));
+                        C(perFaceNewFaces[i][j], 0) = val;
+                        C(perFaceNewFaces[i][j], 2) = (1-val);
+                        if(symetry){
+                            C(perFaceNewFaces[i][j]+offset, 0) = val;
+                            C(perFaceNewFaces[i][j]+offset, 2) = (1-val);
+                        }
+
                     }
                 }
+
                 viewer.selected_data_index = 0;
                 viewer.data().clear();
                 viewer.data().show_lines = false;

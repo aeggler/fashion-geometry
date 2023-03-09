@@ -324,20 +324,29 @@ void backTo3Dmapping(MatrixXd& adaptedPattern, MatrixXi& adaptedPattern_faces, M
     igl::writeOBJ("lhs.obj" ,adaptedPatternIn3d, adaptedPattern_faces);
 
     if(symmetry){
-
+        cout<<" sym 1 "<<endl;
         VectorXi faceOffset( I.rows());
         faceOffset.setConstant(perfectPatternIn3d_faces.rows()/2);
+        cout<<" sym 2 "<<endl;
         I += faceOffset;
+
         VectorXd btemp = B.col(1);
         B.col(1) = B.col(2);
         B.col(2)= btemp;
+        cout<<" sym 3 "<<endl;
+
         MatrixXd adaptedPatternIn3dRight ;
         igl::barycentric_interpolation(perfectPatternIn3d, perfectPatternIn3d_faces, B, I, adaptedPatternIn3dRight);
+        cout<<" sym 4 "<<endl;
 
         MatrixXi adaptedPattern_facesRight = adaptedPattern_faces;
+
         VectorXi rtemp = adaptedPattern_facesRight.col(1);
         adaptedPattern_facesRight.col(1)= adaptedPattern_facesRight.col(2);
+        cout<<" sym 5 "<<endl;
+
         adaptedPattern_facesRight.col(2)= rtemp ;
+
         igl::writeOBJ("rhs.obj" ,adaptedPatternIn3dRight, adaptedPattern_facesRight);
 
         MatrixXd Vgtemp = adaptedPatternIn3d;
@@ -736,9 +745,14 @@ void computeAllBetweensNew(vector<VectorXd>& polylineSelected,vector<int>& polyl
         int i = idx4;
         int count = 0;
         while(i !=idx1 && count < boundaryToSearch[patchFrom].size()){
-            polyLineInput.push_back(currPattern.row(boundaryToSearch[patchFrom][i]).transpose());
-            connVec.push_back(boundaryToSearch[patchFrom][i]);
-            cout<<boundaryToSearch[patchFrom][i]<<" 2, asc"<<currPattern.row(boundaryToSearch[patchFrom][i])<<endl;
+            if(count==0 && (polyLineInput[polyLineInput.size()-1] - currPattern.row(boundaryToSearch[patchFrom][i]).transpose()).norm()< 0.1){
+                cout<<"CRITICALLY CLOSE!!!!, skip "<<endl;
+            }else{
+                polyLineInput.push_back(currPattern.row(boundaryToSearch[patchFrom][i]).transpose());
+                connVec.push_back(boundaryToSearch[patchFrom][i]);
+                cout<<boundaryToSearch[patchFrom][i]<<" 2, asc"<<currPattern.row(boundaryToSearch[patchFrom][i])<<endl;
+            }
+
             i++; count++;
             i = i %boundaryToSearch[patchFrom].size();
         }
@@ -751,16 +765,20 @@ void computeAllBetweensNew(vector<VectorXd>& polylineSelected,vector<int>& polyl
         int i = idx4;
         int count = 0;
         while(i !=idx1 && count < boundaryToSearch[patchFrom].size()){
-            polyLineInput.push_back(currPattern.row(boundaryToSearch[patchFrom][i]).transpose());
-            connVec.push_back(boundaryToSearch[patchFrom][i]);
-            cout<<boundaryToSearch[patchFrom][i]<<" 2, desc "<<currPattern.row(boundaryToSearch[patchFrom][i])<<endl;
+            if(count==0 && (polyLineInput[polyLineInput.size()-1] - currPattern.row(boundaryToSearch[patchFrom][i]).transpose()).norm()< 0.1){
+                cout<<"CRITICALLY CLOSE!!!! "<<endl;
+            }else{
+                polyLineInput.push_back(currPattern.row(boundaryToSearch[patchFrom][i]).transpose());
+                connVec.push_back(boundaryToSearch[patchFrom][i]);
+                cout<<boundaryToSearch[patchFrom][i]<<" 2, desc "<<currPattern.row(boundaryToSearch[patchFrom][i])<<endl;
+            }
+
             i--; count++;
             if(i <0) i+= boundaryToSearch[patchFrom].size();
         }
         polyLineInput.push_back(currPattern.row(boundaryToSearch[patchFrom][i]).transpose());
         cout<<boundaryToSearch[patchFrom][i]<<" "<<currPattern.row(boundaryToSearch[patchFrom][i])<<endl;
         connVec.push_back(boundaryToSearch[patchFrom][i]);
-
 
     }
     connectedVertVec.push_back(connVec);
@@ -1064,12 +1082,20 @@ void mergeTriagulatedAndPattern(const vector<vector<int>>& connectedVertVec, con
     }
     faceSizes.push_back(countFace);
     ofstream out("newFacesAfterPatch_"+avName+"_"+garment+"_"+ to_string(patchCount-1) +".txt");
+    ofstream out2("newFacesAfterPatch_"+avName+"_"+garment+"_final.txt");
+
     int size = newFaces.size(); int globC=0;
-    out<<patchCount<<" ";
+    out << patchCount<<" ";
+    out2 << patchCount<<" ";
+
     for(int i=0; i<faceSizes.size(); i++){
-        out<< faceSizes[i] <<" ";
+        out << faceSizes[i] <<" ";
+        out2 << faceSizes[i] <<" ";
+
         for(int j=0; j<faceSizes[i]; j++){
-            out<< newFaces[globC] <<" ";
+            out << newFaces[globC] <<" ";
+            out2 << newFaces[globC] <<" ";
+
             globC++;
         }
     }
