@@ -513,6 +513,7 @@ int main(int argc, char *argv[])
         }
     }
     int patchcount=0;
+    bool showPatchBoundary = false ;
     cout<<"adding menu"<<endl;
     menu.callback_draw_viewer_menu = [&]() {
         if (ImGui::CollapsingHeader("Garment", ImGuiTreeNodeFlags_OpenOnArrow)) {
@@ -1350,6 +1351,7 @@ int main(int argc, char *argv[])
             }
             if(ImGui::Button("End Modification", ImVec2(-1, 0))){
                 igl::writeOBJ("finished_retri_writtenPattern_"+avName+"_"+garment+".obj", currPattern, Fg_pattern_curr);
+                cout<<" End modification "<<endl;
 
             }
 
@@ -1438,7 +1440,86 @@ int main(int argc, char *argv[])
                 viewer.data().set_mesh(adaptedPatternIn3d, adaptedPatternIn3d_faces);
                 viewer.data().set_colors(C);
 
+
+
             }
+
+            if(ImGui::Button("Visualize Patch boundary ", ImVec2(-1, 0))) {
+                showPatchBoundary = !showPatchBoundary;
+                MatrixXd adaptedPatternIn3d;
+                MatrixXi adaptedPatternIn3d_faces;
+                cout<< newFaces.size()<<"new faces size"<<endl;
+                int size; vector<vector<int>> perFaceNewFaces;
+
+                cout<<"reading new faces from file"<<endl;
+                if(garment == "leggins"|| "top") patchcount = 5;
+
+                string filename = "newFacesAfterPatch_"+avName+"_"+garment+"_"+ to_string(patchcount) +".txt";
+//                     filename  = "newFacesAfterPatch_"+avName+"_"+garment+"_final" +".txt";
+                ifstream in("/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/" + filename);
+                in>>size;
+                for(int i=0; i<size; i++ ){
+                    int faceSize; in>>faceSize;
+                    vector<int> currF;
+                    for(int j=0;j<faceSize; j++){
+                        int newFace;
+                        in>>newFace;
+                        currF.push_back(newFace);
+                    }
+                    perFaceNewFaces.push_back(currF);
+                }
+
+                igl::readOBJ(startFile+"_"+avName+"_"+garment+"_backIn3d.obj", adaptedPatternIn3d, adaptedPatternIn3d_faces);
+                MatrixXd C = MatrixXd::Zero(adaptedPatternIn3d_faces.rows(), 3);
+                C.col(1).setConstant(1);
+                C.col(0).setConstant(1);
+                int offset = C.rows()/2;
+                for(int i=0; i<size; i++){
+                    for(int j=0; j<perFaceNewFaces[i].size(); j++){
+                        double val = (((double)i)/((double)(size+1)));
+                        C(perFaceNewFaces[i][j], 0) = val;
+                        C(perFaceNewFaces[i][j], 2) = (1-val);
+                        if(symetry){
+                            C(perFaceNewFaces[i][j]+offset, 0) = val;
+                            C(perFaceNewFaces[i][j]+offset, 2) = (1-val);
+                        }
+
+                    }
+                }
+
+                viewer.selected_data_index = 0;
+                viewer.data().clear();
+                viewer.data().show_lines = false;
+                viewer.data().set_mesh(adaptedPatternIn3d, adaptedPatternIn3d_faces);
+                viewer.data().set_colors(C);
+
+                vector<vector<int>> boundaryL_toPattern;
+                igl::boundary_loop(adaptedPatternIn3d_faces, boundaryL_toPattern);
+                viewer.selected_data_index = 2;
+                viewer.data().clear();
+                int boundVert=0;
+                for (auto bli: boundaryL_toPattern) {
+                    boundVert+= bli.size();
+                }
+
+                if(showPatchBoundary){
+                    MatrixXi boundaryOfToPattern(boundVert, 2);
+                    MatrixXd vertPoints(boundVert, 3);
+                    int curr = 0;
+                    for (auto bli: boundaryL_toPattern) {
+                        for (int j = 0; j < bli.size(); j++) {
+                            boundaryOfToPattern(curr, 0) = bli[j];
+                            boundaryOfToPattern(curr, 1) = bli[(j + 1) % (bli.size())];
+                            curr++;
+                        }
+                    }
+                    viewer.data().set_edges(adaptedPatternIn3d, boundaryOfToPattern, Eigen::RowVector3d(0, 0, 1));
+                }
+
+            }
+
+
+
             if(ImGui::Checkbox("Perfect Pattern in 3D", &origIn3D)){
                 viewer.selected_data_index = 0;
                 viewer.data().clear();
