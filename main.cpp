@@ -1043,6 +1043,10 @@ int main(int argc, char *argv[])
             }
             if(ImGui::Button("Finished Tear", ImVec2(-1, 0))){
                 igl::writeOBJ("finished_tear_writtenPattern_"+avName+"_"+garment+".obj", currPattern, Fg_pattern_curr);
+                cout<<"File written to finished_tear_writtenPattern_ "<<endl;
+            }
+            if(ImGui::Button("Zip Tears:Check or Next", ImVec2(-1, 0))){
+                zipTears( cutPositions, currPattern, Fg_pattern_curr, mapFromFg, mapFromVg, halfPatternFaceToFullPatternFace, inverseMap);
             }
             if(ImGui::Checkbox("Allow L-shaped fabric insertion", &LShapeAllowed)){}
             if(ImGui::Checkbox("Prioritize Inner Cuts", &prioInner)){

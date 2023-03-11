@@ -148,6 +148,7 @@ void computeMidVecBasedOnStress(VectorXd& midVec, vector<vector<int>>& vfAdj, Ma
 
 map<int, vector<int>> releasedVertNew;
 map<int, vector<int>> cornerToSeams;
+set<pair<int, int>> zipBack, zipMiddle;
 
 map<int, int> patchMapToHalf, patchMapToHalfInverse;bool inverseMapping, sym;
 int addoncount=0;
@@ -337,7 +338,7 @@ void checkIfCutIsUsefulForAdjFace(bool& tearIsUseful,  vector<vector<int> >& vfA
         }
     }
 }
-
+int fractureId = 0;
 void splitVertexFromCVE( cutVertEntry*& cve,
                          MatrixXd& Vg, // this is the current pattern we modify
                          MatrixXi& Fg, // this will be modified and have entries that are not in the original pattern
@@ -442,6 +443,7 @@ void splitVertexFromCVE( cutVertEntry*& cve,
         rightFaceId = adjacentFaceToEdge(boundaryL[cve->patch][minusOneId], cve-> vert, -1, vfAdj);
         if(leftFaceId ==-1 || rightFaceId ==-1){cout<<"still no success with "<<plusOneId<<" "<<minusOneId<<endl;   }
         cve->finFlag=true;
+
         return;
     }
 
@@ -478,8 +480,11 @@ void splitVertexFromCVE( cutVertEntry*& cve,
             cout<<"STOP now because of adj face stress condition  "<<endl;
 
             cve->finFlag = true;
+            cve->cutId = fractureId;
+            fractureId++;
             return;
-        } cout<<" Confirmed tear is useful! "<<endl;
+        }
+        cout<<" Confirmed tear is useful! "<<endl;
 
         // set of extra cases
         pair<int, int> valPair = make_pair(cve->seamType, cve ->seamIdInList);
@@ -498,7 +503,7 @@ void splitVertexFromCVE( cutVertEntry*& cve,
         // now we need to find the seam from which we release.
         // each corner is adjacent to two seams. If one is the one we make the decision from, then the other is the one from which it is released
 
-        int currComp ;
+        int currComp ;int releaseId;
         if(cornerToSeams[cve->cornerInitial][0] == seamComp ){
             currComp = cornerToSeams[cve->cornerInitial][1];
             // if we allow releasing from two seams this has to be a vec
@@ -510,6 +515,7 @@ void splitVertexFromCVE( cutVertEntry*& cve,
                 temp.push_back(cornerToSeams[cve->cornerInitial][1]);
                 releasedVertNew[cve->vert] = temp;
             }
+            releaseId = cornerToSeams[cve->cornerInitial][1];
 //            if(endInsert) releasedVertNew[cve->vert].push_back( furtherSeam);
 
         }else if (cornerToSeams[cve->cornerInitial][1] == seamComp ){
@@ -523,6 +529,7 @@ void splitVertexFromCVE( cutVertEntry*& cve,
                 temp.push_back(cornerToSeams[cve->cornerInitial][0]);
                 releasedVertNew[cve->vert] = temp;
             }
+            releaseId = cornerToSeams[cve->cornerInitial][0];
 
         }else{
             cout<<cornerToSeams[cve->cornerInitial][0]<<" we have a problem, it is not found "<<cornerToSeams[cve->cornerInitial][1]<<" but what we have is "
@@ -537,6 +544,11 @@ void splitVertexFromCVE( cutVertEntry*& cve,
         cve->finFlag = (cornerSet.find(searchVert) != cornerSet.end() && cve->vert != cve-> cornerInitial); //if it is a corner we are done
         int nextVertComp;
         getBoundaryNextVert(cve-> startCorner ,cve-> seamType, cve-> seamIdInList, boundary[minusOneId], boundary[ plusOneId], nextVertComp );
+        cve->boundaryFrac.push_back(make_pair(cve->vert, releaseId));
+        if(cve->finFlag){
+            cve->cutId = fractureId;
+            fractureId++;
+        }
         cve->vert = nextVertComp;
 //        Vg.resize(Vg.rows()+1, 3);
 //        Vg= newVg;
@@ -552,7 +564,7 @@ void splitVertexFromCVE( cutVertEntry*& cve,
     computeMidVecBasedOnStress(stressMidVec, vfAdj, Vg, Vg_pattern_orig, Fg, Fg_pattern_orig, cve->vert, lenMidVec, halfPatternVertToFullPatternVert, fullPatternVertToHalfPatternVert, halfPatternFaceToFullPatternFace );
 
     midVec = (-1) * stressMidVec; // newMidVec;
-    cout<<" stress midvec "<<midVec.transpose()<<endl;//<<stressMidVec.transpose()
+//    cout<<" stress midvec "<<midVec.transpose()<<endl;//<<stressMidVec.transpose()
 
     Vector3d cutDirection = midVec;
 
@@ -581,10 +593,10 @@ void splitVertexFromCVE( cutVertEntry*& cve,
     if(!cve-> levelOne){
         if(dist2 > dist1 ){
             midVec = stressMidVec;
-            cout<<"WE CHANGED THE SIGN OF THE MIDVEC!"<<endl;
+//            cout<<"WE CHANGED THE SIGN OF THE MIDVEC!"<<endl;
         }
     }else{
-        cout<<"initial!"<<endl;
+//        cout<<"initial!"<<endl;
         // insert the corner
 
         // if levelone take the side of the other interior vertices
@@ -602,7 +614,7 @@ void splitVertexFromCVE( cutVertEntry*& cve,
 //            cout<<"side of interior vert "<<sign2<<endl;
             if(sign1!= sign2){
                 midVec = stressMidVec;
-                cout<<"WE CHANGED THE SIGN OF THE MIDVEC!"<<endl;
+//                cout<<"WE CHANGED THE SIGN OF THE MIDVEC!"<<endl;
             }
             break;
         }
@@ -685,6 +697,8 @@ void splitVertexFromCVE( cutVertEntry*& cve,
     if(!tearIsUseful){
             cout<<"Not useful. STOP"<<endl;
             cve->finFlag = true;
+            cve->cutId = fractureId;
+            fractureId++;
             return;
     }
     MatrixXd newVg (newVertIdx + 1, 3);
@@ -790,7 +804,7 @@ void splitVertexFromCVE( cutVertEntry*& cve,
     }
     handledVerticesSet.insert(newVertIdx);
     newVg.row(newVertIdx) = Vg.row(cve->vert);
-
+    cve->dulicatePairs.push_back(make_pair(newVertIdx, cve-> vert));
     if(releasedVertNew.find(cve->vert) != releasedVertNew.end() ){
         // if that one was released and we cut here (only if l shapes are allowed), we have to release the duplicate too!
         releasedVertNew[newVertIdx] = releasedVertNew[cve-> vert];
@@ -851,6 +865,9 @@ void splitVertexFromCVE( cutVertEntry*& cve,
             // if it is on the boundary anyways, find on which seam it is (the original) and add it to the duplicates of theat seam
 
         cve->finFlag= true;
+        cve->cutId = fractureId;
+        fractureId++;
+        cve->dulicatePairs.push_back(make_pair(newnewVertIdx, insertIdx));
 
     }
 
@@ -2287,6 +2304,7 @@ void projectBackOnBoundary(const MatrixXd & mapToVg, MatrixXd& p, const vector<s
             while( next!= endsFirst ){
                 // it is not released, project on boundary
                  searchNExt = (inverseMap) ? next : seamFullHalf[next];
+
                 if(releasedVert.find(searchNExt) == releasedVert.end()){
                     updatePositionToIntersection( p, searchNExt,Vg_seam1to, true);
                 }
@@ -2294,6 +2312,10 @@ void projectBackOnBoundary(const MatrixXd & mapToVg, MatrixXd& p, const vector<s
                 else if( std::find(releasedVertNew[searchNExt].begin(),
                                    releasedVertNew[searchNExt].end(), j) == releasedVertNew[searchNExt].end()){
                     updatePositionToIntersection( p, searchNExt,Vg_seam1to, true);
+                }else if (std::find(zipBack.begin(), zipBack.end(), make_pair(searchNExt, j)) != zipBack.end()){
+                    // we found this vert releases form this seam as a vertex to be zipped back.
+                    updatePositionToIntersection( p, searchNExt,Vg_seam1to, true);
+
                 }
                 nextIdx++;
                 next = boundaryL[patchUsed][(nextIdx) % bsize];
@@ -2306,6 +2328,10 @@ void projectBackOnBoundary(const MatrixXd & mapToVg, MatrixXd& p, const vector<s
 
             } else if (std::find(releasedVertNew[searchNExt].begin(), releasedVertNew[searchNExt].end(), j) == releasedVertNew[searchNExt].end()){
                 updatePositionToIntersection( p, searchNExt,Vg_seam1to, true);
+            }else if (std::find(zipBack.begin(), zipBack.end(), make_pair(searchNExt, j)) != zipBack.end()){
+                // we found this vert releases form this seam as a vertex to be zipped back.
+                updatePositionToIntersection( p, searchNExt,Vg_seam1to, true);
+
             }
         }
 
@@ -2332,6 +2358,9 @@ void projectBackOnBoundary(const MatrixXd & mapToVg, MatrixXd& p, const vector<s
                 } else if( std::find(releasedVertNew[nextSeach].begin(),
                                      releasedVertNew[nextSeach].end(), j) == releasedVertNew[nextSeach].end()){
                     updatePositionToIntersection( p,nextSeach ,Vg_seam2to, shoulBeLeft);
+                }else if (std::find(zipBack.begin(), zipBack.end(), make_pair(nextSeach, j)) != zipBack.end()){
+                    updatePositionToIntersection( p,nextSeach ,Vg_seam2to, shoulBeLeft);
+
                 }
                 nextIdx -=1;// (nextidx - i2) % (bsize);
 
@@ -2341,10 +2370,12 @@ void projectBackOnBoundary(const MatrixXd & mapToVg, MatrixXd& p, const vector<s
             nextSeach = (inverseMap)? next: seamFullHalf[next];
             if(releasedVert.find(nextSeach) == releasedVert.end()){
                 updatePositionToIntersection( p, nextSeach,Vg_seam2to, shoulBeLeft);
-            }else
-                if (std::find(releasedVertNew[nextSeach].begin(),
+            }else if (std::find(releasedVertNew[nextSeach].begin(),
                                 releasedVertNew[nextSeach].end(), j) == releasedVertNew[nextSeach].end()){
                 updatePositionToIntersection( p, nextSeach,Vg_seam2to, shoulBeLeft);
+            }else if (std::find(zipBack.begin(), zipBack.end(), make_pair(nextSeach, j)) != zipBack.end()){
+                updatePositionToIntersection( p,nextSeach ,Vg_seam2to, shoulBeLeft);
+
             }
 
         }
@@ -2356,6 +2387,8 @@ void projectBackOnBoundary(const MatrixXd & mapToVg, MatrixXd& p, const vector<s
                 updatePositionToIntersection(p, avs, Vg_seam1to, true);
             } else if( std::find(releasedVertNew[avs].begin(), releasedVertNew[avs].end(), j) == releasedVertNew[avs].end()){
                 updatePositionToIntersection(p, avs, Vg_seam1to, true);
+            }else if(find(zipBack.begin(), zipBack.end(), make_pair(avs, j)) != zipBack.end()){
+                updatePositionToIntersection(p, avs, Vg_seam1to, true);
             }
         }
 
@@ -2366,6 +2399,9 @@ void projectBackOnBoundary(const MatrixXd & mapToVg, MatrixXd& p, const vector<s
                 updatePositionToIntersection(p, addedVert.second, Vg_seam2to, shoulBeLeft);
             } else if( std::find(releasedVertNew[avs].begin(), releasedVertNew[avs].end(), j) == releasedVertNew[avs].end()){
                 updatePositionToIntersection(p, avs, Vg_seam2to, shoulBeLeft);
+            }else if (std::find(zipBack.begin(), zipBack.end(), make_pair(avs, j)) != zipBack.end()){
+                updatePositionToIntersection( p,avs ,Vg_seam2to, shoulBeLeft);
+
             }
         }
     }
@@ -2402,6 +2438,8 @@ void projectBackOnBoundary(const MatrixXd & mapToVg, MatrixXd& p, const vector<s
                                    (-1)*(j+1)) == releasedVertNew[nextSearch].end()){
                     // it is released but not from this seam,thus it has to stay on the projection
                     updatePositionToIntersection( p, nextSearch,Vg_seamto, true);
+                }else if (std::find(zipBack.begin(), zipBack.end(), make_pair(nextSearch, (-1)*(j+1) )) != zipBack.end()){
+                    updatePositionToIntersection( p, nextSearch,Vg_seamto, true);
                 }
                 startidx++;
                 startidx = startidx % boundLen;
@@ -2412,7 +2450,9 @@ void projectBackOnBoundary(const MatrixXd & mapToVg, MatrixXd& p, const vector<s
                 updatePositionToIntersection( p, nextSearch,Vg_seamto, true);
 
             }
-
+            else if (std::find(zipBack.begin(), zipBack.end(), make_pair(nextSearch, (-1)*(j+1) )) != zipBack.end()){
+                updatePositionToIntersection( p, nextSearch, Vg_seamto, true);
+            }
 
             // also map all projections
             for(const auto & addedVert : currSeam -> duplicates){
@@ -2421,15 +2461,20 @@ void projectBackOnBoundary(const MatrixXd & mapToVg, MatrixXd& p, const vector<s
                     updatePositionToIntersection(p, avs, Vg_seamto, true);
                 } else if( std::find(releasedVertNew[next].begin(), releasedVertNew[next].end(), j) == releasedVertNew[next].end()){
                     updatePositionToIntersection(p, avs, Vg_seamto, true);
+                }else if (std::find(zipBack.begin(), zipBack.end(), make_pair(avs, (-1)*(j+1) )) != zipBack.end()){
+                    updatePositionToIntersection( p, avs, Vg_seamto, true);
                 }
-
             }
         }
-
-
-
-
     }
+
+    for(auto it: zipMiddle){
+        VectorXd v1 = p.row(it.first);
+        VectorXd v2 = p.row(it.second);
+        p.row(it.first) = (v1+v2)/2;
+        p.row(it.second) = (v1+v2)/2;
+    }
+
 }
 
 void updatePatchId(vector<cutVertEntry*>& cutPositions, const std::vector<std::vector<int> >& boundaryLnew, vector<seam*>& seamsList, vector<minusOneSeam*> & minusOneSeams,
@@ -2515,4 +2560,68 @@ void fitVecToPointSet( MatrixXd& pointVec, VectorXd& vec ){
 //    vec += b;
 
 
+}
+int zipCount = 0 ;
+void checkZip( cutVertEntry*& cve,  MatrixXd& Vg, MatrixXi& Fg, MatrixXi& mapFromFg, MatrixXd& mapFromVg, map<int, int>& halfPatternFaceToFullPatternFace, bool inverseMap){
+    // simple measure: if the stress at the start vert is too high, release
+    bool tearIsUseful = false;
+    set<int> dummy;
+    Vector3d cutDirection;
+    bool isCorner = (cve->startCorner || cve-> endCorner);
+    if(isCorner){
+        cutDirection = (Vg.row(cve-> boundaryFrac[1].first) - Vg.row(cve-> boundaryFrac[0].first));
+    }else{
+        cutDirection = (Vg.row(cve-> dulicatePairs[1].first) - Vg.row(cve-> dulicatePairs[0].first));
+    }
+    vector<vector<int> > vfAdj;
+    createVertexFaceAdjacencyList(Fg, vfAdj);
+    computePerFaceUV( Fg,   mapFromFg,  mapFromVg, Vg, halfPatternFaceToFullPatternFace, inverseMap);
+
+    checkIfCutIsUsefulForAdjFace(tearIsUseful, vfAdj, cve, cutDirection, Fg, dummy, true );
+    if(tearIsUseful){
+        cout<<"Undo previous zip"<<endl;
+        for(int j = 0; j< cve-> boundaryFrac.size(); j++){
+            if(isCorner){
+                cout<<"erasing "<<cve-> boundaryFrac[j].first<<endl;
+                zipBack.erase(cve-> boundaryFrac[j]);
+            }else{
+                // todo
+                zipMiddle.erase(cve-> dulicatePairs[j]);
+            }
+        }
+    }
+    for(auto it: zipBack){
+        cout<<it.first<<" and "<<it.second<<endl;
+    }
+    cout<<" output all zip back vert"<<endl;
+
+}
+void zipTears(vector<cutVertEntry*>& cutPositions, MatrixXd& Vg, MatrixXi& Fg, MatrixXi& mapFromFg, MatrixXd& mapFromVg, map<int, int>& halfPatternFaceToFullPatternFace, bool inverseMap){
+    cout<<zipCount<<" in Zip Tears function"<<endl;
+    if(zipCount == 0 ) sort(cutPositions.begin(), cutPositions.end(), []( cutVertEntry* &a,  cutVertEntry* &b) { return a->cutId < b-> cutId; });
+    if(zipCount > 0) checkZip(cutPositions[zipCount-1], Vg, Fg, mapFromFg, mapFromVg,halfPatternFaceToFullPatternFace, inverseMap );
+
+    int i = zipCount;
+    cutVertEntry* cve = cutPositions[i];
+    if (cutPositions[i] -> cutId < 1000){
+        bool isCorner = (cve->startCorner || cve-> endCorner);
+        cout<<"cut position "<<i<<" is a corner  "<< isCorner<<" seam id in list"<<cve->seamIdInList <<endl;
+        if(isCorner) {
+            for(int j = 0; j< cve-> boundaryFrac.size(); j++){
+                cout<<" vert "<<cve-> boundaryFrac[j].first<<" from seam "<<  cve-> boundaryFrac[j].second<<endl ;
+                zipBack.insert(cve-> boundaryFrac[j]);
+
+            }
+        }else{
+            for(int j = 0; j< cve->dulicatePairs.size(); j++){
+                cout<<" vert "<<cve-> dulicatePairs[j].first<<" and dupl "<<  cve-> dulicatePairs[j].second<<endl ;
+                zipMiddle.insert(cve-> dulicatePairs[j]);
+            }
+        }
+    }else{
+        cout<<" Checked all positions to Zip. "<< endl;
+        return;
+
+    }
+    zipCount ++;
 }

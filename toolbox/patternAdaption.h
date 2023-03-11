@@ -35,6 +35,9 @@ public:
     bool handled;
     int counterPartIdx;
     double stressWithCounter;
+    int cutId;
+    vector<std::pair<int, int>> dulicatePairs;
+    vector<pair<int, int>> boundaryFrac;
 
     cutVertEntry( int vert, int seamType, int seamIdInList ){
         this-> vert = vert;
@@ -43,6 +46,7 @@ public:
         handled = false;
         counterPartIdx  = -1;
         midVec = Vector3d::Zero();
+        cutId = 1000;
     }
     cutVertEntry ( int vert, int seamType, int seamIdInList, int patch){
         this -> vert = vert;
@@ -53,6 +57,7 @@ public:
         handled = false;
         counterPartIdx = - 1;
         midVec = Vector3d::Zero();
+        cutId = 1000;
 
     }
 
@@ -133,4 +138,6 @@ void setUpMap( const std::vector<std::vector<int> >& boundaryL,map<int,int> & fu
 
 void updatePatchId(vector<cutVertEntry*>& cutPositions, const std::vector<std::vector<int> >& boundaryLnew, vector<seam*>& seamsList, vector<minusOneSeam*> & minusOneSeams, map<int, int >& fullPatternVertToHalfPatternVert);
 void fitVecToPointSet( MatrixXd& pointVec, VectorXd& vec );
+void zipTears(vector<cutVertEntry*>& cutPositions, MatrixXd& Vg, MatrixXi& Fg, MatrixXi& mapFromFg, MatrixXd& mapFromVg, map<int, int>& halfPatternFaceToFullPatternFace, bool inverseMap);
+
 #endif //EXAMPLE_PATTERNADAPTION_H
