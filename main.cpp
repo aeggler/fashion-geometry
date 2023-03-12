@@ -33,6 +33,9 @@
 #include <string>
 #include "toolbox/seam.h"
 #include <fstream>
+#include <igl/exact_geodesic.h>
+#include <igl/parula.h>
+#include <igl/isolines_map.h>
 
 using namespace std;
 using namespace Eigen;
@@ -76,9 +79,9 @@ int localGlobalIterations= 2000;
 int convergeIterations = 450;
 int timestepCounter;
 bool LShapeAllowed = false;
+vector<int> changeFitVert;
 
-
-enum MouseMode { SELECTPATCH, SELECTBOUNDARY, NONE, SELECTVERT, SELECTAREA, SELECTAREAPATCHES, FINALSTITCH };
+enum MouseMode { SELECTPATCH, SELECTBOUNDARY, NONE, SELECTVERT, SELECTAREA, SELECTAREAPATCHES, FINALSTITCH, CHANGEFIT };
 MouseMode mouse_mode = NONE;
 // pre computations
 Eigen::MatrixXi e4list;
@@ -1533,6 +1536,18 @@ int main(int argc, char *argv[])
             }
 
         }
+        if (ImGui::CollapsingHeader("Change fit", ImGuiTreeNodeFlags_OpenOnArrow)){
+
+            if(ImGui::Button("Clear vert ", ImVec2(-1, 0))){
+                changeFitVert.clear();
+                currPattern.resize(Vg.rows(), 3);
+                currPattern = Vg;
+                Fg_pattern_curr.resize(Fg.rows(), 3);
+                Fg_pattern_curr = Fg;
+                mouse_mode = CHANGEFIT;
+
+            }
+        }
         if (ImGui::CollapsingHeader("Final Visualization  ", ImGuiTreeNodeFlags_OpenOnArrow)){
             bool initPattern= false;
             bool toRemove= false;
@@ -1854,12 +1869,42 @@ bool callback_mouse_down(igl::opengl::glfw::Viewer& viewer, int button, int modi
             cout<<"Selected vertex "<<v_id<<endl;
 
             startAndEnd.push_back(v_id);
-
-//            if(startAndEnd.size() == 2) {
-//                mouse_mode = NONE;
-//                return false;
-//            }
             return true;
+        }
+    }
+    if(mouse_mode == CHANGEFIT){
+        int fid;
+        Eigen::Vector3d b;
+        // it is in the from mesh, thus snap to the closest vertex on the mesh
+        if (computePointOnMesh(viewer, currPattern, Fg_pattern_curr, b, fid)) {
+            int v_id = computeClosestVertexOnMesh(b, fid, Fg_pattern_curr);
+            changeFitVert.push_back(v_id);
+            MatrixXd setPointsMatrix (changeFitVert.size(), 3);
+            int rowIdx = 0;
+            Eigen::VectorXi VS,FS,VT,FT;
+            VS.resize(changeFitVert.size());
+            for( auto it: changeFitVert){
+                VS(rowIdx) = it;
+                setPointsMatrix.row(rowIdx) = currPattern.row(it);
+//                setPointsMatrix.row(rowIdx) += currPattern.row(Fg_pattern_curr(it, 1));
+//                setPointsMatrix.row(rowIdx) += currPattern.row(Fg_pattern_curr(it, 2));
+//                setPointsMatrix.row(rowIdx) /= 3;
+                rowIdx++;
+            }
+
+            viewer.data().set_points(setPointsMatrix, RowVector3d(1.0, 1.0, 0.0));
+
+            // All vertices are the targets
+            VT.setLinSpaced(currPattern.rows(),0,currPattern.rows()-1);
+            Eigen::VectorXd d;
+            igl::exact_geodesic(currPattern,Fg_pattern_curr,VS,FS,VT,FT,d);
+            Eigen::MatrixXd CM;
+            cout<<d.maxCoeff()<<" the max coefficient" <<endl;
+            double maxVal = d.maxCoeff();
+            igl::parula(Eigen::VectorXd::LinSpaced(21,0,1).eval(),false,CM);
+            igl::isolines_map(Eigen::MatrixXd(CM),CM);
+            viewer.data().set_colormap(CM);
+            viewer.data().set_data(d);
         }
     }
     if(mouse_mode == SELECTAREA){
@@ -1875,7 +1920,6 @@ bool callback_mouse_down(igl::opengl::glfw::Viewer& viewer, int button, int modi
             polylineSelected.emplace_back(Vrs.row(v_id));
             polylineIndex.push_back(v_id);
 
-
             // the vertex is not in our original fromMesh. Locate it in the toMesh and use the exackt mouse chosen position by the barycentric coordinates to set its position
         }else{
             Vrs = mapToVg; // TODO CHANGE
@@ -1883,19 +1927,12 @@ bool callback_mouse_down(igl::opengl::glfw::Viewer& viewer, int button, int modi
             if (computePointOnMesh(viewer, Vrs, Frs, b, fid)) {
                 cout<<"on outer"<<endl;
                 VectorXd chosen = b(0) * Vrs.row(Frs(fid ,0)) + b(1) * Vrs.row(Frs(fid, 1))+ b(2) * Vrs.row(Frs(fid, 2));
-//                v_id = computeClosestVertexOnMesh(b, fid, Frs);
 
                 viewer.data().set_points(chosen.transpose(), RowVector3d(.0, 1.0, 0.0));
                 cout<<"Vertex from toPattern was chosen"<<endl;
                 whichMesh = 2;
                 polylineSelected.push_back(chosen);
-
-//                polylineSelected.push_back(Vrs.row(v_id));
-//                polylineIndex.push_back(v_id);
-
                 polylineIndex.push_back(fid);
-
-
             }
         }
 
@@ -2304,8 +2341,6 @@ void solveBendingConstraint(){
             p.row(id3) += deltap3;
     }
 }
-
-//  UV DIFFERENTIATION EXISTS
 void solveStretchConstraint(){
     /*each edges distance should remain, since we iterate over every face we iterate over every edge twice- but that should not be a problem */
     for (int j =0; j<numFace; j++){
