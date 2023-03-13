@@ -1546,9 +1546,14 @@ int main(int argc, char *argv[])
             if(ImGui::Checkbox("Change in V", &geoDistV)){}
 
             if(ImGui::Button("Change in Jacobian ", ImVec2(-1, 0))){
+
+                mouse_mode = NONE;
                 VectorXd affectedFaces;
                 computeAffection(geoDistDist, geoDistMax, Fg_pattern_curr, affectedFaces);
+
                 gar_adapt ->changeFitViaJacobian( geoDistU, geoDistV, geoDistChange, affectedFaces);
+                perFaceTargetNorm = gar_adapt->perFaceTargetNorm;
+                computeStress(viewer);
             }
         }
         if (ImGui::CollapsingHeader("Final Visualization  ", ImGuiTreeNodeFlags_OpenOnArrow)){
@@ -2066,8 +2071,9 @@ void showGarment(igl::opengl::glfw::Viewer& viewer) {
         igl::jet(normV, 0.5, 1.5, colV);
         viewer.data().set_colors(colV);
     }else if (whichStressVisualize == 3 ){
-        igl::jet(colJacDiff.col(0), 0.5, 1.5, colJacDiff);
-        viewer.data().set_colors(colJacDiff);
+        MatrixXd diffCol;
+        igl::jet(colJacDiff.col(0), 0.0, 1.5, diffCol);
+        viewer.data().set_colors(diffCol);
     }
 
 }
@@ -2493,7 +2499,7 @@ void preComputeStretch(){
 }
 void computeStress(igl::opengl::glfw::Viewer& viewer){
 
-    normU.resize (numFace);
+     normU.resize (numFace);
      normV.resize (numFace);
 
      perFaceU.resize (numFace, 3);
@@ -2504,8 +2510,6 @@ void computeStress(igl::opengl::glfw::Viewer& viewer){
         int id0 = Fg(j, 0);
         int id1 = Fg(j, 1);
         int id2 = Fg(j, 2);
-
-        double differenceIncrementFactor = 3.0;
 
         // deviation from 1 as the measure,
         /* large u stretch: norm > 1, thus y>0 , thus very red,little green => red
@@ -2518,20 +2522,17 @@ void computeStress(igl::opengl::glfw::Viewer& viewer){
         Gv= baryCoords2(j, 0)*Vg.row(id0) + baryCoords2(j, 1)*Vg.row(id1) + baryCoords2(j, 2)*Vg.row(id2);
         G = (1./3)*Vg.row(id0) +(1./3)*Vg.row(id1) + (1./3)*Vg.row(id2);
 
-
         perFaceU.row(j) = (Gu-G);//*u2(j,1) - (Gv-G)*u1(j,1);
         perFaceV.row(j) = (Gv-G);// * u1(j, 0) - (Gu-G)* u2(j, 0);
 
         normU(j)= (Gu-G).norm();
         normV(j) = (Gv-G).norm();
-        double y;
 
         double diffU = (normU(j)-perFaceTargetNorm[j].first)/ perFaceTargetNorm[j].first;
         double diffV = (normV(j)-perFaceTargetNorm[j].second)/ perFaceTargetNorm[j].second;
-        y = diffU + diffV ;
-//           y*= 3; // to better see the difference
+        double y = diffU + diffV ;
         colJacDiff.row(j)=  Vector3d (  y,  y, 0.0);
-
+        if(j==190) cout<<diffU<<" and "<<diffV<<endl;
 
         // this is an experiment
         y = (abs(normV(j)-1)+ abs(normU(j)-1))*3;

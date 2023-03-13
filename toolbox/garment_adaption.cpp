@@ -254,19 +254,26 @@ void garment_adaption::computeJacobian(){
     smoothJacobian();
 
 }
-void garment_adaption::changeFitViaJacobian(bool geoDistU, bool geoDistV, double geoDistChange, const VectorXd& affectedFaces ){
+void garment_adaption::changeFitViaJacobian(bool geoDistU, bool geoDistV, double geoDistChange, VectorXd& affectedFaces ){
     for(int i=0; i<numFace; i++){
         MatrixXd jacobian = jacobians[i];
+        if(affectedFaces(i) == 0 ) continue;
         if(geoDistU){
+            cout<<"Face "<<i<<" in u "<<endl;
 //            VectorXd ju = jacobian.col(0).normalized();
-            jacobian.col(0) *= geoDistChange * affectedFaces(i);
+            jacobian.col(0) *= (1+ (geoDistChange-1) * affectedFaces(i));
         }
         if(geoDistV){
+            cout<<"Face "<<i<<" in v"<<endl;
             jacobian.col(1) *= geoDistChange * affectedFaces(i);
         }
+        cout<<"changed target norm from "<<jacobians[i].col(0).norm()<<" "<< jacobians[i].col(1).norm();
+
         jacobians[i] = jacobian;
         inv_jacobians[i] = jacobian.inverse();
+
         perFaceTargetNorm[i] = std::make_pair(jacobians[i].col(0).norm(), jacobians[i].col(1).norm()) ;//* (jacobian.col(0).norm()-1);
+        cout<<endl<<" to "<<jacobians[i].col(0).norm()<<" "<< jacobians[i].col(1).norm() <<endl;
 
     }
 }

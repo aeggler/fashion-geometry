@@ -1709,7 +1709,7 @@ void stitchSeam(vector<int>& startAndEnd, MatrixXd& currPattern, MatrixXi& Fg_pa
     currPattern.row(boundaryLCurr[patch2][currIdx2]) = currPattern.row(boundaryLCurr[patch1][currIdx1]);
 
 }
-void computeAffection(VectorXd& d, double geoDistMax, MatrixXi Fg_pattern_curr, VectorXd affectedFaces){
+void computeAffection(VectorXd& d, double geoDistMax, MatrixXi& Fg_pattern_curr, VectorXd& affectedFaces){
     affectedFaces.resize(Fg_pattern_curr.rows());
     affectedFaces.setConstant(0);
     for(int i = 0; i<Fg_pattern_curr.rows(); i++){
@@ -1719,16 +1719,11 @@ void computeAffection(VectorXd& d, double geoDistMax, MatrixXi Fg_pattern_curr, 
         }
         accumD /= 3;
         if(accumD <= geoDistMax){
-            cout<<"average face dist "<<accumD<<endl;
             // it is within thereshold
             accumD/=geoDistMax;
-            cout<<"normalized face dist "<<accumD<<endl;
-
             accumD = (1. - accumD);
-            cout<<"inverted face dist "<<accumD<<endl;
-
             affectedFaces(i) = accumD;
-            cout<<affectedFaces(i)<<" face "<<i<<endl<<endl;
+
         }
 
     }

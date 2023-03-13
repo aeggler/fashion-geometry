@@ -50,7 +50,7 @@ public:
     void performJacobianUpdateAndMerge(Eigen::MatrixXd & V_curr, int iteratitons, const MatrixXd& baryCoords1, const MatrixXd& baryCoords2,
                                        Eigen::MatrixXd & V_newPattern, vector<seam*>& seamsList, std::vector<std::vector<int>>& boundaryL);
     /* additional feature to slim or widen a garment in a specific area byy a specific amount */
-    void changeFitViaJacobian(bool geoDistU,bool geoDistV,double geoDistChange, const Eigen::VectorXd& affectedFaces );
+    void changeFitViaJacobian(bool geoDistU,bool geoDistV,double geoDistChange,  Eigen::VectorXd& affectedFaces );
 
     std::vector<std::pair<double, double>> perFaceTargetNorm;
     std::vector<Eigen::MatrixXd > jacobians;

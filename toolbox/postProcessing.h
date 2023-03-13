@@ -55,6 +55,6 @@ void updateSeamCorner( vector<seam*>& seamsList,  vector<minusOneSeam*> & minusO
                        vector<vector<int>>& boundaryL);
 
 void stitchSeam(vector<int>& startAndEnd, MatrixXd& currPattern, MatrixXi& Fg_pattern_curr);
-void computeAffection(VectorXd& d,double geoDistMax, MatrixXi Fg_pattern_curr, VectorXd affectedFaces);
+void computeAffection(VectorXd& d,double geoDistMax, MatrixXi& Fg_pattern_curr, VectorXd& affectedFaces);
 
 #endif //EXAMPLE_POSTPROCESSING_H
