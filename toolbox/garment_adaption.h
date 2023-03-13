@@ -43,12 +43,14 @@ public:
      * of the 3D garment and the corresponding 2D pattern. */
     void computeJacobian();
     /* Even if the norms of the triangles are aligned, we have to rotate along the normal to align u (or v) direction before we apply the inverse jacobian
-     * Aleign EITHER u OR v direction. By default it is v. */
+     * Align EITHER u OR v direction. By default it is v. */
     void setUpRotationMatrix(double angle,Vector3d& axis, Matrix4d& rotationMatrix);
     /* Use local global to compute new positions of the pattern vertices, given the current 3D model. Input iterations defines how many local global steps are
      * performed. Bary coords are needed to align u or v direction. Output: v_newPattern  */
     void performJacobianUpdateAndMerge(Eigen::MatrixXd & V_curr, int iteratitons, const MatrixXd& baryCoords1, const MatrixXd& baryCoords2,
                                        Eigen::MatrixXd & V_newPattern, vector<seam*>& seamsList, std::vector<std::vector<int>>& boundaryL);
+    /* additional feature to slim or widen a garment in a specific area byy a specific amount */
+    void changeFitViaJacobian(bool geoDistU,bool geoDistV,double geoDistChange, const Eigen::VectorXd& affectedFaces );
 
     std::vector<std::pair<double, double>> perFaceTargetNorm;
     std::vector<Eigen::MatrixXd > jacobians;

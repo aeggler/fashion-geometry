@@ -251,10 +251,24 @@ void garment_adaption::computeJacobian(){
 //        perFaceTargetNorm(j) += (dot * dot);
 
     }
-//    cout<<maxCoeff<<"before smoothing" <<endl;
-//    cout<<minCoeff <<" min before smoothing"<<endl;
     smoothJacobian();
 
+}
+void garment_adaption::changeFitViaJacobian(bool geoDistU, bool geoDistV, double geoDistChange, const VectorXd& affectedFaces ){
+    for(int i=0; i<numFace; i++){
+        MatrixXd jacobian = jacobians[i];
+        if(geoDistU){
+//            VectorXd ju = jacobian.col(0).normalized();
+            jacobian.col(0) *= geoDistChange * affectedFaces(i);
+        }
+        if(geoDistV){
+            jacobian.col(1) *= geoDistChange * affectedFaces(i);
+        }
+        jacobians[i] = jacobian;
+        inv_jacobians[i] = jacobian.inverse();
+        perFaceTargetNorm[i] = std::make_pair(jacobians[i].col(0).norm(), jacobians[i].col(1).norm()) ;//* (jacobian.col(0).norm()-1);
+
+    }
 }
 
 void garment_adaption::setUpRotationMatrix(double angle,Vector3d& axis, Matrix4d& rotationMatrix)

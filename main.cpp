@@ -249,6 +249,11 @@ MatrixXd mapFromVg, mapToVg; //to = the target shape
 int changedPos;
 map<int, int> halfPatternFaceToFullPatternFace, fullPatternFaceToHalfPatternFace, halfPatternVertToFullPatternVert, fullPatternVertToHalfPatternVert, insertedIdxToPatternVert;
 string avName, garment;
+double geoDistMax = 10.;
+double geoDistChange = 0.97;
+VectorXd geoDistDist;
+bool geoDistU;
+bool geoDistV;
 vector<vector<int>> boundaryLFrom;
 int main(int argc, char *argv[])
 {
@@ -388,7 +393,6 @@ int main(int argc, char *argv[])
     computeAllSeams(boundaryL, vertexMapPattToGar, vertexMapGarAndIdToPatch, vfAdj, componentIdPerFace,
                     componentIdPerVert, cornerVertices, cornerPerBoundary, seamsList, minusOneSeamsList, seamIdPerCorner, garment);
 
-    cout<<"seams computed"<<endl;
     set<int> cornerSet;// a set containing all corner vertices
 
     for(auto cpbi : cornerPerBoundary){
@@ -414,7 +418,6 @@ int main(int argc, char *argv[])
     preComputeConstraintsForRestshape();
     preComputeStretch();
     computeStress(viewer);
-    cout<<"reading further input"<<endl;
     setCollisionMesh();
 
     MatrixXd perfPattVg, perfPattVg_orig, addedFabricPatternVg;
@@ -438,10 +441,7 @@ int main(int argc, char *argv[])
 //        string perfPatternFile = "/Users/annaeggler/Desktop/AvatarToMaternity_01/patternComputed_maternity_01.obj";
         igl::readOBJ(perfPatternFile, perfPattVg_orig, perfPattFg_orig);
         perfPattVg_orig.col(2).setConstant(200);
-        cout<<"reading the computed pattern"<<endl;
         // copy the matrices to not mess with them
-
-
 
         if(inverseMap){
 //            string helperToLocate = "/Users/annaeggler/Desktop/"+startFile;
@@ -486,14 +486,11 @@ int main(int argc, char *argv[])
     int numFacesOneSide ;
     if(patternExists) {
         if (symetry && !inverseMap) {
-            cout<<"doing half pattern"<<endl;
             createHalfSewingPattern(Vg_orig, Fg_orig, Vg_pattern, Fg_pattern, Vg_pattern_half, Fg_pattern_half,
                                     halfPatternFaceToFullPatternFace, fullPatternFaceToHalfPatternFace,
                                     halfPatternVertToFullPatternVert,
                                     fullPatternVertToHalfPatternVert, insertedIdxToPatternVert, isLeftVertPattern,rightVert);
-            cout << " FINISHED PATTERN SPLIT Operation" << endl;
             numFacesOneSide = Fg_pattern_half.rows();
-            cout<<numFacesOneSide<<" num Faces one side"<<endl;
 
         } else if (symetry && inverseMap) {
             // map from is already split in two sides,
@@ -517,7 +514,6 @@ int main(int argc, char *argv[])
     }
     int patchcount=0;
     bool showPatchBoundary = false ;
-    cout<<"adding menu"<<endl;
     menu.callback_draw_viewer_menu = [&]() {
         if (ImGui::CollapsingHeader("Garment", ImGuiTreeNodeFlags_OpenOnArrow)) {
 
@@ -1524,9 +1520,6 @@ int main(int argc, char *argv[])
                 }
 
             }
-
-
-
             if(ImGui::Checkbox("Perfect Pattern in 3D", &origIn3D)){
                 viewer.selected_data_index = 0;
                 viewer.data().clear();
@@ -1546,6 +1539,16 @@ int main(int argc, char *argv[])
                 Fg_pattern_curr = Fg;
                 mouse_mode = CHANGEFIT;
 
+            }
+            ImGui::InputDouble("Max dist", &geoDistMax, 0, 0, "%0.4f");
+            ImGui::InputDouble("Change ", &geoDistChange, 0, 0, "%0.4f");
+            if(ImGui::Checkbox("Change in U", &geoDistU)){}
+            if(ImGui::Checkbox("Change in V", &geoDistV)){}
+
+            if(ImGui::Button("Change in Jacobian ", ImVec2(-1, 0))){
+                VectorXd affectedFaces;
+                computeAffection(geoDistDist, geoDistMax, Fg_pattern_curr, affectedFaces);
+                gar_adapt ->changeFitViaJacobian( geoDistU, geoDistV, geoDistChange, affectedFaces);
             }
         }
         if (ImGui::CollapsingHeader("Final Visualization  ", ImGuiTreeNodeFlags_OpenOnArrow)){
@@ -1724,7 +1727,6 @@ int main(int argc, char *argv[])
     // Add content to the default menu window
     viewer.callback_pre_draw = &pre_draw;
     viewer.callback_key_down = &callback_key_down;
-    cout<<"after key down"<<endl;
     viewer.selected_data_index = 0;
     viewer.callback_mouse_down = &callback_mouse_down;
 
@@ -1886,9 +1888,6 @@ bool callback_mouse_down(igl::opengl::glfw::Viewer& viewer, int button, int modi
             for( auto it: changeFitVert){
                 VS(rowIdx) = it;
                 setPointsMatrix.row(rowIdx) = currPattern.row(it);
-//                setPointsMatrix.row(rowIdx) += currPattern.row(Fg_pattern_curr(it, 1));
-//                setPointsMatrix.row(rowIdx) += currPattern.row(Fg_pattern_curr(it, 2));
-//                setPointsMatrix.row(rowIdx) /= 3;
                 rowIdx++;
             }
 
@@ -1896,15 +1895,14 @@ bool callback_mouse_down(igl::opengl::glfw::Viewer& viewer, int button, int modi
 
             // All vertices are the targets
             VT.setLinSpaced(currPattern.rows(),0,currPattern.rows()-1);
-            Eigen::VectorXd d;
-            igl::exact_geodesic(currPattern,Fg_pattern_curr,VS,FS,VT,FT,d);
+
+            igl::exact_geodesic(currPattern,Fg_pattern_curr,VS,FS,VT,FT,geoDistDist);
             Eigen::MatrixXd CM;
-            cout<<d.maxCoeff()<<" the max coefficient" <<endl;
-            double maxVal = d.maxCoeff();
+            cout<<geoDistDist.maxCoeff()<<" the max coefficient" <<endl;
             igl::parula(Eigen::VectorXd::LinSpaced(21,0,1).eval(),false,CM);
             igl::isolines_map(Eigen::MatrixXd(CM),CM);
             viewer.data().set_colormap(CM);
-            viewer.data().set_data(d);
+            viewer.data().set_data(geoDistDist);
         }
     }
     if(mouse_mode == SELECTAREA){
@@ -2005,7 +2003,6 @@ void computeBaryCoordsGarOnNewMannequin(igl::opengl::glfw::Viewer& viewer){
     int boundarycount = 0;
 
     igl::signed_distance(Vg, Vm, Fm, igl::SIGNED_DISTANCE_TYPE_UNSIGNED, distVec, closestFaceId, C, N);
-    cout<<"sttart bary"<<endl;
     N.resize(Vg.rows(), 3);
     for(int i=0; i<Vg.rows(); i++){
         int closestFace = closestFaceId(i);
@@ -2038,20 +2035,9 @@ void computeBaryCoordsGarOnNewMannequin(igl::opengl::glfw::Viewer& viewer){
         N.row(i) = ((b-a).cross(c-a)).normalized();
         Vector3d newPos = currInBary(0) * a + currInBary(1) * b + currInBary(2) * c;
 
-//        if((Vg.row(i).transpose()-  newPos + distVec(i) * normalVec).norm()> 0.1){
-//            cout<<"vert i "<<i<<" is wrong."<<(Vg.row(i).transpose()-  newPos + distVec(i) * normalVec).norm()<<endl;
-//
-//            cout<<Vg.row(i) - ( distVec(i) * normalVec).transpose()<<endl;
-//            cout<<newPos.transpose()<<endl;//= c
-//            cout<<C.row(i)<<endl;
-//        }
-
         Vg.row(i) = newPos.transpose() + distVec(i) * N.row(i);
     }
-    cout<<" end bary"<<endl;
-    if(Vm != testMorph_V1){
-        cout<<" tey are not equal!"<<endl;
-    }
+
 
 }
 void setNewGarmentMesh(igl::opengl::glfw::Viewer& viewer) {
