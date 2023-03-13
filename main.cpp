@@ -2541,14 +2541,14 @@ void computeStress(igl::opengl::glfw::Viewer& viewer){
 
         double diffU = (normU(j)-perFaceTargetNorm[j].first)/ perFaceTargetNorm[j].first;
         double diffV = (normV(j)-perFaceTargetNorm[j].second)/ perFaceTargetNorm[j].second;
-        double y = diffU + diffV ;
+        double y = abs(diffU) + abs(diffV) ;
         colJacDiff.row(j)=  Vector3d (  y,  y, 0.0);
-        if(j==190) cout<<"For 190 "<<diffU<<" and "<<diffV<<endl;
-        if(j==191) cout<<"For 191 "<<diffU<<" and "<<diffV<<endl;
-        if(j==366) cout<<"For 366 "<<diffU<<" and "<<diffV<<endl;
-        if(j==139) cout<<"For 139 "<<diffU<<" and "<<diffV<<endl;
-        if(j==96) cout<<"For 96 "<<diffU<<" and "<<diffV<<endl;
-        if(j==171) cout<<"For 171 "<<diffU<<" and "<<diffV<<endl;
+//        if(j==190) cout<<"For 190 "<<diffU<<" and "<<diffV<<endl<<"with norm u "<<normU(j)<<", norm v "<<normV(j)<<" and targets "<< perFaceTargetNorm[j].first<<" "<<perFaceTargetNorm[j].second<<endl<<endl;
+//        if(j==191) cout<<"For 191 "<<diffU<<" and "<<diffV<<endl<<"with norm u "<<normU(j)<<", norm v "<<normV(j)<<" and targets "<< perFaceTargetNorm[j].first<<" "<<perFaceTargetNorm[j].second<<endl<<endl;
+//        if(j==366) cout<<"For 366 "<<diffU<<" and "<<diffV<<endl<<"with norm u "<<normU(j)<<", norm v "<<normV(j)<<" and targets "<< perFaceTargetNorm[j].first<<" "<<perFaceTargetNorm[j].second<<endl<<endl;
+//        if(j==139) cout<<"For 139 "<<diffU<<" and "<<diffV<<endl<<"with norm u "<<normU(j)<<", norm v "<<normV(j)<<" and targets "<< perFaceTargetNorm[j].first<<" "<<perFaceTargetNorm[j].second<<endl<<endl;
+//        if(j==96) cout<<"For 96 "<<diffU<<" and "<<diffV<<endl;
+//        if(j==171) cout<<"For 171 "<<diffU<<" and "<<diffV<<endl;
 
         // this is an experiment
         y = (abs(normV(j)-1)+ abs(normU(j)-1))*3;
