@@ -1885,7 +1885,18 @@ bool callback_mouse_down(igl::opengl::glfw::Viewer& viewer, int button, int modi
         // it is in the from mesh, thus snap to the closest vertex on the mesh
         if (computePointOnMesh(viewer, currPattern, Fg_pattern_curr, b, fid)) {
             int v_id = computeClosestVertexOnMesh(b, fid, Fg_pattern_curr);
+
             changeFitVert.push_back(v_id);
+            int half = Fg_pattern_curr.rows()/2;
+            if(v_id == Fg_pattern_curr(fid, 0)){
+                changeFitVert.push_back(Fg_pattern_curr((fid + half)% (2*half), 0) );
+            }else if (v_id == Fg_pattern_curr(fid, 1)){
+                changeFitVert.push_back(Fg_pattern_curr((fid + half)% (2*half), 2) );
+            }else {
+                changeFitVert.push_back(Fg_pattern_curr((fid + half)% (2*half), 1) );
+
+            }
+            cout<<"chosen face "<<fid<<endl;
             MatrixXd setPointsMatrix (changeFitVert.size(), 3);
             int rowIdx = 0;
             Eigen::VectorXi VS,FS,VT,FT;
@@ -2072,7 +2083,7 @@ void showGarment(igl::opengl::glfw::Viewer& viewer) {
         viewer.data().set_colors(colV);
     }else if (whichStressVisualize == 3 ){
         MatrixXd diffCol;
-        igl::jet(colJacDiff.col(0), 0.0, 1.5, diffCol);
+        igl::jet(colJacDiff.col(0), 0.0, .5, diffCol);
         viewer.data().set_colors(diffCol);
     }
 
@@ -2532,7 +2543,12 @@ void computeStress(igl::opengl::glfw::Viewer& viewer){
         double diffV = (normV(j)-perFaceTargetNorm[j].second)/ perFaceTargetNorm[j].second;
         double y = diffU + diffV ;
         colJacDiff.row(j)=  Vector3d (  y,  y, 0.0);
-        if(j==190) cout<<diffU<<" and "<<diffV<<endl;
+        if(j==190) cout<<"For 190 "<<diffU<<" and "<<diffV<<endl;
+        if(j==191) cout<<"For 191 "<<diffU<<" and "<<diffV<<endl;
+        if(j==366) cout<<"For 366 "<<diffU<<" and "<<diffV<<endl;
+        if(j==139) cout<<"For 139 "<<diffU<<" and "<<diffV<<endl;
+        if(j==96) cout<<"For 96 "<<diffU<<" and "<<diffV<<endl;
+        if(j==171) cout<<"For 171 "<<diffU<<" and "<<diffV<<endl;
 
         // this is an experiment
         y = (abs(normV(j)-1)+ abs(normU(j)-1))*3;

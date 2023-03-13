@@ -1713,16 +1713,30 @@ void computeAffection(VectorXd& d, double geoDistMax, MatrixXi& Fg_pattern_curr,
     affectedFaces.resize(Fg_pattern_curr.rows());
     affectedFaces.setConstant(0);
     for(int i = 0; i<Fg_pattern_curr.rows(); i++){
-        double accumD;
+        double accumD=0;
+        bool usedFlag= false;
         for(int j = 0; j < 3; j++){
             accumD += d(Fg_pattern_curr(i, j));
+//            if(d(Fg_pattern_curr(i, j)) <= geoDistMax){
+//                usedFlag = true;
+//                if(d(Fg_pattern_curr(i, j))== 0){cout<<" using the vert itself"<<endl; }
+//            }
         }
         accumD /= 3;
-        if(accumD <= geoDistMax){
+        if(accumD<= geoDistMax){
             // it is within thereshold
+            cout<<accumD<<" avg,  ";
+            cout<<d(Fg_pattern_curr(i, 0))<<" "<<d(Fg_pattern_curr(i, 1))<< " "<<d(Fg_pattern_curr(i, 2));
+            cout<<endl <<d(Fg_pattern_curr(i, 1))+d(Fg_pattern_curr(i, 2))<<" sum ";
             accumD/=geoDistMax;
+            cout<<accumD<<" norm,  ";
+
             accumD = (1. - accumD);
+            cout<<accumD<<" inv,  ";
+
             affectedFaces(i) = accumD;
+            cout<<"Face "<<i<<" with "<< affectedFaces(i)<<endl;
+
 
         }
 
