@@ -57,4 +57,6 @@ void updateSeamCorner( vector<seam*>& seamsList,  vector<minusOneSeam*> & minusO
 void stitchSeam(vector<int>& startAndEnd, MatrixXd& currPattern, MatrixXi& Fg_pattern_curr);
 void computeAffection(VectorXd& d,double geoDistMax, MatrixXi& Fg_pattern_curr, VectorXd& affectedFaces);
 
+void computeFinalJacobian(MatrixXd& Vg, MatrixXi& Fg,MatrixXd& Vg_gar,
+                          MatrixXi& Fg_gar, VectorXd& jacUAdapted, VectorXd& jacVAdapted, VectorXd& jacDiffAdapted);
 #endif //EXAMPLE_POSTPROCESSING_H

@@ -333,8 +333,10 @@ void checkIfCutIsUsefulForAdjFace(bool& tearIsUseful,  vector<vector<int> >& vfA
 
         double w = actU * uperFace.row(faceIdx).norm() + vperFace.row(faceIdx).norm() * actV;
         cout<<w <<" = w, "<<actU<<" , "<<actV<< " contribution,  u norm "<<uperFace.row(faceIdx).norm()<<" ,v norm"<<vperFace.row(faceIdx).norm()<<", direction "<<cutDirection.transpose()<<endl;
-        if(w > boundThereshold && (uperFace.row(faceIdx).norm()>1.05 || vperFace.row(faceIdx).norm()>1.05) ){
+        if(isBound && w > boundThereshold && (uperFace.row(faceIdx).norm()>1.05 || vperFace.row(faceIdx).norm()>1.05) ){
             tearIsUseful= true;
+        }else if(!isBound && w> boundThereshold){
+            tearIsUseful = true;
         }
     }
 }
@@ -593,12 +595,9 @@ void splitVertexFromCVE( cutVertEntry*& cve,
     if(!cve-> levelOne){
         if(dist2 > dist1 ){
             midVec = stressMidVec;
-//            cout<<"WE CHANGED THE SIGN OF THE MIDVEC!"<<endl;
         }
     }else{
-//        cout<<"initial!"<<endl;
         // insert the corner
-
         // if levelone take the side of the other interior vertices
         Vector3d C = Vg.row(cve -> vert).transpose()+ midVec;
         //(AB,AM), where M(X,Y) is the query point:
@@ -663,12 +662,10 @@ void splitVertexFromCVE( cutVertEntry*& cve,
         VectorXd distNow = (Vg.row(Fg(adjFace, 0)) * distB(0)+
                             Vg.row(Fg(adjFace, 1)) * distB(1) +
                             Vg.row(Fg(adjFace, 2))* distB(2)).transpose();
-//        cout<<distNow.transpose()<<" newPos, and bary "<< (Vg.row(Fg(adjFace, 0)) * (1./3)+ Vg.row(Fg(adjFace, 1)) *  (1./3) +  Vg.row(Fg(adjFace, 2))*  (1./3) )<<endl;
         distNow -= (Vg.row(Fg(adjFace, 0)) * (1./3)+
                     Vg.row(Fg(adjFace, 1)) *  (1./3) +
                     Vg.row(Fg(adjFace, 2))*  (1./3) ).transpose();
         double lenNow = distNow.norm();
-//        cout<<"new face verts "<<Fg.row(adjFace)<<endl;
         cout<<"Face: "<<adjFace<<" or "<<halfPatternFaceToFullPatternFace[adjFace]<<" "<<lenNow<<" dist now and then "<<lenThen<<" ratio is "<<lenNow/lenThen<<" th:"<<middleThereshold<<endl;
 
         if(lenNow/lenThen > middleThereshold ){
@@ -2577,23 +2574,29 @@ void checkZip( cutVertEntry*& cve,  MatrixXd& Vg, MatrixXi& Fg, MatrixXi& mapFro
     createVertexFaceAdjacencyList(Fg, vfAdj);
     computePerFaceUV( Fg,   mapFromFg,  mapFromVg, Vg, halfPatternFaceToFullPatternFace, inverseMap);
 
-    checkIfCutIsUsefulForAdjFace(tearIsUseful, vfAdj, cve, cutDirection, Fg, dummy, true );
+    checkIfCutIsUsefulForAdjFace(tearIsUseful, vfAdj, cve, cutDirection, Fg, dummy, isCorner );
     if(tearIsUseful){
         cout<<"Undo previous zip"<<endl;
-        for(int j = 0; j< cve-> boundaryFrac.size(); j++){
-            if(isCorner){
-                cout<<"erasing "<<cve-> boundaryFrac[j].first<<endl;
-                zipBack.erase(cve-> boundaryFrac[j]);
-            }else{
-                // todo
+        cout<<"erasing ";
+        if(isCorner){
+            for(int j = 0; j< cve-> boundaryFrac.size(); j++) {
+                cout << cve->boundaryFrac[j].first << " ";
+                zipBack.erase(cve->boundaryFrac[j]);
+            }
+        }else{
+            for(int j = 0; j< cve-> dulicatePairs.size(); j++) {
+                cout << cve->dulicatePairs[j].first << " ";
                 zipMiddle.erase(cve-> dulicatePairs[j]);
             }
         }
     }
-    for(auto it: zipBack){
-        cout<<it.first<<" and "<<it.second<<endl;
-    }
-    cout<<" output all zip back vert"<<endl;
+//    for(auto it: zipBack){
+//        cout<<it.first<<" and "<<it.second<<endl<<" in back. ";
+//    }
+//    for(auto it: zipMiddle){
+//        cout<<it.first<<" and "<<it.second<<endl<<" in middle. ";
+//    }
+    cout<<" Remainig zip back vert "<<zipBack.size()<<" "<<zipMiddle.size() <<endl;
 
 }
 void zipTears(vector<cutVertEntry*>& cutPositions, MatrixXd& Vg, MatrixXi& Fg, MatrixXi& mapFromFg, MatrixXd& mapFromVg, map<int, int>& halfPatternFaceToFullPatternFace, bool inverseMap){
@@ -2603,12 +2606,12 @@ void zipTears(vector<cutVertEntry*>& cutPositions, MatrixXd& Vg, MatrixXi& Fg, M
 
     int i = zipCount;
     cutVertEntry* cve = cutPositions[i];
-    if (cutPositions[i] -> cutId < 1000){
+    if (cutPositions[i] -> cutId < 1000 ){
         bool isCorner = (cve->startCorner || cve-> endCorner);
-        cout<<"cut position "<<i<<" is a corner  "<< isCorner<<" seam id in list"<<cve->seamIdInList <<endl;
+        cout<<"cut position "<<i<<" is a corner ? "<< isCorner<<" seam id in list"<<cve->seamIdInList <<endl;
         if(isCorner) {
             for(int j = 0; j< cve-> boundaryFrac.size(); j++){
-                cout<<" vert "<<cve-> boundaryFrac[j].first<<" from seam "<<  cve-> boundaryFrac[j].second<<endl ;
+                cout<<" "<<cve-> boundaryFrac[j].first;
                 zipBack.insert(cve-> boundaryFrac[j]);
 
             }
@@ -2621,7 +2624,6 @@ void zipTears(vector<cutVertEntry*>& cutPositions, MatrixXd& Vg, MatrixXi& Fg, M
     }else{
         cout<<" Checked all positions to Zip. "<< endl;
         return;
-
     }
     zipCount ++;
 }

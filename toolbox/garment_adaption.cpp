@@ -179,8 +179,6 @@ void garment_adaption::smoothJacobian(){
         inv_jacobians[i] = jacobians[i].inverse();
 
     }
-//    cout<<maxCoeff<<" after smoothing"<<endl;
-//    cout<<minCoeff<<" min after smoothing"<<endl;
 }
 void garment_adaption::computeJacobian(){
    // perFaceTargetNorm.resize(numFace);

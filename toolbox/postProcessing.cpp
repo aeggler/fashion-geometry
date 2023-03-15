@@ -1727,3 +1727,66 @@ void computeAffection(VectorXd& d, double geoDistMax, MatrixXi& Fg_pattern_curr,
         }
     }
 }
+
+void smoothFinalJacobian(vector<MatrixXd>&  finalJac,  VectorXd& jacUAdapted, VectorXd& jacVAdapted, MatrixXd& Vg_gar, MatrixXi& Fg_gar  ){
+    VectorXd area;
+    std::vector<Eigen::MatrixXd > jacobians_orig= finalJac;
+    igl::doublearea(Vg_gar, Fg_gar, area);
+    area/=2;
+    int m = Fg_gar.rows();
+    std::vector< std::vector<int> > ffAdj;
+    createFaceFaceAdjacencyList(Fg_gar, ffAdj);
+    for(int i=0; i<m; i++){
+        Vector3d avgU = finalJac[i].col(0) * area(i);
+        Vector3d avgV = finalJac[i].col(1) * area(i);
+        double weightsum = area(i);
+
+        int numNeigh = ffAdj[i].size();
+        for(int j = 0; j < numNeigh; j++){
+            int neighFace = ffAdj[i][j];
+            avgU += jacobians_orig[neighFace].col(0) * area(neighFace);
+            avgV += jacobians_orig[neighFace].col(1) * area(neighFace);
+            weightsum += area(neighFace);
+        }
+        avgU /= weightsum;
+        avgV /= weightsum;
+        finalJac[i].col(0) = avgU;
+        finalJac[i].col(1) = avgV;
+        jacVAdapted(i) = finalJac[i].col(0).norm();
+        jacVAdapted(i) = finalJac[i].col(1).norm();
+    }
+}
+void computeFinalJacobian(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_gar, MatrixXi& Fg_gar,
+                          VectorXd& jacUAdapted, VectorXd& jacVAdapted, VectorXd& jacDiffAdapted){
+    int m = Fg.rows();
+    jacVAdapted.resize(m);
+    jacUAdapted.resize(m);
+    jacDiffAdapted.resize(m);
+    vector<MatrixXd> finalJac;
+    cout<<m<<" pattern faces, garment faces "<<Fg_gar.rows()<<endl;
+    for(int i=0; i<m; i++){
+        int id0 = Fg(i, 0);
+        int id1 = Fg(i, 1);
+        int id2 = Fg(i, 2);
+
+        Vector3d baryPatt = Vg.row(id0)+ Vg.row(id1) + Vg.row(id2);
+        baryPatt /= 3;
+        Vector3d u = baryPatt; u(0) += 1;
+        Vector3d v = baryPatt; v(1) += 1;
+        VectorXd uBary, vBary;
+        igl::barycentric_coordinates(u.transpose(), Vg.row(id0), Vg.row(id1), Vg.row(id2), uBary);
+        igl::barycentric_coordinates(v.transpose(), Vg.row(id0), Vg.row(id1), Vg.row(id2), vBary);
+
+        Vector3d Gu = uBary(0) * Vg_gar.row(id0) + uBary(1) * Vg_gar.row(id1) + uBary(2) * Vg_gar.row(id2);
+        Vector3d Gv = vBary(0) * Vg_gar.row(id0) + vBary (1) * Vg_gar.row(id1) + vBary(2) * Vg_gar.row(id2);
+        Vector3d G = (1./3) * Vg_gar.row(id0) + (1./3) * Vg_gar.row(id1) + (1./3) * Vg_gar.row(id2);
+        MatrixXd jac (3, 2);
+        jac.col(0) = (Gu - G);
+        jac.col(1) = (Gv - G);
+        jacUAdapted(i) = (Gu-G).norm();
+        jacVAdapted(i) = (Gv-G).norm();
+        finalJac.push_back(jac);
+    }
+    smoothFinalJacobian(finalJac, jacUAdapted, jacVAdapted, Vg_gar, Fg_gar );
+}
+
