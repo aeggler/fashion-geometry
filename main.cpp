@@ -59,10 +59,8 @@ Eigen::MatrixXi Eg; // garment edges
 Eigen::Vector3d ambient, ambient_grey, diffuse, diffuse_grey, specular;
 Eigen::Vector3f garment_translation (0., 0., 0.);// optimal for the given garment mesh
 float garment_scale = 1.;
-Eigen::Vector3f mannequin_translation (0., 0., 0.);
 float mannequin_scale = 1.;
-
-
+Eigen::Vector3f mannequin_translation (0., 0., 0.);
 
 //for the simulation
 double timestep= 0.02;
@@ -175,17 +173,16 @@ set<int> toPattern_boundaryVerticesSet; // the boundary vertices of the toPatter
 vector<int> startAndEnd; // start and end to do the smoothing
 double taylor_lazyness = 1;
 bool inverseMap, symetry, geoDistU, geoDistV;
-int pos;
-MatrixXd R_symetry; VectorXd T_sym_pattern;
+int pos; VectorXd T_sym_pattern;
 MatrixXd patternEdgeLengths_orig;
 MatrixXi mapFromFg, mapToFg, Fg_pattern_curr; //from  = the rest shape of the garment
 MatrixXd mapFromVg, mapToVg; //to = the target shape
 int changedPos;
 map<int, int> halfPatternFaceToFullPatternFace, fullPatternFaceToHalfPatternFace, halfPatternVertToFullPatternVert, fullPatternVertToHalfPatternVert, insertedIdxToPatternVert;
-string avName, garment;
-double geoDistMax = 30.;
+string avName, garment; // avatar name and garment name to write files properly
+double geoDistMax = 30.; // radius for fit change
 double geoDistChange = 0.97;// values <1 make it bigger. Conter inutitive
-VectorXd geoDistDist;
+VectorXd geoDistDist; // geodesic distances
 vector<vector<int>> boundaryLFrom;
 
 void preComputeAdaption();
@@ -425,7 +422,7 @@ int main(int argc, char *argv[])
     MatrixXi perfPattFg, perfPattFg_orig, addedFabricPatternFg;
 
     bool patternExists = true;
-    inverseMap = false;
+    inverseMap = true;
 
 //    string startFile = "writtenPattern_nicelyRetri.obj";
 //    startFile =  "writtenPattern_leggins.obj";
@@ -516,15 +513,6 @@ int main(int argc, char *argv[])
     bool showPatchBoundary = false ;
     menu.callback_draw_viewer_menu = [&]() {
         if (ImGui::CollapsingHeader("Garment", ImGuiTreeNodeFlags_OpenOnArrow)) {
-
-            ImGui::InputFloat("Translation X", &garment_translation[0], 0, 0, "%0.4f");
-            ImGui::InputFloat("Translation Y", &garment_translation[1], 0, 0, "%0.4f");
-            ImGui::InputFloat("Translation Z", &garment_translation[2], 0, 0, "%0.4f");
-            ImGui::InputFloat("Scaling factor X", &garment_scale, 0, 0, "%0.4f");
-            if(ImGui::Button("Adjust garment", ImVec2(-1, 0))){
-                translateMesh(viewer, 1 );
-            }
-
             ImGui::InputInt("Vis Seam No", &whichSeam, 0, 0);
             if(ImGui::Button("Visualize Seam", ImVec2(-1, 0))){
                 MatrixXd testCol= MatrixXd::Zero(Vg_pattern.rows(), 3);
@@ -535,7 +523,6 @@ int main(int argc, char *argv[])
                         auto stP2 = firstSeam-> getStartAndPatch2ForCorres();
 //
                         int len = firstSeam -> seamLength();
-//                        int len = firstSeam->getLength();
                         int boundLen1 = boundaryL[stP1.second].size();
                         int boundLen2 = boundaryL[stP2.second].size();
                         MatrixXi edgesMat (2*(len), 2);
@@ -1397,6 +1384,12 @@ int main(int argc, char *argv[])
 
 
             }
+            if(ImGui::Button("Stitch 3D", ImVec2(-1, 0))){
+                MatrixXd adaptedPatternIn3d;
+                MatrixXi adaptedPatternIn3d_faces;
+                igl::readPLY("finalGarmentPattern_"+avName+"_"+garment+"_backIn3d.ply", adaptedPatternIn3d, adaptedPatternIn3d_faces);
+                stitchAdapted3D(adaptedPatternIn3d, adaptedPatternIn3d_faces, seamsList, mapCornerToCorner);// compute adaptation first
+            }
             bool origIn3D = false;
             if(ImGui::Button("Show inserted in 3D ", ImVec2(-1, 0))){
                 MatrixXd adaptedPatternIn3d;
@@ -1445,8 +1438,6 @@ int main(int argc, char *argv[])
                 viewer.data().show_lines = false;
                 viewer.data().set_mesh(adaptedPatternIn3d, adaptedPatternIn3d_faces);
                 viewer.data().set_colors(C);
-
-
 
             }
 

@@ -1224,8 +1224,8 @@ void initialGuessAdaption(MatrixXd& currPattern_nt, MatrixXd& mapToVg_nt, Matrix
         rightFull.push_back(1); rightFull.push_back(3);
         leftFull.push_back(6); leftFull.push_back(8);
     }else if (garment =="top" ){
-        rightFull.push_back(9); rightFull.push_back(9);// none
-        leftFull.push_back(1); leftFull.push_back(3);
+        rightFull.push_back(90); rightFull.push_back(90);// none
+        leftFull.push_back(100); leftFull.push_back(30);
     }
 
     right = rightFull;
@@ -1257,15 +1257,14 @@ void initialGuessAdaption(MatrixXd& currPattern_nt, MatrixXd& mapToVg_nt, Matrix
     VectorXd S;
     VectorXi I;//face index of smallest distance
     MatrixXd C,N, initGuess;
-    cout<<"Starting with signed distance "<<endl;
+    cout<<"Starting with signed distance "<<perfectPattern_nt.rows()<<" "<<mapToVg.rows()<<endl;
 
-    igl::signed_distance(currPattern, perfectPattern, mapToFg, igl::SIGNED_DISTANCE_TYPE_UNSIGNED, S, I, C, N);
+    igl::signed_distance(currPattern, perfectPattern, mapToFg, igl::SIGNED_DISTANCE_TYPE_PSEUDONORMAL, S, I, C, N);
 //    cout<<"Finished signed distance "<<endl;
     vector<set<pair<int, double>>> newCornerCandidate(perfectPattern.rows());
     MatrixXd B(currPattern.rows(), 3); // contains all barycentric coordinates
     for(int i = 0; i < currPattern.rows(); i++){
         VectorXd bary;
-
         auto face = mapToFg.row(I(i));
         igl::barycentric_coordinates(currPattern.row(i), perfectPattern.row(face(0)), perfectPattern.row(face(1)),
                                      perfectPattern.row(face(2)), bary);
@@ -1304,14 +1303,14 @@ void initialGuessAdaption(MatrixXd& currPattern_nt, MatrixXd& mapToVg_nt, Matrix
         if(newCorner ==-1){
             cout<<"no new corner found "<<i<<endl;
         }else{
-//            cout<<i<<" new corner is "<<newCorner<<endl;
             if(newCorner>origHalfSize){
 //                cout<<"added neg"<<endl;
-                newCorner *= -1;
+//                newCorner *= -1;
             }else{
 //                newCorner = halfPatternVertToFullPatternVertT[newCorner];
 //                cout<<"updated to "<<newCorner<<endl;
             }
+            cout<<"maping corner "<<i<<" to "<<newCorner<<endl;
             mapCornerToCorner[i]= newCorner;
         }
     }
@@ -1393,17 +1392,9 @@ void ensureAngle(MatrixXd& p, MatrixXd& fromPattern, MatrixXi& Fg_pattern, Matri
                 dir = e2rot - e2;
                 p.row(Fg_pattern(i, (j+2) % 3)) += damp* stiffness * dir;
 
-//                e1 = p.row(Fg_pattern(i, j))-p.row(Fg_pattern(i, (j+1) % 3));
-//                e2 = p.row(Fg_pattern(i, (j+2) % 3 ))-p.row(Fg_pattern(i, (j+1) % 3));
-//                newAngle = acos(min(max((e1.normalized()).dot(e2.normalized()), -1.), 1.));
-//                newdegree = newAngle*180/M_PI;
-////                cout<<"new degree: "<<newdegree<<endl;
-
             }
 
-
         }
-
 
     }
 }
@@ -1450,11 +1441,7 @@ void ensurePairwiseDist(MatrixXd& p, MatrixXd& toPattern, MatrixXi& Fg_pattern){
 //        }
     }
 }
-//map<int, int> patchMapToHalf;
-map<int, int> htFFace ,pMapToHalf,
-//        fullPatternFaceToHalfPatternFace,
-        fTHVert, hTFVert;
-//        halfPatternVertToFullPatternVert;
+map<int, int> htFFace, pMapToHalf, fTHVert, hTFVert;
 
 void createMapCornersToNewCorner(MatrixXd& currPattern,MatrixXd& mapToVg, vector<vector<pair<int, int>>>& cornerPerBoundary,// first is vert id, second ins loop id, but thats bullshit
                                  map<int, int>& mapCornerToCorner, vector<vector<int>>& boundaryL, map<int, int>& halfPatternVertToFullPatternVertT,
@@ -1464,77 +1451,6 @@ void createMapCornersToNewCorner(MatrixXd& currPattern,MatrixXd& mapToVg, vector
     mapToVg.col(2).setConstant(200);
     fTHVert = fullPatternVertToHalfPatternVertT;
     hTFVert = halfPatternVertToFullPatternVertT;
-    double eps = 0.1; int count = 0;
-//    for(int i = 0; i<cornerPerBoundary.size(); i++){
-//        vector<pair<int, int>> cornersOfB = cornerPerBoundary[i];
-//        for(int j = 0; j< cornersOfB.size(); j++){
-//            int newId;
-//
-//            if(fullPatternVertToHalfPatternVertT.find(cornersOfB[j].first ) == fullPatternVertToHalfPatternVertT.end()){continue; }
-//
-//            if(pMapToHalf.find(i)== pMapToHalf.end()){
-//                pMapToHalf[i]=count;
-//                cout<<i<<" is now patch "<<count<<endl;
-//                count++;
-//            }
-//            cout<<j<<" / "<<endl;
-//            int halfId= fullPatternVertToHalfPatternVertT[cornersOfB[j].first];
-//            if((currPattern.row(halfId )- mapToVg.row(halfId)).norm()> eps){
-//                // we need to find it
-//                bool found = false;
-//                double minDist = (currPattern.row(boundaryL[pMapToHalf[i]][0])- mapToVg.row(halfId)).norm();
-//                for(int ii=0; ii< boundaryL[pMapToHalf[i]].size(); ii++){
-//
-//                    if((currPattern.row(boundaryL[pMapToHalf[i]][ii])- mapToVg.row(halfId)).norm()< minDist){
-//                        found = true;
-//                        newId= boundaryL[i][ii];
-//                        minDist = (currPattern.row(boundaryL[pMapToHalf[i]][ii])- mapToVg.row(halfId)).norm();
-//                    }
-//                }
-//                if(!found){
-//                    cout<<" no alternative corner found!"<<endl ;
-//                }else{cout<<"taking "<<newId<<" with dist "<<minDist<<" as heuristic"<<endl;
-//                    if(halfPatternVertToFullPatternVertT.find(newId) == halfPatternVertToFullPatternVertT.end() ){
-//                        newId *= (-1);
-//                        fullPatternVertToHalfPatternVertT[newId] = (-1) * newId;
-//                        cout<<newId<<" a new introduced vertex iis corner, map it negatively"<<endl;
-//                    }else{
-//                        cout<<"Full Id compute"<<endl;
-//                        newId = halfPatternVertToFullPatternVertT[newId];
-//                        cout<<"Full Id computed * "<<endl;
-//
-//                    }
-//                }
-//            }else{
-//                newId = cornersOfB[j].first;
-//            }
-//
-//            mapCornerToCorner[cornersOfB[j].first] = newId;
-//        }
-//    }
-//    if(symetry){
-//        halfPatternFaceToFullPatternFace= halfPatternFaceToFullPatternFaceT;
-//        fullPatternFaceToHalfPatternFace =fullPatternFaceToHalfPatternFaceT;
-//        fullPatternVertToHalfPatternVert= fullPatternVertToHalfPatternVertT;
-//        halfPatternVertToFullPatternVert=halfPatternVertToFullPatternVertT;
-//
-//        for(int i=0; i<cornerPerBoundary.size(); i++){
-//            for(int j=0; j<cornerPerBoundary[i].size(); j++){
-//                int ver = cornerPerBoundary[i][j].first;
-//                if(fullPatternVertToHalfPatternVert.find(ver) == fullPatternVertToHalfPatternVert.end()){
-//                    continue;
-//                }
-//                int newVer = fullPatternVertToHalfPatternVert[ver];
-//                for(int ii=0; ii < boundaryL.size(); ii++){
-//                    for(int jj= 0; jj<boundaryL[ii].size(); jj++){
-//                        if(boundaryL[ii][jj] == newVer){
-//                            patchMapToHalf[i]= ii;
-//                        }
-//                    }
-//                }
-//            }
-//        }
-//    }
 }
 
 void updateCornerUtils(set<int>& cornerSet , // a set containing all corner vertices
@@ -1789,4 +1705,20 @@ void computeFinalJacobian(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_gar, MatrixXi
     }
     smoothFinalJacobian(finalJac, jacUAdapted, jacVAdapted, Vg_gar, Fg_gar );
 }
+
+void stitchAdapted3D(MatrixXd& Vg, MatrixXi& Fg,vector<seam*>& seamsList,map<int, int >& mapCornerToCorner  ){
+    for(int i=0; i<seamsList.size(); i++) {
+        int start1 = seamsList[i]->getStart1();
+        int start2 = seamsList[i]->getStart2();
+
+        auto ends = seamsList[i]->getEndCornerIds();
+        int end1 = ends.first;
+        int end2 = ends.second;
+
+    }
+    for(auto it: mapCornerToCorner){
+        cout<<"corner "<<it.first<<" and "<<it.second<<endl;
+    }
+}
+
 

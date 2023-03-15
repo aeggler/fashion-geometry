@@ -59,4 +59,6 @@ void computeAffection(VectorXd& d,double geoDistMax, MatrixXi& Fg_pattern_curr, 
 
 void computeFinalJacobian(MatrixXd& Vg, MatrixXi& Fg,MatrixXd& Vg_gar,
                           MatrixXi& Fg_gar, VectorXd& jacUAdapted, VectorXd& jacVAdapted, VectorXd& jacDiffAdapted);
+void stitchAdapted3D(MatrixXd& Vg, MatrixXi& Fg,vector<seam*>& seamsList,map<int, int >& mapCornerToCorner  );
+
 #endif //EXAMPLE_POSTPROCESSING_H
