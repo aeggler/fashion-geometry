@@ -422,7 +422,7 @@ int main(int argc, char *argv[])
     MatrixXi perfPattFg, perfPattFg_orig, addedFabricPatternFg;
 
     bool patternExists = true;
-    inverseMap = false;
+    inverseMap = true;
 
 //    string startFile = "writtenPattern_nicelyRetri.obj";
 //    startFile =  "writtenPattern_leggins.obj";
@@ -1388,7 +1388,18 @@ int main(int argc, char *argv[])
                 MatrixXd adaptedPatternIn3d;
                 MatrixXi adaptedPatternIn3d_faces;
                 igl::readPLY("finalGarmentPattern_"+avName+"_"+garment+"_backIn3d.ply", adaptedPatternIn3d, adaptedPatternIn3d_faces);
-                stitchAdapted3D(adaptedPatternIn3d, adaptedPatternIn3d_faces, seamsList, mapCornerToCorner);// compute adaptation first
+                stitchAdapted3D(adaptedPatternIn3d, adaptedPatternIn3d_faces,Fg_pattern_orig, seamsList, mapCornerToCorner, halfPatternVertToFullPatternVert);// compute adaptation first
+                MatrixXd cornersMat (mapCornerToCorner.size(), 3); int count = 0;
+                for(auto it: mapCornerToCorner){
+                    cornersMat.row(count) = adaptedPatternIn3d.row(it.second);
+                    count ++;
+                }
+                viewer.selected_data_index = 0;
+                viewer.data().clear();
+                viewer.data().show_lines = true;
+                viewer.data().set_mesh(adaptedPatternIn3d, adaptedPatternIn3d_faces);
+                viewer.data().uniform_colors(ambient, diffuse, specular);
+                viewer.data().set_points(cornersMat, RowVector3d(1.0, 0.0, 0.0));
             }
             bool origIn3D = false;
             if(ImGui::Button("Show inserted in 3D ", ImVec2(-1, 0))){

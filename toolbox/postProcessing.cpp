@@ -1777,7 +1777,7 @@ void stitchAdapted3D(MatrixXd& Vg, MatrixXi& Fg, MatrixXi& Fg_pattern_orig, vect
 
     }
     cout<<"end"<<endl;
-    cout<<  mapCornerToCorner[363]<<" "<<mapCornerToCorner[345]<<endl; 
+    cout<<  mapCornerToCorner[363]<<" "<<mapCornerToCorner[345]<<endl;
     vector<vector<int>> boundaryL;
     igl::boundary_loop(Fg, boundaryL);
     for(int i=0; i<seamsList.size(); i++) {
