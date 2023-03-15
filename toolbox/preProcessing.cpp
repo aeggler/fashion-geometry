@@ -236,7 +236,7 @@ void createHalfSewingPattern(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, M
     }
     idx=0; int rightIdx = 0;
 
-//    cout<<isLeftVertPattern.sum()<<" and right side sum "<<isRightVertPattern.sum()<<endl;
+   cout<<isLeftVertPattern(35)<<" and right side sum "<<endl;
     int patternHalfVert = isLeftVertPattern.sum();
     Vg_pattern_half.resize(patternHalfVert, 3);
      rightVert.resize(isRightVertPattern.sum(), 3);
@@ -279,6 +279,7 @@ void createHalfSewingPattern(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, M
 //    cout<<rightVert.rows()<<" right and left 2D verts "<<Vg_pattern_half.rows()<<endl;
 
     cout<<" after"<<endl;
+    cout<<halfPatternVertToFullPatternVert[35]<<" "<<halfPatternVertToFullPatternVert[28]<<" "<<halfPatternVertToFullPatternVert[747]<<endl;
 
 
 }

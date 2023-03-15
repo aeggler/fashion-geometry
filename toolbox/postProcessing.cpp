@@ -1558,7 +1558,7 @@ void updateSeamCorner( vector<seam*>& seamsList,  vector<minusOneSeam*> & minusO
 
         }
 //        if(fTHVert.find(end2) != fTHVert.end())
-        cout<<"seam "<<i<<" "<<start1<<" "<< start2<<" "<<
+        cout<<"seam "<<i<<": "<<start1<<" "<< start2<<" "<<
             end1<<" "<<  end2<<endl;
         seamsList[i]->updateStartEnd( start1, start2, end1,end2) ;
 
@@ -1722,20 +1722,92 @@ void computeFinalJacobian(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_gar, MatrixXi
     }
     smoothFinalJacobian(finalJac, jacUAdapted, jacVAdapted, Vg_gar, Fg_gar );
 }
+void findPatchAndIdx(int vert, int patch, int idx, vector<vector<int>>& boundaryL ){
+    for(int i =0; i<boundaryL.size(); i++){
+        for(int j=0; j<boundaryL[i].size(); j++){
+            if(vert == boundaryL[i][j]){
+                patch = i;
+                idx = j;
+                return;
+            }
+        }
+    }
+    idx = -1;
+}
+void stitchAdapted3D(MatrixXd& Vg, MatrixXi& Fg, MatrixXi& Fg_pattern_orig, vector<seam*>& seamsList,map<int, int >& mapCornerToCorner, map<int, int> &halfPatternVertToFullPatternVert ){
+    vector<vector<int>> vfAdj;
+    createVertexFaceAdjacencyList(Fg, vfAdj);
+    vector<vector<int>> vfAdjorig;
+    createVertexFaceAdjacencyList(Fg_pattern_orig, vfAdjorig);
+    int offset = Fg.rows()/2;
+    map<int, int> mapCornerToCornerDupl= mapCornerToCorner;
+    for(auto it: mapCornerToCornerDupl){
+//        if(it.second >= 387) mapCornerToCorner[it.first] = it.second -2;
+        cout<<"corner "<<it.first<<" and "<<it.second<<endl;
+        int face = vfAdj[it.second][0];
+        int offsetVert, duplVert;
+        if(it.second== Fg(face, 0)) {
+            offsetVert = Fg(face + offset, 0);
+//            duplVert =  Fg_pattern_orig(face + offset, 0);
+        }else if(it.second== Fg(face, 1)){
+            offsetVert = Fg(face + offset, 2);
+//             duplVert =  Fg_pattern_orig(face + offset, 2);
+        }else if (it.second== Fg(face, 2)){
+            offsetVert= Fg(face+offset, 1);
+//             duplVert =  Fg_pattern_orig(face + offset, 1);
+        }else{
+            cout<<"Not found in offset. Problem!!!"<<endl;return;
+        }
 
-void stitchAdapted3D(MatrixXd& Vg, MatrixXi& Fg,vector<seam*>& seamsList,map<int, int >& mapCornerToCorner  ){
+        int faceOrig = vfAdjorig[it.first][0];
+        if(it.first == Fg_pattern_orig(faceOrig, 0)){
+            duplVert = Fg_pattern_orig(faceOrig+offset, 0);
+        }else if(it.first == Fg_pattern_orig(faceOrig, 1)){
+            duplVert = Fg_pattern_orig(faceOrig+offset, 2);
+        }
+        else if(it.first == Fg_pattern_orig(faceOrig, 2)){
+            duplVert = Fg_pattern_orig(faceOrig+offset, 1);
+        }else{
+            cout<<" not found errror"<<endl;
+        }
+            cout<<duplVert<<" has dupl in full pattern called "<< offsetVert<< endl;
+//        if(it.second >= 387) offsetVert-=2;
+
+        mapCornerToCorner[duplVert]= offsetVert;
+
+    }
+    cout<<"end"<<endl;
+    cout<<  mapCornerToCorner[363]<<" "<<mapCornerToCorner[345]<<endl; 
+    vector<vector<int>> boundaryL;
+    igl::boundary_loop(Fg, boundaryL);
     for(int i=0; i<seamsList.size(); i++) {
         int start1 = seamsList[i]->getStart1();
+        start1 = mapCornerToCorner[start1];
         int start2 = seamsList[i]->getStart2();
+        start2 = mapCornerToCorner[start1];
+        int patch1, patch2, idx1start, idx2start;
+        findPatchAndIdx(start1, patch1, idx1start, boundaryL);
+        findPatchAndIdx(start2, patch2, idx2start, boundaryL);
+        if(idx1start ==-1 || idx2start==-1) cout<<"onne of the starts not found!! "<<endl;
 
         auto ends = seamsList[i]->getEndCornerIds();
         int end1 = ends.first;
         int end2 = ends.second;
+        int patch11, patch21, idx1end, idx2end;
+        findPatchAndIdx(end1, patch11, idx1end, boundaryL);
+        findPatchAndIdx(end2, patch21, idx2end, boundaryL);
+        if(idx1end ==-1 || idx2end==-1) cout<<"onne of the ends not found!! "<<endl;
+        if(patch1 != patch11 || patch2 != patch21) cout<<"something in the patches does not add up"<<endl;
+
+        // all clean , iterate along the boundary
+
+        int nextId1, nextId2;
+        int b1 = boundaryL[patch1].size();
+        int b2 = boundaryL[patch2].size();
+
 
     }
-    for(auto it: mapCornerToCorner){
-        cout<<"corner "<<it.first<<" and "<<it.second<<endl;
-    }
+
 }
 
 
