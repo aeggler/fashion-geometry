@@ -422,7 +422,7 @@ int main(int argc, char *argv[])
     MatrixXi perfPattFg, perfPattFg_orig, addedFabricPatternFg;
 
     bool patternExists = true;
-    inverseMap = true;
+    inverseMap = false;
 
 //    string startFile = "writtenPattern_nicelyRetri.obj";
 //    startFile =  "writtenPattern_leggins.obj";
@@ -1440,6 +1440,116 @@ int main(int argc, char *argv[])
                 viewer.data().set_colors(C);
 
             }
+            if(ImGui::Button("Show initial in 2D", ImVec2(-1, 0))){
+                MatrixXd C = MatrixXd::Zero(Fg_pattern_orig.rows(), 3);
+                C.col(1).setConstant(1);
+                C.col(0).setConstant(1);
+
+                viewer.selected_data_index = 1;
+                viewer.data().clear();
+                viewer.selected_data_index = 0;
+                viewer.data().clear();
+                viewer.data().show_lines = false;
+                viewer.data().set_mesh(Vg_pattern_orig, Fg_pattern_orig);
+                viewer.data().set_colors(C);
+
+                vector<vector<int>> boundaryL_toPattern;
+                igl::boundary_loop(Fg_pattern_orig, boundaryL_toPattern);
+                viewer.selected_data_index = 2;
+                viewer.data().clear();
+                int boundVert=0;
+                for (auto bli: boundaryL_toPattern) {
+                    boundVert+= bli.size();
+                }
+
+
+                MatrixXi boundaryOfToPattern(boundVert, 2);
+                MatrixXd vertPoints(boundVert, 3);
+                int curr = 0;
+                for (auto bli: boundaryL_toPattern) {
+                    for (int j = 0; j < bli.size(); j++) {
+                        boundaryOfToPattern(curr, 0) = bli[j];
+                        boundaryOfToPattern(curr, 1) = bli[(j + 1) % (bli.size())];
+                        curr++;
+                    }
+                }
+                viewer.data().set_edges(Vg_pattern_orig, boundaryOfToPattern, Eigen::RowVector3d(0, 0, 1));
+
+
+            }
+            if(ImGui::Button("Show inserted in 2D", ImVec2(-1, 0))){
+                MatrixXd adaptedPatternIn3d;
+                MatrixXi adaptedPatternIn3d_faces;
+                cout<< newFaces.size()<<"new faces size"<<endl;
+                int size; vector<vector<int>> perFaceNewFaces;
+
+                cout<<"reading new faces from file"<<endl;
+                if(garment == "leggins"|| "top") patchcount = 5;
+
+                string filename = "newFacesAfterPatch_"+avName+"_"+garment+"_"+ to_string(patchcount) +".txt";
+//                     filename  = "newFacesAfterPatch_"+avName+"_"+garment+"_final" +".txt";
+                ifstream in("/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/" + filename);
+                in>>size;
+                for(int i=0; i<size; i++ ){
+                    int faceSize; in>>faceSize;
+                    vector<int> currF;
+                    for(int j=0;j<faceSize; j++){
+                        int newFace;
+                        in>>newFace;
+                        currF.push_back(newFace);
+                    }
+                    perFaceNewFaces.push_back(currF);
+                }
+
+                igl::readOBJ("duplicate_Pattern_final_of_"+avName+"_"+garment+".obj", adaptedPatternIn3d, adaptedPatternIn3d_faces);
+                MatrixXd C = MatrixXd::Zero(adaptedPatternIn3d_faces.rows(), 3);
+                C.col(1).setConstant(1);
+                C.col(0).setConstant(1);
+                int offset = C.rows()/2;
+                for(int i=0; i<size; i++){
+                    for(int j=0; j<perFaceNewFaces[i].size(); j++){
+                        double val = (((double)i)/((double)(size+1)));
+                        C(perFaceNewFaces[i][j], 0) = val;
+                        C(perFaceNewFaces[i][j], 2) = (1-val);
+                        if(symetry){
+                            C(perFaceNewFaces[i][j]+offset, 0) = val;
+                            C(perFaceNewFaces[i][j]+offset, 2) = (1-val);
+                        }
+
+                    }
+                }
+
+                viewer.selected_data_index = 1;
+                viewer.data().clear();
+                viewer.selected_data_index = 0;
+                viewer.data().clear();
+                viewer.data().show_lines = false;
+                viewer.data().set_mesh(adaptedPatternIn3d, adaptedPatternIn3d_faces);
+                viewer.data().set_colors(C);
+
+                vector<vector<int>> boundaryL_toPattern;
+                igl::boundary_loop(adaptedPatternIn3d_faces, boundaryL_toPattern);
+                viewer.selected_data_index = 2;
+                viewer.data().clear();
+                int boundVert=0;
+                for (auto bli: boundaryL_toPattern) {
+                    boundVert+= bli.size();
+                }
+
+
+                    MatrixXi boundaryOfToPattern(boundVert, 2);
+                    MatrixXd vertPoints(boundVert, 3);
+                    int curr = 0;
+                    for (auto bli: boundaryL_toPattern) {
+                        for (int j = 0; j < bli.size(); j++) {
+                            boundaryOfToPattern(curr, 0) = bli[j];
+                            boundaryOfToPattern(curr, 1) = bli[(j + 1) % (bli.size())];
+                            curr++;
+                        }
+                    }
+                    viewer.data().set_edges(adaptedPatternIn3d, boundaryOfToPattern, Eigen::RowVector3d(0, 0, 1));
+
+            }
 
             if(ImGui::Button("Visualize Patch boundary ", ImVec2(-1, 0))) {
                 showPatchBoundary = !showPatchBoundary;
@@ -2089,7 +2199,11 @@ void showGarment(igl::opengl::glfw::Viewer& viewer) {
     //remove wireframe
     viewer.data().show_lines = false;
    // if 0 -> no face colour
-
+//    MatrixXd C = MatrixXd::Zero(Vg.rows(), 3);
+//    C.col(1).setConstant(1);
+//    C.col(0).setConstant(1);
+//            viewer.data().set_colors(C);
+//
     if(whichStressVisualize == 1){
         igl::jet(normU, 0., 2., colU);
         viewer.data().set_colors(colU);
