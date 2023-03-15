@@ -681,12 +681,22 @@ void computeAllBetweensNew(vector<VectorXd>& polylineSelected,vector<int>& polyl
         int count = 0;
         while( i != far2 && i!=closer2 && count < boundaryToSearch[patch].size()){
             cout<<boundaryToSearch[patch][i]<<" 1, asc "<<Vg_to.row(boundaryToSearch[patch][i])<<endl;
-            polyLineInput.push_back(Vg_to.row(boundaryToSearch[patch][i]).transpose());
+
+
+
+             polyLineInput.push_back(Vg_to.row(boundaryToSearch[patch][i]).transpose());
+            cout<<boundaryToSearch[patch][i]<<" 1, end  asc "<<Vg_to.row(boundaryToSearch[patch][i])<<endl;
+
             i++;
             i= i % boundaryToSearch[patch].size();
         }
         cout<<boundaryToSearch[patch][i]<<" "<<Vg_to.row(boundaryToSearch[patch][i])<<endl;
-        polyLineInput.push_back(Vg_to.row(boundaryToSearch[patch][i]).transpose());
+        bool skipFlag = false;
+        if((currPattern.row(boundaryToSearch[patch][i])-Vg_to.row(boundaryToSearch[patch][i])).norm()<1 ){
+            cout<<"DANGEROUS!!"<<endl;
+            skipFlag = true;
+        }
+        if(!skipFlag) polyLineInput.push_back(Vg_to.row(boundaryToSearch[patch][i]).transpose());
 
 
     }else{// descending
@@ -703,9 +713,12 @@ void computeAllBetweensNew(vector<VectorXd>& polylineSelected,vector<int>& polyl
             if(i<0) i+= boundaryToSearch[patch].size();
         }
         cout<<boundaryToSearch[patch][i]<<" "<<Vg_to.row(boundaryToSearch[patch][i])<<endl;
-
-        cout<<"end "<<endl;
-        polyLineInput.push_back(Vg_to.row(boundaryToSearch[patch][i]).transpose());
+        bool skipFlag = false;
+        if((currPattern.row(boundaryToSearch[patch][i])-Vg_to.row(boundaryToSearch[patch][i])).norm()<1 ){
+            cout<<"DANGEROUS!!"<<endl;
+            skipFlag = true;
+        }
+        if(!skipFlag) polyLineInput.push_back(Vg_to.row(boundaryToSearch[patch][i]).transpose());
     }
 
     // search 0,1,4,5 on the other smaller pattern
@@ -747,6 +760,8 @@ void computeAllBetweensNew(vector<VectorXd>& polylineSelected,vector<int>& polyl
         while(i !=idx1 && count < boundaryToSearch[patchFrom].size()){
             if(count==0 && (polyLineInput[polyLineInput.size()-1] - currPattern.row(boundaryToSearch[patchFrom][i]).transpose()).norm()< 0.1){
                 cout<<"CRITICALLY CLOSE!!!!, skip "<<endl;
+//                connVec.push_back(boundaryToSearch[patchFrom][i]);
+
             }else{
                 polyLineInput.push_back(currPattern.row(boundaryToSearch[patchFrom][i]).transpose());
                 connVec.push_back(boundaryToSearch[patchFrom][i]);
@@ -767,6 +782,8 @@ void computeAllBetweensNew(vector<VectorXd>& polylineSelected,vector<int>& polyl
         while(i !=idx1 && count < boundaryToSearch[patchFrom].size()){
             if(count==0 && (polyLineInput[polyLineInput.size()-1] - currPattern.row(boundaryToSearch[patchFrom][i]).transpose()).norm()< 0.1){
                 cout<<"CRITICALLY CLOSE!!!! "<<endl;
+//                connVec.push_back(boundaryToSearch[patchFrom][i]);
+
             }else{
                 polyLineInput.push_back(currPattern.row(boundaryToSearch[patchFrom][i]).transpose());
                 connVec.push_back(boundaryToSearch[patchFrom][i]);
