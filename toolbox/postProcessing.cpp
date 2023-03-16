@@ -1722,10 +1722,13 @@ void computeFinalJacobian(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_gar, MatrixXi
     }
     smoothFinalJacobian(finalJac, jacUAdapted, jacVAdapted, Vg_gar, Fg_gar );
 }
-void findPatchAndIdx(int vert, int patch, int idx, vector<vector<int>>& boundaryL ){
+void findPatchAndIdx(int& vert, int& patch, int& idx, vector<vector<int>>& boundaryL ){
     for(int i =0; i<boundaryL.size(); i++){
         for(int j=0; j<boundaryL[i].size(); j++){
             if(vert == boundaryL[i][j]){
+                if(vert == 35){
+                    cout<<" we found it with "<<i<<" "<<j<<endl;
+                }
                 patch = i;
                 idx = j;
                 return;
@@ -1760,6 +1763,8 @@ void stitchAdapted3D(MatrixXd& Vg, MatrixXi& Fg, MatrixXi& Fg_pattern_orig, vect
         }
 
         int faceOrig = vfAdjorig[it.first][0];
+        int offset = Fg_pattern_orig.rows()/2;
+        if(it.first == 0) cout<<faceOrig<<" "<<vfAdjorig[0].size()<<" the face "<<Fg_pattern_orig.row(faceOrig)<<endl;
         if(it.first == Fg_pattern_orig(faceOrig, 0)){
             duplVert = Fg_pattern_orig(faceOrig+offset, 0);
         }else if(it.first == Fg_pattern_orig(faceOrig, 1)){
@@ -1770,40 +1775,143 @@ void stitchAdapted3D(MatrixXd& Vg, MatrixXi& Fg, MatrixXi& Fg_pattern_orig, vect
         }else{
             cout<<" not found errror"<<endl;
         }
-            cout<<duplVert<<" has dupl in full pattern called "<< offsetVert<< endl;
-//        if(it.second >= 387) offsetVert-=2;
+        cout<<duplVert<<" has dupl in full pattern called "<< offsetVert<< endl;
 
         mapCornerToCorner[duplVert]= offsetVert;
 
     }
     cout<<"end"<<endl;
-    cout<<  mapCornerToCorner[363]<<" "<<mapCornerToCorner[345]<<endl;
     vector<vector<int>> boundaryL;
     igl::boundary_loop(Fg, boundaryL);
     for(int i=0; i<seamsList.size(); i++) {
         int start1 = seamsList[i]->getStart1();
-        start1 = mapCornerToCorner[start1];
         int start2 = seamsList[i]->getStart2();
-        start2 = mapCornerToCorner[start1];
+        cout<<"Seam "<<i<<" start "<<start1<<" "<<start2<<endl;
+
+        start1 = mapCornerToCorner[start1];
+        start2 = mapCornerToCorner[start2];
+        cout<<"Seam "<<i<<" start "<<start1<<" "<<start2<<endl;
+
         int patch1, patch2, idx1start, idx2start;
         findPatchAndIdx(start1, patch1, idx1start, boundaryL);
         findPatchAndIdx(start2, patch2, idx2start, boundaryL);
-        if(idx1start ==-1 || idx2start==-1) cout<<"onne of the starts not found!! "<<endl;
+        if(boundaryL[patch1][idx1start] != start1) cout<<boundaryL[patch1][idx1start]<<" should be "<<start1<<endl;
+        if(boundaryL[patch2][idx2start] != start2) cout<<boundaryL[patch2][idx2start]<<" should be "<<start2<<endl;
+
+        if(idx1start ==-1 || idx2start==-1) cout<<"one of the starts not found!! "<<endl;
 
         auto ends = seamsList[i]->getEndCornerIds();
         int end1 = ends.first;
         int end2 = ends.second;
+        cout<<end1<<" "<<end2<<" are the ends initially. we change them to ";
+        end1 = mapCornerToCorner[end1];
+        end2 = mapCornerToCorner[end2];
+        cout<<end1<<" "<<end2<<endl;
         int patch11, patch21, idx1end, idx2end;
         findPatchAndIdx(end1, patch11, idx1end, boundaryL);
         findPatchAndIdx(end2, patch21, idx2end, boundaryL);
-        if(idx1end ==-1 || idx2end==-1) cout<<"onne of the ends not found!! "<<endl;
+        if(idx1end ==-1 || idx2end==-1) cout<<"One of the ends not found!! "<<endl;
         if(patch1 != patch11 || patch2 != patch21) cout<<"something in the patches does not add up"<<endl;
 
         // all clean , iterate along the boundary
 
-        int nextId1, nextId2;
+        int nextId1 = idx1start+1;
+        int nextId2 = idx2start-1 ;
+        int prev1 = idx1start;
+        int prev2 = idx2start;
+        int prevVert1= boundaryL[patch1][prev1];
+        int prevVert2= boundaryL[patch2][prev2];
         int b1 = boundaryL[patch1].size();
         int b2 = boundaryL[patch2].size();
+        nextId1 %= b1; if(nextId2 <0 ) nextId2+= b2;
+        cout<<start1<<" and start other "<<start2<<" the ends "<<end1<<" "<<end2<<endl;
+        if((Vg.row(boundaryL[patch1][nextId1]) - Vg.row(boundaryL[patch2][nextId2])).norm() < 10){
+            cout<<"merge initial"<<endl;
+//            replaceInFaces(prevVert2, prevVert1,Fg );
+//            prevVert2 = prevVert1;
+//            cout<<prevVert2<<" is the common parent"<<endl;
+//            vfAdj.clear();
+//            createVertexFaceAdjacencyList(Fg, vfAdj);
+//            boundaryL[patch2][nextId2] = boundaryL[patch1][nextId1];
+        }
+        while (boundaryL[patch1][nextId1] != end1){
+            cout<<boundaryL[patch1][nextId1]<<" and parallel "<<boundaryL[patch2][nextId2]<<endl;
+            if((Vg.row(boundaryL[patch1][nextId1]) - Vg.row(boundaryL[patch2][nextId2])).norm() < 0.1){
+                cout<<"merge!"<<endl;
+                replaceInFaces(boundaryL[patch2][nextId2], boundaryL[patch1][nextId1],Fg );
+                prev1 = nextId1;prevVert1 = boundaryL[patch1][nextId1];
+                prev2 = nextId2;prevVert2 = boundaryL[patch1][nextId1];
+                nextId1 ++; nextId1%= b1;
+                nextId2--; if(nextId2<0) nextId2+= b2;
+                vfAdj.clear();
+                createVertexFaceAdjacencyList(Fg, vfAdj);
+//                boundaryL[patch2][nextId2] = boundaryL[patch1][nextId1];
+
+
+            }else{
+                double dist1 = (Vg.row(boundaryL[patch1][nextId1]) - (Vg.row(prevVert1))).norm();
+                double dist2 = (Vg.row(boundaryL[patch2][nextId2]) - (Vg.row(prevVert2))).norm();
+                if(dist1<dist2){
+                    cout<<"Insert one before "<<boundaryL[patch2][nextId2]<<" "<<prevVert2<<endl;
+                    int face = adjacentFaceToEdge(boundaryL[patch2][nextId2], prevVert2, -1, vfAdj);
+                    if(face == -1 ) {
+                        cout<<"ERROR FACE NOT FOUND "<<endl;
+                    }
+                    cout<<"In face "<<face<<"for vertices "<<boundaryL[patch2][nextId2]<<" "<< prevVert2<<endl;
+                    MatrixXi FgNew = MatrixXi(Fg.rows()+1, Fg.cols());
+                    FgNew.block(0,0,Fg.rows(), Fg.cols()) = Fg;
+                    FgNew.row(Fg.rows())= Fg.row(face);
+                    cout<<"row set  "<<Fg.row(face)<<endl;
+
+                    int idxprev=0;
+                    while (Fg(face, idxprev) != prevVert2){idxprev++; }
+                    cout<<"id 1 found "<<idxprev<<endl;
+                    int idxnext=0; while (Fg(face, idxnext) != boundaryL[patch2][nextId2]){idxnext++; }
+                    cout<<"id 2 found "<<idxnext<<endl;
+                    cout<<"raw face "<<  FgNew.row(face)<<endl;
+                    FgNew(face, idxnext) = boundaryL[patch1][nextId1];
+                    FgNew(Fg.rows(), idxprev) = boundaryL[patch1][nextId1];
+                    cout<<"face set "<< endl;
+                    prev1 = nextId1;
+                    prevVert1 = boundaryL[patch1][prev1];
+                    prevVert2 = boundaryL[patch1][nextId1];
+                    nextId1 ++; nextId1%= b1;
+//                    nextId2--; if(nextId2<0) nextId2+= b2;
+
+                    Fg.resize(FgNew.rows(), 3);
+                    Fg = FgNew;
+                    cout<<Fg.row(Fg.rows()-1)<<" and "<<Fg.row(face)<<endl;
+                    vfAdj.clear();
+                    createVertexFaceAdjacencyList(Fg, vfAdj);
+                }else{
+                    cout<<"insert one before "<<boundaryL[patch1][nextId1]<<" and other is "<< prevVert1<<endl;
+                    int face = adjacentFaceToEdge(boundaryL[patch1][nextId1], prevVert1, -1, vfAdj);
+                    cout<<" in face "<<face<<endl;
+                    MatrixXi FgNew = MatrixXi(Fg.rows()+1, Fg.cols());
+                    FgNew.block(0,0,Fg.rows(), Fg.cols()) = Fg;
+                    FgNew.row(Fg.rows())= Fg.row(face);
+                    int idxprev = 0; while(Fg(face, idxprev) != prevVert1){idxprev++;}
+                    int idxnext = 0; while (Fg(face, idxnext) != boundaryL[patch1][nextId1]){idxnext++;}
+
+                    FgNew(face, idxnext) = boundaryL[patch2][nextId2];
+                    FgNew(Fg.rows(), idxprev) = boundaryL[patch2][nextId2];
+                    cout<<"face set "<< endl;
+                    prev2 = nextId2;
+                    prevVert2 = boundaryL[patch2][prev2];
+                    prevVert1 = boundaryL[patch2][nextId2];
+                    nextId2--; if(nextId2<0) nextId2+= b2;
+
+                    Fg.resize(FgNew.rows(), 3);
+                    Fg = FgNew;
+                    cout<<Fg.row(Fg.rows()-1)<<" and "<<Fg.row(face)<<endl;
+                    vfAdj.clear();
+                    createVertexFaceAdjacencyList(Fg, vfAdj);
+
+                }
+            }
+            igl::writeOBJ("stitched3d.obj",Vg,Fg);
+
+        }
 
 
     }

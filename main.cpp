@@ -433,6 +433,7 @@ int main(int argc, char *argv[])
     }else if (garment =="leggins" ){
         vertIdOf0InDuplicated = 1444; //-> check!
     }
+    vector<seam*> seamsListDupl = seamsList;
     if(patternExists){
         string prefPattern = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/";
         string perfPatternFile = prefPattern+ "patternComputed_"+avName+"_"+garment+".obj";
@@ -1388,7 +1389,23 @@ int main(int argc, char *argv[])
                 MatrixXd adaptedPatternIn3d;
                 MatrixXi adaptedPatternIn3d_faces;
                 igl::readPLY("finalGarmentPattern_"+avName+"_"+garment+"_backIn3d.ply", adaptedPatternIn3d, adaptedPatternIn3d_faces);
-                stitchAdapted3D(adaptedPatternIn3d, adaptedPatternIn3d_faces,Fg_pattern_orig, seamsList, mapCornerToCorner, halfPatternVertToFullPatternVert);// compute adaptation first
+
+                string perfPatternFile = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/patternComputed_"+avName+"_"+garment+".obj";
+                igl::readOBJ(perfPatternFile, perfPattVg_orig, perfPattFg_orig);
+
+                string mapFromFile = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/finished_retri_writtenPattern_"+avName+"_"+garment+".obj";
+                igl::readOBJ(mapFromFile, mapFromVg, mapFromFg);
+                currPattern = mapFromVg;
+                Fg_pattern_curr = mapFromFg;
+
+                mapToVg =  Vg_pattern_orig ;// curr = the current shape of the garment, something in between
+                mapToFg = Fg_pattern_orig ;// the stress is computed between the rest shape and the current, ie mapFromVg and currPattern
+
+                initialGuessAdaption(currPattern, mapToVg, perfPattVg, Fg_pattern_curr, perfPattFg_orig, symetry, cornerSet,
+                                         mapCornerToCorner, halfPatternVertToFullPatternVert.size(), halfPatternVertToFullPatternVert, garment);
+
+
+                stitchAdapted3D(adaptedPatternIn3d, adaptedPatternIn3d_faces,Fg_pattern_orig, seamsListDupl, mapCornerToCorner, halfPatternVertToFullPatternVert);// compute adaptation first
                 MatrixXd cornersMat (mapCornerToCorner.size(), 3); int count = 0;
                 for(auto it: mapCornerToCorner){
                     cornersMat.row(count) = adaptedPatternIn3d.row(it.second);
