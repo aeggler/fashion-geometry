@@ -284,7 +284,7 @@ void createHalfSewingPattern(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, M
     cout<<" after"<<endl;
 
 }
-void insertPlane(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg_pattern){
+void insertPlane(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg_pattern, string garment){
     // we insert a plane along the x=0 axis, add vertices and introduce new faces
     // this ensures we can split the garment safely in the pre processing
     // we do the same for the pattern and duplicate x=0 vertices -> to make sure the patch is acutally disconnected and we can take only the half patch for symetry
@@ -315,7 +315,7 @@ void insertPlane(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg_
             }
         }
         if(hasLeft && hasRight){
-            cout<<i<<" is in the middle"<<endl;
+//            cout<<i<<" is in the middle"<<endl;
             int otherSide=0;
 
             if(LR.sum()==1){
@@ -359,7 +359,7 @@ void insertPlane(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg_
                 idfac1 = yToFaceAndIdx[newPos1(1)].second;
 
                 idx1 =Fg (fac1, idfac1 );
-                if(i== 1128) extra1 = true;
+                if(i== 1128 && garment== "skirt_no2") extra1 = true;
             }
             if(yToFaceAndIdx.find(newPos2(1)) == yToFaceAndIdx.end()){
                 yToFaceAndIdx[newPos2(1)] = std::make_pair(i, (otherSide+2) % 3 );
@@ -376,7 +376,7 @@ void insertPlane(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg_
                 fac2 = yToFaceAndIdx[newPos2(1)].first;
                 idfac2 = yToFaceAndIdx[newPos2(1)].second;
                 idx2 =Fg ( fac2, idfac2 );
-                if(i== 1256) extra2 = true;
+                if(i== 1256 && garment== "skirt_no2") extra2 = true;
 
 //                cout<<"found at idx "<<idx2<<endl;
 
@@ -446,13 +446,9 @@ void insertPlane(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg_
             VectorXi pattComp;
             igl::facet_components(Fg_pattern, pattComp);
 
-            if( isBoundaryVertex( Vg_pattern, Fg_pattern(i, (otherSide+1) % 3), vvAdj, vfAdj) && !new1){
-                cout<<Fg_pattern(i, (otherSide+1) % 3)<<"the desired? " <<new1<<endl;
-            }
+
             if (!new2 && !extra2)  idx2 = Fg_pattern(fac2, idfac2);
-            if(isBoundaryVertex( Vg_pattern, Fg_pattern(i, (otherSide+2) % 3), vvAdj, vfAdj)&& !new2){
-                cout<<Fg_pattern(i, (otherSide+1) % 3)<<" the desired 2 ? "<<new2<<endl;
-            }
+
             Fgnew(i, (otherSide+1) % 3 ) = idx1;
             Fgnew(i, (otherSide+2) % 3 ) = idx2;
 
@@ -506,10 +502,10 @@ void insertPlane(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg_
     Vg_pattern.resize(Vgp.rows(), Vgp.cols()); Vg_pattern = Vgp;
 
 }
-void preProcessGarment(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg_pattern, bool insPlane, int symVert1, int symVert2 ,VectorXd& T_sym){
+void preProcessGarment(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg_pattern, bool insPlane, int symVert1, int symVert2 ,VectorXd& T_sym, string garment){
     if(insPlane){
         // do the split first
-        insertPlane(Vg, Fg, Vg_pattern, Fg_pattern);
+        insertPlane(Vg, Fg, Vg_pattern, Fg_pattern, garment);
 
     }
     VectorXd leftFaces = VectorXd::Zero(Fg.rows());
@@ -632,7 +628,7 @@ void preProcessGarment(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixX
     }
     MatrixXd fullVg(VgDupl.rows() + newVg.rows(), 3);
     fullVg<<newVg, VgDupl;
-    // change the normal to alilgn!
+    // change the normal to align!
     VectorXi temp = FgDupl.col(1);
     FgDupl.col(1) = FgDupl.col(2);
     FgDupl.col(2) = temp;
@@ -652,7 +648,8 @@ void preProcessGarment(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixX
     VgDupl_pattern = (rot*newVg_pattern.transpose()).transpose();
 
     T_sym = Vg_pattern.row(symVert1 ) - VgDupl_pattern.row(symVert2);
-
+    cout<<"travel from "<<symVert1<<" at pos "<<Vg_pattern.row(symVert1 )<<endl<<" To " <<symVert2<<" at pos"<< VgDupl_pattern.row(symVert2)<<endl;
+    cout<<Vg_pattern.row(symVert1 ) - VgDupl_pattern.row(symVert2)<<" transpose offset"<<endl ;
     VgDupl_pattern.rowwise() += T_sym.transpose();
     offset = newVg_pattern.rows();
     MatrixXi offsetM(FgDupl_pattern.rows(), FgDupl_pattern.cols()); offsetM.setConstant(offset);
