@@ -16,6 +16,10 @@
 #include "constraint_utils.h"
 #include <igl/writeOBJ.h>
 #include <igl/vertex_components.h>
+#include "igl/adjacency_list.h"
+#include "adjacency.h"
+#include <igl/vertex_components.h>
+#include <igl/facet_components.h>
 
 using namespace std;
 using namespace Eigen;
@@ -236,7 +240,6 @@ void createHalfSewingPattern(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, M
     }
     idx=0; int rightIdx = 0;
 
-   cout<<isLeftVertPattern(35)<<" and right side sum "<<endl;
     int patternHalfVert = isLeftVertPattern.sum();
     Vg_pattern_half.resize(patternHalfVert, 3);
      rightVert.resize(isRightVertPattern.sum(), 3);
@@ -279,8 +282,6 @@ void createHalfSewingPattern(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, M
 //    cout<<rightVert.rows()<<" right and left 2D verts "<<Vg_pattern_half.rows()<<endl;
 
     cout<<" after"<<endl;
-    cout<<halfPatternVertToFullPatternVert[35]<<" "<<halfPatternVertToFullPatternVert[28]<<" "<<halfPatternVertToFullPatternVert[747]<<endl;
-
 
 }
 void insertPlane(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg_pattern){
@@ -289,6 +290,13 @@ void insertPlane(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg_
     // we do the same for the pattern and duplicate x=0 vertices -> to make sure the patch is acutally disconnected and we can take only the half patch for symetry
     map<double, std::pair<int, int>> yToFaceAndIdx;
     int vgsize = Vg_pattern.rows();
+    std::vector< std::vector<int> > vfAdj,vfAdjG, vvAdj;
+    createVertexFaceAdjacencyList(Fg, vfAdjG);
+
+    createVertexFaceAdjacencyList(Fg_pattern, vfAdj);
+    igl::adjacency_list(Fg_pattern, vvAdj);
+
+
     for(int i=0; i<Fg.rows(); i++){
         bool hasLeft = false;
         bool hasRight = false;
@@ -335,7 +343,7 @@ void insertPlane(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg_
 
             int idx1 , idx2; int fac1, idfac1, fac2, idfac2;
             bool new1= false; bool new2 = false;
-
+            bool extra1= false; bool extra2 = false;
             if(yToFaceAndIdx.find(newPos1(1)) == yToFaceAndIdx.end()){
                 yToFaceAndIdx[newPos1(1)] = std::make_pair(i, (otherSide+1) % 3 );
 
@@ -351,7 +359,7 @@ void insertPlane(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg_
                 idfac1 = yToFaceAndIdx[newPos1(1)].second;
 
                 idx1 =Fg (fac1, idfac1 );
-
+                if(i== 1128) extra1 = true;
             }
             if(yToFaceAndIdx.find(newPos2(1)) == yToFaceAndIdx.end()){
                 yToFaceAndIdx[newPos2(1)] = std::make_pair(i, (otherSide+2) % 3 );
@@ -368,10 +376,12 @@ void insertPlane(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg_
                 fac2 = yToFaceAndIdx[newPos2(1)].first;
                 idfac2 = yToFaceAndIdx[newPos2(1)].second;
                 idx2 =Fg ( fac2, idfac2 );
+                if(i== 1256) extra2 = true;
+
 //                cout<<"found at idx "<<idx2<<endl;
 
             }
-
+            if(idx1 == 1256) cout<<extra1<<" "<<extra2<<endl;
             int fgrow = Fg.rows();
             MatrixXi Fgnew (fgrow+2, 3);
             Fgnew.block(0,0,fgrow, 3) = Fg;
@@ -404,7 +414,7 @@ void insertPlane(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg_
                       bary2(0,1) * Vg_pattern.row(Fg_pattern(i, (otherSide+1) % 3 ))+
                       bary2(0,2) * Vg_pattern.row(Fg_pattern(i, (otherSide+2) % 3 )) ;
 
-            if(new1){
+            if(new1 || extra1){
                 int vgrow =  Vg_pattern.rows();
                 MatrixXd Vgnew( vgrow + 2, 3);
                 Vgnew.block(0,0,vgrow, 3) = Vg_pattern;
@@ -416,7 +426,7 @@ void insertPlane(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg_
                 idx1 = vgrow;
             }
 
-            if(new2){
+            if(new2|| extra2 ){
                 int vgrow =  Vg_pattern.rows();
                 MatrixXd Vgnew( vgrow + 2, 3);
                 Vgnew.block(0,0,vgrow, 3) = Vg_pattern;
@@ -432,19 +442,27 @@ void insertPlane(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg_
             fgrow = Fg_pattern.rows();
             Fgnew.resize (fgrow+2, 3);
             Fgnew.block(0,0,fgrow, 3) = Fg_pattern;
-            if (!new1)  idx1 = Fg_pattern(fac1, idfac1);
-            if (!new2)  idx2 = Fg_pattern(fac2, idfac2);
+            if (!new1  && !extra1)  idx1 = Fg_pattern(fac1, idfac1);
+            VectorXi pattComp;
+            igl::facet_components(Fg_pattern, pattComp);
 
-            Fgnew(i, (otherSide+1) % 3 ) = idx1;   // if(LR.sum()==1)   Fgnew(i, (otherSide+1) % 3 )++;
-            Fgnew(i, (otherSide+2) % 3 ) = idx2; //   if(LR.sum()==1)   Fgnew(i, (otherSide+2) % 3 )++;
+            if( isBoundaryVertex( Vg_pattern, Fg_pattern(i, (otherSide+1) % 3), vvAdj, vfAdj) && !new1){
+                cout<<Fg_pattern(i, (otherSide+1) % 3)<<"the desired? " <<new1<<endl;
+            }
+            if (!new2 && !extra2)  idx2 = Fg_pattern(fac2, idfac2);
+            if(isBoundaryVertex( Vg_pattern, Fg_pattern(i, (otherSide+2) % 3), vvAdj, vfAdj)&& !new2){
+                cout<<Fg_pattern(i, (otherSide+1) % 3)<<" the desired 2 ? "<<new2<<endl;
+            }
+            Fgnew(i, (otherSide+1) % 3 ) = idx1;
+            Fgnew(i, (otherSide+2) % 3 ) = idx2;
 
             Fgnew(fgrow, 0) = Fg_pattern(i, (otherSide + 1) % 3 );
             Fgnew(fgrow, 1) = Fg_pattern(i, (otherSide + 2) % 3 );
-            Fgnew(fgrow, 2) = idx1;           //      if(LR.sum()==2 && new1) Fgnew(fgrow, 2)= idx1+1;
+            Fgnew(fgrow, 2) = idx1;
 ////
-            Fgnew(fgrow + 1, 0) = idx1;          //   if(LR.sum()==2) Fgnew(fgrow +1 , 0)++;
+            Fgnew(fgrow + 1, 0) = idx1;
             Fgnew(fgrow + 1, 1) = Fg_pattern(i, (otherSide + 2) % 3 );
-            Fgnew(fgrow + 1, 2) = idx2;           //  if(LR.sum()==2) Fgnew(fgrow +1 , 2)++;
+            Fgnew(fgrow + 1, 2) = idx2;
 
             Fg_pattern.resize(Fgnew.rows(), 3);
             Fg_pattern= Fgnew;
@@ -463,42 +481,24 @@ void insertPlane(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg_
     // we duplicate the new vertices to split them
     for (int i=0; i<Fg_pattern.rows(); i++){
         for(int j=0; j<3; j++){
-            cout<<i<<" j"<<j<<" " <<Fg_pattern(i,j)<<endl;
             if(Fg_pattern(i,j)>= vgsize){
 
-                int other = (j+1)%3; if(i== 553){
-                    cout<< " other "<<other <<endl;
-                }
-                if(i== 553){
-                    cout<<Fg.rows()<< " rows "<<endl;
-                    cout<<Fg(i, other)<< " element "<<endl;
-                    cout<< Vg.row(Fg(i, other))<< endl;
+                int other = (j+1)%3;
 
-                }
                 while(Vg(Fg(i, other), 0) == 0){
                     other++;
                     other %= 3;
-                    cout<<"update "<<other<<endl;
                 }// find one that is not 0
-                if(i== 553){
-                    cout<< " other "<<endl;
-                }
+
                 bool isLeft = false;
                 if(Vg(Fg(i, other), 0)<0){
                     isLeft= true;
-                    if(i== 553){
-                        cout<< " left "<<endl;
-                    }
                 }
-                if(i== 553){
-                    cout<< " before "<<endl;
-                }
+
                 if(isLeft){
                     Fg_pattern(i,j) +=added;
                 }
-                if(i== 553){
-                    cout<< " fin "<<endl;
-                }
+
             }
         }
     }
