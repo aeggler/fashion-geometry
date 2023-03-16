@@ -1404,8 +1404,10 @@ int main(int argc, char *argv[])
                 initialGuessAdaption(currPattern, mapToVg, perfPattVg, Fg_pattern_curr, perfPattFg_orig, symetry, cornerSet,
                                          mapCornerToCorner, halfPatternVertToFullPatternVert.size(), halfPatternVertToFullPatternVert, garment);
 
-
-                stitchAdapted3D(adaptedPatternIn3d, adaptedPatternIn3d_faces,Fg_pattern_orig, seamsListDupl, mapCornerToCorner, halfPatternVertToFullPatternVert);// compute adaptation first
+                igl::readOBJ("duplicate_Pattern_final_of_"+avName+"_"+garment+".obj" , currPattern, Fg_pattern_curr);
+                stitchAdapted3D(adaptedPatternIn3d, adaptedPatternIn3d_faces,Fg_pattern_orig, seamsListDupl, mapCornerToCorner, halfPatternVertToFullPatternVert, currPattern, Fg_pattern_curr);// compute adaptation first
+                igl::writeOBJ("finalGarmentPattern_"+avName+"_"+garment+"_Merged_In3d.obj", adaptedPatternIn3d, adaptedPatternIn3d_faces);
+                igl::writeOBJ("finalGarmentPattern_"+avName+"_"+garment+"_Merged_FaceCorrespWith3DMerged.obj", currPattern, Fg_pattern_curr );
                 MatrixXd cornersMat (mapCornerToCorner.size(), 3); int count = 0;
                 for(auto it: mapCornerToCorner){
                     cornersMat.row(count) = adaptedPatternIn3d.row(it.second);

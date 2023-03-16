@@ -1726,9 +1726,6 @@ void findPatchAndIdx(int& vert, int& patch, int& idx, vector<vector<int>>& bound
     for(int i =0; i<boundaryL.size(); i++){
         for(int j=0; j<boundaryL[i].size(); j++){
             if(vert == boundaryL[i][j]){
-                if(vert == 35){
-                    cout<<" we found it with "<<i<<" "<<j<<endl;
-                }
                 patch = i;
                 idx = j;
                 return;
@@ -1737,7 +1734,8 @@ void findPatchAndIdx(int& vert, int& patch, int& idx, vector<vector<int>>& bound
     }
     idx = -1;
 }
-void stitchAdapted3D(MatrixXd& Vg, MatrixXi& Fg, MatrixXi& Fg_pattern_orig, vector<seam*>& seamsList,map<int, int >& mapCornerToCorner, map<int, int> &halfPatternVertToFullPatternVert ){
+void stitchAdapted3D(MatrixXd& Vg, MatrixXi& Fg, MatrixXi& Fg_pattern_orig, vector<seam*>& seamsList,map<int, int >& mapCornerToCorner,
+                     map<int, int> &halfPatternVertToFullPatternVert , MatrixXd& Vg_pattern, MatrixXi& Fg_pattern){
     vector<vector<int>> vfAdj;
     createVertexFaceAdjacencyList(Fg, vfAdj);
     vector<vector<int>> vfAdjorig;
@@ -1783,14 +1781,14 @@ void stitchAdapted3D(MatrixXd& Vg, MatrixXi& Fg, MatrixXi& Fg_pattern_orig, vect
     cout<<"end"<<endl;
     vector<vector<int>> boundaryL;
     igl::boundary_loop(Fg, boundaryL);
+
     for(int i=0; i<seamsList.size(); i++) {
         int start1 = seamsList[i]->getStart1();
         int start2 = seamsList[i]->getStart2();
-        cout<<"Seam "<<i<<" start "<<start1<<" "<<start2<<endl;
+        cout<<endl<<"Seam "<<i<<" start "<<start1<<" "<<start2<<endl;
 
         start1 = mapCornerToCorner[start1];
         start2 = mapCornerToCorner[start2];
-        cout<<"Seam "<<i<<" start "<<start1<<" "<<start2<<endl;
 
         int patch1, patch2, idx1start, idx2start;
         findPatchAndIdx(start1, patch1, idx1start, boundaryL);
@@ -1803,10 +1801,8 @@ void stitchAdapted3D(MatrixXd& Vg, MatrixXi& Fg, MatrixXi& Fg_pattern_orig, vect
         auto ends = seamsList[i]->getEndCornerIds();
         int end1 = ends.first;
         int end2 = ends.second;
-        cout<<end1<<" "<<end2<<" are the ends initially. we change them to ";
         end1 = mapCornerToCorner[end1];
         end2 = mapCornerToCorner[end2];
-        cout<<end1<<" "<<end2<<endl;
         int patch11, patch21, idx1end, idx2end;
         findPatchAndIdx(end1, patch11, idx1end, boundaryL);
         findPatchAndIdx(end2, patch21, idx2end, boundaryL);
@@ -1823,21 +1819,10 @@ void stitchAdapted3D(MatrixXd& Vg, MatrixXi& Fg, MatrixXi& Fg_pattern_orig, vect
         int prevVert2= boundaryL[patch2][prev2];
         int b1 = boundaryL[patch1].size();
         int b2 = boundaryL[patch2].size();
-        nextId1 %= b1; if(nextId2 <0 ) nextId2+= b2;
-        cout<<start1<<" and start other "<<start2<<" the ends "<<end1<<" "<<end2<<endl;
-        if((Vg.row(boundaryL[patch1][nextId1]) - Vg.row(boundaryL[patch2][nextId2])).norm() < 10){
-            cout<<"merge initial"<<endl;
-//            replaceInFaces(prevVert2, prevVert1,Fg );
-//            prevVert2 = prevVert1;
-//            cout<<prevVert2<<" is the common parent"<<endl;
-//            vfAdj.clear();
-//            createVertexFaceAdjacencyList(Fg, vfAdj);
-//            boundaryL[patch2][nextId2] = boundaryL[patch1][nextId1];
-        }
-        while (boundaryL[patch1][nextId1] != end1){
-            cout<<boundaryL[patch1][nextId1]<<" and parallel "<<boundaryL[patch2][nextId2]<<endl;
+        nextId1 %= b1; if(nextId2 < 0 ) nextId2+= b2;
+
+        while (boundaryL[patch1][nextId1] != end1 || boundaryL[patch2][nextId2]!= end2){
             if((Vg.row(boundaryL[patch1][nextId1]) - Vg.row(boundaryL[patch2][nextId2])).norm() < 0.1){
-                cout<<"merge!"<<endl;
                 replaceInFaces(boundaryL[patch2][nextId2], boundaryL[patch1][nextId1],Fg );
                 prev1 = nextId1;prevVert1 = boundaryL[patch1][nextId1];
                 prev2 = nextId2;prevVert2 = boundaryL[patch1][nextId1];
@@ -1852,50 +1837,86 @@ void stitchAdapted3D(MatrixXd& Vg, MatrixXi& Fg, MatrixXi& Fg_pattern_orig, vect
                 double dist1 = (Vg.row(boundaryL[patch1][nextId1]) - (Vg.row(prevVert1))).norm();
                 double dist2 = (Vg.row(boundaryL[patch2][nextId2]) - (Vg.row(prevVert2))).norm();
                 if(dist1<dist2){
-                    cout<<"Insert one before "<<boundaryL[patch2][nextId2]<<" "<<prevVert2<<endl;
                     int face = adjacentFaceToEdge(boundaryL[patch2][nextId2], prevVert2, -1, vfAdj);
                     if(face == -1 ) {
                         cout<<"ERROR FACE NOT FOUND "<<endl;
                     }
-                    cout<<"In face "<<face<<"for vertices "<<boundaryL[patch2][nextId2]<<" "<< prevVert2<<endl;
                     MatrixXi FgNew = MatrixXi(Fg.rows()+1, Fg.cols());
                     FgNew.block(0,0,Fg.rows(), Fg.cols()) = Fg;
                     FgNew.row(Fg.rows())= Fg.row(face);
-                    cout<<"row set  "<<Fg.row(face)<<endl;
+
+                    MatrixXi FgNew_pattern = MatrixXi(Fg_pattern.rows()+1, Fg_pattern.cols());
+                    FgNew_pattern.block(0,0,Fg_pattern.rows(), Fg_pattern.cols()) = Fg_pattern;
+                    FgNew_pattern.row(Fg_pattern.rows())= Fg_pattern.row(face);
+                    // get bary coordinates of this new vertex
+                    MatrixXd baryM;
+                    igl::barycentric_coordinates(Vg.row(boundaryL[patch1][nextId1]), Vg.row(Fg(face, 0)),
+                                                 Vg.row(Fg(face, 1)), Vg.row(Fg(face, 2)), baryM);
+                    VectorXd bary = baryM.row(0);
+                    VectorXd newPosPattern = (bary(0)*Vg_pattern.row(Fg_pattern(face, 0))).transpose();
+                    newPosPattern += bary(1)* Vg_pattern.row(Fg_pattern(face, 1)).transpose();
+                    newPosPattern += (bary(2)* Vg_pattern.row(Fg_pattern(face, 2))).transpose();
+
+                    MatrixXd VgNew_pattern = MatrixXd(Vg_pattern.rows()+1, 3);
+                    VgNew_pattern.block(0,0,Vg_pattern.rows(), Vg_pattern.cols()) = Vg_pattern;
+                    VgNew_pattern.row(Vg_pattern.rows())= newPosPattern;
 
                     int idxprev=0;
                     while (Fg(face, idxprev) != prevVert2){idxprev++; }
-                    cout<<"id 1 found "<<idxprev<<endl;
-                    int idxnext=0; while (Fg(face, idxnext) != boundaryL[patch2][nextId2]){idxnext++; }
-                    cout<<"id 2 found "<<idxnext<<endl;
-                    cout<<"raw face "<<  FgNew.row(face)<<endl;
-                    FgNew(face, idxnext) = boundaryL[patch1][nextId1];
-                    FgNew(Fg.rows(), idxprev) = boundaryL[patch1][nextId1];
-                    cout<<"face set "<< endl;
+                    int idxnext=0;
+                    while (Fg(face, idxnext) != boundaryL[patch2][nextId2]){idxnext++; }
+                    FgNew(face, idxprev) = boundaryL[patch1][nextId1];
+                    FgNew(Fg.rows(), idxnext) = boundaryL[patch1][nextId1];
+                    FgNew_pattern(face, idxprev) = Vg_pattern.rows();// the new vertex
+                    FgNew_pattern(Fg_pattern.rows(), idxnext) = Vg_pattern.rows();
+
                     prev1 = nextId1;
                     prevVert1 = boundaryL[patch1][prev1];
                     prevVert2 = boundaryL[patch1][nextId1];
                     nextId1 ++; nextId1%= b1;
-//                    nextId2--; if(nextId2<0) nextId2+= b2;
 
                     Fg.resize(FgNew.rows(), 3);
                     Fg = FgNew;
-                    cout<<Fg.row(Fg.rows()-1)<<" and "<<Fg.row(face)<<endl;
                     vfAdj.clear();
                     createVertexFaceAdjacencyList(Fg, vfAdj);
+
+                    Fg_pattern.resize(FgNew_pattern.rows(), 3);
+                    Fg_pattern = FgNew_pattern;
+                    Vg_pattern.resize(VgNew_pattern.rows(), 3);
+                    Vg_pattern = VgNew_pattern;
+                    igl::writeOBJ("insertedFacesPattern.obj", Vg_pattern, Fg_pattern);
                 }else{
-                    cout<<"insert one before "<<boundaryL[patch1][nextId1]<<" and other is "<< prevVert1<<endl;
                     int face = adjacentFaceToEdge(boundaryL[patch1][nextId1], prevVert1, -1, vfAdj);
-                    cout<<" in face "<<face<<endl;
                     MatrixXi FgNew = MatrixXi(Fg.rows()+1, Fg.cols());
                     FgNew.block(0,0,Fg.rows(), Fg.cols()) = Fg;
                     FgNew.row(Fg.rows())= Fg.row(face);
-                    int idxprev = 0; while(Fg(face, idxprev) != prevVert1){idxprev++;}
-                    int idxnext = 0; while (Fg(face, idxnext) != boundaryL[patch1][nextId1]){idxnext++;}
 
-                    FgNew(face, idxnext) = boundaryL[patch2][nextId2];
-                    FgNew(Fg.rows(), idxprev) = boundaryL[patch2][nextId2];
-                    cout<<"face set "<< endl;
+                    MatrixXi FgNew_pattern = MatrixXi(Fg_pattern.rows()+1, Fg_pattern.cols());
+                    FgNew_pattern.block(0,0,Fg_pattern.rows(), Fg_pattern.cols()) = Fg_pattern;
+                    FgNew_pattern.row(Fg_pattern.rows())= Fg_pattern.row(face);
+                    // get bary coordinates of this new vertex
+                    MatrixXd baryM;
+                    igl::barycentric_coordinates(Vg.row(boundaryL[patch2][nextId2]), Vg.row(Fg(face, 0)),
+                                                 Vg.row(Fg(face, 1)), Vg.row(Fg(face, 2)), baryM);
+                    VectorXd bary = baryM.row(0);
+                    VectorXd newPosPattern = (bary(0)*Vg_pattern.row(Fg_pattern(face, 0))).transpose();
+                    newPosPattern += bary(1)* Vg_pattern.row(Fg_pattern(face, 1)).transpose();
+                    newPosPattern += (bary(2)* Vg_pattern.row(Fg_pattern(face, 2))).transpose();
+
+                    MatrixXd VgNew_pattern = MatrixXd(Vg_pattern.rows()+1, 3);
+                    VgNew_pattern.block(0,0,Vg_pattern.rows(), Vg_pattern.cols()) = Vg_pattern;
+                    VgNew_pattern.row(Vg_pattern.rows())= newPosPattern;
+
+                    int idxprev = 0;
+                    while(Fg(face, idxprev) != prevVert1){idxprev++;}
+                    int idxnext = 0;
+                    while (Fg(face, idxnext) != boundaryL[patch1][nextId1]){idxnext++;}
+
+                    FgNew(face, idxprev ) = boundaryL[patch2][nextId2];
+                    FgNew(Fg.rows(), idxnext) = boundaryL[patch2][nextId2];
+                    FgNew_pattern(face, idxprev) = Vg_pattern.rows();// the new vertex
+                    FgNew_pattern(Fg_pattern.rows(), idxnext) = Vg_pattern.rows();
+
                     prev2 = nextId2;
                     prevVert2 = boundaryL[patch2][prev2];
                     prevVert1 = boundaryL[patch2][nextId2];
@@ -1903,18 +1924,39 @@ void stitchAdapted3D(MatrixXd& Vg, MatrixXi& Fg, MatrixXi& Fg_pattern_orig, vect
 
                     Fg.resize(FgNew.rows(), 3);
                     Fg = FgNew;
-                    cout<<Fg.row(Fg.rows()-1)<<" and "<<Fg.row(face)<<endl;
                     vfAdj.clear();
                     createVertexFaceAdjacencyList(Fg, vfAdj);
 
+                    Fg_pattern.resize(FgNew_pattern.rows(), 3);
+                    Fg_pattern = FgNew_pattern;
+                    Vg_pattern.resize(VgNew_pattern.rows(), 3);
+                    Vg_pattern = VgNew_pattern;
+                    igl::writeOBJ("insertedFacesPattern.obj", Vg_pattern, Fg_pattern);
                 }
             }
             igl::writeOBJ("stitched3d.obj",Vg,Fg);
 
         }
 
-
     }
+
+    for(int i=0; i<seamsList.size(); i++) {
+        int start1 = seamsList[i]->getStart1();
+        int start2 = seamsList[i]->getStart2();
+
+        start1 = mapCornerToCorner[start1];
+        start2 = mapCornerToCorner[start2];
+
+        auto ends = seamsList[i]->getEndCornerIds();
+        int end1 = ends.first;
+        int end2 = ends.second;
+        end1 = mapCornerToCorner[end1];
+        end2 = mapCornerToCorner[end2];
+
+        replaceInFaces(start2, start1, Fg);
+        replaceInFaces(end2, end1, Fg);
+    }
+    igl::writeOBJ("cornersMerged.obj", Vg, Fg);
 
 }
 
