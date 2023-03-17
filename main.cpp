@@ -328,6 +328,31 @@ int main(int argc, char *argv[])
         }else{
             symVert1= 0; symVert2= 0;
         }
+        if(insertPlane){
+
+            MatrixXd VgPatternRet; MatrixXi FgPatternRet;
+            MatrixXd VgRet; MatrixXi FgRet;
+            splitAndSmooth(Vg, Fg, Vg_pattern, Fg_pattern, VgPatternRet, FgPatternRet, VgRet, FgRet, garment);
+            startAndEnd.clear();
+            if (garment == "skirt_no2"){
+                startAndEnd.push_back(711);
+                startAndEnd.push_back(714);
+                startAndEnd.push_back(708);
+            }
+            smoothBetweenVertices(VgPatternRet, FgPatternRet, startAndEnd);
+            igl::writeOBJ("leftPattern_SmoothBoundAfter1.obj", VgPatternRet, FgPatternRet);
+
+            startAndEnd.clear();
+            if (garment == "skirt_no2") {
+                startAndEnd.push_back(679);
+                startAndEnd.push_back(697);
+                startAndEnd.push_back(670);
+            }
+            smoothBetweenVertices(VgPatternRet, FgPatternRet, startAndEnd);
+            igl::writeOBJ("leftPattern_SmoothBound.obj", VgPatternRet, FgPatternRet);
+
+
+        }
         preProcessGarment(Vg, Fg, Vg_pattern, Fg_pattern, insertPlane, symVert1, symVert2, T_sym_pattern, garment);
     }
     garmentPreInterpol = Vg;

@@ -32,3 +32,6 @@ void createHalfSewingPattern(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, M
                              map<int, int>& fullPatternVertToHalfPatternVert, map<int, int>& insertedIdxToPatternVert, VectorXi& isLeftVertPattern , MatrixXd& rightVert);
 void preProcessGarment(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg_pattern, bool insertPlane, int symVert1, int symVert2 ,VectorXd& T, string garment);
 void smoothLaplacian(MatrixXd& Vg, MatrixXi& Fg);
+void splitAndSmooth(MatrixXd& Vg,MatrixXi& Fg,MatrixXd& Vg_pattern,MatrixXi& Fg_pattern,
+                    MatrixXd& VgPatternRet,MatrixXi& FgPatternRet,
+                    MatrixXd& VgRet, MatrixXi& FgRet, string garment );
