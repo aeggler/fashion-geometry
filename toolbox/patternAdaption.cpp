@@ -17,6 +17,7 @@
 #include <igl/barycentric_coordinates.h>
 #include <igl/barycentric_interpolation.h>
 #include <igl/writeOBJ.h>
+#include <igl/doublearea.h>
 using namespace std;
 using namespace Eigen;
 
@@ -1380,8 +1381,10 @@ void getStressAtVert(int seamType, int seamId, int vert, int & prevVert, int & n
         auto dotv = vperFace.row(faceIdx).normalized().transpose().dot( nextDir.normalized());
         double actV = abs(dotv);
 
+
         w_init += uperFace.row(faceIdx).norm() * (actU);
         w_init += vperFace.row(faceIdx).norm() * (actV);
+
         cout<< uperFace.row(faceIdx).norm()<<" * "<<actU<<" + "<<vperFace.row(faceIdx).norm()<<" * "<<actV<<" = ";
 
 
@@ -1843,6 +1846,7 @@ int tearFurther(vector<cutVertEntry*>& cutPositions, MatrixXd&  currPattern, Mat
                  MatrixXd& patternEdgeLengths_orig, MatrixXd& Vg_pattern_orig, MatrixXi& Fg_pattern_orig, bool& prioInner,
                 bool& prioOuter, double& setTheresholdlMid, double& setTheresholdBound, map<int, int>& fullPatternVertToHalfPatternVert, map<int, int>& halfPatternVertToFullPatternVert,
                 map<int, int> & halfPatternFaceToFullPatternFace){
+
     middleThereshold = setTheresholdlMid;
     boundThereshold = setTheresholdBound;
 
@@ -1996,7 +2000,6 @@ int computeTear(bool inverseMap, Eigen::MatrixXd & fromPattern, MatrixXd&  currP
     for(int i=0; i<cornersPerBoundary.size(); i++){
        for(int j=0; j<cornersPerBoundary[i].size(); j++){
           int ver = cornersPerBoundary[i][j].first;
-//          cout<<i<<" with vert "<<ver<<endl;
             if(ver<0 && fullPatternVertToHalfPatternVert.find(ver) == fullPatternVertToHalfPatternVert.end()){
                 fullPatternVertToHalfPatternVert[ver]= -1*ver;
             }
@@ -2080,7 +2083,8 @@ int computeTear(bool inverseMap, Eigen::MatrixXd & fromPattern, MatrixXd&  currP
           cornerVert, currPattern, LShapeAllowed, fromPattern, mapFromFg, fullPatternVertToHalfPatternVert, halfPatternVertToFullPatternVert, halfPatternFaceToFullPatternFace);
 
     cout<<"finished set lp "<<endl;
-    //update with the preferences before sorting
+
+                     //update with the preferences before sorting
     updateStress( cutPositions, seamsList, minusOneSeams, boundaryL,  Fg_pattern_curr, vfAdj,  prioInner, prioOuter, currPattern, fullPatternVertToHalfPatternVert, halfPatternVertToFullPatternVert);
 
     // sort and check if handled already

@@ -308,7 +308,8 @@ int main(int argc, char *argv[])
         bool insertPlane = true;
 
         int symVert1 ,symVert2;
-//        T_sym = Vg_pattern.row(symVert1 ) - VgDupl_pattern.row(symVert2);
+//        T_sym = Vg_pattern.row(symVert1 ) i.e  fill position index
+//        - VgDupl_pattern.row(symVert2); i.e. half position index!
 
         if (garment == "leggins"){
             insertPlane = false;
@@ -341,6 +342,10 @@ int main(int argc, char *argv[])
     preComputeConstraintsForRestshape();
     preComputeStretch();
 
+    string laplb = "finished_tear_writtenPattern_top_1Mess_Avatar_"+garment+".obj";
+    MatrixXd lapV; MatrixXi lapF;
+    igl::readOBJ(laplb,lapV, lapF );
+    smoothLaplacian(lapV, lapF);
     setNewGarmentMesh(viewer);
 
 // TODO remember to adapt the collision constraint solving dep on avatar, sometimes normalization is needed, sometimes not for whatever magic
@@ -356,8 +361,8 @@ int main(int argc, char *argv[])
 //    string morphBody1 =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/moreGarments/dress_4/avatar_oneComponent.ply";
 //    string morphBody1left =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/moreGarments/dress_4/avatar_oneComponent_left.ply";
 //    string morphBody1right =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/moreGarments/dress_4/avatar_oneComponent_right.ply";
-//     avName = "avatar_missy_straight_05_OC";// good for skirt
-    avName = "avatar_maternity_05_OC";
+     avName = "avatar_missy_straight_05_OC";// good for skirt
+//    avName = "avatar_maternity_05_OC";
 //    string morphBody1 =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/CLO_avatars_oneComponent/"+ avName +".ply";//
 //    string morphBody1left =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/CLO_avatars_oneComponent/"+ avName +"_left.ply";
 //    string morphBody1right =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/CLO_avatars_oneComponent/"+ avName +"_right.ply";
@@ -429,7 +434,7 @@ int main(int argc, char *argv[])
     MatrixXi perfPattFg, perfPattFg_orig, addedFabricPatternFg;
 
     bool patternExists = true;
-    inverseMap = true;
+    inverseMap = false;
 
 //    string startFile = "writtenPattern_nicelyRetri.obj";
 //    startFile =  "writtenPattern_leggins.obj";
@@ -447,6 +452,15 @@ int main(int argc, char *argv[])
 //        string perfPatternFile = "/Users/annaeggler/Desktop/AvatarToMaternity_01/patternComputed_maternity_01.obj";
         igl::readOBJ(perfPatternFile, perfPattVg_orig, perfPattFg_orig);
         perfPattVg_orig.col(2).setConstant(200);
+        perfPattVg_orig(561,0) -=1;
+        perfPattVg_orig(738,0) +=1;
+        perfPattVg_orig(733,0) +=1;
+        perfPattVg_orig(729,0) +=1;
+        perfPattVg_orig(747,0) +=1;
+        perfPattVg_orig(752,1) -=1;
+        perfPattVg_orig(754,1) -=1;
+
+
         // copy the matrices to not mess with them
 
         if(inverseMap){
@@ -538,7 +552,7 @@ int main(int argc, char *argv[])
                         for(int i=0; i<=len; i++){
                             testCol(boundaryL[stP1.second][(stP1.first+i)% boundLen1],0) = 1.;
                             int next = (stP1.first+i)% boundLen1;
-                            cout<<boundaryL[stP1.second][next]<<" next"<<endl;
+//                            cout<<boundaryL[stP1.second][next]<<" next"<<endl;
                             if (i!= 0) edgesMat(2*(i-1), 1) = boundaryL[stP1.second][next];
                             if(i!=len)edgesMat(2*i, 0) = boundaryL[stP1.second][next];
 //                            if (i!= 0) edgesMat((i-1), 1) = boundaryL[patch][(firstSeam->getStartIdx() +i)];
@@ -2567,32 +2581,6 @@ void solveConstrainedVertices(){
 
     }
 }
-void solveStretchAdaptionViaEdgeLength(){
-
- for(int i=0; i<Fg_pattern_curr.rows(); i++){
-        for(int j=0; j<3; j++){
-            Vector3r corr0, corr1;
-
-            Vector3d p0 =  p_adaption.row(Fg_pattern_curr(i,j));
-            Vector3d p1 =  p_adaption.row(Fg_pattern_curr(i,(j+1)%3));
-            double mass0 = 1;
-
-            // idea: we should allow less stretch if it is on the original boundary, stronger edge length preservation force
-            double stiffnessUsed = stretchStiffnessU;
-//            if(toPattern_boundaryVerticesSet.find(Fg_pattern(i, j)) != toPattern_boundaryVerticesSet.end() &&
-//            toPattern_boundaryVerticesSet.find(Fg_pattern(i,(j+1)%3)) != toPattern_boundaryVerticesSet.end()){
-//                //todo
-////                stiffnessUsed *= 3;//we go faster back to the original length
-//            }
-
-            PBD.solve_DistanceConstraint(p0, mass0, p1, 1, patternEdgeLengths_orig(i, (j+2) % 3),stiffnessUsed, corr0, corr1);
-            p_adaption.row(Fg_pattern_curr(i,j)) += corr0;
-            p_adaption.row(Fg_pattern_curr(i,(j+1) % 3 )) += corr1;
-
-        }
-    }
-}
-
 void solveStretchAdaption(){
 
     MatrixXd correctionTerm = MatrixXd::Zero(currPattern.rows(), 3);
@@ -2603,7 +2591,27 @@ void solveStretchAdaption(){
         // force that pulls back to the original position in fromPattern
     // it does not quite work after tthe 3rd cut. Jacobian seems to be fine but it messes up
     for(int j=0; j< Fg_pattern_curr.rows(); j++){
-        if(dblA(j)<4) continue;
+        if(dblA(j)<4) {
+            for(int l=0; l<3; l++){
+                itemCount(Fg_pattern_curr(j,l))++;
+            }
+            continue;
+        }
+        // check all three angles. if any of them is too small continue
+        for(int h =0; h<3; h++){
+            Vector3d e1 =  p_adaption.row(Fg_pattern_curr(j,h) )- p_adaption.row(Fg_pattern_curr(j,(h + 1) % 3));
+            Vector3d e2 =  p_adaption.row(Fg_pattern_curr(j,h)) - p_adaption.row(Fg_pattern_curr(j,(h + 2) % 3));
+            auto dot = e1.dot(e2);
+            dot /= (e1.norm() * e2.norm());
+            //cos angle
+            if(dot >= 0.95){
+//                cout<<" skip face "<< j <<endl;
+                for(int l=0; l<3; l++){
+                    itemCount(Fg_pattern_curr(j,l))++;
+                }
+                continue;
+            }
+        }
         Eigen::MatrixXd patternCoords(2, 3);
         int i  = (inverseMap) ? j : halfPatternFaceToFullPatternFace[j];
         patternCoords.col(0) = mapFromVg.row(mapFromFg(i, 0)).leftCols(2).transpose();
@@ -2623,9 +2631,7 @@ void solveStretchAdaption(){
         VectorXd thisFaceU = baryCoordsUPattern(i,0) * targetPositions.col(0) +  baryCoordsUPattern(i,1) * targetPositions.col(1) + baryCoordsUPattern(i,2) * targetPositions.col(2) ;
         VectorXd thisFaceV = baryCoordsVPattern(i,0) * targetPositions.col(0) +  baryCoordsVPattern(i,1) * targetPositions.col(1) + baryCoordsVPattern(i,2) * targetPositions.col(2) ;
         VectorXd bary = (targetPositions.col(0) + targetPositions.col(1) + targetPositions.col(2)) / 3;
-//        if(true){//j<=1546 && j>= 1530
-//            cout<<j<<" "<<(thisFaceU - bary).norm()<<" u and v "<<(thisFaceV - bary).norm()<<endl;
-//        }
+
         PBD_adaption.init_UVStretchPattern( thisFaceU- bary,  thisFaceV - bary, patternCoords,targetPositions,
                                             tar[0], tar[1],tar[2], uOrv,  stretchStiffnessD);
         PBD_adaption.init_UVStretchPatternCorrectAngle( thisFaceU- bary,  thisFaceV - bary, patternCoords,targetPositions,
@@ -2644,8 +2650,9 @@ void solveStretchAdaption(){
 
     }
     for(int i=0; i<p_adaption.rows(); i++){
+        if(itemCount(i) ==0) continue;
         p_adaption.row(i) += (correctionTerm.row(i))/itemCount(i);
-//        cout<<((correctionTerm.row(i))/itemCount(i)).norm()<<" change"<<endl;
+
     }
 
 }
@@ -2751,7 +2758,7 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
 
     changedPos = -1;
 //    t.printTime(" init ");
-    for(int i=0; i<7; i++){
+    for(int i=0; i<1; i++){
         solveStretchAdaption();
 //        t.printTime(" stretch ");
 
@@ -2838,6 +2845,7 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
     viewer.data().add_edges(startPerEdge, startPerEdge + 3 * vPerEdge, colvPerEdge);
     viewer.data().add_edges(startPerEdge, startPerEdge - 3 * vPerEdge, colvPerEdge);
 
+//    adaptionFlag = false;
 }
 void dotimeStep(igl::opengl::glfw::Viewer& viewer){
     Timer t("Time step ");

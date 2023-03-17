@@ -502,6 +502,45 @@ void insertPlane(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg_
     Vg_pattern.resize(Vgp.rows(), Vgp.cols()); Vg_pattern = Vgp;
 
 }
+void laplFilter(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg_pattern){
+    MatrixXd newPattern = Vg_pattern;
+    vector<vector<int>> vvAdj, vfAdj;
+    igl::adjacency_list(Fg_pattern, vvAdj);
+    createVertexFaceAdjacencyList(Fg_pattern, vfAdj);
+
+    for(int i=0; i<Vg_pattern.rows(); i++){
+        if(isBoundaryVertex(Vg_pattern,i, vvAdj,vfAdj))continue;
+
+        VectorXd newPos = VectorXd::Zero(3);
+        int count = 0;
+        for(auto it: vvAdj[i]){
+            newPos += Vg_pattern.row(it);
+            count++;
+        }
+        newPos /= count;
+        newPattern.row(i) = newPos;
+    }
+    igl::writeOBJ("laplFiltered.obj", newPattern, Fg_pattern);
+
+    MatrixXd newnewPattern = newPattern;
+    for(int i=0; i<Vg_pattern.rows(); i++){
+        if(isBoundaryVertex(newPattern,i, vvAdj,vfAdj))continue;
+        VectorXd newPos = VectorXd::Zero(3);
+        int count = 0;
+        for(auto it: vvAdj[i]){
+            newPos += newPattern.row(it);
+            count++;
+        }
+        newPos /= count;
+        newnewPattern.row(i) = newPos;
+    }
+    igl::writeOBJ("laplFiltered2.obj", newnewPattern, Fg_pattern);
+
+}
+void smoothLaplacian(MatrixXd& Vg, MatrixXi& Fg){
+    laplFilter(Vg, Fg, Vg, Fg);
+}
+
 void preProcessGarment(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg_pattern, bool insPlane, int symVert1, int symVert2 ,VectorXd& T_sym, string garment){
     if(insPlane){
         // do the split first
@@ -585,7 +624,11 @@ void preProcessGarment(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixX
     }
 
     igl::writeOBJ("leftGarment.obj", newVg, newFg );
+
     igl::writeOBJ("leftPattern.obj", newVg_pattern, newFg_pattern);
+    if(insPlane){
+        laplFilter(newVg, newFg , newVg_pattern, newFg_pattern);
+    }
     // finished the split, now duplicate to make it one again
 
 
