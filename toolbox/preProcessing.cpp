@@ -16,7 +16,9 @@
 #include "constraint_utils.h"
 #include <igl/writeOBJ.h>
 #include <igl/readOBJ.h>
-
+#include <igl/signed_distance.h>
+#include <igl/barycentric_coordinates.h>
+#include <igl/barycentric_interpolation.h>
 #include <igl/vertex_components.h>
 #include "igl/adjacency_list.h"
 #include "adjacency.h"
@@ -25,6 +27,7 @@
 
 using namespace std;
 using namespace Eigen;
+using namespace igl;
 
 typedef Eigen::SparseMatrix<double, RowMajor> SpMat; // declares a column-major sparse matrix type of double
 typedef Eigen::Triplet<double> T;
@@ -523,7 +526,7 @@ void laplFilter(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg_p
         newPattern.row(i) = newPos;
     }
     igl::writeOBJ("laplFiltered.obj", newPattern, Fg_pattern);
-
+    Vg_pattern= newPattern; 
     MatrixXd newnewPattern = newPattern;
     for(int i=0; i<Vg_pattern.rows(); i++){
         if(isBoundaryVertex(newPattern,i, vvAdj,vfAdj))continue;
@@ -723,7 +726,46 @@ void preProcessGarment(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixX
    }else{
        igl::readOBJ("leftPattern_SmoothBound.obj", newVg_pattern, newFg_pattern);
        igl::readOBJ("leftGarmentBeforeSmooth.obj", newVg, newFg);
+       cout<<newFg_pattern.rows()<<" pattern rows and garment rows"<<newFg.rows()<<endl;
+
        laplFilter(newVg, newFg , newVg_pattern, newFg_pattern);
+        // addapt the garment similarly
+        VectorXd S;
+        VectorXi I;//face index of smallest distance
+        MatrixXd C,N, initGuess;
+        MatrixXd pattLeftV;
+        MatrixXi pattLeftF;
+        igl::readOBJ("leftPatternBeforeSmooth.obj", pattLeftV, pattLeftF);
+
+        igl::signed_distance(newVg_pattern, pattLeftV, pattLeftF, igl::SIGNED_DISTANCE_TYPE_PSEUDONORMAL, S, I, C, N);
+
+        MatrixXd B(newVg_pattern.rows(), 3); // contains all barycentric coordinates
+        for(int i = 0; i < newVg_pattern.rows(); i++){
+            MatrixXd bary;
+            auto face = pattLeftF.row(I(i));
+            igl::barycentric_coordinates(newVg_pattern.row(i), pattLeftV.row(face(0)), pattLeftV.row(face(1)),
+                                         pattLeftV.row(face(2)), bary);
+            B.row(i) = bary.row(0);
+        }
+        initGuess.resize(newVg.rows(), 3);
+        for(int i=0; i<newFg.rows(); i++){
+            for(int j=0; j<3; j++){
+
+                int vidx = pattLeftF(i,j);
+                VectorXi inFace = newFg.row(I(vidx));
+                initGuess.row(newFg(i,j)) = newVg.row(inFace( 0))* B(vidx, 0)+
+                        newVg.row(inFace( 1))* B(vidx, 1)+ newVg.row(inFace( 2))* B(vidx, 2);
+                if(i==1278){
+                    cout<<vidx<<" the vertex in the pattern"<<" and in the garment its "<<newFg(i,j)<<endl;
+                    cout<<B.row(vidx)<<endl;
+
+                }
+            }
+        }
+
+        writeOBJ("interpolLaplGar.obj", initGuess, newFg);
+        newVg= initGuess;
+
    }
 
     // finished the split, now duplicate to make it one again
@@ -794,8 +836,6 @@ void preProcessGarment(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixX
     VgDupl_pattern = (rot*newVg_pattern.transpose()).transpose();
 
     T_sym = Vg_pattern.row(symVert1 ) - VgDupl_pattern.row(symVert2);
-    cout<<"travel from "<<symVert1<<" at pos "<<Vg_pattern.row(symVert1 )<<endl<<" To " <<symVert2<<" at pos"<< VgDupl_pattern.row(symVert2)<<endl;
-    cout<<Vg_pattern.row(symVert1 ) - VgDupl_pattern.row(symVert2)<<" transpose offset"<<endl ;
     VgDupl_pattern.rowwise() += T_sym.transpose();
     offset = newVg_pattern.rows();
     MatrixXi offsetM(FgDupl_pattern.rows(), FgDupl_pattern.cols()); offsetM.setConstant(offset);

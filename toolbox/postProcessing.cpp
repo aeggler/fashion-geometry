@@ -1281,7 +1281,7 @@ void initialGuessAdaption(MatrixXd& currPattern_nt, MatrixXd& mapToVg_nt, Matrix
     vector<set<pair<int, double>>> newCornerCandidate(perfectPattern.rows());
     MatrixXd B(currPattern.rows(), 3); // contains all barycentric coordinates
     for(int i = 0; i < currPattern.rows(); i++){
-        VectorXd bary;
+        MatrixXd bary;
         auto face = mapToFg.row(I(i));
         igl::barycentric_coordinates(currPattern.row(i), perfectPattern.row(face(0)), perfectPattern.row(face(1)),
                                      perfectPattern.row(face(2)), bary);
@@ -1291,7 +1291,7 @@ void initialGuessAdaption(MatrixXd& currPattern_nt, MatrixXd& mapToVg_nt, Matrix
             }
         }
 
-        B.row(i) = bary;
+        B.row(i) = bary.row(0);
     }
     cout<<"Got all barycentric coords "<< newCornerCandidate.size()<<endl;
     igl::barycentric_interpolation(mapToVg, mapToFg, B, I, initGuess);
@@ -1347,11 +1347,11 @@ void initialGuessAdaptionWithoutT(MatrixXd& currPattern, MatrixXd& mapToVg, Matr
 
     MatrixXd B(currPattern.rows(), 3); // contains all barycentric coordinates
     for(int i = 0; i < currPattern.rows(); i++){
-        VectorXd bary;
+        MatrixXd bary;
         auto face = mapToFg.row(I(i));
         igl::barycentric_coordinates(currPattern.row(i), perfectPattern.row(face(0)), perfectPattern.row(face(1)),
                                      perfectPattern.row(face(2)), bary);
-        B.row(i) = bary;
+        B.row(i) = bary.row(0);
     }
     cout<<"Got all barycentric coords"<<endl;
     igl::barycentric_interpolation(mapToVg, mapToFg, B, I, initGuess);
@@ -1706,9 +1706,12 @@ void computeFinalJacobian(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_gar, MatrixXi
         baryPatt /= 3;
         Vector3d u = baryPatt; u(0) += 1;
         Vector3d v = baryPatt; v(1) += 1;
+        MatrixXd uBaryM, vBaryM;
         VectorXd uBary, vBary;
-        igl::barycentric_coordinates(u.transpose(), Vg.row(id0), Vg.row(id1), Vg.row(id2), uBary);
-        igl::barycentric_coordinates(v.transpose(), Vg.row(id0), Vg.row(id1), Vg.row(id2), vBary);
+        igl::barycentric_coordinates(u.transpose(), Vg.row(id0), Vg.row(id1), Vg.row(id2), uBaryM);
+        igl::barycentric_coordinates(v.transpose(), Vg.row(id0), Vg.row(id1), Vg.row(id2), vBaryM);
+        uBary = uBaryM;
+        vBary = vBaryM;
 
         Vector3d Gu = uBary(0) * Vg_gar.row(id0) + uBary(1) * Vg_gar.row(id1) + uBary(2) * Vg_gar.row(id2);
         Vector3d Gv = vBary(0) * Vg_gar.row(id0) + vBary (1) * Vg_gar.row(id1) + vBary(2) * Vg_gar.row(id2);
