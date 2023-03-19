@@ -171,16 +171,16 @@ void createHalfSewingPattern(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, M
 
     int leftCount = 0; int rightCount = 0 ;
     for(int i=0; i<n; i++){
-        if(Vg(i, 0) <= 0){
+        if(Vg(i, 0) <= 0.2){
             isLeftVert(i) = 1;
             leftCount++;
         }
-        if(Vg(i, 0) >= 0){
+        if(Vg(i, 0) >= -0.2){
             isRightVert(i) = 1;
             rightCount++;
         }
     }
-//    cout<<leftCount<<" left and right in 3D "<<rightCount<<endl;
+    cout<<leftCount<<" left and right in 3D "<<rightCount<<endl;
     MatrixXd Vg_half(leftCount, 3);
     map<int, int> halfVertToFullVert, fullVertToHalfVert;
     int idx=0;
@@ -223,8 +223,9 @@ void createHalfSewingPattern(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, M
             isLeftFace(i) = 1;
             faceCount ++;
         }else if (Vg(v0, 0)<0 ||Vg(v1, 0)<0 ||Vg(v2, 0)<0  ){
-            faceCount++;
+//            faceCount++;
         }else{
+            cout<<"EVER HERE??"<<endl; 
             isLeftFace(i) = -1;
             isLeftVertPattern(Fg_pattern(i, 0))=0;
             isLeftVertPattern(Fg_pattern(i, 1))=0;
@@ -266,7 +267,7 @@ void createHalfSewingPattern(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, M
     vector<VectorXd> addedVert;
     int newIdx = leftCount;
     Fg_pattern_half.resize(faceCount, 3);
-
+cout<<"left face pattern count "<< faceCount<<endl;
     idx = 0;
     for(int i = 0; i<m; i++){
         if(isLeftFace(i) == 1){
@@ -284,8 +285,8 @@ void createHalfSewingPattern(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, M
 
     // we hve rightVert adn Vg_pattern_half for right and left vertices.
     // now find the syymetry using procrustes with reflection
-//    cout<<rightVert.rows()<<" right and left 2D verts "<<Vg_pattern_half.rows()<<endl;
-
+    cout<<rightVert.rows()<<" right and left 2D verts "<<Vg_pattern_half.rows()<<endl;
+igl::writeOBJ("halfPattern.obj", Vg_pattern_half,  Fg_pattern_half);
     cout<<" after"<<endl;
 
 }
@@ -526,7 +527,7 @@ void laplFilter(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg_p
         newPattern.row(i) = newPos;
     }
     igl::writeOBJ("laplFiltered.obj", newPattern, Fg_pattern);
-    Vg_pattern= newPattern; 
+    Vg_pattern= newPattern;
     MatrixXd newnewPattern = newPattern;
     for(int i=0; i<Vg_pattern.rows(); i++){
         if(isBoundaryVertex(newPattern,i, vvAdj,vfAdj))continue;
@@ -638,7 +639,7 @@ void splitAndSmooth(MatrixXd& Vg,MatrixXi& Fg,MatrixXd& Vg_pattern,MatrixXi& Fg_
 }
 
 void preProcessGarment(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg_pattern, bool insPlane, int symVert1, int symVert2 ,VectorXd& T_sym, string garment){
-    MatrixXd newVg;
+    MatrixXd newVg, origVg;
     MatrixXd newVg_pattern;
     MatrixXi newFg;
     MatrixXi newFg_pattern;
@@ -727,7 +728,7 @@ void preProcessGarment(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixX
        igl::readOBJ("leftPattern_SmoothBound.obj", newVg_pattern, newFg_pattern);
        igl::readOBJ("leftGarmentBeforeSmooth.obj", newVg, newFg);
        cout<<newFg_pattern.rows()<<" pattern rows and garment rows"<<newFg.rows()<<endl;
-
+        origVg = newVg;
        laplFilter(newVg, newFg , newVg_pattern, newFg_pattern);
         // addapt the garment similarly
         VectorXd S;
@@ -755,11 +756,7 @@ void preProcessGarment(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixX
                 VectorXi inFace = newFg.row(I(vidx));
                 initGuess.row(newFg(i,j)) = newVg.row(inFace( 0))* B(vidx, 0)+
                         newVg.row(inFace( 1))* B(vidx, 1)+ newVg.row(inFace( 2))* B(vidx, 2);
-                if(i==1278){
-                    cout<<vidx<<" the vertex in the pattern"<<" and in the garment its "<<newFg(i,j)<<endl;
-                    cout<<B.row(vidx)<<endl;
 
-                }
             }
         }
 
@@ -775,25 +772,55 @@ void preProcessGarment(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixX
     VectorXi mapDupl(newVg.rows());
     int count = 0;
     VectorXd onSeam2 = VectorXd::Zero(newVg.rows());
-    for(int i =0; i<newVg.rows(); i++){
-        if(!insPlane && onSeam(i) == 0){
-            mapDupl(i) = count;
-            count++;
-            onSeam2(i)= onSeam(i);
-        }else if(insPlane && newVg(i,0) != 0){
-            mapDupl(i) = count;
-            count++;
-            onSeam2(i)= 0;
-        }else if(insPlane && newVg(i,0) == 0){
-            onSeam2(i)= 1;
+    if(!insPlane){
+        for(int i =0; i<newVg.rows(); i++){
+            if( onSeam(i) == 0){
+                mapDupl(i) = count;
+                count++;
+                onSeam2(i)= onSeam(i);
+            }
+        }
+    }else{
+        VectorXi checked= VectorXi::Zero(newVg.rows());
+
+        for(int i =0; i< newFg.rows(); i++){
+            for(int j =0; j<3; j++){
+
+                if(checked(newFg(i,j))!=0)continue;
+                if(newFg(i,j)==320)cout<<origVg.row(newFg(i,j))<<" the orig row"<<endl;
+                 if(abs( origVg(newFg(i,j),0)) >= 0.05){
+                    mapDupl(newFg(i,j)) = count;
+                    count++;
+                    onSeam2(newFg(i,j))= 0;
+                     if(newFg(i,j)==320)cout<<onSeam2(newFg(i,j))<<" on seam? and map "<<  mapDupl(newFg(i,j))<<endl;
+                 }else{// if( newVg_pattern(newFg_pattern(i,j),0) == 0){
+                    onSeam2(newFg(i,j))= 1;
+                }
+                 checked(newFg(i,j))++;
+            }
         }
     }
+
     MatrixXd VgDupl (count ,3);
     count = 0;
+    if(!insPlane){
     for(int i=0; i<newVg.rows(); i++){
         if( onSeam2(i) == 0){
             VgDupl.row(count)= newVg.row(i);
             count++;
+        }
+    }
+    }else{
+        VectorXi checked= VectorXi::Zero(newVg.rows());
+        for(int i =0; i< newFg.rows(); i++){
+            for(int j =0; j<3; j++){
+                if(checked(newFg(i,j))!=0)continue;
+                if( onSeam2(newFg(i,j))== 0){
+                    VgDupl.row(count)= newVg.row(newFg(i,j));
+                    count++;
+                }
+                checked(newFg(i,j))++;
+            }
         }
     }
 
@@ -812,6 +839,7 @@ void preProcessGarment(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixX
                 // else we take the duplicated vertex
                 FgDupl(i,j) = mapDupl(newFg(i,j)) + offset;
             }
+            if(newFg(i,j)==320)cout<<FgDupl(i,j)<<" the orig row"<< mapDupl(newFg(i,j)) <<endl;
         }
     }
     MatrixXd fullVg(VgDupl.rows() + newVg.rows(), 3);

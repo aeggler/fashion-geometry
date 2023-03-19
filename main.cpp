@@ -351,9 +351,9 @@ int main(int argc, char *argv[])
             smoothBetweenVertices(VgPatternRet, FgPatternRet, startAndEnd);
             igl::writeOBJ("leftPattern_SmoothBound.obj", VgPatternRet, FgPatternRet);
 
-
         }
         preProcessGarment(Vg, Fg, Vg_pattern, Fg_pattern, insertPlane, symVert1, symVert2, T_sym_pattern, garment);
+        Vg_orig = Vg; Fg_orig= Fg;
     }
     garmentPreInterpol = Vg;
     Vg_orig = Vg; Fg_orig= Fg;
@@ -367,10 +367,6 @@ int main(int argc, char *argv[])
     preComputeConstraintsForRestshape();
     preComputeStretch();
 
-    string laplb = "finished_tear_writtenPattern_top_1Mess_Avatar_"+garment+".obj";
-    MatrixXd lapV; MatrixXi lapF;
-    igl::readOBJ(laplb,lapV, lapF );
-    smoothLaplacian(lapV, lapF);
     setNewGarmentMesh(viewer);
 
 // TODO remember to adapt the collision constraint solving dep on avatar, sometimes normalization is needed, sometimes not for whatever magic
@@ -388,13 +384,13 @@ int main(int argc, char *argv[])
 //    string morphBody1right =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/moreGarments/dress_4/avatar_oneComponent_right.ply";
      avName = "avatar_missy_straight_05_OC";// good for skirt
 //    avName = "avatar_maternity_05_OC";
-//    string morphBody1 =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/CLO_avatars_oneComponent/"+ avName +".ply";//
-//    string morphBody1left =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/CLO_avatars_oneComponent/"+ avName +"_left.ply";
-//    string morphBody1right =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/CLO_avatars_oneComponent/"+ avName +"_right.ply";
-     avName = "top_1Mess_Avatar";
-    string morphBody1 =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/avatar/avatar_one_component.ply";
-    string morphBody1left =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/avatar/avatar_one_component_left.ply";
-    string morphBody1right =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/avatar/avatar_one_component_right.ply";
+    string morphBody1 =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/CLO_avatars_oneComponent/"+ avName +".ply";//
+    string morphBody1left =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/CLO_avatars_oneComponent/"+ avName +"_left.ply";
+    string morphBody1right =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/CLO_avatars_oneComponent/"+ avName +"_right.ply";
+//     avName = "top_1Mess_Avatar";
+//    string morphBody1 =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/avatar/avatar_one_component.ply";
+//    string morphBody1left =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/avatar/avatar_one_component_left.ply";
+//    string morphBody1right =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/avatar/avatar_one_component_right.ply";
 
     igl::readPLY(morphBody1, testMorph_V1, testMorph_F1);
     igl::readPLY(morphBody1left, testMorph_V1left, testMorph_F1left);
@@ -477,17 +473,8 @@ int main(int argc, char *argv[])
 //        string perfPatternFile = "/Users/annaeggler/Desktop/AvatarToMaternity_01/patternComputed_maternity_01.obj";
         igl::readOBJ(perfPatternFile, perfPattVg_orig, perfPattFg_orig);
         perfPattVg_orig.col(2).setConstant(200);
-        perfPattVg_orig(561,0) -=1;
-        perfPattVg_orig(738,0) +=1;
-        perfPattVg_orig(733,0) +=1;
-        perfPattVg_orig(729,0) +=1;
-        perfPattVg_orig(747,0) +=1;
-        perfPattVg_orig(752,1) -=1;
-        perfPattVg_orig(754,1) -=1;
-
 
         // copy the matrices to not mess with them
-
         if(inverseMap){
 //            string helperToLocate = "/Users/annaeggler/Desktop/"+startFile;
             string helperToLocate = prefPattern + startFile;
@@ -863,7 +850,7 @@ int main(int argc, char *argv[])
 
                 currPattern = mapFromVg;
                 Fg_pattern_curr = mapFromFg;
-                cout<<endl<<currPattern.rows()<<" curr pattern rows "<<endl;
+                cout<<endl<<currPattern.rows()<<" curr pattern rows, faces  "<<Fg_pattern_curr.rows()<<endl;
                 preComputeAdaption();
                 if(inverseMap){
                     initialGuessAdaption(currPattern, mapToVg, perfPattVg, Fg_pattern_curr, perfPattFg, symetry, cornerSet,
@@ -880,7 +867,11 @@ int main(int argc, char *argv[])
                             usedIdx++;
                     }
                     Fg_pattern_curr = Fg_pattern_half;
+                    cout<<" finished half map  "<<endl;
+
                 }
+                cout<<endl<<currPattern.rows()<<" curr pattern rows, second  faces  "<<Fg_pattern_curr.rows()<<endl;
+cout<<" and face 611 "<< Fg_pattern_curr.row(611)<<endl;
                 viewer.selected_data_index = 2;
                 viewer.data().clear();
                 viewer.selected_data_index = 1;
@@ -900,6 +891,7 @@ int main(int argc, char *argv[])
                 boundaryL = boundaryLnew;
                 boundaryLFrom.clear();
                 igl::boundary_loop(mapFromFg, boundaryLFrom);
+                cout<<" and final  face 611 "<< Fg_pattern_curr.row(611)<<endl;
 
                 if(inverseMap) {
                     // corner per boundary contains only corners of the half pattern, but their original id -> always apply map when using these constructs
@@ -2084,7 +2076,6 @@ void computeBaryCoordsGarOnNewMannequin(igl::opengl::glfw::Viewer& viewer){
 
         Vg.row(i) = newPos.transpose() + distVec(i) * N.row(i);
     }
-
 
 }
 void setNewGarmentMesh(igl::opengl::glfw::Viewer& viewer) {
