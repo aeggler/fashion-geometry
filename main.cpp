@@ -455,7 +455,7 @@ int main(int argc, char *argv[])
     MatrixXi perfPattFg, perfPattFg_orig, addedFabricPatternFg;
 
     bool patternExists = true;
-    inverseMap = false;
+    inverseMap = true;
 
 //    string startFile = "writtenPattern_nicelyRetri.obj";
 //    startFile =  "writtenPattern_leggins.obj";
@@ -871,7 +871,6 @@ int main(int argc, char *argv[])
 
                 }
                 cout<<endl<<currPattern.rows()<<" curr pattern rows, second  faces  "<<Fg_pattern_curr.rows()<<endl;
-cout<<" and face 611 "<< Fg_pattern_curr.row(611)<<endl;
                 viewer.selected_data_index = 2;
                 viewer.data().clear();
                 viewer.selected_data_index = 1;
@@ -891,7 +890,6 @@ cout<<" and face 611 "<< Fg_pattern_curr.row(611)<<endl;
                 boundaryL = boundaryLnew;
                 boundaryLFrom.clear();
                 igl::boundary_loop(mapFromFg, boundaryLFrom);
-                cout<<" and final  face 611 "<< Fg_pattern_curr.row(611)<<endl;
 
                 if(inverseMap) {
                     // corner per boundary contains only corners of the half pattern, but their original id -> always apply map when using these constructs
@@ -1015,7 +1013,9 @@ cout<<" and face 611 "<< Fg_pattern_curr.row(611)<<endl;
                 igl::boundary_loop(Fg_pattern_curr, boundaryLnew);
 
                 if(boundaryLnew.size() != boundaryL.size()){
+                    cout<<seamsList[1]->getStart1()<<" and end "<<seamsList[1] ->getEndCornerIds().first<<endl;
                     updatePatchId(cutPositions, boundaryLnew,seamsList, minusOneSeamsList, fullPatternVertToHalfPatternVert );
+                    cout<<seamsList[1]->getStart1()<<" and after "<<seamsList[1] ->getEndCornerIds().first<<endl;
                 }
                 boundaryL.clear();
                 boundaryL= boundaryLnew;
@@ -2759,7 +2759,7 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
     adaptioncount++;
 //    if(adaptioncount>1)return;
 
-//    std::cout<<"-------------- Time Step ------------"<<adaptioncount<<endl;
+    std::cout<<"-------------- Time Step ------------"<<adaptioncount<<endl;
 
     // we have no velocity or collision, but we do have stretch, constrainedStretch and bending
     // for the stretch, the current pattern is the reference, then its corners are mapped to another position
@@ -2773,15 +2773,17 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
     p_adaption.col(2)*= 200;
 
     changedPos = -1;
-//    t.printTime(" init ");
+    t.printTime(" init ");
     for(int i=0; i<1; i++){
         solveStretchAdaption();
-//        t.printTime(" stretch ");
+        t.printTime(" stretch ");
 
 
         // before cutting the boundaries should be the same
         map<int, int> mapUsed = fullPatternVertToHalfPatternVert;
         map<int, int> extFHV = fullPatternVertToHalfPatternVert;
+        t.printTime(" maps ");
+
         if(symetry && inverseMap) {
             mapUsed = IdMap;
             for(auto item : mapCornerToCorner){
@@ -2791,11 +2793,15 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
                 }
             }
         }
+        t.printTime(" maps made ");
+
         projectBackOnBoundary( mapToVg, p_adaption, seamsList, minusOneSeamsList, boundaryL_toPattern,
                                 boundaryLFrom, releasedVert ,inverseMap,  mapUsed, extFHV);
+        t.printTime(" proj ");
 
 //        ensurePairwiseDist(p_adaption, toPattern, Fg_pattern);
         solveCornerMappedVertices();
+        t.printTime(" corner ");
 
         // this causes the weired ange issue
 //        ensureAngle(p_adaption, mapFromVg, Fg_pattern_curr, mapFromFg);

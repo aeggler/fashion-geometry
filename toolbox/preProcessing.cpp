@@ -222,10 +222,9 @@ void createHalfSewingPattern(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, M
             // all on the left -> just take it
             isLeftFace(i) = 1;
             faceCount ++;
-        }else if (Vg(v0, 0)<0 ||Vg(v1, 0)<0 ||Vg(v2, 0)<0  ){
+//        }else if (Vg(v0, 0)<0 ||Vg(v1, 0)<0 ||Vg(v2, 0)<0  ){
 //            faceCount++;
         }else{
-            cout<<"EVER HERE??"<<endl; 
             isLeftFace(i) = -1;
             isLeftVertPattern(Fg_pattern(i, 0))=0;
             isLeftVertPattern(Fg_pattern(i, 1))=0;
@@ -247,6 +246,7 @@ void createHalfSewingPattern(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, M
     idx=0; int rightIdx = 0;
 
     int patternHalfVert = isLeftVertPattern.sum();
+    cout<<patternHalfVert<<" half vertices"<<endl;
     Vg_pattern_half.resize(patternHalfVert, 3);
      rightVert.resize(isRightVertPattern.sum(), 3);
 
@@ -267,7 +267,6 @@ void createHalfSewingPattern(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, M
     vector<VectorXd> addedVert;
     int newIdx = leftCount;
     Fg_pattern_half.resize(faceCount, 3);
-cout<<"left face pattern count "<< faceCount<<endl;
     idx = 0;
     for(int i = 0; i<m; i++){
         if(isLeftFace(i) == 1){
@@ -285,9 +284,9 @@ cout<<"left face pattern count "<< faceCount<<endl;
 
     // we hve rightVert adn Vg_pattern_half for right and left vertices.
     // now find the syymetry using procrustes with reflection
-    cout<<rightVert.rows()<<" right and left 2D verts "<<Vg_pattern_half.rows()<<endl;
+//    cout<<rightVert.rows()<<" right and left 2D verts "<<Vg_pattern_half.rows()<<endl;
 igl::writeOBJ("halfPattern.obj", Vg_pattern_half,  Fg_pattern_half);
-    cout<<" after"<<endl;
+//    cout<<" after"<<endl;
 
 }
 void insertPlane(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg_pattern, string garment){

@@ -250,10 +250,10 @@ void findCorrectSeamAndAddToDuplicates(vector<seam*>& seamsList, vector<minusOne
                 idxOfStart++;
             }
             while(boundary[idxOfStart] != end){
-
+                cout<<boundary[idxOfStart]<<" curr, start "<<startVert<<" and end "<<end<<endl;
                 if(boundary[idxOfStart] == vertIdx){
                     seamsList[i]-> duplicates[vertIdx] = duplVertIdx;
-                    cout<<"located in seam "<<i<<endl;
+                    cout<<"located in seam "<<i<<": duplicate of "<<vertIdx<<" is "<<duplVertIdx<<endl;
                     return;
                 }
                 idxOfStart ++; idxOfStart  = idxOfStart % boundary.size();
@@ -276,7 +276,7 @@ void findCorrectSeamAndAddToDuplicates(vector<seam*>& seamsList, vector<minusOne
 
                 if(boundary[idxOfStart] == vertIdx){
                     seamsList[i]-> duplicates2[vertIdx] = duplVertIdx;
-                    cout<<"located in seam "<<i<<endl;
+                    cout<<"located in seam pt 2,i= "<<i<<": duplicate of "<<vertIdx<<" is "<<duplVertIdx<<endl;
 
                     return;
 
@@ -871,6 +871,8 @@ void splitVertexFromCVE( cutVertEntry*& cve,
 
     Vg.resize(newVg.rows(), 3);
     Vg = newVg;
+    cout<<Vg.row(Vg.rows()-1)<<" the last row item "<<Vg.rows()-1<<endl;
+    igl::writeOBJ("test.obj" ,Vg, Fg);
 
     // only the first level i.e. boundary duplicate has to be projected, hence only this one is to be added
     if(cve->levelOne) {
@@ -2253,6 +2255,7 @@ void projectBackOnBoundary(const MatrixXd & mapToVg, MatrixXd& p, const vector<s
     int numSeams = seamsList.size();
     int count =0;
     for (int j = 0; j<numSeams; j++){
+        cout<<j<<" = j"<<endl;
 
         seam* currSeam  = seamsList[j];
         auto stP1= currSeam-> getStartAndPatch1();
@@ -2267,7 +2270,12 @@ void projectBackOnBoundary(const MatrixXd & mapToVg, MatrixXd& p, const vector<s
             int end = currSeam-> patch1endCornerIdOld;
             fillMatrixWithBoundaryVert(boundaryL_toPattern[toPatch], start ,end, mapToVg, Vg_seam1to, false , fromtoToVertMapIfSplit);
 
+        }else{
+            cout<<j<<" m1 nooooot made "<<endl;
+
         }
+        cout<<j<<" m1 fin"<<endl;cout<<seamFullHalf[currSeam-> patch1startCornerIdOld]<<endl;
+        cout<<fromtoToVertMapIfSplit.size()<<" or "<<seamFullHalf.size()<<" verts"<<p.rows()<<endl;
         if(seamFullHalf.find(currSeam-> patch2startCornerIdOld) != seamFullHalf.end()  ||
                 seamFullHalf.find(currSeam-> patch2endCornerIdOld) != seamFullHalf.end() ){
 
@@ -2276,12 +2284,15 @@ void projectBackOnBoundary(const MatrixXd & mapToVg, MatrixXd& p, const vector<s
             int end =  currSeam-> patch2endCornerIdOld;
             fillMatrixWithBoundaryVert(boundaryL_toPattern[toPatch], start, end, mapToVg, Vg_seam2to, true, fromtoToVertMapIfSplit );
 
+        }else{
+            cout<<j<<" m2 nooooot made"<<endl;
+
         }
+        cout<<j<<" m2 fin"<<endl;
 
         bool shoulBeLeft =true; // for 2 case
         // for each interior (=not corner) vertex of the new boundary we need to find the closest position on the polyline and map it there
         pair<int, int> ends = currSeam->getEndCornerIds();
-
 
         if(seamFullHalf.find(currSeam->getStart1()) != seamFullHalf.end() ||
                 seamFullHalf.find(ends.first) != seamFullHalf.end() ){// only if at least one of them exists on the half pattern iit makes sense to iterate
@@ -2335,11 +2346,13 @@ void projectBackOnBoundary(const MatrixXd & mapToVg, MatrixXd& p, const vector<s
 
             }
         }
+        cout<<j<<" second side "<<endl;
 
         /**********  second side  *********/
         if(seamFullHalf.find(currSeam->getStart2()) != seamFullHalf.end() ||
                 seamFullHalf.find(ends.second) != seamFullHalf.end() ){
             int patchUsed = (inverseMap)? patchMapToHalfInverse[stP2.second] : stP2.second;
+            cout<<patchUsed<<" patch used"<<endl;
             int bsize = boundaryL[patchUsed].size();
             int nextIdx = 0;
             int next = (inverseMap)? seamFullHalf[currSeam -> getStart2()]: currSeam -> getStart2();
@@ -2350,10 +2363,15 @@ void projectBackOnBoundary(const MatrixXd & mapToVg, MatrixXd& p, const vector<s
                 cout<<"PROJECTION ERROR 2 we dont find the index "<<next<<" should be on patch "<<stP2.second<<endl;
             }
             int endSecond = (inverseMap) ? seamFullHalf[ends.second]: ends.second;
-            int nextSeach;
-            while( next!= endSecond ){
+            int nextSeach; int count = 0;
+            cout<<endSecond<<" the end, and start "<<currSeam -> getStart2()<<" "<<next<<endl;
+            cout<<ends.second<<endl;
+            while( next!= endSecond && count <=100){
+                count++;
                 // general case an interior vertex , if it is not constrained pull it to boundary
                  nextSeach = (inverseMap)? next: seamFullHalf[next];
+                if(j==3)cout<<nextSeach<<" "<<next<<endl;
+
                 if(releasedVert.find(nextSeach) == releasedVert.end() ){
                     updatePositionToIntersection( p, nextSeach,Vg_seam2to, shoulBeLeft);
                 } else if( std::find(releasedVertNew[nextSeach].begin(),
@@ -2367,6 +2385,10 @@ void projectBackOnBoundary(const MatrixXd & mapToVg, MatrixXd& p, const vector<s
 
                 if(nextIdx < 0) {nextIdx += bsize;}
                 next = boundaryL[patchUsed][nextIdx];
+            }
+            if(next!= endSecond ){
+                cout<<" Not found!! Error "<<endl;
+                return;
             }
             nextSeach = (inverseMap)? next: seamFullHalf[next];
             if(releasedVert.find(nextSeach) == releasedVert.end()){
@@ -2431,8 +2453,12 @@ void projectBackOnBoundary(const MatrixXd & mapToVg, MatrixXd& p, const vector<s
             }
             int nextSearch ;
             while(next != endVert ){
+
                 // general case, it is not released hence pull it to the boundary
                 nextSearch= (inverseMap) ? next : seamFullHalf[next];
+                if(nextSearch == 886){
+                    cout<<"in while loop"<<endl;
+                }
                 if(releasedVert.find(nextSearch) == releasedVert.end()){
                     updatePositionToIntersection( p,nextSearch,Vg_seamto , true);
                 }else if(std::find(releasedVertNew[nextSearch].begin(), releasedVertNew[nextSearch].end(),
@@ -2458,6 +2484,9 @@ void projectBackOnBoundary(const MatrixXd & mapToVg, MatrixXd& p, const vector<s
             // also map all projections
             for(const auto & addedVert : currSeam -> duplicates){
                 int avs = addedVert.second;
+                if(avs == 886){
+                    cout<<"in dupl loop"<<endl;
+                }
                 if(releasedVert.find(avs) == releasedVert.end() ){
                     updatePositionToIntersection(p, avs, Vg_seamto, true);
                 } else if( std::find(releasedVertNew[next].begin(), releasedVertNew[next].end(), j) == releasedVertNew[next].end()){

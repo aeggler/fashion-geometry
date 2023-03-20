@@ -1235,6 +1235,9 @@ void initialGuessAdaption(MatrixXd& currPattern_nt, MatrixXd& mapToVg_nt, Matrix
     igl::vertex_components(mapToFg, componentIdPerVert_other);
     igl::vertex_components(Fg_pattern_curr,componentIdPerVert_curr );
     MatrixXd currPattern = currPattern_nt;
+    cout<<"start init guess 2"<<endl ;
+    igl::writeOBJ("fromPatt.obj", currPattern_nt,Fg_pattern_curr );
+    igl::writeOBJ("toPatt.obj",mapToVg_nt, mapToFg );
 
     vector<int> right, left, rightFull, leftFull;
     if(garment == "leggins"){
@@ -1243,10 +1246,16 @@ void initialGuessAdaption(MatrixXd& currPattern_nt, MatrixXd& mapToVg_nt, Matrix
     }else if (garment =="top" ){
         rightFull.push_back(90); rightFull.push_back(90);// none
         leftFull.push_back(100); leftFull.push_back(30);
+    }else if (garment == "skirt_no2"){
+        rightFull.clear(); leftFull.clear();
+        left.clear(); right.clear();
     }
 
     right = rightFull;
     left = leftFull;
+    cout<<"start init guess 3"<<endl ;
+
+    if(right.size()==2){
 
     for(int i=0; i < currPattern_nt.rows(); i++){
         if(componentIdPerVert_curr(i)== right[0] ||componentIdPerVert_curr(i)== right[1]){
@@ -1256,9 +1265,12 @@ void initialGuessAdaption(MatrixXd& currPattern_nt, MatrixXd& mapToVg_nt, Matrix
             currPattern(i, 0) -= 100;
         }
     }
+    }else cout<< "nothing specified to move!!"<<endl;
+    cout<<"start init guess 4"<<endl ;
 
     MatrixXd mapToVg = mapToVg_nt;
     MatrixXd perfectPattern = perfectPattern_nt;
+    if(rightFull.size() == 2){
     for(int i=0; i < mapToVg.rows(); i++){
         if(componentIdPerVert_other(i)== rightFull[0] ||componentIdPerVert_other(i)== rightFull[1]){
             mapToVg(i, 0) += 100;
@@ -1269,7 +1281,8 @@ void initialGuessAdaption(MatrixXd& currPattern_nt, MatrixXd& mapToVg_nt, Matrix
             perfectPattern(i, 0) -= 100;
 
         }
-    }
+    }}else cout<<" Again nothing to move"<<endl;
+    cout<<"start init guess 5"<<endl ;
 
     VectorXd S;
     VectorXi I;//face index of smallest distance
@@ -1299,12 +1312,13 @@ void initialGuessAdaption(MatrixXd& currPattern_nt, MatrixXd& mapToVg_nt, Matrix
     currPattern  = initGuess;
     //undo the transposition
     currPattern_nt = currPattern;
-    for(int i=0; i < currPattern_nt.rows(); i++){
-        if(componentIdPerVert_curr(i)== right[0] ||componentIdPerVert_curr(i)== right[1]){
-            currPattern_nt(i, 0) -= 100;
-        }
-        else if(componentIdPerVert_curr(i)== left[0] ||componentIdPerVert_curr(i)== left[1] ){
-            currPattern_nt(i, 0) += 100;
+    if(right.size() == 2) {
+        for (int i = 0; i < currPattern_nt.rows(); i++) {
+            if (componentIdPerVert_curr(i) == right[0] || componentIdPerVert_curr(i) == right[1]) {
+                currPattern_nt(i, 0) -= 100;
+            } else if (componentIdPerVert_curr(i) == left[0] || componentIdPerVert_curr(i) == left[1]) {
+                currPattern_nt(i, 0) += 100;
+            }
         }
     }
     for(int i = 0; i<newCornerCandidate.size(); i++){

@@ -174,6 +174,8 @@ void computeAllSeams(const std::vector<std::vector<int> >& boundaryL, std::map<i
         additionalCorners.insert(1142);
         additionalCorners.insert(296);
         additionalCorners.insert(1069);
+        additionalCorners.insert(302);
+        additionalCorners.insert(1075);
     }
 
 //
