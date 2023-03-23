@@ -1235,7 +1235,6 @@ void initialGuessAdaption(MatrixXd& currPattern_nt, MatrixXd& mapToVg_nt, Matrix
     igl::vertex_components(mapToFg, componentIdPerVert_other);
     igl::vertex_components(Fg_pattern_curr,componentIdPerVert_curr );
     MatrixXd currPattern = currPattern_nt;
-    cout<<"start init guess 2"<<endl ;
     igl::writeOBJ("fromPatt.obj", currPattern_nt,Fg_pattern_curr );
     igl::writeOBJ("toPatt.obj",mapToVg_nt, mapToFg );
 
@@ -1253,7 +1252,6 @@ void initialGuessAdaption(MatrixXd& currPattern_nt, MatrixXd& mapToVg_nt, Matrix
 
     right = rightFull;
     left = leftFull;
-    cout<<"start init guess 3"<<endl ;
 
     if(right.size()==2){
 
@@ -1266,7 +1264,6 @@ void initialGuessAdaption(MatrixXd& currPattern_nt, MatrixXd& mapToVg_nt, Matrix
         }
     }
     }else cout<< "nothing specified to move!!"<<endl;
-    cout<<"start init guess 4"<<endl ;
 
     MatrixXd mapToVg = mapToVg_nt;
     MatrixXd perfectPattern = perfectPattern_nt;
@@ -1282,7 +1279,6 @@ void initialGuessAdaption(MatrixXd& currPattern_nt, MatrixXd& mapToVg_nt, Matrix
 
         }
     }}else cout<<" Again nothing to move"<<endl;
-    cout<<"start init guess 5"<<endl ;
 
     VectorXd S;
     VectorXi I;//face index of smallest distance
@@ -1290,7 +1286,6 @@ void initialGuessAdaption(MatrixXd& currPattern_nt, MatrixXd& mapToVg_nt, Matrix
     cout<<"Starting with signed distance "<<perfectPattern_nt.rows()<<" "<<mapToVg.rows()<<endl;
 
     igl::signed_distance(currPattern, perfectPattern, mapToFg, igl::SIGNED_DISTANCE_TYPE_PSEUDONORMAL, S, I, C, N);
-//    cout<<"Finished signed distance "<<endl;
     vector<set<pair<int, double>>> newCornerCandidate(perfectPattern.rows());
     MatrixXd B(currPattern.rows(), 3); // contains all barycentric coordinates
     for(int i = 0; i < currPattern.rows(); i++){

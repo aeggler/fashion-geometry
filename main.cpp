@@ -2032,6 +2032,38 @@ bool callback_mouse_down(igl::opengl::glfw::Viewer& viewer, int button, int modi
     }
     return false;
 }
+void  posForMiddleVert(int i,int face,int idx ,VectorXd& newVertpos){
+//    newVertpos.resize(3);
+//
+//    string avatar_file_nameleft =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/avatar/avatar_one_component_left.ply";
+//    string avatar_file_nameright =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/avatar/avatar_one_component_right.ply";
+//
+//    MatrixXd VmLeft, VmRight;
+//    MatrixXi FmLeft, FmRight;
+//    igl::readPLY(avatar_file_nameleft, VmLeft, FmLeft);
+//    igl::readPLY(avatar_file_nameright, VmRight, FmRight);
+//
+//    /* adding trial to check for both sides seperately */
+//    VectorXd distVecLeft, distVecRight; MatrixXd NLeft, NRight; VectorXi closestFaceIdLeft, CLeft, closestFaceIdRight, CRight;
+//    igl::signed_distance(Vg, VmLeft, FmLeft, igl::SIGNED_DISTANCE_TYPE_UNSIGNED, distVecLeft, closestFaceIdLeft, CLeft, NLeft);
+//    igl::signed_distance(Vg, VmRight, FmRight, igl::SIGNED_DISTANCE_TYPE_UNSIGNED, distVecRight, closestFaceIdRight, CRight, NRight);
+//
+//
+//    cout<<"Vertex triple case  i = "<<i<<" the left "<< closestFaceIdLeft(i)<<" "<<closestFaceIdRight(i)<<endl;
+//    Vector3d a = VmLeft.row(FmLeft(closestFaceIdLeft(i), 0));
+//    Vector3d b = VmLeft.row(FmLeft(closestFaceIdLeft(i), 1));
+//    Vector3d c = VmLeft.row(FmLeft(closestFaceIdLeft(i), 2));
+//    Vector3d normalVec = NLeft.row(closestFaceIdLeft(i));// N.row(i);
+//
+//    Vector3d currVert = Vg.row(i) - (distVecLeft(i) * normalVec).transpose();
+//    MatrixXd input(1, 3);
+//    input.row(0) = currVert;
+//    MatrixXd Bary;
+//    igl::barycentric_coordinates(input, a, b, c, Bary);
+//
+//    Vector3d currInBary = Bary.row(0);
+
+}
 void computeBaryCoordsGarOnNewMannequin(igl::opengl::glfw::Viewer& viewer){
     VectorXd distVec(Vg.rows());
 
@@ -2043,38 +2075,61 @@ void computeBaryCoordsGarOnNewMannequin(igl::opengl::glfw::Viewer& viewer){
 
     igl::signed_distance(Vg, Vm, Fm, igl::SIGNED_DISTANCE_TYPE_UNSIGNED, distVec, closestFaceId, C, N);
     N.resize(Vg.rows(), 3);
-    for(int i=0; i<Vg.rows(); i++){
-        int closestFace = closestFaceId(i);
-        Vector3d a = Vm.row(Fm(closestFace, 0));
-        Vector3d b = Vm.row(Fm(closestFace, 1));
-        Vector3d c = Vm.row(Fm(closestFace, 2));
+
+
+VectorXd vis (Vg.rows()); vis.setConstant(0);
+    for(int ii=0; ii<Fg.rows(); ii++){
+        for(int j=0; j<3; j++) {
+            int i = Fg(ii, j);
+            if(vis(i)!= 0 ) continue;
+            vis(i) ++;
+            int closestFace = closestFaceId(i);
+
+
+            Vector3d a = Vm.row(Fm(closestFace, 0));
+            Vector3d b = Vm.row(Fm(closestFace, 1));
+            Vector3d c = Vm.row(Fm(closestFace, 2));
 //don't quite understand why it is not the normal of the new mannequin
-        Vector3d normalVec = FN_m.row(closestFace);// N.row(i);
+            Vector3d normalVec = FN_m.row(closestFace);// N.row(i);
 
-        Vector3d currVert = Vg.row(i) - ( distVec(i) * normalVec).transpose();
-        MatrixXd input(1, 3);
-        input.row(0) = currVert;
-        MatrixXd Bary;
-        igl::barycentric_coordinates(input, Vm.row(Fm(closestFace, 0)), Vm.row(Fm(closestFace, 1)),
-                                     Vm.row(Fm(closestFace, 2)), Bary);
+            Vector3d currVert = Vg.row(i) - (distVec(i) * normalVec).transpose();
+            MatrixXd input(1, 3);
+            input.row(0) = currVert;
+            MatrixXd Bary;
+            igl::barycentric_coordinates(input, Vm.row(Fm(closestFace, 0)), Vm.row(Fm(closestFace, 1)),
+                                         Vm.row(Fm(closestFace, 2)), Bary);
 
-        Vector3d currInBary = Bary.row(0);
+            Vector3d currInBary = Bary.row(0);
 
-        if(isBoundaryVertex(Vg, i, vvAdj, vfAdj)){
-            constrainedVertexIds.emplace_back(i); // (i)= 1;
-            boundarycount++;
-            constrainedVertexBarycentricCoords.emplace_back(std::make_pair(currInBary, closestFace));
-            constrainedVertexDistance.push_back(distVec(i));
+            if (isBoundaryVertex(Vg, i, vvAdj, vfAdj)) {
+                constrainedVertexIds.emplace_back(i); // (i)= 1;
+                boundarycount++;
+                constrainedVertexBarycentricCoords.emplace_back(std::make_pair(currInBary, closestFace));
+                constrainedVertexDistance.push_back(distVec(i));
+            }
+            allVertexBarycentricCoords.emplace_back(std::make_pair(currInBary, closestFace));
+
+            a = testMorph_V1.row(Fm(closestFace, 0));
+            b = testMorph_V1.row(Fm(closestFace, 1));
+            c = testMorph_V1.row(Fm(closestFace, 2));
+            N.row(i) = ((b - a).cross(c - a)).normalized();
+            Vector3d newPos = currInBary(0) * a + currInBary(1) * b + currInBary(2) * c;
+            double oldx = -1;
+            if(abs(Vg(i, 0))<1){
+               oldx = Vg(i, 0);
+                cout<<i<<" was "<<Vg.row(i)<<endl;
+            }
+            Vg.row(i) = newPos.transpose() + distVec(i) * N.row(i);
+            if(oldx !=-1){
+                Vg(i, 0) = oldx ;
+                cout<<"is now "<<Vg.row(i)<<endl;
+            }
+            if (i == 694 || i == 508 || i == 696 || i == 1290) {
+                cout << i << " has closest face " << closestFaceId(i) << endl;
+                cout << " its bary coords are " << Bary << " and the normal is " << N.row(i) << endl;
+                cout << " so we bring it back as " << newPos.transpose() << " and finial " << Vg.row(i) << endl;
+            }
         }
-        allVertexBarycentricCoords.emplace_back(std::make_pair(currInBary, closestFace));
-
-        a = testMorph_V1.row(Fm(closestFace, 0));
-        b = testMorph_V1.row(Fm(closestFace, 1));
-        c = testMorph_V1.row(Fm(closestFace, 2));
-        N.row(i) = ((b-a).cross(c-a)).normalized();
-        Vector3d newPos = currInBary(0) * a + currInBary(1) * b + currInBary(2) * c;
-
-        Vg.row(i) = newPos.transpose() + distVec(i) * N.row(i);
     }
 
 }
@@ -2776,13 +2831,13 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
     t.printTime(" init ");
     for(int i=0; i<1; i++){
         solveStretchAdaption();
-        t.printTime(" stretch ");
+//        t.printTime(" stretch ");
 
 
         // before cutting the boundaries should be the same
         map<int, int> mapUsed = fullPatternVertToHalfPatternVert;
         map<int, int> extFHV = fullPatternVertToHalfPatternVert;
-        t.printTime(" maps ");
+//        t.printTime(" maps ");
 
         if(symetry && inverseMap) {
             mapUsed = IdMap;
@@ -2793,15 +2848,15 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
                 }
             }
         }
-        t.printTime(" maps made ");
+//        t.printTime(" maps made ");
 
         projectBackOnBoundary( mapToVg, p_adaption, seamsList, minusOneSeamsList, boundaryL_toPattern,
                                 boundaryLFrom, releasedVert ,inverseMap,  mapUsed, extFHV);
-        t.printTime(" proj ");
+//        t.printTime(" proj ");
 
 //        ensurePairwiseDist(p_adaption, toPattern, Fg_pattern);
         solveCornerMappedVertices();
-        t.printTime(" corner ");
+//        t.printTime(" corner ");
 
         // this causes the weired ange issue
 //        ensureAngle(p_adaption, mapFromVg, Fg_pattern_curr, mapFromFg);
@@ -2833,23 +2888,60 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
     MatrixXd vPerEdge = MatrixXd::Zero(Fg_pattern_curr.rows(), 3);
     MatrixXd colvPerEdge(Fg_pattern_curr.rows(), 3);
     MatrixXd coluPerEdge(Fg_pattern_curr.rows(), 3);
-
+    VectorXd area2; igl::doublearea(mapFromVg, mapFromFg, area2);
     for(int i=0; i<Fg_pattern_curr.rows(); i++){
         Vector3d v0new = currPattern.row(Fg_pattern_curr(i, 0)).transpose();
         Vector3d v1new = currPattern.row(Fg_pattern_curr(i, 1)).transpose();
         Vector3d v2new = currPattern.row(Fg_pattern_curr(i, 2)).transpose();
         startPerEdge.row(i) = ( (v0new + v1new + v2new)/3).transpose();
         int idx = (inverseMap)? i: halfPatternFaceToFullPatternFace[i];
+
+        /*trial */
+        int id0 = mapFromFg(i, 0);
+        int id1 = mapFromFg(i, 1);
+        int id2 = mapFromFg(i, 2);
+
+        Vector2d Gu, Gv, G;
+        Vector2d p0, p1, p2;
+        p0 = mapFromVg.block(id0, 0, 1, 2).transpose();
+        p1 = mapFromVg.block(id1, 0, 1, 2).transpose();
+        p2 = mapFromVg.block(id2, 0, 1, 2).transpose();
+
+        G = (1./3.) * p0 + (1./3.) * p1 + (1./3.) * p2;
+        double maxX = max(p0(0), max(p1(0), p2(0) ) );
+        double minX = min(p0(0), min(p1(0), p2(0) ) );
+        double maxY = max(p0(1), max(p1(1), p2(1) ) );
+        double minY = min(p0(1), min(p1(1), p2(1) ) );
+        Gu = G; Gu(0) += area2(i); //(maxX - minX);
+        Gv = G; Gv(1) += area2(i); //(maxY - minY);
+        double origLenU = area2(i);//(maxX-minX);
+        double origLenV = area2(i); // (maxY-minY);
+        Vector3d uInBary, vInBary;
+        MathFunctions mathFun;
+        mathFun.Barycentric(Gu, p0, p1, p2, uInBary);
+        mathFun.Barycentric(Gv, p0, p1, p2, vInBary);
+
+
         Vector3d ubary = baryCoordsUPattern.row(idx );
         Vector3d vbary = baryCoordsVPattern.row(idx);
+//
+//        uPerEdge.row(i) = (ubary(0) * v0new + ubary(1) * v1new + ubary(2) * v2new).transpose() -  startPerEdge.row(i);
+//        vPerEdge.row(i) = (vbary(0) * v0new + vbary(1) * v1new + vbary(2) * v2new).transpose() -  startPerEdge.row(i);
+        uPerEdge.row(i) = (uInBary(0) * v0new + uInBary(1) * v1new + uInBary(2) * v2new).transpose() - startPerEdge.row(i);
+        vPerEdge.row(i) = (vInBary(0) * v0new + vInBary(1) * v1new + vInBary(2) * v2new).transpose() - startPerEdge.row(i);
+//        double ulen = uPerEdge.row(i).norm();
+        double ulen = uPerEdge.row(i).norm()/ origLenU;
 
-        uPerEdge.row(i) = (ubary(0) * v0new + ubary(1) * v1new + ubary(2) * v2new).transpose() -  startPerEdge.row(i);
-        vPerEdge.row(i) = (vbary(0) * v0new + vbary(1) * v1new + vbary(2) * v2new).transpose() -  startPerEdge.row(i);
-        double ulen = uPerEdge.row(i).norm();
         uPerEdge.row(i) = uPerEdge.row(i).normalized()*(ulen*ulen);
 
-        double vlen = vPerEdge.row(i).norm();
+//        double vlen = vPerEdge.row(i).norm();
+        double vlen = vPerEdge.row(i).norm() / origLenV;
+
         vPerEdge.row(i) = vPerEdge.row(i).normalized()*(vlen*vlen);
+//
+//        uPerEdge.row(i) = uPerEdge.row(i).normalized()*(ulen*ulen);
+//
+//        vPerEdge.row(i) = vPerEdge.row(i).normalized()*(vlen*vlen);
 
         coluPerEdge(i,0) = ulen;
         coluPerEdge(i, 1) = vlen;

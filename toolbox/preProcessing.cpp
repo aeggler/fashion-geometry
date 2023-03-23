@@ -160,9 +160,10 @@ void setupCollisionConstraintsCall(Eigen::MatrixXi& collisionVert, vector<int> &
 void createHalfSewingPattern(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg_pattern, MatrixXd& Vg_pattern_half, MatrixXi& Fg_pattern_half,
                              map<int, int>& halfPatternFaceToFullPatternFace, map<int, int>& fullPatternFaceToHalfPatternFace, map<int, int>& halfPatternVertToFullPatternVert ,
                              map<int, int>& fullPatternVertToHalfPatternVert, map<int, int>& insertedIdxToPatternVert, VectorXi& isLeftVertPattern,MatrixXd& rightVert){
+  /* filter the vertices on the left side and create maps form full pattern to half (if in wrong side it is not in the map),
+   * and vice versa. */
    int n = Vg.rows();
    int m  = Fg.rows();
-//   cout<<endl<<"in half sewing pattern"<<endl;
     VectorXi isLeftVert(n);
     VectorXi isRightVert(n);
 
@@ -193,7 +194,6 @@ void createHalfSewingPattern(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, M
 
         }
     }
-//    cout<<leftCount<<" left and right in 3D after "<<rightCount<<endl;
 
     VectorXi isRightVertPattern(Vg_pattern.rows());
     isRightVertPattern.setConstant(-1);
@@ -282,25 +282,21 @@ void createHalfSewingPattern(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, M
     }
 
 
-    // we hve rightVert adn Vg_pattern_half for right and left vertices.
-    // now find the syymetry using procrustes with reflection
-//    cout<<rightVert.rows()<<" right and left 2D verts "<<Vg_pattern_half.rows()<<endl;
 igl::writeOBJ("halfPattern.obj", Vg_pattern_half,  Fg_pattern_half);
-//    cout<<" after"<<endl;
 
 }
 void insertPlane(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg_pattern, string garment){
-    // we insert a plane along the x=0 axis, add vertices and introduce new faces
-    // this ensures we can split the garment safely in the pre processing
-    // we do the same for the pattern and duplicate x=0 vertices -> to make sure the patch is acutally disconnected and we can take only the half patch for symetry
-    map<double, std::pair<int, int>> yToFaceAndIdx;
+    /* we insert a plane along the x=0 axis, add vertices and introduce new faces
+       this ensures we can split the garment safely in the pre processing
+       we do the same for the pattern and duplicate x=0 vertices -> to make sure the patch is acutally disconnected and we can take only the half patch for symetry
+    */
+     map<double, std::pair<int, int>> yToFaceAndIdx;
     int vgsize = Vg_pattern.rows();
     std::vector< std::vector<int> > vfAdj,vfAdjG, vvAdj;
     createVertexFaceAdjacencyList(Fg, vfAdjG);
 
     createVertexFaceAdjacencyList(Fg_pattern, vfAdj);
     igl::adjacency_list(Fg_pattern, vvAdj);
-
 
     for(int i=0; i<Fg.rows(); i++){
         bool hasLeft = false;
@@ -320,7 +316,6 @@ void insertPlane(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg_
             }
         }
         if(hasLeft && hasRight){
-//            cout<<i<<" is in the middle"<<endl;
             int otherSide=0;
 
             if(LR.sum()==1){
@@ -508,6 +503,8 @@ void insertPlane(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg_
 
 }
 void laplFilter(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg_pattern){
+    /* Vanilla laplacian smoothing to get better vertex positions.
+     * */
     MatrixXd newPattern = Vg_pattern;
     vector<vector<int>> vvAdj, vfAdj;
     igl::adjacency_list(Fg_pattern, vvAdj);
@@ -644,6 +641,8 @@ void preProcessGarment(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixX
     MatrixXi newFg_pattern;
     VectorXd onSeam;
     if(!insPlane) {
+        // if there is no plane ot be inserted, e.g. if the seams are on the plane already and do not need to be split
+        // just take all vertices on the left side in 3D, and the same vertices via *facial corresponance* from the pattern
        VectorXd leftFaces = VectorXd::Zero(Fg.rows());
        VectorXd leftVert = VectorXd::Zero(Vg.rows());
        VectorXd leftVert_pattern = VectorXd::Zero(Vg_pattern.rows());
@@ -724,12 +723,17 @@ void preProcessGarment(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixX
 
        igl::writeOBJ("leftPattern.obj", newVg_pattern, newFg_pattern);
    }else{
+        // if we have to insert a plane we did this in the previous step and smoothed the boundary of the cut. Now we apply lapalcian
+        // smoothing to ensure the vvertices have a good positon
        igl::readOBJ("leftPattern_SmoothBound.obj", newVg_pattern, newFg_pattern);
        igl::readOBJ("leftGarmentBeforeSmooth.obj", newVg, newFg);
        cout<<newFg_pattern.rows()<<" pattern rows and garment rows"<<newFg.rows()<<endl;
         origVg = newVg;
        laplFilter(newVg, newFg , newVg_pattern, newFg_pattern);
-        // addapt the garment similarly
+
+        /* after changing the pattern by smoothing we have to ensure the garment is adapted similarly to
+         * get good target stretch. We apply deformation transfer
+         * */
         VectorXd S;
         VectorXi I;//face index of smallest distance
         MatrixXd C,N, initGuess;
@@ -764,10 +768,13 @@ void preProcessGarment(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixX
 
    }
 
-    // finished the split, now duplicate to make it one again
+    /* finished the split, now duplicate to make it one again
+   first duplicate all vertices and faces, then remove the ones that are on the seam.
+     we iterate first to count how many vertices we need, then we create the new matrix
 
-    //first duplicate all vertices and faces, then remove the ones that are on the seam
-
+     If we inserted the plane we have to iterate over the faces instead of the vertices, because we have to find out in the garment which
+     face are on the symmetry plane!
+    */
     VectorXi mapDupl(newVg.rows());
     int count = 0;
     VectorXd onSeam2 = VectorXd::Zero(newVg.rows());
@@ -803,12 +810,12 @@ void preProcessGarment(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixX
     MatrixXd VgDupl (count ,3);
     count = 0;
     if(!insPlane){
-    for(int i=0; i<newVg.rows(); i++){
-        if( onSeam2(i) == 0){
-            VgDupl.row(count)= newVg.row(i);
-            count++;
+        for(int i=0; i<newVg.rows(); i++){
+            if( onSeam2(i) == 0){
+                VgDupl.row(count)= newVg.row(i);
+                count++;
+            }
         }
-    }
     }else{
         VectorXi checked= VectorXi::Zero(newVg.rows());
         for(int i =0; i< newFg.rows(); i++){
@@ -824,7 +831,7 @@ void preProcessGarment(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixX
     }
 
     MatrixXd rot = MatrixXd::Identity(3,3); rot(0,0)= -1; // reflection
-
+    /* We duplicate and rotate the garment , to get a full one. */
     VgDupl = (rot * VgDupl.transpose()).transpose();
     MatrixXi FgDupl( newFg.rows(), 3);
     int offset = newVg.rows();
@@ -838,7 +845,6 @@ void preProcessGarment(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixX
                 // else we take the duplicated vertex
                 FgDupl(i,j) = mapDupl(newFg(i,j)) + offset;
             }
-            if(newFg(i,j)==320)cout<<FgDupl(i,j)<<" the orig row"<< mapDupl(newFg(i,j)) <<endl;
         }
     }
     MatrixXd fullVg(VgDupl.rows() + newVg.rows(), 3);
@@ -861,7 +867,8 @@ void preProcessGarment(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixX
     FgDupl_pattern.col(2) = tempF;
     MatrixXd VgDupl_pattern (newVg_pattern.rows(), 3);
     VgDupl_pattern = (rot*newVg_pattern.transpose()).transpose();
-
+    /* the translation between the initial patten (wihtout symmetry) and the duplicated (without offset)
+    * Pick the reference vertices wisely to ensure no overlaps in the pattern computation */
     T_sym = Vg_pattern.row(symVert1 ) - VgDupl_pattern.row(symVert2);
     VgDupl_pattern.rowwise() += T_sym.transpose();
     offset = newVg_pattern.rows();
@@ -878,9 +885,5 @@ void preProcessGarment(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixX
     Fg.resize(fullFg.rows(), 3);  Fg = fullFg;
     Vg_pattern.resize(fullVg_pattern.rows(), 3);  Vg_pattern = fullVg_pattern;
     Fg_pattern.resize(fullFg_pattern.rows(), 3);  Fg_pattern = fullFg_pattern;
-
-
-//
-
 
 }

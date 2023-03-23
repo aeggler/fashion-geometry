@@ -2255,14 +2255,13 @@ void projectBackOnBoundary(const MatrixXd & mapToVg, MatrixXd& p, const vector<s
     int numSeams = seamsList.size();
     int count =0;
     for (int j = 0; j<numSeams; j++){
-        cout<<j<<" = j"<<endl;
 
         seam* currSeam  = seamsList[j];
         auto stP1= currSeam-> getStartAndPatch1();
         auto stP2 =  currSeam -> getStartAndPatch2ForCorres(); // attention this is with respect to the original pattern
 //
         MatrixXd Vg_seam1to, Vg_seam2to;
-        // build the structure for closest search
+        // build the polyline structure for closest search
         if(seamFullHalf.find(currSeam-> patch1startCornerIdOld) != seamFullHalf.end()  ||
                 seamFullHalf.find(currSeam-> patch1endCornerIdOld) != seamFullHalf.end()){
             int toPatch = currSeam->getStartAndPatch1().second;
@@ -2270,12 +2269,8 @@ void projectBackOnBoundary(const MatrixXd & mapToVg, MatrixXd& p, const vector<s
             int end = currSeam-> patch1endCornerIdOld;
             fillMatrixWithBoundaryVert(boundaryL_toPattern[toPatch], start ,end, mapToVg, Vg_seam1to, false , fromtoToVertMapIfSplit);
 
-        }else{
-            cout<<j<<" m1 nooooot made "<<endl;
-
         }
-        cout<<j<<" m1 fin"<<endl;cout<<seamFullHalf[currSeam-> patch1startCornerIdOld]<<endl;
-        cout<<fromtoToVertMapIfSplit.size()<<" or "<<seamFullHalf.size()<<" verts"<<p.rows()<<endl;
+
         if(seamFullHalf.find(currSeam-> patch2startCornerIdOld) != seamFullHalf.end()  ||
                 seamFullHalf.find(currSeam-> patch2endCornerIdOld) != seamFullHalf.end() ){
 
@@ -2284,11 +2279,7 @@ void projectBackOnBoundary(const MatrixXd & mapToVg, MatrixXd& p, const vector<s
             int end =  currSeam-> patch2endCornerIdOld;
             fillMatrixWithBoundaryVert(boundaryL_toPattern[toPatch], start, end, mapToVg, Vg_seam2to, true, fromtoToVertMapIfSplit );
 
-        }else{
-            cout<<j<<" m2 nooooot made"<<endl;
-
         }
-        cout<<j<<" m2 fin"<<endl;
 
         bool shoulBeLeft =true; // for 2 case
         // for each interior (=not corner) vertex of the new boundary we need to find the closest position on the polyline and map it there
@@ -2346,13 +2337,11 @@ void projectBackOnBoundary(const MatrixXd & mapToVg, MatrixXd& p, const vector<s
 
             }
         }
-        cout<<j<<" second side "<<endl;
 
         /**********  second side  *********/
         if(seamFullHalf.find(currSeam->getStart2()) != seamFullHalf.end() ||
                 seamFullHalf.find(ends.second) != seamFullHalf.end() ){
             int patchUsed = (inverseMap)? patchMapToHalfInverse[stP2.second] : stP2.second;
-            cout<<patchUsed<<" patch used"<<endl;
             int bsize = boundaryL[patchUsed].size();
             int nextIdx = 0;
             int next = (inverseMap)? seamFullHalf[currSeam -> getStart2()]: currSeam -> getStart2();
@@ -2364,13 +2353,11 @@ void projectBackOnBoundary(const MatrixXd & mapToVg, MatrixXd& p, const vector<s
             }
             int endSecond = (inverseMap) ? seamFullHalf[ends.second]: ends.second;
             int nextSeach; int count = 0;
-            cout<<endSecond<<" the end, and start "<<currSeam -> getStart2()<<" "<<next<<endl;
-            cout<<ends.second<<endl;
+
             while( next!= endSecond && count <=100){
                 count++;
                 // general case an interior vertex , if it is not constrained pull it to boundary
                  nextSeach = (inverseMap)? next: seamFullHalf[next];
-                if(j==3)cout<<nextSeach<<" "<<next<<endl;
 
                 if(releasedVert.find(nextSeach) == releasedVert.end() ){
                     updatePositionToIntersection( p, nextSeach,Vg_seam2to, shoulBeLeft);
