@@ -11,6 +11,8 @@
 #include "seam.h"
 #include "constraint_utils.h"
 #include<Eigen/SparseCholesky>
+#include <igl/barycentric_coordinates.h>
+#include <igl/barycentric_interpolation.h>
 
 using namespace std;
 using namespace Eigen;
@@ -192,41 +194,77 @@ void garment_adaption::computeJacobian(){
         int id0 = Fg_pattern(j, 0);
         int id1 = Fg_pattern(j, 1);
         int id2 = Fg_pattern(j, 2);
-
-        Vector2d u0, u1h, u2h;
-        u0(0) = V_pattern(id0, 0);
-        u0(1) = V_pattern(id0, 1);
-
-        u1h( 0) = V_pattern(id1, 0);
-        u1h(1) = V_pattern(id1, 1);
-
-        u2h( 0) = V_pattern(id2, 0);
-        u2h(1) = V_pattern(id2, 1);
-
-        u1h -= u0;
-        u2h -= u0;
-
-        double det = u1h( 0)*u2h(1)- (u2h(0)*u1h(1));
-        u1h/=det;
-        u2h/=det;
-
-        // attention reuse
+//
+//        Vector2d u0, u1h, u2h;
+//        u0(0) = V_pattern(id0, 0);
+//        u0(1) = V_pattern(id0, 1);
+//
+//        u1h( 0) = V_pattern(id1, 0);
+//        u1h(1) = V_pattern(id1, 1);
+//
+//        u2h( 0) = V_pattern(id2, 0);
+//        u2h(1) = V_pattern(id2, 1);
+//
+//        u1h -= u0;
+//        u2h -= u0;
+//
+//        double det = u1h( 0)*u2h(1)- (u2h(0)*u1h(1));
+//        u1h/=det;
+//        u2h/=det;
+//
+//        // attention reuse
          id0 = Fg(j, 0);
          id1 = Fg(j, 1);
          id2 = Fg(j, 2);
-
-        Eigen::Vector3d faceAvg = (V_init.row(id0) + V_init.row(id1) + V_init.row(id2)) / 3;
+//
+//        Eigen::Vector3d faceAvg = (V_init.row(id0) + V_init.row(id1) + V_init.row(id2)) / 3;
+//
 
         Vector3d p0 = V_init.row(id0);
         Vector3d p1 = V_init.row(id1);
         Vector3d p2 = V_init.row(id2);
+        VectorXd avg = (p0+p1+p2)/3;
 
         p1 -= p0;
         p2 -= p0;
 
-        // from Nicos code
-        jac2to3.col(0) = p1 * u2h(1) - p2 * u1h(1);
-        jac2to3.col(1) = p2 * u1h( 0) - p1 * u2h( 0);
+//        // from Nicos code
+//        jac2to3.col(0) = p1 * u2h(1) - p2 * u1h(1);
+//        jac2to3.col(1) = p2 * u1h( 0) - p1 * u2h( 0);
+        /* trial */
+        VectorXd urow = (V_pattern.row(Fg_pattern(j, 0))+
+        V_pattern.row(Fg_pattern(j, 1))+ V_pattern.row(Fg_pattern(j, 2)))/3; urow(0) +=1;
+        VectorXd vrow = (V_pattern.row(Fg_pattern(j, 0))+
+                V_pattern.row(Fg_pattern(j, 1))+ V_pattern.row(Fg_pattern(j, 2)))/3; vrow(1) +=1;
+        MatrixXd Bary, BaryV;
+        MatrixXd init (1, 3); MatrixXd initV (1, 3);
+        init.row(0) = urow;
+        initV.row(0) = vrow;
+        igl::barycentric_coordinates(init, V_pattern.row(Fg_pattern(j, 0)),
+                                     V_pattern.row(Fg_pattern(j, 1)), V_pattern.row(Fg_pattern(j, 2)), Bary);
+        igl::barycentric_coordinates(initV, V_pattern.row(Fg_pattern(j, 0)),
+                                     V_pattern.row(Fg_pattern(j, 1)), V_pattern.row(Fg_pattern(j, 2)), BaryV);
+
+        MatrixXd jacCheck, jacCheckV; VectorXi I(1); I(0)= j;
+        igl::barycentric_interpolation(V_init, Fg, Bary, I, jacCheck);
+        igl::barycentric_interpolation(V_init, Fg, BaryV, I, jacCheckV);
+
+//        /*end trial */
+        if( j%200 ==0){
+            cout<<jacCheck.row(0) - avg.transpose() <<" jac computed u "<<endl;
+            cout<<" from "<<avg.transpose() <<" "<<jacCheck.row(0)<<endl;
+            cout<<Bary<<endl;
+            cout<<jac2to3.row(0)<<" comparison jac 23"<<endl<<endl;
+            cout<<"and for v"<<endl;
+            cout<<jacCheckV.row(0)- avg.transpose() <<" jac computed u "<<endl;
+            cout<<" from "<<avg.transpose() <<" "<<jacCheckV.row(0)<<endl;
+            cout<<BaryV<<endl;
+            cout<<jac2to3.row(1)<<" comparison jac 23"<<endl<<endl;
+
+        }
+
+        jac2to3.col(0) = (jacCheck.row(0) - avg.transpose()).leftCols(2);
+        jac2to3.col(1) =  (jacCheckV.row(0) - avg.transpose()).leftCols(2);
 
         Vector3d normalVec = p1.cross(p2);
         normalVec = normalVec.normalized();//normalVec /= 200;//
@@ -394,18 +432,15 @@ void garment_adaption::performJacobianUpdateAndMerge(Eigen::MatrixXd & V_curr, i
 
         // https://math.stackexchange.com/questions/3563901/how-to-find-2d-rotation-matrix-that-rotates-vector-mathbfa-to-mathbfb
             Eigen::Matrix4d newrotMat= Eigen::MatrixXd::Identity(4, 4);
-//            cout<<newAngle<<" "<< oldNormalVec.transpose()<<endl;
             setUpRotationMatrix(newdegree,oldNormalVec, newrotMat);
 
             Eigen::MatrixXd jacobianAdapted =   jacobians[j];
-//            cout<<newrotMat<<" newrotMat"<<endl;
             Matrix3d newnewRot = newrotMat.block(0,0,3,3);
 
         // when applied to the positions we rotate them back to align the normals,then we apply the jacobian inverse
         //then we apply the rotation around the normal
         // and finally the jinverse
         MatrixXd jacobi_adapted_Edge = inv_jacobians[j] * newnewRot * Rinv * positions;
-//        cout<< newnewRot<<" newnewrot "<<endl<<endl<<endl;
         jacobi_adapted_Edges[j]= jacobi_adapted_Edge;
 
     }
@@ -540,6 +575,7 @@ void garment_adaption::performJacobianUpdateAndMerge(Eigen::MatrixXd & V_curr, i
     for(int i=0; i<numVertPattern; i++){
         V_newPattern.row(i) = v_asVec.block(3*i, 0, 3, 1).transpose();
     }
+    V_newPattern.col(2).setConstant(200);
 
 }
 

@@ -1440,31 +1440,7 @@ void ensurePairwiseDist(MatrixXd& p, MatrixXd& toPattern, MatrixXi& Fg_pattern){
         Vector3d e2old = p.row(Fg_pattern(i, 2))-p.row(Fg_pattern(i, 1));
         auto crosspold = e1old.cross(e2old);
 
-        if(crossp.dot(crosspold)<0){
-//            cout<<"face "<<i<<" flipped"<<endl;
-        }
 
-//        for(int j = 0; j < neigh.size(); j++){
-//            VectorXi other = Fg_pattern.row(neigh[j]);
-//            // find the two different vertices
-//            int first=0; int second =0;
-//            while(other(0)== face(first) || other(1)== face(first) || other(2) == face(first) ){
-//                first++; // first is not in the other
-//            }
-//            while(face(0)== other(second) || face(1)== other(second) || face(2) == other(second) ){
-//                second++; // second is not in face
-//            }
-//            VectorXd distOrig = (toPattern.row(face(first)) - toPattern.row(other(second)));
-//            VectorXd distNew = (p.row(face(first)) - p.row(other(second)));
-//            if(i== 2957 && neigh[j]== 2904){
-////                cout<<face(first)<<" vertices " <<other(second)<<endl;
-////                cout<< (p.row(face(first)))<<", "<<endl<<( p.row(other(second)))<<", "<<endl<<(p.row(face(first)) - p.row(other(second)))<<endl;
-//                cout<<"face "<<neigh[j]<<" :"<<distNew.norm()/ distOrig.norm()<<", "<< distNew.norm()<< ", "<<distOrig.norm()<<endl;
-//            }
-//            if(distOrig.dot(distNew) < 0){//|| abs(distNew.norm()/ distOrig.norm()-1 ) < 0.5
-//                cout<<"face "<<i<<" generates a flip with face "<<neigh[j]<<endl;
-//            }
-//        }
     }
 }
 map<int, int> htFFace, pMapToHalf, fTHVert, hTFVert;
@@ -1537,6 +1513,8 @@ void updateCornerUtilsInverse(set<int>& cornerSet , // a set containing all corn
 
 void updateSeamCorner( vector<seam*>& seamsList,  vector<minusOneSeam*> & minusOneSeams, map<int, int>& mapCornerToCorner,
                        vector<vector<int>>& boundaryL){
+    /*Iterate over all seams and check if start or end corners have to be updated
+     * if one of them has to be updated, they get the new index in full pattern */
     for(int i=0; i<seamsList.size(); i++){
         int start1 =  seamsList[i]->getStart1();
         int start2 =  seamsList[i]->getStart2();
@@ -1589,6 +1567,7 @@ void updateSeamCorner( vector<seam*>& seamsList,  vector<minusOneSeam*> & minusO
 }
 
 void stitchSeam(vector<int>& startAndEnd, MatrixXd& currPattern, MatrixXi& Fg_pattern_curr){
+
     Eigen::VectorXi componentIdPerVert;
     igl::vertex_components(Fg_pattern_curr, componentIdPerVert);
     vector<vector<int>> boundaryLCurr ;
