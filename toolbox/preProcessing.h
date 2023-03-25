@@ -28,8 +28,10 @@ void setupCollisionConstraintsCall(Eigen::MatrixXi& collisionVert, vector<int> &
                                MatrixXd& Vm, MatrixXi& Fm, MatrixXi& Fg);
 
 void createHalfSewingPattern(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg_pattern, MatrixXd& Vg_pattern_half, MatrixXi& Fg_pattern_half,
-                             map<int, int>& halfPatternFaceToFullPatternFace, map<int, int>& fullPatternFaceToHalfPatternFace, map<int, int>& halfPatternVertToFullPatternVert ,
-                             map<int, int>& fullPatternVertToHalfPatternVert, map<int, int>& insertedIdxToPatternVert, VectorXi& isLeftVertPattern , MatrixXd& rightVert);
+                             map<int, int>& halfPatternFaceToFullPatternFace, map<int, int>& fullPatternFaceToHalfPatternFace,
+                             map<int, int>& halfPatternVertToFullPatternVert ,
+                             map<int, int>& fullPatternVertToHalfPatternVert, map<int, int>& insertedIdxToPatternVert,
+                             VectorXi& isLeftVertPattern , MatrixXd& rightVert, string skirt);
 void preProcessGarment(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg_pattern, bool insertPlane, int symVert1, int symVert2 ,VectorXd& T, string garment);
 void smoothLaplacian(MatrixXd& Vg, MatrixXi& Fg);
 void splitAndSmooth(MatrixXd& Vg,MatrixXi& Fg,MatrixXd& Vg_pattern,MatrixXi& Fg_pattern,

@@ -77,6 +77,7 @@ void smoothBetweenVertices(MatrixXd& currPattern, MatrixXi& Fg_pattern, vector<i
     if(startIdx==-1 || midIdx ==-1 || endIdx ==-1){
         cout<<"Something is -1. stopping here."  <<endl; return ;
     }
+
     double lamda = 0.1;
     double mu = -0.1;
     int iterations = 100;
@@ -91,7 +92,7 @@ void smoothBetweenVertices(MatrixXd& currPattern, MatrixXi& Fg_pattern, vector<i
             prev= curr;
             curr= next;
             next = (!otherDir)? (curr+1 )%loopSize : (curr -1);
-            if(next<0)next+= loopSize;
+            if(next<0) next+= loopSize;
 
             VectorXd deltaP= (0.5 * (currPattern.row(boundary[prev]) + currPattern.row(boundary[next])) - currPattern.row(boundary[curr])).transpose();
             currPattern.row(boundary[curr]) += lamda * deltaP.transpose();
@@ -371,20 +372,15 @@ bool vertOnEdge(const VectorXd& R, const VectorXd& Q, VectorXd& p,int v, int v1)
     double eps = 0.5;
     auto QR = Q-R;
     auto Qp = Q-p;
-//    cout<<"v= "<<v<<endl;
     VectorXd diff = (Qp).normalized() - (QR).normalized();
-//    if((v==282 && v1 ==283) ||(v==283 && v1 ==282) ){
-//        cout<<diff.transpose()<<" diff"<<endl;
-//        double tt = (p-R)(0)/(QR)(0);
-//        double t2 =  (p-R)(1)/(QR)(1);
-//        cout<<tt<<" = t=  "<<t2<<", and makes "<<endl<<(R+tt*(Q-R)).transpose()<<endl<<(R+t2*(Q-R)).transpose()<<endl<<p.transpose()<<" =? "<<endl;
-//    }
+
     if (abs(diff(0))+abs(diff(1)) >eps) return false;
 
     double t = (p-R)(0)/(QR)(0);
     double tt=  (p-R)(1)/(QR)(1);
 // numerically instable as quite often the x or y corrdinate is the same... compute both and take better choice
     double finalT = t;
+    if((0 > t || t > 1 ) && (0> tt || tt>1 )) return false;
     if (0 > t || t > 1 ) {// t does not work anyways ,try with tt
         finalT =tt; if((v==282 && v1 ==283) ||(v==283 && v1 ==282) )cout<<" t is illegal";
     }else if (0> tt || tt>1 )  {
@@ -397,14 +393,8 @@ bool vertOnEdge(const VectorXd& R, const VectorXd& Q, VectorXd& p,int v, int v1)
     }
     VectorXd posdiff = R+finalT*(Q-R) - p;
     cout<<finalT <<"diff from real pos " << abs(posdiff(0)) + abs(posdiff(1)) <<endl;
-    if((v==282 && v1 ==283) ||(v==283 && v1 ==282) ){
-        cout<<posdiff.transpose()<<" posdiff"<<endl;
-
-    }
 
     return (abs(posdiff(0)) + abs(posdiff(1)) < 1);
-
-
 }
 /*
  * V0 _________________ v9, v10, v11
@@ -645,7 +635,8 @@ void computeAllBetweensNew(vector<VectorXd>& polylineSelected,vector<int>& polyl
         // else we look for the other one
         for (int k = 0; k < boundaryToSearch[j].size(); k++) {
             int v = boundaryToSearch[j][k];
-            int v1 = boundaryToSearch[j][k+1 % boundaryToSearch[j].size() ];
+            int v1 = boundaryToSearch[j][(k+1) % boundaryToSearch[j].size() ];
+            cout<<v<<" v ";
             if (vertOnEdge(Vg_to.row(v).transpose(), Vg_to.row(v1).transpose(), polylineSelected[4], v ,v1)) {
                 cout << "found vertex  4 on patch " << j<<" between vertices "<<v<<" and "<<v1 << endl;
                 cout<<Vg_to.row(v)<<" " << Vg_to.row(v1)<<" "<< polylineSelected[4]<<endl;
@@ -812,7 +803,6 @@ void computeAllBetweens(vector<VectorXd>& polylineSelected,vector<int>& polyline
         return;
     }
 
-
     polyLineInput.clear();
     connectedVertVec.clear();
     vector<int> connectedVert; int p; bool inverted;
@@ -978,13 +968,17 @@ void mergeTriagulatedAndPattern(const vector<vector<int>>& connectedVertVec, con
         while(boundary[garIdx] != vertId && garIdx < patchSize){
             garIdx++;
         }
-        if(boundary[garIdx] != vertId){cout<<"Something went wrong, index not found. "<< endl; return; }
+        if(boundary[garIdx] != vertId){cout<<"Something went wrong, index not found. "<<vertId<< endl; return; }
         int insertIdx=0;
         while(Vg_retri.row(boundaryIns[insertIdx]) != currPattern.row(vertId) && insertIdx < patchSizeIns){
+//            if(vertId==704)cout<<boundaryIns[insertIdx];
             insertIdx++;
         }
         if(Vg_retri.row(boundaryIns[insertIdx]) != currPattern.row(vertId)){
-            cout<<"Something went wrong. Not found in insert patch. "<<endl; return;
+            cout<<"Something went wrong. Not found in insert patch. "<<vertId<<endl;
+            cout<<Vg_retri.row(boundaryIns[insertIdx]) - currPattern.row(vertId)<<endl;
+            cout<<Vg_retri.row(7) - currPattern.row(vertId)<<endl;
+            return;
         }
 
         mergedIds(boundaryIns[insertIdx])= boundary[garIdx];
@@ -996,13 +990,16 @@ void mergeTriagulatedAndPattern(const vector<vector<int>>& connectedVertVec, con
         int jcounter = 1; int j=1;
         for(int jj=1; jj < connectedVertVec[i].size(); jj++){//
             int nextVertId, nextVertIdInserted;
+//            cout<<"another"<<endl;
             if(isAscVec[i]){
+//                 cout<<" is asc"<<endl;
                 nextVertId = boundary[ (garIdx + jcounter) % patchSize];
                 nextVertIdInserted = (insertIdx - j) ;
                 if(nextVertIdInserted < 0) nextVertIdInserted += patchSizeIns;
                 nextVertIdInserted = boundaryIns[nextVertIdInserted ];
 
             }else{
+//                cout<<" not asc"<<endl;
                 nextVertId = (garIdx - jcounter) ;
                 if(nextVertId < 0) nextVertId += patchSize;
                 nextVertId = boundary[nextVertId];
@@ -1010,7 +1007,7 @@ void mergeTriagulatedAndPattern(const vector<vector<int>>& connectedVertVec, con
 
             }
             if((Vg_retri.row(nextVertIdInserted) - currPattern.row(nextVertId )).norm() >0.01){
-                if(currVertIdGar > 800)return;
+//                if(currVertIdGar > 800)return;
                 cout<<nextVertIdInserted<<" We have to insert a vertex "<<currVertIdGar<<" "<<nextVertId<<endl ;
                 vector<vector<int>> vfAdj;
                 createVertexFaceAdjacencyList(Fg_pattern, vfAdj);
@@ -1036,7 +1033,7 @@ void mergeTriagulatedAndPattern(const vector<vector<int>>& connectedVertVec, con
                 }else if(Fg_new(Fg_pattern.rows(), 1) == currVertIdGar ){
                     Fg_new(faceToDupl, 1) = currPattern.rows();
                 }else{
-                    if(Fg_new(Fg_pattern.rows(), 2) == currVertIdGar )cout<<"NOT FOUND duple"<<endl;
+                    if(Fg_new(Fg_pattern.rows(), 2) != currVertIdGar )cout<<"NOT FOUND duple"<<endl;
                     Fg_new(faceToDupl, 2) = currPattern.rows();
                 }
 
@@ -1045,7 +1042,9 @@ void mergeTriagulatedAndPattern(const vector<vector<int>>& connectedVertVec, con
                 currPattern.resize(currPattern_new.rows(), 3); currPattern = currPattern_new;
                 jj--;
                 currVertIdGar = currPattern.rows()-1;//  nextVertId;
+                cout<<"fin added vert"<<endl;
             }else{
+                cout<<"norm issue"<<endl;
                 mergedIds(nextVertIdInserted)= nextVertId;
                 jcounter++;
                 currVertIdGar = nextVertId;
@@ -1239,9 +1238,9 @@ void initialGuessAdaption(MatrixXd& currPattern_nt, MatrixXd& mapToVg_nt, Matrix
     igl::writeOBJ("toPatt.obj",mapToVg_nt, mapToFg );
 
     vector<int> right, left, rightFull, leftFull;
-    if(garment == "leggins"){
-        rightFull.push_back(1); rightFull.push_back(3);
-        leftFull.push_back(6); leftFull.push_back(8);
+    if(garment == "leggins" ){
+        rightFull.clear(); leftFull.clear();
+        left.clear(); right.clear();
     }else if (garment =="top" ){
         rightFull.push_back(90); rightFull.push_back(90);// none
         leftFull.push_back(100); leftFull.push_back(30);
@@ -1254,31 +1253,31 @@ void initialGuessAdaption(MatrixXd& currPattern_nt, MatrixXd& mapToVg_nt, Matrix
     left = leftFull;
 
     if(right.size()==2){
-
-    for(int i=0; i < currPattern_nt.rows(); i++){
-        if(componentIdPerVert_curr(i)== right[0] ||componentIdPerVert_curr(i)== right[1]){
-            currPattern(i, 0) += 100;
+        for(int i=0; i < currPattern_nt.rows(); i++){
+            if(componentIdPerVert_curr(i)== right[0] ||componentIdPerVert_curr(i)== right[1]){
+                currPattern(i, 0) += 100;
+            }
+            else if(componentIdPerVert_curr(i)== left[0] ||componentIdPerVert_curr(i)== left[1] ){
+                currPattern(i, 0) -= 100;
+            }
         }
-        else if(componentIdPerVert_curr(i)== left[0] ||componentIdPerVert_curr(i)== left[1] ){
-            currPattern(i, 0) -= 100;
-        }
-    }
     }else cout<< "nothing specified to move!!"<<endl;
 
     MatrixXd mapToVg = mapToVg_nt;
     MatrixXd perfectPattern = perfectPattern_nt;
     if(rightFull.size() == 2){
-    for(int i=0; i < mapToVg.rows(); i++){
-        if(componentIdPerVert_other(i)== rightFull[0] ||componentIdPerVert_other(i)== rightFull[1]){
-            mapToVg(i, 0) += 100;
-            perfectPattern(i, 0) += 100;
-        }
-        else if(componentIdPerVert_other(i)== leftFull[0] ||componentIdPerVert_other(i)== leftFull[1] ){
-            mapToVg(i, 0) -= 100;
-            perfectPattern(i, 0) -= 100;
+        for(int i=0; i < mapToVg.rows(); i++){
+            if(componentIdPerVert_other(i)== rightFull[0] ||componentIdPerVert_other(i)== rightFull[1]){
+                mapToVg(i, 0) += 100;
+                perfectPattern(i, 0) += 100;
+            }
+            else if(componentIdPerVert_other(i)== leftFull[0] ||componentIdPerVert_other(i)== leftFull[1] ){
+                mapToVg(i, 0) -= 100;
+                perfectPattern(i, 0) -= 100;
 
+            }
         }
-    }}else cout<<" Again nothing to move"<<endl;
+    }else cout<<" Again nothing to move"<<endl;
 
     VectorXd S;
     VectorXi I;//face index of smallest distance
@@ -1406,7 +1405,7 @@ void ensureAngle(MatrixXd& p, MatrixXd& fromPattern, MatrixXi& Fg_pattern, Matri
                 rot(1, 1) = rot(0,0) ;
                 rot(0,1) =  - sin(rad);
                 rot(1,0) = sin(rad);
-                double stiffness = 0.5;
+                double stiffness = 0.05;
 
                 Vector3d e2 = p.row(Fg_pattern(i, (j + 1) % 3))-p.row(Fg_pattern(i, (j) % 3));
                 Vector3d e1 = p.row(Fg_pattern(i, (j + 2) % 3 ))-p.row(Fg_pattern(i, (j) % 3));
@@ -1698,18 +1697,21 @@ void computeFinalJacobian(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_gar, MatrixXi
         VectorXd uBary, vBary;
         igl::barycentric_coordinates(u.transpose(), Vg.row(id0), Vg.row(id1), Vg.row(id2), uBaryM);
         igl::barycentric_coordinates(v.transpose(), Vg.row(id0), Vg.row(id1), Vg.row(id2), vBaryM);
-        uBary = uBaryM;
-        vBary = vBaryM;
+        uBary = uBaryM.row(0);
+        vBary = vBaryM.row(0);
 
-        Vector3d Gu = uBary(0) * Vg_gar.row(id0) + uBary(1) * Vg_gar.row(id1) + uBary(2) * Vg_gar.row(id2);
-        Vector3d Gv = vBary(0) * Vg_gar.row(id0) + vBary (1) * Vg_gar.row(id1) + vBary(2) * Vg_gar.row(id2);
-        Vector3d G = (1./3) * Vg_gar.row(id0) + (1./3) * Vg_gar.row(id1) + (1./3) * Vg_gar.row(id2);
+        Vector3d Gu = uBary(0) * Vg_gar.row(Fg_gar(i, 0)) + uBary(1) * Vg_gar.row(Fg_gar(i, 1)) +
+                uBary(2) * Vg_gar.row(Fg_gar(i, 2));
+        Vector3d Gv = vBary(0) * Vg_gar.row(Fg_gar(i, 0)) + vBary (1) * Vg_gar.row(Fg_gar(i, 1)) +
+                vBary(2) * Vg_gar.row(Fg_gar(i, 2));
+        Vector3d G = (1./3) * Vg_gar.row(Fg_gar(i, 0)) + (1./3) * Vg_gar.row(Fg_gar(i, 1)) + (1./3) * Vg_gar.row(Fg_gar(i, 2));
         MatrixXd jac (3, 2);
         jac.col(0) = (Gu - G);
         jac.col(1) = (Gv - G);
         jacUAdapted(i) = (Gu-G).norm();
         jacVAdapted(i) = (Gv-G).norm();
         finalJac.push_back(jac);
+//        if(i>2900)cout<<uBaryM<<" "<<jacUAdapted(i)<<endl;
     }
     smoothFinalJacobian(finalJac, jacUAdapted, jacVAdapted, Vg_gar, Fg_gar );
 }

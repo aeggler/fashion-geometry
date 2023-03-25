@@ -94,7 +94,8 @@ int computeTear(bool inverseMap,
                  map<int, int> & fullPatternVertToHalfPatternVert, map<int, int>& halfPatternVertToFullPatternVert,
                  map<int, int> & halfPatternFaceToFullPatternFace,
                  bool& symetry,
-                 set<int>& tipVert
+                 set<int>& tipVert,
+                 bool midFractureForbidden
                  );
 
 

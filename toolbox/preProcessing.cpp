@@ -22,7 +22,6 @@
 #include <igl/vertex_components.h>
 #include "igl/adjacency_list.h"
 #include "adjacency.h"
-#include <igl/vertex_components.h>
 #include <igl/facet_components.h>
 
 using namespace std;
@@ -159,7 +158,7 @@ void setupCollisionConstraintsCall(Eigen::MatrixXi& collisionVert, vector<int> &
 // decision if it is in the half pattern depends on x- coordinate on 3D garment
 void createHalfSewingPattern(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg_pattern, MatrixXd& Vg_pattern_half, MatrixXi& Fg_pattern_half,
                              map<int, int>& halfPatternFaceToFullPatternFace, map<int, int>& fullPatternFaceToHalfPatternFace, map<int, int>& halfPatternVertToFullPatternVert ,
-                             map<int, int>& fullPatternVertToHalfPatternVert, map<int, int>& insertedIdxToPatternVert, VectorXi& isLeftVertPattern,MatrixXd& rightVert){
+                             map<int, int>& fullPatternVertToHalfPatternVert, map<int, int>& insertedIdxToPatternVert, VectorXi& isLeftVertPattern,MatrixXd& rightVert, string garment){
   /* filter the vertices on the left side and create maps form full pattern to half (if in wrong side it is not in the map),
    * and vice versa. */
    int n = Vg.rows();
@@ -169,14 +168,17 @@ void createHalfSewingPattern(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, M
 
     isLeftVert.setConstant(-1);
     isRightVert.setConstant(-1);
-
+    double th = 0.2;
+    if(garment == "skirt"){
+        th = 0.8;
+    }
     int leftCount = 0; int rightCount = 0 ;
     for(int i=0; i<n; i++){
-        if(Vg(i, 0) <= 0.2){
+        if(Vg(i, 0) <= th){
             isLeftVert(i) = 1;
             leftCount++;
         }
-        if(Vg(i, 0) >= -0.2){
+        if(Vg(i, 0) >= -th){
             isRightVert(i) = 1;
             rightCount++;
         }
@@ -299,6 +301,7 @@ void insertPlane(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg_
     igl::adjacency_list(Fg_pattern, vvAdj);
 
     for(int i=0; i<Fg.rows(); i++){
+
         bool hasLeft = false;
         bool hasRight = false;
         Vector3i LR;
@@ -315,6 +318,7 @@ void insertPlane(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg_
                 LR(j) = 0;
             }
         }
+
         if(hasLeft && hasRight){
             int otherSide=0;
 
@@ -360,6 +364,10 @@ void insertPlane(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg_
 
                 idx1 =Fg (fac1, idfac1 );
                 if(i== 1128 && garment== "skirt_no2") extra1 = true;
+                if(i==102 && garment == "skirt") {
+                    extra1 = true;
+//                    cout<<"extra 1  "<<endl;
+                }
             }
             if(yToFaceAndIdx.find(newPos2(1)) == yToFaceAndIdx.end()){
                 yToFaceAndIdx[newPos2(1)] = std::make_pair(i, (otherSide+2) % 3 );
@@ -377,11 +385,18 @@ void insertPlane(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg_
                 idfac2 = yToFaceAndIdx[newPos2(1)].second;
                 idx2 =Fg ( fac2, idfac2 );
                 if(i== 1256 && garment== "skirt_no2") extra2 = true;
+                if(i==138 && garment == "skirt") {
+//                    extra2 = true;
+//                    cout<<"extra 2 "<<endl;
+                }
+                if(i==849 && garment == "skirt") {
+                    extra2 = true;
+//                    cout<<"extra 2 849 "<<endl;
+                }
 
 //                cout<<"found at idx "<<idx2<<endl;
 
             }
-            if(idx1 == 1256) cout<<extra1<<" "<<extra2<<endl;
             int fgrow = Fg.rows();
             MatrixXi Fgnew (fgrow+2, 3);
             Fgnew.block(0,0,fgrow, 3) = Fg;
@@ -467,6 +482,7 @@ void insertPlane(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg_
     }
 
     igl::writeOBJ("dress_3d.obj", Vg, Fg);
+    Vg_pattern.col(2).setConstant(200);
     igl::writeOBJ("dress_2d.obj", Vg_pattern, Fg_pattern);
     int added = Vg_pattern.rows()- vgsize;
     int vgnewsize = Vg_pattern.rows();
@@ -546,6 +562,15 @@ void splitAndSmooth(MatrixXd& Vg,MatrixXi& Fg,MatrixXd& Vg_pattern,MatrixXi& Fg_
                     MatrixXd& VgPatternRet,MatrixXi& FgPatternRet,
                     MatrixXd& VgRet, MatrixXi& FgRet, string garment ){
 
+    if(garment=="skirt"){
+        VectorXi vertComp;
+        igl::vertex_components( Fg_pattern, vertComp);
+        for(int i=0; i< Vg_pattern.rows(); i++){
+            if(vertComp(i)==0){
+                Vg_pattern(i, 0) -=300;
+            }
+        }
+    }
     insertPlane(Vg, Fg, Vg_pattern, Fg_pattern, garment);
     VectorXd leftFaces = VectorXd::Zero(Fg.rows());
     VectorXd leftVert = VectorXd::Zero(Vg.rows());
@@ -701,8 +726,9 @@ void preProcessGarment(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixX
                for (int j = 0; j < 3; j++) {
                    newFg(count, j) = mapVert(Fg(i, j));
                    newFg_pattern(count, j) = mapVert_pattern(Fg_pattern(i, j));
-                   if (Vg(Fg(i, j), 0) == 0) {
+                   if (abs(Vg(Fg(i, j), 0)) <= 0.4) {
                        onSeam(mapVert(Fg(i, j))) = 1;
+//                       cout<<mapVert(Fg(i, j))<<" ";
                    }
                }
                count++;
@@ -720,6 +746,15 @@ void preProcessGarment(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixX
        }
 
        igl::writeOBJ("leftGarment.obj", newVg, newFg);
+       if(garment == "leggins"){
+           VectorXi comp;
+           igl::vertex_components(newFg_pattern, comp);
+           for(int i=0; i<newVg_pattern.rows(); i++){
+               if(comp(i)== 1 || comp(i)==3){
+                   newVg_pattern(i, 0) += 100;
+               }
+           }
+       }
 
        igl::writeOBJ("leftPattern.obj", newVg_pattern, newFg_pattern);
    }else{
@@ -779,11 +814,12 @@ void preProcessGarment(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixX
     int count = 0;
     VectorXd onSeam2 = VectorXd::Zero(newVg.rows());
     if(!insPlane){
+        onSeam2= onSeam;
         for(int i =0; i<newVg.rows(); i++){
             if( onSeam(i) == 0){
                 mapDupl(i) = count;
                 count++;
-                onSeam2(i)= onSeam(i);
+//                onSeam2(i)= onSeam(i);
             }
         }
     }else{
@@ -869,7 +905,15 @@ void preProcessGarment(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixX
     VgDupl_pattern = (rot*newVg_pattern.transpose()).transpose();
     /* the translation between the initial patten (wihtout symmetry) and the duplicated (without offset)
     * Pick the reference vertices wisely to ensure no overlaps in the pattern computation */
-    T_sym = Vg_pattern.row(symVert1 ) - VgDupl_pattern.row(symVert2);
+    if(garment =="skirt"){
+        T_sym.resize(3);
+        T_sym(0)=-100;
+        T_sym(1)=0;
+        T_sym(2)=0;
+    }else{
+        T_sym = Vg_pattern.row(symVert1 ) - VgDupl_pattern.row(symVert2);
+
+    }
     VgDupl_pattern.rowwise() += T_sym.transpose();
     offset = newVg_pattern.rows();
     MatrixXi offsetM(FgDupl_pattern.rows(), FgDupl_pattern.cols()); offsetM.setConstant(offset);

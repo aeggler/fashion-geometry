@@ -213,6 +213,7 @@ bool computePointOnMesh(igl::opengl::glfw::Viewer& viewer, Eigen::MatrixXd& V, E
 int computeClosestVertexOnMesh(Vector3d& b, int& fid, MatrixXi& F);
 bool callback_mouse_down(igl::opengl::glfw::Viewer& viewer, int button, int modifier);
 void updateChangedBaryCoordinates(int changedPosition, vector<vector<int>>& vfFromPatt);
+bool midFractureForbidden= false ;
 bool pre_draw(igl::opengl::glfw::Viewer& viewer){
     viewer.data().dirty |= igl::opengl::MeshGL::DIRTY_DIFFUSE | igl::opengl::MeshGL::DIRTY_SPECULAR;
     if(simulate){
@@ -281,16 +282,16 @@ int main(int argc, char *argv[])
 //    cout<<garment_file_name<<" chosen file, thanks. "<<endl;
 
     string prefix = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/";
-//    garment = "leggins";
+    garment = "leggins";
 //    garment = "top";
-//    string garment_file_name = prefix+ "leggins/leggins_3d/leggins_3d_merged.obj"; //smaller collision thereshold to make sure it is not "eaten" after intial step , 3.5 instead of 4.5
+    string garment_file_name = prefix+ "leggins/leggins_3d/leggins_3d_merged.obj"; //smaller collision thereshold to make sure it is not "eaten" after intial step , 3.5 instead of 4.5
 //    garment = "dress";
 //   string garmentExt = garment +"_4";
-    garment = "skirt";
-    string garmentExt = garment+ "_2";
+//    garment = "skirt";
+    string garmentExt = garment+ "_1";
 
 //    string garmentExt = garment+ "_2";
-    string garment_file_name = prefix + "moreGarments/"+ garmentExt+"/"+garment+"_3d.obj";
+//    string garment_file_name = prefix + "moreGarments/"+ garmentExt+"/"+garment+"_3d.obj";
 
     igl::readOBJ(garment_file_name, Vg, Fg);
     Timer t("Setup");
@@ -299,10 +300,10 @@ int main(int argc, char *argv[])
 //    string garment_pattern_file_name= igl::file_dialog_open();
 //    cout<<garment_pattern_file_name<<" chosen file for pattern, thanks. "<<endl;
 
-//    string garment_pattern_file_name = prefix +"leggins/leggins_2d/leggins_2d.obj"; //
-    string garment_pattern_file_name = prefix +"moreGarments/"+garmentExt+"/"+garment+"_2d.obj";
+    string garment_pattern_file_name = prefix +"leggins/leggins_2d/leggins_2d.obj"; //
+//    string garment_pattern_file_name = prefix +"moreGarments/"+garmentExt+"/"+garment+"_2d.obj";
     igl::readOBJ(garment_pattern_file_name, Vg_pattern, Fg_pattern);
-    garment = "skirt_no2";
+//    garment = "skirt_no1";
     symetry = true;
     if(symetry){
         bool insertPlane = true;
@@ -325,7 +326,11 @@ int main(int argc, char *argv[])
         }else if (garment == "skirt_no2"){
             symVert1= 340;
             symVert2= 23;
-        }else{
+        }else if (garment == "skirt"){
+            symVert1= 66;
+            symVert2= 66;
+        }
+        else{
             symVert1= 0; symVert2= 0;
         }
         if(insertPlane){
@@ -338,6 +343,10 @@ int main(int argc, char *argv[])
                 startAndEnd.push_back(711);
                 startAndEnd.push_back(714);
                 startAndEnd.push_back(708);
+            }else if (garment == "skirt"){
+                startAndEnd.push_back(410);
+                startAndEnd.push_back(413);
+                startAndEnd.push_back(409);
             }
             smoothBetweenVertices(VgPatternRet, FgPatternRet, startAndEnd);
             igl::writeOBJ("leftPattern_SmoothBoundAfter1.obj", VgPatternRet, FgPatternRet);
@@ -347,8 +356,37 @@ int main(int argc, char *argv[])
                 startAndEnd.push_back(679);
                 startAndEnd.push_back(697);
                 startAndEnd.push_back(670);
+            }else if  (garment == "skirt"){
+                startAndEnd.push_back(404);
+                startAndEnd.push_back(403);
+                startAndEnd.push_back(400);
             }
             smoothBetweenVertices(VgPatternRet, FgPatternRet, startAndEnd);
+
+            startAndEnd.clear();
+            if (garment == "skirt_no2") {
+                startAndEnd.push_back(704);
+                startAndEnd.push_back(700);
+                startAndEnd.push_back(698);
+            }else if  (garment == "skirt"){
+                startAndEnd.push_back(406);
+                startAndEnd.push_back(407);
+                startAndEnd.push_back(405);
+            }
+            smoothBetweenVertices(VgPatternRet, FgPatternRet, startAndEnd);
+            startAndEnd.clear();
+            if (garment == "skirt_no2") {
+                startAndEnd.push_back(707);
+                startAndEnd.push_back(706);
+                startAndEnd.push_back(702);
+            }else if  (garment == "skirt"){
+                startAndEnd.push_back(448);
+                startAndEnd.push_back(446);
+                startAndEnd.push_back(456);
+            }
+            smoothBetweenVertices(VgPatternRet, FgPatternRet, startAndEnd);
+
+
             igl::writeOBJ("leftPattern_SmoothBound.obj", VgPatternRet, FgPatternRet);
 
         }
@@ -396,7 +434,8 @@ int main(int argc, char *argv[])
     igl::readPLY(morphBody1left, testMorph_V1left, testMorph_F1left);
     igl::readPLY(morphBody1right, testMorph_V1right, testMorph_F1right);
 
-    createHalfAvatarMap( testMorph_V1, testMorph_F1, testMorph_V1left, testMorph_F1left, testMorph_V1right, testMorph_F1right, leftHalfToFullFaceMap, rightHalfToFullFaceMap);
+    createHalfAvatarMap( testMorph_V1, testMorph_F1, testMorph_V1left, testMorph_F1left,
+                         testMorph_V1right, testMorph_F1right, leftHalfToFullFaceMap, rightHalfToFullFaceMap);
 
     if(Fm != testMorph_F1){
         cout<<"the faces are not the same!"<<endl;
@@ -470,6 +509,8 @@ int main(int argc, char *argv[])
     if(patternExists){
         string prefPattern = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/";
         string perfPatternFile = prefPattern+ "patternComputed_"+avName+"_"+garment+".obj";
+//        string perfPatternFile = prefPattern+ "finished_tear_writtenPattern_"+avName+"_"+garment+".obj";
+
 //        string perfPatternFile = "/Users/annaeggler/Desktop/AvatarToMaternity_01/patternComputed_maternity_01.obj";
         igl::readOBJ(perfPatternFile, perfPattVg_orig, perfPattFg_orig);
         perfPattVg_orig.col(2).setConstant(200);
@@ -480,14 +521,17 @@ int main(int argc, char *argv[])
             string helperToLocate = prefPattern + startFile;
 
             igl::readOBJ(helperToLocate, addedFabricPatternVg, addedFabricPatternFg);
-            mapFromVg = addedFabricPatternVg;
-            mapFromFg = addedFabricPatternFg;
+            mapFromVg = perfPattVg_orig;
+            mapFromFg = perfPattFg_orig;
+//            mapFromVg = addedFabricPatternVg;
+//            mapFromFg = addedFabricPatternFg;
 //        Fg_pattern_curr = mapFromFg;
             mapToVg =  Vg_pattern_orig ;// curr = the current shape of the garment, something in between
             mapToFg = Fg_pattern_orig ;// the stress is computed between the rest shape and the current, ie mapFromVg and currPattern
 
             perfPattVg = perfPattVg_orig;
             perfPattFg = perfPattFg_orig;
+
         }else{
 
             mapToVg = perfPattVg_orig;
@@ -520,7 +564,7 @@ int main(int argc, char *argv[])
             createHalfSewingPattern(Vg_orig, Fg_orig, Vg_pattern, Fg_pattern, Vg_pattern_half, Fg_pattern_half,
                                     halfPatternFaceToFullPatternFace, fullPatternFaceToHalfPatternFace,
                                     halfPatternVertToFullPatternVert,
-                                    fullPatternVertToHalfPatternVert, insertedIdxToPatternVert, isLeftVertPattern,rightVert);
+                                    fullPatternVertToHalfPatternVert, insertedIdxToPatternVert, isLeftVertPattern,rightVert, garment);
             numFacesOneSide = Fg_pattern_half.rows();
 
         } else if (symetry && inverseMap) {
@@ -529,7 +573,7 @@ int main(int argc, char *argv[])
             createHalfSewingPattern(Vg_orig, Fg_orig, mapToVg, mapToFg, Vg_pattern_half, Fg_pattern_half,
                                     halfPatternFaceToFullPatternFace, fullPatternFaceToHalfPatternFace,
                                     halfPatternVertToFullPatternVert,
-                                    fullPatternVertToHalfPatternVert, insertedIdxToPatternVert, isLeftVertPattern,rightVert);
+                                    fullPatternVertToHalfPatternVert, insertedIdxToPatternVert, isLeftVertPattern,rightVert, garment);
             numFacesOneSide = Fg_pattern_half.rows();
 
         } else {
@@ -545,6 +589,7 @@ int main(int argc, char *argv[])
     }
     int patchcount=0;
     bool showPatchBoundary = false ;
+
     menu.callback_draw_viewer_menu = [&]() {
         if (ImGui::CollapsingHeader("Garment", ImGuiTreeNodeFlags_OpenOnArrow)) {
             ImGui::InputInt("Vis Seam No", &whichSeam, 0, 0);
@@ -877,6 +922,8 @@ int main(int argc, char *argv[])
                 viewer.data().clear();
                 viewer.selected_data_index = 0;
                 viewer.data().clear();
+//                viewer.data().set_mesh(Vg_pattern_half, Fg_pattern_half);
+//
                 viewer.data().set_mesh(currPattern, Fg_pattern_curr);
                 viewer.data().uniform_colors(ambient, diffuse, specular);
                 viewer.data().show_texture = false;
@@ -929,6 +976,9 @@ int main(int argc, char *argv[])
                     tipVert.insert( 35);
                     tipVert.insert( 1045);
 
+                }else if (garment == "skirt_no2"){
+                    tipVert.insert(31);
+                    tipVert.insert(369);
                 }
                  pos = computeTear(inverseMap, mapFromVg, currPattern, Fg_pattern_curr, patternEdgeLengths_orig, seamsList ,
                             minusOneSeamsList, boundaryL, fin, cornerPerBoundary, // updated in adaption
@@ -937,7 +987,7 @@ int main(int argc, char *argv[])
                             handledVerticesSet, prevTearFinished, LShapeAllowed,
                             prioInner, prioOuter, taylor_lazyness, mapFromFg, setTheresholdlMid,
                                  setTheresholdBound, fullPatternVertToHalfPatternVert, halfPatternVertToFullPatternVert, halfPatternFaceToFullPatternFace,
-                                 symetry, tipVert);
+                                 symetry, tipVert, midFractureForbidden);
 
                  changedPos = pos;
                  cout<<pos<<" Pos was changed"<<endl;
@@ -1077,9 +1127,13 @@ int main(int argc, char *argv[])
             if(ImGui::Checkbox("Prioritize Inner Cuts", &prioInner)){
                 prioOuter = false;
             }
-            if(ImGui::Checkbox("Prioritize Outer Cuts ", &prioOuter)){
+            if(ImGui::Checkbox("Prioritize Outer Cuts", &prioOuter)){
                 prioInner = false;
             }
+            if(ImGui::Checkbox("Forbid mid fracture ", &midFractureForbidden)){
+
+            }
+
             if(ImGui::Button("Remove priorities ", ImVec2(-1, 0))){
                 prioInner = false;
                 prioOuter = false;
@@ -1439,7 +1493,7 @@ int main(int argc, char *argv[])
                 mapToVg =  Vg_pattern_orig ;// curr = the current shape of the garment, something in between
                 mapToFg = Fg_pattern_orig ;// the stress is computed between the rest shape and the current, ie mapFromVg and currPattern
 
-                initialGuessAdaption(currPattern, mapToVg, perfPattVg, Fg_pattern_curr, perfPattFg_orig, symetry, cornerSet,
+                initialGuessAdaption(currPattern, mapToVg, perfPattVg_orig, Fg_pattern_curr, perfPattFg_orig, symetry, cornerSet,
                                          mapCornerToCorner, halfPatternVertToFullPatternVert.size(), halfPatternVertToFullPatternVert, garment);
 
                 igl::readOBJ("duplicate_Pattern_final_of_"+avName+"_"+garment+".obj" , currPattern, Fg_pattern_curr);
@@ -2032,38 +2086,7 @@ bool callback_mouse_down(igl::opengl::glfw::Viewer& viewer, int button, int modi
     }
     return false;
 }
-void  posForMiddleVert(int i,int face,int idx ,VectorXd& newVertpos){
-//    newVertpos.resize(3);
-//
-//    string avatar_file_nameleft =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/avatar/avatar_one_component_left.ply";
-//    string avatar_file_nameright =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/avatar/avatar_one_component_right.ply";
-//
-//    MatrixXd VmLeft, VmRight;
-//    MatrixXi FmLeft, FmRight;
-//    igl::readPLY(avatar_file_nameleft, VmLeft, FmLeft);
-//    igl::readPLY(avatar_file_nameright, VmRight, FmRight);
-//
-//    /* adding trial to check for both sides seperately */
-//    VectorXd distVecLeft, distVecRight; MatrixXd NLeft, NRight; VectorXi closestFaceIdLeft, CLeft, closestFaceIdRight, CRight;
-//    igl::signed_distance(Vg, VmLeft, FmLeft, igl::SIGNED_DISTANCE_TYPE_UNSIGNED, distVecLeft, closestFaceIdLeft, CLeft, NLeft);
-//    igl::signed_distance(Vg, VmRight, FmRight, igl::SIGNED_DISTANCE_TYPE_UNSIGNED, distVecRight, closestFaceIdRight, CRight, NRight);
-//
-//
-//    cout<<"Vertex triple case  i = "<<i<<" the left "<< closestFaceIdLeft(i)<<" "<<closestFaceIdRight(i)<<endl;
-//    Vector3d a = VmLeft.row(FmLeft(closestFaceIdLeft(i), 0));
-//    Vector3d b = VmLeft.row(FmLeft(closestFaceIdLeft(i), 1));
-//    Vector3d c = VmLeft.row(FmLeft(closestFaceIdLeft(i), 2));
-//    Vector3d normalVec = NLeft.row(closestFaceIdLeft(i));// N.row(i);
-//
-//    Vector3d currVert = Vg.row(i) - (distVecLeft(i) * normalVec).transpose();
-//    MatrixXd input(1, 3);
-//    input.row(0) = currVert;
-//    MatrixXd Bary;
-//    igl::barycentric_coordinates(input, a, b, c, Bary);
-//
-//    Vector3d currInBary = Bary.row(0);
 
-}
 void computeBaryCoordsGarOnNewMannequin(igl::opengl::glfw::Viewer& viewer){
     VectorXd distVec(Vg.rows());
 
@@ -2077,7 +2100,7 @@ void computeBaryCoordsGarOnNewMannequin(igl::opengl::glfw::Viewer& viewer){
     N.resize(Vg.rows(), 3);
 
 
-VectorXd vis (Vg.rows()); vis.setConstant(0);
+    VectorXd vis (Vg.rows()); vis.setConstant(0);
     for(int ii=0; ii<Fg.rows(); ii++){
         for(int j=0; j<3; j++) {
             int i = Fg(ii, j);
@@ -2117,19 +2140,36 @@ VectorXd vis (Vg.rows()); vis.setConstant(0);
             double oldx = -1;
             if(abs(Vg(i, 0))<1){
                oldx = Vg(i, 0);
-                cout<<i<<" was "<<Vg.row(i)<<endl;
+//                cout<<i<<" was "<<Vg.row(i)<<endl;
             }
             Vg.row(i) = newPos.transpose() + distVec(i) * N.row(i);
             if(oldx !=-1){
                 Vg(i, 0) = oldx ;
-                cout<<"is now "<<Vg.row(i)<<endl;
+//                cout<<"is now "<<Vg.row(i)<<endl;
             }
-            if (i == 694 || i == 508 || i == 696 || i == 1290) {
-                cout << i << " has closest face " << closestFaceId(i) << endl;
-                cout << " its bary coords are " << Bary << " and the normal is " << N.row(i) << endl;
-                cout << " so we bring it back as " << newPos.transpose() << " and finial " << Vg.row(i) << endl;
-            }
+//            if (i == 694 || i == 508 || i == 696 || i == 1290) {
+//                cout << i << " has closest face " << closestFaceId(i) << endl;
+//                cout << " its bary coords are " << Bary << " and the normal is " << N.row(i) << endl;
+//                cout << " so we bring it back as " << newPos.transpose() << " and finial " << Vg.row(i) << endl;
+//            }
         }
+    }
+
+    MatrixXd Vgsmooth = Vg;
+    vector<vector<int> > vvAdjGar, vfAdjGar;
+    igl::adjacency_list(Fg, vvAdjGar);
+    createVertexFaceAdjacencyList(Fg, vfAdjGar);
+
+    for(int i = 0; i<Vg.rows(); i++){
+        bool isBound = isBoundaryVertex(Vg, i, vvAdjGar, vfAdjGar );
+        if(abs(Vg(i,0))<1 && !isBound){
+            double zcoord = 0;
+            for(int j=0; j<vvAdjGar[i].size(); j++){
+                zcoord += Vgsmooth(vvAdjGar[i][j], 2);
+            }
+            Vg(i,2) = zcoord/vvAdjGar[i].size();
+        }
+
     }
 
 }
@@ -2662,27 +2702,14 @@ void solveStretchAdaption(){
         // force that pulls back to the original position in fromPattern
     // it does not quite work after tthe 3rd cut. Jacobian seems to be fine but it messes up
     for(int j=0; j< Fg_pattern_curr.rows(); j++){
-        if(dblA(j)<4) {
-            for(int l=0; l<3; l++){
-                itemCount(Fg_pattern_curr(j,l))++;
-            }
-            continue;
-        }
+//        if(dblA(j)<4) {
+//            for(int l=0; l<3; l++){
+//                itemCount(Fg_pattern_curr(j,l))++;
+//            }
+//            continue;
+//        }
         // check all three angles. if any of them is too small continue
-        for(int h =0; h<3; h++){
-            Vector3d e1 =  p_adaption.row(Fg_pattern_curr(j,h) )- p_adaption.row(Fg_pattern_curr(j,(h + 1) % 3));
-            Vector3d e2 =  p_adaption.row(Fg_pattern_curr(j,h)) - p_adaption.row(Fg_pattern_curr(j,(h + 2) % 3));
-            auto dot = e1.dot(e2);
-            dot /= (e1.norm() * e2.norm());
-            //cos angle
-            if(dot >= 0.95){
-//                cout<<" skip face "<< j <<endl;
-                for(int l=0; l<3; l++){
-                    itemCount(Fg_pattern_curr(j,l))++;
-                }
-                continue;
-            }
-        }
+
         Eigen::MatrixXd patternCoords(2, 3);
         int i  = (inverseMap) ? j : halfPatternFaceToFullPatternFace[j];
         patternCoords.col(0) = mapFromVg.row(mapFromFg(i, 0)).leftCols(2).transpose();
@@ -2705,16 +2732,31 @@ void solveStretchAdaption(){
 
         PBD_adaption.init_UVStretchPattern( thisFaceU- bary,  thisFaceV - bary, patternCoords,targetPositions,
                                             tar[0], tar[1],tar[2], uOrv,  stretchStiffnessD);
+//        if(j==1235) uOrv =11;
         PBD_adaption.init_UVStretchPatternCorrectAngle( thisFaceU- bary,  thisFaceV - bary, patternCoords,targetPositions,
                                                         tarAngle[0], tarAngle[1],tarAngle[2], uOrv,  1);
 
         for(int l=0; l<3; l++){
-            Vector2d dir0 = tar[l] - p_adaption.row(Fg_pattern_curr(j, l)).leftCols(2).transpose() ;
-            correctionTerm.row(Fg_pattern_curr(j,l)).leftCols(2) += ( stretchStiffnessU * dir0);
-            itemCount(Fg_pattern_curr(j,l))++;
 
-            dir0 = tarAngle[l] - p_adaption.row(Fg_pattern_curr(j, l)).leftCols(2).transpose() ;
+            Vector2d dir0 = tarAngle[l] - p_adaption.row(Fg_pattern_curr(j, l)).leftCols(2).transpose() ;
             correctionTerm.row(Fg_pattern_curr(j,l)).leftCols(2) += ( stretchStiffnessD * dir0);
+            itemCount(Fg_pattern_curr(j,l))++;
+            if(dblA(j)<4) {
+//                itemCount(Fg_pattern_curr(j,l))++;
+//                continue;
+            }
+            Vector3d e1 =  p_adaption.row(Fg_pattern_curr(j,l) )- p_adaption.row(Fg_pattern_curr(j,(l + 1) % 3));
+            Vector3d e2 =  p_adaption.row(Fg_pattern_curr(j,l)) - p_adaption.row(Fg_pattern_curr(j,(l + 2) % 3));
+            auto dot = e1.dot(e2);
+            dot /= (e1.norm() * e2.norm());
+            //cos angle
+            if(dot >= 0.95){
+//                itemCount(Fg_pattern_curr(j,l))++;
+//                continue;
+            }
+            // just do this if the pattern is not too small
+             dir0 = tar[l] - p_adaption.row(Fg_pattern_curr(j, l)).leftCols(2).transpose() ;
+            correctionTerm.row(Fg_pattern_curr(j,l)).leftCols(2) += ( stretchStiffnessU * dir0);
             itemCount(Fg_pattern_curr(j,l))++;
 
         }
@@ -2814,7 +2856,7 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
     adaptioncount++;
 //    if(adaptioncount>1)return;
 
-    std::cout<<"-------------- Time Step ------------"<<adaptioncount<<endl;
+//    std::cout<<"-------------- Time Step ------------"<<adaptioncount<<endl;
 
     // we have no velocity or collision, but we do have stretch, constrainedStretch and bending
     // for the stretch, the current pattern is the reference, then its corners are mapped to another position
@@ -2828,7 +2870,7 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
     p_adaption.col(2)*= 200;
 
     changedPos = -1;
-    t.printTime(" init ");
+//    t.printTime(" init ");
     for(int i=0; i<1; i++){
         solveStretchAdaption();
 //        t.printTime(" stretch ");
@@ -2839,7 +2881,7 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
         map<int, int> extFHV = fullPatternVertToHalfPatternVert;
 //        t.printTime(" maps ");
 
-        if(symetry && inverseMap) {
+        if(symetry && inverseMap&& false) {
             mapUsed = IdMap;
             for(auto item : mapCornerToCorner){
                 if(item.second<0){

@@ -194,31 +194,11 @@ void garment_adaption::computeJacobian(){
         int id0 = Fg_pattern(j, 0);
         int id1 = Fg_pattern(j, 1);
         int id2 = Fg_pattern(j, 2);
-//
-//        Vector2d u0, u1h, u2h;
-//        u0(0) = V_pattern(id0, 0);
-//        u0(1) = V_pattern(id0, 1);
-//
-//        u1h( 0) = V_pattern(id1, 0);
-//        u1h(1) = V_pattern(id1, 1);
-//
-//        u2h( 0) = V_pattern(id2, 0);
-//        u2h(1) = V_pattern(id2, 1);
-//
-//        u1h -= u0;
-//        u2h -= u0;
-//
-//        double det = u1h( 0)*u2h(1)- (u2h(0)*u1h(1));
-//        u1h/=det;
-//        u2h/=det;
-//
-//        // attention reuse
+
+        // attention reuse
          id0 = Fg(j, 0);
          id1 = Fg(j, 1);
          id2 = Fg(j, 2);
-//
-//        Eigen::Vector3d faceAvg = (V_init.row(id0) + V_init.row(id1) + V_init.row(id2)) / 3;
-//
 
         Vector3d p0 = V_init.row(id0);
         Vector3d p1 = V_init.row(id1);
@@ -228,10 +208,6 @@ void garment_adaption::computeJacobian(){
         p1 -= p0;
         p2 -= p0;
 
-//        // from Nicos code
-//        jac2to3.col(0) = p1 * u2h(1) - p2 * u1h(1);
-//        jac2to3.col(1) = p2 * u1h( 0) - p1 * u2h( 0);
-        /* trial */
         VectorXd urow = (V_pattern.row(Fg_pattern(j, 0))+
         V_pattern.row(Fg_pattern(j, 1))+ V_pattern.row(Fg_pattern(j, 2)))/3; urow(0) +=1;
         VectorXd vrow = (V_pattern.row(Fg_pattern(j, 0))+
@@ -249,19 +225,6 @@ void garment_adaption::computeJacobian(){
         igl::barycentric_interpolation(V_init, Fg, Bary, I, jacCheck);
         igl::barycentric_interpolation(V_init, Fg, BaryV, I, jacCheckV);
 
-//        /*end trial */
-        if( j%200 ==0){
-            cout<<jacCheck.row(0) - avg.transpose() <<" jac computed u "<<endl;
-            cout<<" from "<<avg.transpose() <<" "<<jacCheck.row(0)<<endl;
-            cout<<Bary<<endl;
-            cout<<jac2to3.row(0)<<" comparison jac 23"<<endl<<endl;
-            cout<<"and for v"<<endl;
-            cout<<jacCheckV.row(0)- avg.transpose() <<" jac computed u "<<endl;
-            cout<<" from "<<avg.transpose() <<" "<<jacCheckV.row(0)<<endl;
-            cout<<BaryV<<endl;
-            cout<<jac2to3.row(1)<<" comparison jac 23"<<endl<<endl;
-
-        }
 
         jac2to3.col(0) = (jacCheck.row(0) - avg.transpose()).leftCols(2);
         jac2to3.col(1) =  (jacCheckV.row(0) - avg.transpose()).leftCols(2);
