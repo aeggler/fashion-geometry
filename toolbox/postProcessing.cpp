@@ -257,7 +257,7 @@ void backTo3Dmapping(MatrixXd& adaptedPattern, MatrixXi& adaptedPattern_faces, M
     int translIdxOrig, translIdxNew;
 
     bool pullApart = false;
-    if(garment == "leggins" ){
+    if(garment == "leggins9" ){
         pullApart = true;
         if(!symmetry){
             compsR.resize(2);
@@ -308,7 +308,6 @@ void backTo3Dmapping(MatrixXd& adaptedPattern, MatrixXi& adaptedPattern_faces, M
     }
 
     // 1,5 und 3,6 für links
-
     igl::signed_distance(adaptedPattern, perfectPattern, perfectPattern_faces, igl::SIGNED_DISTANCE_TYPE_UNSIGNED, S, I, C, N);
     int ppf = perfectPattern_faces.rows();
     MatrixXd B(adaptedPattern.rows(), 3); // contains all barycentric coordinates
@@ -1736,7 +1735,6 @@ void stitchAdapted3D(MatrixXd& Vg, MatrixXi& Fg, MatrixXi& Fg_pattern_orig, vect
     int offset = Fg.rows()/2;
     map<int, int> mapCornerToCornerDupl= mapCornerToCorner;
     for(auto it: mapCornerToCornerDupl){
-//        if(it.second >= 387) mapCornerToCorner[it.first] = it.second -2;
         cout<<"corner "<<it.first<<" and "<<it.second<<endl;
         int face = vfAdj[it.second][0];
         int offsetVert, duplVert;
@@ -1755,7 +1753,6 @@ void stitchAdapted3D(MatrixXd& Vg, MatrixXi& Fg, MatrixXi& Fg_pattern_orig, vect
 
         int faceOrig = vfAdjorig[it.first][0];
         int offset = Fg_pattern_orig.rows()/2;
-        if(it.first == 0) cout<<faceOrig<<" "<<vfAdjorig[0].size()<<" the face "<<Fg_pattern_orig.row(faceOrig)<<endl;
         if(it.first == Fg_pattern_orig(faceOrig, 0)){
             duplVert = Fg_pattern_orig(faceOrig+offset, 0);
         }else if(it.first == Fg_pattern_orig(faceOrig, 1)){

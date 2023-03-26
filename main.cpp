@@ -283,6 +283,9 @@ int main(int argc, char *argv[])
 
     string prefix = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/";
     garment = "leggins";
+    bool patternExists = true;
+    inverseMap = false;
+//    garment = "tshirt";
 //    garment = "top";
     string garment_file_name = prefix+ "leggins/leggins_3d/leggins_3d_merged.obj"; //smaller collision thereshold to make sure it is not "eaten" after intial step , 3.5 instead of 4.5
 //    garment = "dress";
@@ -331,6 +334,8 @@ int main(int argc, char *argv[])
             symVert2= 66;
         }
         else{
+            cout<<Vg.row(0)<<endl;
+            cout<<Vg.row(1)<<endl;
             symVert1= 0; symVert2= 0;
         }
         if(insertPlane){
@@ -493,8 +498,7 @@ int main(int argc, char *argv[])
     MatrixXd perfPattVg, perfPattVg_orig, addedFabricPatternVg;
     MatrixXi perfPattFg, perfPattFg_orig, addedFabricPatternFg;
 
-    bool patternExists = true;
-    inverseMap = true;
+
 
 //    string startFile = "writtenPattern_nicelyRetri.obj";
 //    startFile =  "writtenPattern_leggins.obj";
@@ -1511,6 +1515,31 @@ int main(int argc, char *argv[])
                 viewer.data().set_mesh(adaptedPatternIn3d, adaptedPatternIn3d_faces);
                 viewer.data().uniform_colors(ambient, diffuse, specular);
                 viewer.data().set_points(cornersMat, RowVector3d(1.0, 0.0, 0.0));
+            }
+            if(ImGui::Button("Not Stitched 3D corresp Faces", ImVec2(-1, 0))){
+                string finalFacesFile = "finalGarmentPattern_"+avName+"_"+garment+"_Merged_FaceCorrespWith3DMerged.obj";
+                MatrixXd addedFabricPatternVg; MatrixXi addedFabricPatternFg;
+                igl::readOBJ(finalFacesFile, addedFabricPatternVg, addedFabricPatternFg);
+                mouse_mode = NONE;
+                simulate = false;
+                adaptionFlag = false; // this is the pattern after the second mapping direction, it is in shape of mapFrom
+                currPattern.resize(addedFabricPatternVg.rows(), addedFabricPatternVg.cols());
+                currPattern = addedFabricPatternVg;
+                Fg_pattern_curr.resize(addedFabricPatternFg.rows(), addedFabricPatternFg.cols());
+                Fg_pattern_curr = addedFabricPatternFg;
+
+                MatrixXd adaptedPatternIn3d;
+                MatrixXi adaptedPatternIn3d_faces;
+                backTo3Dmapping(currPattern, Fg_pattern_curr, perfPattVg_orig, perfPattFg_orig, Vg,
+                                Fg, adaptedPatternIn3d, adaptedPatternIn3d_faces ,false, garment);
+
+                viewer.selected_data_index = 0;
+                viewer.data().clear();
+                viewer.data().show_lines = true;
+                viewer.data().set_mesh(adaptedPatternIn3d, adaptedPatternIn3d_faces);
+                viewer.data().uniform_colors(ambient, diffuse, specular);
+                igl::writeOBJ("finalFaces_3D_notMerged_"+avName+"_"+garment+"_Merged_FaceCorrespWith3DMerged.obj",adaptedPatternIn3d, adaptedPatternIn3d_faces) ;
+
             }
             bool origIn3D = false;
             if(ImGui::Button("Show inserted in 3D ", ImVec2(-1, 0))){

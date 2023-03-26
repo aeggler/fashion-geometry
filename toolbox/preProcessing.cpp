@@ -294,12 +294,18 @@ void insertPlane(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg_
     */
      map<double, std::pair<int, int>> yToFaceAndIdx;
     int vgsize = Vg_pattern.rows();
+    int vgGarOrig = Vg.rows();
     std::vector< std::vector<int> > vfAdj,vfAdjG, vvAdj;
     createVertexFaceAdjacencyList(Fg, vfAdjG);
 
     createVertexFaceAdjacencyList(Fg_pattern, vfAdj);
     igl::adjacency_list(Fg_pattern, vvAdj);
-
+    int addCount= 0 ;
+    for(int i=0; i<Vg.rows(); i++){
+        if(Vg(i ,0) == 0){
+            addCount++;
+        }
+    }
     for(int i=0; i<Fg.rows(); i++){
 
         bool hasLeft = false;
@@ -308,6 +314,9 @@ void insertPlane(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg_
         for (int j=0; j<3; j++){
             double x = Vg(Fg(i, j), 0);
             if(x==0) {
+                yToFaceAndIdx[ Vg(Fg(i, j), 1)] = std::make_pair(i,j );
+//                addCount++;
+//
                 continue;
             }
             if(x<0){
@@ -386,15 +395,11 @@ void insertPlane(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg_
                 idx2 =Fg ( fac2, idfac2 );
                 if(i== 1256 && garment== "skirt_no2") extra2 = true;
                 if(i==138 && garment == "skirt") {
-//                    extra2 = true;
-//                    cout<<"extra 2 "<<endl;
                 }
                 if(i==849 && garment == "skirt") {
                     extra2 = true;
-//                    cout<<"extra 2 849 "<<endl;
                 }
 
-//                cout<<"found at idx "<<idx2<<endl;
 
             }
             int fgrow = Fg.rows();
@@ -484,24 +489,46 @@ void insertPlane(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg_
     igl::writeOBJ("dress_3d.obj", Vg, Fg);
     Vg_pattern.col(2).setConstant(200);
     igl::writeOBJ("dress_2d.obj", Vg_pattern, Fg_pattern);
-    int added = Vg_pattern.rows()- vgsize;
+    int addedVert = Vg_pattern.rows()- vgsize;
+    cout<<addCount<<" zero vertices and added vert "<<addedVert<<endl;
+    int added=addedVert+ addCount;
+
     int vgnewsize = Vg_pattern.rows();
     MatrixXd Vgp (Vg_pattern.rows()+ added, 3);
     Vgp.block(0,0,vgnewsize, 3) = Vg_pattern;
-    Vgp.block(vgnewsize, 0, added, 3) = Vg_pattern.block(vgsize, 0, added, 3);
+    Vgp.block(vgnewsize, 0, added, 3) = Vg_pattern.block(vgsize, 0, addedVert, 3);
+    int duplCount = 0;
+    VectorXi addedDeja(Vg.rows()); addedDeja.setConstant(0);
+    VectorXi duplVert(Vg_pattern.rows());
+    for(int ll=0 ; ll<Fg.rows(); ll++){
+        for(int lll=0; lll<3; lll++){
+            int l = Fg(ll,lll);
+
+            if(Vg(l, 0)==0 && addedDeja(l)==0 && l<vgGarOrig){
+                addedDeja(l)++;
+                cout<<"adding "<<l<<endl;
+                Vgp.row(vgnewsize + addedVert+ duplCount)= Vg_pattern.row(Fg_pattern(ll,lll));
+                duplVert(Fg_pattern(ll,lll))= vgnewsize + addedVert+ duplCount;
+                duplCount++;
+            }
+
+        }
+    }
     cout<<"continue"<<endl;
     // we duplicate the new vertices to split them
+    duplCount=0;
     for (int i=0; i<Fg_pattern.rows(); i++){
         for(int j=0; j<3; j++){
             if(Fg_pattern(i,j)>= vgsize){
 
                 int other = (j+1)%3;
-
-                while(Vg(Fg(i, other), 0) == 0){
+                int co=0;
+                while(Vg(Fg(i, other), 0) == 0 && co<6){
+                    co++;
                     other++;
                     other %= 3;
                 }// find one that is not 0
-
+                if(co>=3) cout<<i<<" face, vertex issues  "<<endl;
                 bool isLeft = false;
                 if(Vg(Fg(i, other), 0)<0){
                     isLeft= true;
@@ -511,6 +538,11 @@ void insertPlane(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg_
                     Fg_pattern(i,j) +=added;
                 }
 
+            }
+            else if (Vg(Fg(i,j),0)==0){
+                if(Vg(Fg(i,(j+1)%3 ),0)<0|| Vg(Fg(i, (j+2)%3 ),0)<0){
+                    Fg_pattern(i,j) =duplVert(Fg_pattern(i,j));
+                }
             }
         }
     }
@@ -571,11 +603,20 @@ void splitAndSmooth(MatrixXd& Vg,MatrixXi& Fg,MatrixXd& Vg_pattern,MatrixXi& Fg_
             }
         }
     }
+    if(garment == "tshirt"){
+        for(int i=0; i< Vg.rows(); i++){
+            if(i<2)cout<<Vg(i,0)<<" for i "<<i<<endl;
+            if(abs(Vg(i, 0)) <= 1.1){
+                cout<<i<<endl;
+                Vg(i, 0) = 0;
+            }
+        }
+    }
     insertPlane(Vg, Fg, Vg_pattern, Fg_pattern, garment);
     VectorXd leftFaces = VectorXd::Zero(Fg.rows());
     VectorXd leftVert = VectorXd::Zero(Vg.rows());
     VectorXd leftVert_pattern = VectorXd::Zero(Vg_pattern.rows());
-
+    cout<<"finished insertion"<<endl;
     for(int i=0; i<Fg.rows(); i++){
         bool isLeft= false;
         for (int j=0; j<3; j++){
@@ -591,7 +632,7 @@ void splitAndSmooth(MatrixXd& Vg,MatrixXi& Fg,MatrixXd& Vg_pattern,MatrixXi& Fg_
             }
         }
     }
-
+cout<<" distingusihed left"<<endl;
     VectorXi mapVert(Vg.rows());
     VectorXi mapVert_pattern(Vg_pattern.rows());
 
@@ -600,7 +641,6 @@ void splitAndSmooth(MatrixXd& Vg,MatrixXi& Fg,MatrixXd& Vg_pattern,MatrixXi& Fg_
 
     MatrixXd newVg (newVert, 3);
     MatrixXd newVg_pattern(newVert_pattern, 3);
-
     // for now no on seam for the pattern. just copy them all
     VectorXd onSeam = VectorXd::Zero(newVert);
     int count=0; int count_pattern= 0;
@@ -611,6 +651,8 @@ void splitAndSmooth(MatrixXd& Vg,MatrixXi& Fg,MatrixXd& Vg_pattern,MatrixXi& Fg_
             count++;
         }
     }
+    cout<<"find on Seam"<<endl;
+
     for(int i=0; i<Vg_pattern.rows(); i++){
         if(leftVert_pattern(i) ==1){
             newVg_pattern.row(count_pattern) = Vg_pattern.row(i);
