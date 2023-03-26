@@ -62,4 +62,6 @@ void computeFinalJacobian(MatrixXd& Vg, MatrixXi& Fg,MatrixXd& Vg_gar,
 void stitchAdapted3D(MatrixXd& Vg, MatrixXi& Fg,MatrixXi& Fg_pattern_orig,vector<seam*>& seamsList,map<int, int >& mapCornerToCorner,
                      map<int, int> & halfPatternVertToFullPatternVert, MatrixXd& Vg_pattern, MatrixXi& Fg_pattern );
 
+void computeBoundaryEdges(MatrixXi& changedFitGarF, MatrixXi& boundaryOfToPattern);
+
 #endif //EXAMPLE_POSTPROCESSING_H

@@ -1951,3 +1951,23 @@ void stitchAdapted3D(MatrixXd& Vg, MatrixXi& Fg, MatrixXi& Fg_pattern_orig, vect
 }
 
 
+void computeBoundaryEdges(MatrixXi& changedFitGarF, MatrixXi& boundaryOfToPattern){
+        vector<vector<int>> boundaryLNewFit;
+        igl::boundary_loop(changedFitGarF, boundaryLNewFit);
+        int boundVert = 0;
+        for(auto bl : boundaryLNewFit){
+            boundVert += bl.size();
+
+        }
+        boundaryOfToPattern.resize(boundVert, 2);
+        int curr = 0;
+        for (auto bli : boundaryLNewFit){
+            for(int j=0; j<bli.size(); j++){
+                boundaryOfToPattern(curr, 0) = bli [j];
+                boundaryOfToPattern(curr, 1) = bli [(j + 1) % (bli.size())];
+                curr++;
+            }
+        }
+}
+
+
