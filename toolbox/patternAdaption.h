@@ -127,7 +127,9 @@ int  tearFurther(vector<cutVertEntry*>& cutPositions,
                  double& setTheresholdBound,
                  map<int, int>& fullPatternVertToHalfPatternVert,
                  map<int, int>& halfPatternVertToFullPatternVert,
-                 map<int, int> & halfPatternFaceToFullPatternFace);
+                 map<int, int> & halfPatternFaceToFullPatternFace,
+                 bool showOnly,
+                 bool forceCut);
 int tearFurtherVisIdxHelper(vector<cutVertEntry*>& cutPositions, MatrixXd&  currPattern, MatrixXi& Fg_pattern,vector<seam*>& seamsList, vector<minusOneSeam*>& minusOneSeams,
                             map<int, pair<int, int>> & releasedVert, set<int>& toPattern_boundaryVerticesSet,  std::vector<std::vector<int> >& boundaryL,
                             set<int> & cornerSet, set<int>& handledVerticesSet,  bool& prevFinished, const bool & preferManySmallCuts, const bool & LShapeAllowed,

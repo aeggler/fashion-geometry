@@ -207,13 +207,15 @@ void solveCollisionConstraint();
 void preComputeStretch();
 void computeStress(igl::opengl::glfw::Viewer& viewer);
 void solveStretchUV();
-
+bool jacobianChanged= false;
 // nice clicky interface
 bool computePointOnMesh(igl::opengl::glfw::Viewer& viewer, Eigen::MatrixXd& V, Eigen::MatrixXi& Fuse, Eigen::Vector3d& position, int& fid);
 int computeClosestVertexOnMesh(Vector3d& b, int& fid, MatrixXi& F);
 bool callback_mouse_down(igl::opengl::glfw::Viewer& viewer, int button, int modifier);
 void updateChangedBaryCoordinates(int changedPosition, vector<vector<int>>& vfFromPatt);
 bool midFractureForbidden= false ;
+bool forceCut= false;
+bool showOnly = false;
 bool pre_draw(igl::opengl::glfw::Viewer& viewer){
     viewer.data().dirty |= igl::opengl::MeshGL::DIRTY_DIFFUSE | igl::opengl::MeshGL::DIRTY_SPECULAR;
     if(simulate){
@@ -284,7 +286,7 @@ int main(int argc, char *argv[])
     string prefix = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/";
     garment = "leggins";
     bool patternExists = true;
-    inverseMap = false;
+    inverseMap = true;
 //    garment = "tshirt";
 //    garment = "top";
     string garment_file_name = prefix+ "leggins/leggins_3d/leggins_3d_merged.obj"; //smaller collision thereshold to make sure it is not "eaten" after intial step , 3.5 instead of 4.5
@@ -482,7 +484,6 @@ int main(int argc, char *argv[])
     Vg_orig = Vg;
 
     setCollisionMesh();
-    //todo
     computeBaryCoordsGarOnNewMannequin(viewer);// contains boundary vertices now, needed for simulation, colsestFaceId
 //    Vg = Vg_orig;
     Vm = testMorph_V1;
@@ -498,10 +499,6 @@ int main(int argc, char *argv[])
     MatrixXd perfPattVg, perfPattVg_orig, addedFabricPatternVg;
     MatrixXi perfPattFg, perfPattFg_orig, addedFabricPatternFg;
 
-
-
-//    string startFile = "writtenPattern_nicelyRetri.obj";
-//    startFile =  "writtenPattern_leggins.obj";
     string startFile = "finished_retri_writtenPattern_"+avName+"_"+garment+".obj";
     int vertIdOf0InDuplicated = 0;
     if(garmentExt =="top_1" ){
@@ -692,16 +689,6 @@ int main(int argc, char *argv[])
             }
 
         }
-        if (ImGui::CollapsingHeader("Mannequin", ImGuiTreeNodeFlags_OpenOnArrow)) {
-
-            ImGui::InputFloat("Translation X", &(mannequin_translation[0]),  0, 0, "%0.4f");
-            ImGui::InputFloat("Translation Y", &(mannequin_translation[1]),  0, 0, "%0.4f");
-            ImGui::InputFloat("Translation Z", &(mannequin_translation[2]),  0, 0, "%0.4f");
-            ImGui::InputFloat("Scaling factor", &(mannequin_scale),  0, 0, "%0.4f");
-            if(ImGui::Button("Adjust mannequin", ImVec2(-1, 0))){
-                translateMesh(viewer, 2 );
-            }
-        }
         if (ImGui::CollapsingHeader("Pattern Computation", ImGuiTreeNodeFlags_OpenOnArrow)) {
             if(ImGui::Checkbox("Show Pattern", &showPattern)){
                 cout<<Vg_pattern.rows()<<" "<<Fg_pattern.rows()<<endl;
@@ -781,8 +768,14 @@ int main(int argc, char *argv[])
                 Eigen::MatrixXd computed_Vg_pattern;//= Vg;
                 cout<<"start computing the pattern with "<<localGlobalIterations<<" local global iterations"<<endl;
                 gar_adapt->performJacobianUpdateAndMerge(Vg, localGlobalIterations, baryCoords1, baryCoords2, computed_Vg_pattern, seamsList, boundaryL);
-                igl::writeOBJ("patternComputed_"+avName+"_"+garment+".obj",Vg_pattern, Fg_pattern);
-                cout<<"pattern written to *patternComputed*"<<endl;
+                if(!jacobianChanged ){
+                    igl::writeOBJ("patternComputed_"+avName+"_"+garment+".obj",Vg_pattern, Fg_pattern);
+                    cout<<"pattern written to *patternComputed*"<<endl;
+                }else{
+                    string dir = (geoDistU)? "U" : "V";
+                    igl::writeOBJ("patternComputed_changedFit_" + avName + "_" + garment + "_" +to_string(geoDistMax)+ "_" + to_string(geoDistChange) + "_" + dir + ".obj",Vg_pattern, Fg_pattern);
+                    cout<<"pattern written to * patternComputed changed fit *"<<endl;
+                }
             }
             if(ImGui::Button("Compute and Visualize stress of new pattern", ImVec2(-1, 0))){
                 simulate = false;
@@ -1050,7 +1043,8 @@ int main(int argc, char *argv[])
                 pos = tearFurther(cutPositions, currPattern, Fg_pattern_curr, seamsList, minusOneSeamsList, releasedVert,
                             toPattern_boundaryVerticesSet, boundaryL, cornerSet, handledVerticesSet, prevTearFinished,
                             preferManySmallCuts, LShapeAllowed, patternEdgeLengths_orig, mapFromVg, mapFromFg, prioInner, prioOuter, setTheresholdlMid, setTheresholdBound,
-                                  fullPatternVertToHalfPatternVert, halfPatternVertToFullPatternVert, halfPatternFaceToFullPatternFace
+                                  fullPatternVertToHalfPatternVert, halfPatternVertToFullPatternVert, halfPatternFaceToFullPatternFace,
+                                  showOnly, forceCut
                             );
 
                 if(pos!=-1){
@@ -1114,12 +1108,16 @@ int main(int argc, char *argv[])
                     viewer.data().clear();
                     viewer.data().set_mesh(currPattern, Fg_pattern_curr);
                 }
-//                if(!changeFlag){
-                    viewer.core().is_animating = true;
-                    adaptionFlag = true;
-//                }
+                viewer.core().is_animating = true;
+                adaptionFlag = true;
+                showOnly = false;
 
             }
+            if(ImGui::Button("Show next ", ImVec2(-1, 0))){
+                showOnly = true;
+            }
+            if(ImGui::Checkbox("Force next cut", &forceCut)){}
+
             if(ImGui::Button("Finished Tear", ImVec2(-1, 0))){
                 igl::writeOBJ("finished_tear_writtenPattern_"+avName+"_"+garment+".obj", currPattern, Fg_pattern_curr);
                 cout<<"File written to finished_tear_writtenPattern_ "<<endl;
@@ -1807,7 +1805,6 @@ int main(int argc, char *argv[])
 
         }
         if (ImGui::CollapsingHeader("Change fit", ImGuiTreeNodeFlags_OpenOnArrow)){
-
             if(ImGui::Button("Clear vert ", ImVec2(-1, 0))){
                 changeFitVert.clear();
                 currPattern.resize(Vg.rows(), 3);
@@ -1817,20 +1814,44 @@ int main(int argc, char *argv[])
                 mouse_mode = CHANGEFIT;
 
             }
-            ImGui::InputDouble("Max dist", &geoDistMax, 0, 0, "%0.4f");
+            ImGui::InputDouble("Max dist", &geoDistMax, 0, 0, "%0.2f");
             ImGui::InputDouble("Change ", &geoDistChange, 0, 0, "%0.4f");
             if(ImGui::Checkbox("Change in U", &geoDistU)){}
             if(ImGui::Checkbox("Change in V", &geoDistV)){}
 
             if(ImGui::Button("Change in Jacobian ", ImVec2(-1, 0))){
-
                 mouse_mode = NONE;
                 VectorXd affectedFaces;
                 computeAffection(geoDistDist, geoDistMax, Fg_pattern_curr, affectedFaces);
-
                 gar_adapt ->changeFitViaJacobian( geoDistU, geoDistV, geoDistChange, affectedFaces);
+                jacobianChanged= true;
                 perFaceTargetNorm = gar_adapt->perFaceTargetNorm;
                 computeStress(viewer);
+            }
+            if(ImGui::Button("Compare Patterns", ImVec2(-1, 0))){
+                string dir = (geoDistU)? "U" : "V";
+                string fileName = "patternComputed_changedFit_" + avName + "_" + garment + "_" +to_string(geoDistMax)+ "_" + to_string(geoDistChange) + "_" + dir + ".obj";
+                MatrixXd changedFitGarV;
+                MatrixXi changedFitGarF;
+                igl::readOBJ(fileName, changedFitGarV, changedFitGarF);
+                cout<<"read file previously  written to * patternComputed changed fit *"<<endl;
+
+                viewer.selected_data_index = 1;
+                viewer.data().clear();
+                viewer.data().show_lines = true;
+                MatrixXi boundaryOfToPattern;
+                computeBoundaryEdges(changedFitGarF, boundaryOfToPattern);
+                viewer.data().set_edges(changedFitGarV, boundaryOfToPattern, Eigen::RowVector3d(1, 0, 1));
+
+                /* visualize the original pattern for comparison */
+                igl::readOBJ("patternComputed_"+avName+"_"+garment+".obj",currPattern, Fg_pattern_curr);
+                viewer.selected_data_index = 0;
+                viewer.data().clear();
+                viewer.data().show_lines = true;
+                MatrixXi boundaryOfToPatternOrig;
+                computeBoundaryEdges(Fg_pattern_curr, boundaryOfToPatternOrig);
+                viewer.data().set_edges(currPattern, boundaryOfToPatternOrig, Eigen::RowVector3d(0, 0, 1));
+
             }
         }
         menu.draw_viewer_menu();
@@ -2003,7 +2024,6 @@ bool callback_mouse_down(igl::opengl::glfw::Viewer& viewer, int button, int modi
                 changeFitVert.push_back(Fg_pattern_curr((fid + half)% (2*half), 1) );
 
             }
-            cout<<"chosen face "<<fid<<endl;
             MatrixXd setPointsMatrix (changeFitVert.size(), 3);
             int rowIdx = 0;
             Eigen::VectorXi VS,FS,VT,FT;
@@ -2013,8 +2033,6 @@ bool callback_mouse_down(igl::opengl::glfw::Viewer& viewer, int button, int modi
                 setPointsMatrix.row(rowIdx) = currPattern.row(it);
                 rowIdx++;
             }
-
-//            viewer.data().set_points(setPointsMatrix, RowVector3d(1.0, 1.0, 0.0));
 
             // All vertices are the targets
             VT.setLinSpaced(currPattern.rows(),0,currPattern.rows()-1);
@@ -2378,10 +2396,20 @@ bool callback_key_down(igl::opengl::glfw::Viewer& viewer, unsigned char key, int
         cout<<"start computing the pattern with "<<localGlobalIterations<<" local global iterations"<<endl;
         gar_adapt->performJacobianUpdateAndMerge(Vg, localGlobalIterations, baryCoords1, baryCoords2, computed_Vg_pattern, seamsList, boundaryL);
 
-        igl::writeOBJ("patternComputed_"+avName+"_"+garment+".obj", computed_Vg_pattern, Fg_pattern);
-        igl::writeOBJ("patternComputed3D_"+avName+"_"+garment+".obj", Vg, Fg);
 
-        cout<<"pattern written to *patternComputed*"<<endl;
+        if(!jacobianChanged){
+            cout<<"pattern written to *patternComputed*"<<endl;
+            igl::writeOBJ("patternComputed_"+avName+"_"+garment+".obj", computed_Vg_pattern, Fg_pattern);
+            igl::writeOBJ("patternComputed3D_"+avName+"_"+garment+".obj", Vg, Fg);
+        }else{
+            cout<<"pattern written to * patternComputed_changedFit *"<<endl;
+            string dir = (geoDistU)? "U" : "V";
+            string fileName = "patternComputed_changedFit_" + avName + "_" + garment + "_" +to_string(geoDistMax)+ "_" + to_string(geoDistChange) + "_" + dir+ ".obj";
+
+            igl::writeOBJ(fileName , computed_Vg_pattern, Fg_pattern);
+            igl::writeOBJ("patternComputed3D_"+avName+"_"+garment+".obj", Vg, Fg);// does not change with changed fit !
+        }
+
 
     }
     if(key == 'B'){     // Bending

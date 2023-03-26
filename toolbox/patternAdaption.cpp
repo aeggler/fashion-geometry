@@ -28,6 +28,14 @@ set<int> cutThroughCornerVertices;
 double boundThereshold ;
 double middleThereshold ;
 bool midIllegal;
+bool globForceCut = false;
+map<int, vector<int>> releasedVertNew;
+map<int, vector<int>> cornerToSeams;
+set<pair<int, int>> zipBack, zipMiddle;
+map<int, int> patchMapToHalf, patchMapToHalfInverse;bool inverseMapping, sym;
+int addoncount=0;
+MatrixXd uperFace, vperFace;
+
 int findWhichEdgeOfFace(int face, int v1, int v2, MatrixXi& Fg){
     int faceidxv1, faceidxv2;
     for(int j=0; j<3; j++){
@@ -147,14 +155,6 @@ void computeMidVecBasedOnStress(VectorXd& midVec, vector<vector<int>>& vfAdj, Ma
     midVec (1)= no(0);// x
 
 }
-
-map<int, vector<int>> releasedVertNew;
-map<int, vector<int>> cornerToSeams;
-set<pair<int, int>> zipBack, zipMiddle;
-
-map<int, int> patchMapToHalf, patchMapToHalfInverse;bool inverseMapping, sym;
-int addoncount=0;
-MatrixXd uperFace, vperFace;
 
 void addToMapIfNotExisting( int key, int i){
     if(cornerToSeams.find(key) != cornerToSeams.end()){
@@ -380,7 +380,7 @@ void splitVertexFromCVE( cutVertEntry*& cve,
         bool cornerOrStart = ((cveStartPositionsSet.find(cve->vert) != cveStartPositionsSet.end()) || cornerSet.find(halfPatternVertToFullPatternVert[cve->vert]) != cornerSet.end()
                 || cutThroughCornerVertices.find(cve->vert) != cutThroughCornerVertices.end());
         cout<<(cutThroughCornerVertices.find(cve->vert) != cutThroughCornerVertices.end())<<" in this set? "<<endl;
-        if( cornerOrStart && LShapeAllowed){
+        if(  LShapeAllowed){//cornerOrStart &&
             cout<<"But it is a corner and we allow L Shapes. Go on."<<endl;
 
         }else{
@@ -483,7 +483,7 @@ void splitVertexFromCVE( cutVertEntry*& cve,
         bool tearIsUseful = false;
         checkIfCutIsUsefulForAdjFace(tearIsUseful, vfAdj, cve, cutDirection, Fg, handledVerticesSet, true );
 
-        if(!tearIsUseful|| tipVertices.find(cve->vert) != tipVertices.end()){
+        if((!tearIsUseful&& !globForceCut)|| tipVertices.find(cve->vert) != tipVertices.end()){
             cout<<"STOP now because of adj face stress condition  "<<endl;
 
             cve->finFlag = true;
@@ -492,6 +492,9 @@ void splitVertexFromCVE( cutVertEntry*& cve,
             return;
         }
         cout<<" Confirmed tear is useful! "<<endl;
+        if(globForceCut && !tearIsUseful){
+            cout <<" actually not useful but we force it :)"<<endl;
+        }
 
         // set of extra cases
         pair<int, int> valPair = make_pair(cve->seamType, cve ->seamIdInList);
@@ -1852,7 +1855,8 @@ int tearFurther(vector<cutVertEntry*>& cutPositions, MatrixXd&  currPattern, Mat
                  set<int> & cornerSet, set<int>& handledVerticesSet,  bool& prevFinished, const bool & preferManySmallCuts, const bool & LShapeAllowed,
                  MatrixXd& patternEdgeLengths_orig, MatrixXd& Vg_pattern_orig, MatrixXi& Fg_pattern_orig, bool& prioInner,
                 bool& prioOuter, double& setTheresholdlMid, double& setTheresholdBound, map<int, int>& fullPatternVertToHalfPatternVert, map<int, int>& halfPatternVertToFullPatternVert,
-                map<int, int> & halfPatternFaceToFullPatternFace){
+                map<int, int> & halfPatternFaceToFullPatternFace, bool showOnly, bool forceCut){
+    globForceCut = forceCut;
 
     middleThereshold = setTheresholdlMid;
     boundThereshold = setTheresholdBound;
@@ -1894,7 +1898,7 @@ int tearFurther(vector<cutVertEntry*>& cutPositions, MatrixXd&  currPattern, Mat
 //
         if(cutPositions[count]->finFlag ){
 //            // if it is a corner and it has been released
-            if((cutPositions[count]->startCorner || cutPositions[count]->endCorner) &&
+            if((cutPositions[count]->startCorner || cutPositions[count]->endCorner) &&false &&
                 releasedVertNew.find( cutPositions[count]->cornerInitial) != releasedVertNew.end() ){
                 int seamPotentiallyReleasedFrom = (cornerToSeams[cutPositions[count]-> cornerInitial][0] == thisSeam) ? cornerToSeams[cutPositions[count]-> cornerInitial][1] : cornerToSeams[cutPositions[count]-> cornerInitial][0];
                 if(releasedVertNew[ cutPositions[count]->cornerInitial].end() != std::find( releasedVertNew[ cutPositions[count]->cornerInitial].begin(), releasedVertNew[ cutPositions[count]->cornerInitial].end(), seamPotentiallyReleasedFrom)){
@@ -1932,6 +1936,7 @@ int tearFurther(vector<cutVertEntry*>& cutPositions, MatrixXd&  currPattern, Mat
 //
             cout<<endl<<endl << cutPositions[count]->vert<<" vertex up next from seam  "<<cutPositions[count]->seamType<<" "<<cutPositions[count]->seamIdInList<<" the stress here is "<<cutPositions[count]->stress<<endl;
             returnPosition = cutPositions[count] ->vert;
+            if(showOnly) return returnPosition;
             splitVertexFromCVE(cutPositions[count], currPattern, Fg_pattern, vfAdj, boundaryL, seamsList, minusOneSeams, releasedVert,
                                    toPattern_boundaryVerticesSet, cornerSet, handledVerticesSet, LShapeAllowed, Vg_pattern_orig, Fg_pattern_orig,
                                fullPatternVertToHalfPatternVert, halfPatternVertToFullPatternVert, halfPatternFaceToFullPatternFace);
@@ -1940,7 +1945,7 @@ int tearFurther(vector<cutVertEntry*>& cutPositions, MatrixXd&  currPattern, Mat
 
             parallel = -1;
             // if it is a corner and it has been released
-            if(cutPositions[count]->startCorner || cutPositions[count]->endCorner){
+            if((cutPositions[count]->startCorner || cutPositions[count]->endCorner)&& false){
 //                // once we finished cutting one side, check if it was a side opening. If so we can go on with the other side
 //                //this is the released seam, so the other one is the one we have in common
                 int seamPotentiallyReleasedFrom = (cornerToSeams[cutPositions[count]-> cornerInitial][0] == thisSeam) ? cornerToSeams[cutPositions[count]-> cornerInitial][1] : cornerToSeams[cutPositions[count]-> cornerInitial][0];
