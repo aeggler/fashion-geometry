@@ -35,6 +35,7 @@ set<pair<int, int>> zipBack, zipMiddle;
 map<int, int> patchMapToHalf, patchMapToHalfInverse;bool inverseMapping, sym;
 int addoncount=0;
 MatrixXd uperFace, vperFace;
+set<pair<int, int>> constrainedSeams;
 
 int findWhichEdgeOfFace(int face, int v1, int v2, MatrixXi& Fg){
     int faceidxv1, faceidxv2;
@@ -1145,6 +1146,11 @@ void addVarToModel (bool inverseMap, int vert, int prevVert, int nextVert, vecto
                       int seamType, int seamIdInList, double tailor_lazyness, bool corner, map<pair<int,int>, int>& mapVertAndSeamToVar, int counterpart, GRBModel& model, const MatrixXd& currPattern ){
 
     // idea: when inverse mapping allow only cuts from the boundary, but L shapes should be ok !
+    bool isConstrainedSeam =false;
+    if(constrainedSeams.find(make_pair(seamIdInList, seamType))!= constrainedSeams.end()  || constrainedSeams.find(make_pair((seamIdInList+1)*(-1), seamType))!= constrainedSeams.end()){
+        isConstrainedSeam= true;
+//        cout<< seamIdInList <<" "<< seamType << endl;
+    }
     double w_init = 0;
     int count = 0;
     VectorXd nextDir= VectorXd::Zero(3);
@@ -1167,7 +1173,7 @@ void addVarToModel (bool inverseMap, int vert, int prevVert, int nextVert, vecto
     }
     w_init/= count;
     if(!inverseMap) {
-        if(isConstrained){
+        if(isConstrained ){
             try {
                 cutVar[varCount].set(GRB_DoubleAttr_Obj, 0);
             }catch(GRBException e){
@@ -1176,11 +1182,13 @@ void addVarToModel (bool inverseMap, int vert, int prevVert, int nextVert, vecto
                 cout<<varCount<<endl;
             }
         }else{
-            if(midIllegal&& !corner){
+            if((midIllegal || isConstrainedSeam) && !corner){
+                if(isConstrainedSeam){
+                    cout<<"Vert "<<vert<<" is constrained due to seam"<<endl;
+                }
                 cutVar[varCount].set(GRB_DoubleAttr_Obj, 0);
             }else{
                 int tailorLazyFactor = 1; if(corner) tailorLazyFactor*= tailor_lazyness;
-    //            cout<<tailorLazyFactor<<" "<<vert <<" taylor lazy factor and weight "<<w_init<< " "<<count<<endl;
                 try{
                     cutVar[varCount].set(GRB_DoubleAttr_Obj, tailorLazyFactor * w_init);
 
@@ -1205,7 +1213,6 @@ void addVarToModel (bool inverseMap, int vert, int prevVert, int nextVert, vecto
 
             int tailorLazyFactor = 1;
             if (corner) tailorLazyFactor *= tailor_lazyness;
-//            cout <<vert<<" "<< tailorLazyFactor << " taylor lazy factor and weight " << w_init << " " << varCount << endl;
             try {
                 cutVar[varCount].set(GRB_DoubleAttr_Obj, tailorLazyFactor * w_init);
 
@@ -1437,7 +1444,7 @@ void setLP(bool inverseMap, std::vector<std::vector<int> >& boundaryL , vector<v
     map <int, cutVertEntry*>  mapVarIdToVertId;
     map <pair<int, int>, int> mapVertAndSeamToVar;
 //    if(inverseMap && (fullPatternVertToHalfPatternVert != halfPatternVertToFullPatternVert)) numVar *= 2; // we have symetry, account for additional vars?
-    cout<<"num var "<<numVar<<endl<<endl;
+//    cout<<"num var "<<numVar<<endl<<endl;
     // a map to track the gurobi id of a corner.  whenever we set a corner we add the corner id, so we know once we set the second and connect them
     GRBVar* cutVar = model.addVars(numVar, GRB_BINARY);
 
@@ -1451,11 +1458,9 @@ void setLP(bool inverseMap, std::vector<std::vector<int> >& boundaryL , vector<v
             if(seamIdPerCorner.find(cornerPair.first) == seamIdPerCorner.end()) continue;
 
             vector<pair<int, int>> seamId = seamIdPerCorner[cornerPair.first];// all seams that start at this corner, this can be max 2
-//            cout<<endl<<seamId.size()<<" corner "<<cornerPair.first<<" size of seams per corner here"<<endl;
             if(seamId.size()>2) cout<<" something is veryy odd!! we have more than two seams for a corner. impossible."<<endl;
 
             for(int si = 0; si < seamId.size(); si++) {
-                cout<<"corner "<<cornerPair.first<<" info: "<<seamId[si].first<<" "<<seamId[si].second<<endl;
 
                 GRBLinExpr innerSumConstr = 0; // interior sum
                 GRBLinExpr lSumConstr = 0; // left sum
@@ -1489,7 +1494,6 @@ void setLP(bool inverseMap, std::vector<std::vector<int> >& boundaryL , vector<v
                         int startVal = seam->getStart1();
                         inHalf = (fullPatternVertToHalfPatternVert.find(startVal) != fullPatternVertToHalfPatternVert.end());
                         if(inHalf){
-//                            cout<<"in half"<<endl;
                             startVal = fullPatternVertToHalfPatternVert[startVal];
                             findIndxInBoundaryloop(boundaryL[i], startVal, idx);
                             patch1 =  patchMapToHalf[startAndPatch.second];
@@ -1503,14 +1507,11 @@ void setLP(bool inverseMap, std::vector<std::vector<int> >& boundaryL , vector<v
                         inHalfOther = (fullPatternVertToHalfPatternVert.find(startVal) != fullPatternVertToHalfPatternVert.end());
                         if(inHalfOther){
                             startVal = fullPatternVertToHalfPatternVert[startVal];
-//                            cout<<" start other "<<startVal<<endl;
                             patch2 =  patchMapToHalf[startAndPatchOther.second];
                             findIndxInBoundaryloop(boundaryL[patch2], startVal, idxOther);idxOtherOrig = idxOther;
                             vertOther = boundaryL[patch2][idxOther];
                             boundSizeOther = boundaryL[patch2].size();
                             endOther = fullPatternVertToHalfPatternVert[seam->getEndCornerIds().second];
-//                            cout<<" end other "<<endOther<<endl;
-
 
                         }
 
@@ -1535,7 +1536,6 @@ void setLP(bool inverseMap, std::vector<std::vector<int> >& boundaryL , vector<v
 
                     // check if the corners exist already. If so then connect with corner, else add the indices
                     // todo for L cutting allowance
-//                    cout<<vertOther<<" counterpart "<<vert<<" vert and end "<<end<<endl;
                     if(!inverseMap){
                         if(trackCornerIds.find(vert) != trackCornerIds.end()){
                             model.addConstr(cutVar[ trackCornerIds[vert]] + cutVar[varCount] <= 1);
@@ -1600,7 +1600,6 @@ void setLP(bool inverseMap, std::vector<std::vector<int> >& boundaryL , vector<v
                     addVarToModel(inverseMap, vert, prevVert , -1, vfAdj, false, varCount, cutVar, Fg_pattern, mapVarIdToVertId, seamId[si].first, seamId[si].second,
                                   tailor_lazyness, true, mapVertAndSeamToVar, vertOther, model, currPattern );
                 } else {
-//                    cout<<" case inverse direction"<<endl;
                     // iterate in inverse direction
                     seam *seam = seamsList[(seamId[si].second ) * -1 -1];
                     auto startAndPatch = seam -> getStartAndPatch2ForCorres();
@@ -1614,7 +1613,6 @@ void setLP(bool inverseMap, std::vector<std::vector<int> >& boundaryL , vector<v
                             idxOrig = idx;
                             patch1 =  patchMapToHalf[startAndPatch.second];
                             vert = boundaryL[patch1][idx];
-//                            cout<<startVal<<" start value and start index "<<idx<<endl;
                             end = fullPatternVertToHalfPatternVert[seam->getEndCornerIds().second];
                     }
 
@@ -1769,7 +1767,6 @@ void setLP(bool inverseMap, std::vector<std::vector<int> >& boundaryL , vector<v
             getStressAtVert( seamType, seamId, vert, prevVert, nextVert, Stress,
                      seamsList, minusOneSeams,  boundaryL, Fg_pattern, currPattern,vfAdj, inverted , fullPatternVertToHalfPatternVert);
             int searchedVert = ( halfPatternVertToFullPatternVert.find(vert) == halfPatternVertToFullPatternVert.end()) ? (-1)*vert : vert;
-//            for(int ll=0; ll<cornerVert.size(); ll++){if(cornerVert[ll]==0) cout<<ll<<" "; }
             if( inverseMap|| cornerVert[halfPatternVertToFullPatternVert[vert]]==1 ){
                 cout<<"corner   TODO CHECK IF STARTER OR END! "<<endl;
                 cve->cornerInitial = vert;
@@ -1996,9 +1993,14 @@ int computeTear(bool inverseMap, Eigen::MatrixXd & fromPattern, MatrixXd&  currP
                  bool& prioOuter, double tailor_lazyness, const MatrixXi& mapFromFg, double& setTheresholdlMid, double& setTheresholdBound,
                  map<int, int> & fullPatternVertToHalfPatternVert, map<int, int>& halfPatternVertToFullPatternVert,
                  map<int, int> & halfPatternFaceToFullPatternFace,
-                 bool& symetry  , set<int>& tipVert , bool midFractureForbidden)
+                 bool& symetry  , set<int>& tipVert , bool midFractureForbidden, set<pair<int, int>>& constrainedSeamsSet)
                  {
-    midIllegal =  midFractureForbidden;
+     constrainedSeams = constrainedSeamsSet;
+    for(auto it: constrainedSeams){
+        cout<<"constrained seam "<<it.first<<" from "<<it.second<<endl;
+    }
+
+                     midIllegal =  midFractureForbidden;
     tipVertices = tipVert;
      inverseMapping = inverseMap;
      sym = symetry;

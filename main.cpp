@@ -82,7 +82,7 @@ int timestepCounter;
 bool LShapeAllowed = false;
 vector<int> changeFitVert;
 
-enum MouseMode { SELECTPATCH, SELECTBOUNDARY, NONE, SELECTVERT, SELECTAREA, SELECTAREAPATCHES, FINALSTITCH, CHANGEFIT };
+enum MouseMode { SELECTPATCH, SELECTBOUNDARY, NONE, SELECTVERT, SELECTAREA, SELECTAREAPATCHES, FINALSTITCH, CHANGEFIT, SELECTBOUNDSEAM };
 MouseMode mouse_mode = NONE;
 // pre computations
 Eigen::MatrixXi e4list;
@@ -216,6 +216,9 @@ void updateChangedBaryCoordinates(int changedPosition, vector<vector<int>>& vfFr
 bool midFractureForbidden= false ;
 bool forceCut= false;
 bool showOnly = false;
+pair<int, int> constrainedSeamsSingle;
+set<pair<int, int>> constrainedSeamsSet;
+void visualizeSeam(pair<int, int> which, igl::opengl::glfw::Viewer& viewer);
 bool pre_draw(igl::opengl::glfw::Viewer& viewer){
     viewer.data().dirty |= igl::opengl::MeshGL::DIRTY_DIFFUSE | igl::opengl::MeshGL::DIRTY_SPECULAR;
     if(simulate){
@@ -284,19 +287,20 @@ int main(int argc, char *argv[])
 //    cout<<garment_file_name<<" chosen file, thanks. "<<endl;
 
     string prefix = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/";
-    garment = "leggins";
+//    garment = "leggins";
     bool patternExists = true;
-    inverseMap = true;
+    inverseMap = false;
 //    garment = "tshirt";
-//    garment = "top";
-    string garment_file_name = prefix+ "leggins/leggins_3d/leggins_3d_merged.obj"; //smaller collision thereshold to make sure it is not "eaten" after intial step , 3.5 instead of 4.5
+
+    garment = "top";
+//    string garment_file_name = prefix+ "leggins/leggins_3d/leggins_3d_merged.obj"; //smaller collision thereshold to make sure it is not "eaten" after intial step , 3.5 instead of 4.5
 //    garment = "dress";
 //   string garmentExt = garment +"_4";
-//    garment = "skirt";
-    string garmentExt = garment+ "_1";
-
-//    string garmentExt = garment+ "_2";
-//    string garment_file_name = prefix + "moreGarments/"+ garmentExt+"/"+garment+"_3d.obj";
+    garment = "skirt";
+//    string garmentExt = garment+ "_1";
+//
+    string garmentExt = garment+ "_2";
+    string garment_file_name = prefix + "moreGarments/"+ garmentExt+"/"+garment+"_3d.obj";
 
     igl::readOBJ(garment_file_name, Vg, Fg);
     Timer t("Setup");
@@ -305,10 +309,10 @@ int main(int argc, char *argv[])
 //    string garment_pattern_file_name= igl::file_dialog_open();
 //    cout<<garment_pattern_file_name<<" chosen file for pattern, thanks. "<<endl;
 
-    string garment_pattern_file_name = prefix +"leggins/leggins_2d/leggins_2d.obj"; //
-//    string garment_pattern_file_name = prefix +"moreGarments/"+garmentExt+"/"+garment+"_2d.obj";
+//    string garment_pattern_file_name = prefix +"leggins/leggins_2d/leggins_2d.obj"; //
+    string garment_pattern_file_name = prefix +"moreGarments/"+garmentExt+"/"+garment+"_2d.obj";
     igl::readOBJ(garment_pattern_file_name, Vg_pattern, Fg_pattern);
-//    garment = "skirt_no1";
+    garment = "skirt_no2";
     symetry = true;
     if(symetry){
         bool insertPlane = true;
@@ -428,6 +432,7 @@ int main(int argc, char *argv[])
 //    string morphBody1left =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/moreGarments/dress_4/avatar_oneComponent_left.ply";
 //    string morphBody1right =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/moreGarments/dress_4/avatar_oneComponent_right.ply";
      avName = "avatar_missy_straight_05_OC";// good for skirt
+//     avName = "avatar_petite_curvy_01_OC";
 //    avName = "avatar_maternity_05_OC";
     string morphBody1 =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/CLO_avatars_oneComponent/"+ avName +".ply";//
     string morphBody1left =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/CLO_avatars_oneComponent/"+ avName +"_left.ply";
@@ -892,7 +897,7 @@ int main(int argc, char *argv[])
 
                 currPattern = mapFromVg;
                 Fg_pattern_curr = mapFromFg;
-                cout<<endl<<currPattern.rows()<<" curr pattern rows, faces  "<<Fg_pattern_curr.rows()<<endl;
+//                cout<<endl<<currPattern.rows()<<" curr pattern rows, faces  "<<Fg_pattern_curr.rows()<<endl;
                 preComputeAdaption();
                 if(inverseMap){
                     initialGuessAdaption(currPattern, mapToVg, perfPattVg, Fg_pattern_curr, perfPattFg, symetry, cornerSet,
@@ -912,7 +917,7 @@ int main(int argc, char *argv[])
                     cout<<" finished half map  "<<endl;
 
                 }
-                cout<<endl<<currPattern.rows()<<" curr pattern rows, second  faces  "<<Fg_pattern_curr.rows()<<endl;
+//                cout<<endl<<currPattern.rows()<<" curr pattern rows, second  faces  "<<Fg_pattern_curr.rows()<<endl;
                 viewer.selected_data_index = 2;
                 viewer.data().clear();
                 viewer.selected_data_index = 1;
@@ -956,7 +961,41 @@ int main(int argc, char *argv[])
             ImGui::InputDouble("Taylor Lazyness ", &(taylor_lazyness),  0, 0, "%0.2f");
             ImGui::InputDouble("Thereshold Mid  ", &(setTheresholdlMid),  0, 0, "%0.4f");
             ImGui::InputDouble("Thereshold Boundary  ", &(setTheresholdBound),  0, 0, "%0.4f");
+            if (ImGui::CollapsingHeader("Constrain seam", ImGuiTreeNodeFlags_OpenOnArrow)){
+                if(ImGui::Button("Select boundary vertex ", ImVec2(-1, 0))){
+                    mouse_mode = SELECTBOUNDSEAM;
+                    viewer.selected_data_index = 1;
+                    viewer.data().clear();
+                    viewer.selected_data_index = 0;
+                    viewer.data().clear();
+                    viewer.data().set_mesh(currPattern, Fg_pattern_curr);
+                    viewer.data().uniform_colors(ambient, diffuse, specular);
+                    viewer.data().show_texture = false;
+                    viewer.data().set_face_based(false);
+                    //remove wireframe
+                    viewer.data().show_lines = true;
 
+                }
+                if(ImGui::Button("Confirm Selection ", ImVec2(-1, 0))){
+                    mouse_mode = NONE;
+                    cout<<constrainedSeamsSingle.first<<" is the seam "<<endl;
+                    constrainedSeamsSet.insert(constrainedSeamsSingle);
+                    viewer.selected_data_index = 0;
+                    viewer.data().clear();
+                    viewer.data().set_mesh(currPattern, Fg_pattern_curr);
+                    viewer.data().uniform_colors(ambient, diffuse, specular);
+                    viewer.data().show_texture = false;
+                    viewer.data().set_face_based(false);
+                    //remove wireframe
+                    viewer.data().show_lines = true;
+
+                }
+                if(ImGui::Button("Clear Selection ", ImVec2(-1, 0))){
+                    constrainedSeamsSet.clear();
+                }
+
+
+            }
             if(ImGui::Button("Compute first Tear", ImVec2(-1, 0))){
                 simulate = false;
                 adaptionFlag = false;
@@ -984,7 +1023,7 @@ int main(int argc, char *argv[])
                             handledVerticesSet, prevTearFinished, LShapeAllowed,
                             prioInner, prioOuter, taylor_lazyness, mapFromFg, setTheresholdlMid,
                                  setTheresholdBound, fullPatternVertToHalfPatternVert, halfPatternVertToFullPatternVert, halfPatternFaceToFullPatternFace,
-                                 symetry, tipVert, midFractureForbidden);
+                                 symetry, tipVert, midFractureForbidden, constrainedSeamsSet);
 
                  changedPos = pos;
                  cout<<pos<<" Pos was changed"<<endl;
@@ -1142,7 +1181,7 @@ int main(int argc, char *argv[])
             }
 
         }
-        if (ImGui::CollapsingHeader("Modify adapted Pattern ", ImGuiTreeNodeFlags_DefaultOpen)){
+        if (ImGui::CollapsingHeader("Modify adapted Pattern ", ImGuiTreeNodeFlags_OpenOnArrow)){
             bool startSmooth = false;
             bool choosePatchArea = false;
             bool choosePatches = false;
@@ -1392,6 +1431,14 @@ int main(int argc, char *argv[])
                 string addedAreaFile = prefPattern+"removedAreas_"+avName+"_"+garment+".obj";
 //                 addedAreaFile =  "/Users/annaeggler/Desktop/mappedPatternWithSmoothedCuts.obj";
                 igl::readOBJ(addedAreaFile, currPattern, Fg_pattern_curr);
+                if(symetry){
+                    MatrixXd duplRemV; MatrixXi duplRemF;
+                    duplicatePattern(duplRemV, duplRemF,currPattern, Fg_pattern_curr, T_sym_pattern);
+                    igl::writeOBJ("duplicate_PatternRemoved_final_of_"+avName+"_"+garment+".obj" , duplRemV, duplRemF);
+                    currPattern.resize(duplRemV.rows(), 3); currPattern = duplRemV;
+                    Fg_pattern_curr.resize(duplRemF.rows(), 3); Fg_pattern_curr = duplRemF ;
+                }
+
                 viewer.selected_data_index = 0;
 
                 viewer.data().clear();
@@ -1402,34 +1449,24 @@ int main(int argc, char *argv[])
                 viewer.data().set_face_based(false);
                 MatrixXd C = MatrixXd::Zero(Fg_pattern_curr.rows(), 3);
 
-                C.col(0).setConstant(1);
-//                viewer.data().set_colors(C);
+                C.col(0).setConstant(0.8);
+                C.col(1).setConstant(0.1);
+                viewer.data().set_colors(C);
 
+
+                viewer.selected_data_index = 2;
+                viewer.data().clear();
                 viewer.selected_data_index = 1;
                 viewer.data().clear();
                 viewer.data().show_lines = false;
 
-                MatrixXd visToPattern = mapToVg;
-                MatrixXi Fg_toPattern = mapToFg; // todo not always
-                igl::boundary_loop(Fg_toPattern, boundaryL_toPattern);
-                int boundVert = 0;
-                for (auto bl: boundaryL_toPattern) {
-                    boundVert += bl.size();
-                    for (auto blj: bl) {
-                        toPattern_boundaryVerticesSet.insert(blj);
-                    }
-                }
-                MatrixXi boundaryOfToPattern(boundVert, 2);
-//                MatrixXd vertPoints (boundVert, 3);
-                int curr = 0;
-                for (auto bli: boundaryL_toPattern) {
-                    for (int j = 0; j < bli.size(); j++) {
-//                        vertPoints.row(curr) = visToPattern.row(boundaryL_toPattern[i][j]);
-                        boundaryOfToPattern(curr, 0) = bli[j];
-                        boundaryOfToPattern(curr, 1) = bli[(j + 1) % (bli.size())];
-                        curr++;
-                    }
-                }
+
+                MatrixXi Fg_toPattern = mapFromFg; // todo not always
+                MatrixXd Vg_toPattern = mapFromVg; // todo not always
+
+                MatrixXi boundaryOfToPattern;
+                computeBoundaryEdges(Fg_toPattern, boundaryOfToPattern);
+                viewer.data().set_edges(Vg_toPattern, boundaryOfToPattern, Eigen::RowVector3d(0, 0, 1));
 
 //                viewer.data().set_edges(visToPattern, boundaryOfToPattern, Eigen::RowVector3d(0, 0, 1));
 //                viewer.data().point_size = 5.f;}
@@ -1476,8 +1513,6 @@ int main(int argc, char *argv[])
                     igl::writeOBJ("duplicate_Pattern_final_of_"+avName+"_"+garment+".obj" , currPattern, Fg_pattern_curr);
 
                 }
-
-
             }
             if(ImGui::Button("Stitch 3D", ImVec2(-1, 0))){
                 MatrixXd adaptedPatternIn3d;
@@ -1547,10 +1582,10 @@ int main(int argc, char *argv[])
                 int size; vector<vector<int>> perFaceNewFaces;
 
                 cout<<"reading new faces from file"<<endl;
-                if(garment == "leggins"|| "top") patchcount = 5;
+//                if(garment == "leggins"|| "top") patchcount = 5;
 
                 string filename = "newFacesAfterPatch_"+avName+"_"+garment+"_"+ to_string(patchcount) +".txt";
-//                     filename  = "newFacesAfterPatch_"+avName+"_"+garment+"_final" +".txt";
+                     filename  = "newFacesAfterPatch_"+avName+"_"+garment+"_final" +".txt";
                 ifstream in("/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/" + filename);
                 in>>size;
                 for(int i=0; i<size; i++ ){
@@ -1974,6 +2009,136 @@ int computeClosestVertexOnMesh(Vector3d& b, int& fid, MatrixXi& F) {
         v_id = F(fid, 2);
     return v_id;
 }
+void visualizeSeam(pair<int, int> which, igl::opengl::glfw::Viewer& viewer){
+    int seamId = which.first;
+    int seamType = which.second;
+    MatrixXi edgesMat;
+    vector<vector<int>> boundaryUsed;
+    igl::boundary_loop( mapFromFg, boundaryUsed);
+    if(seamType ==1 ) {
+        int whichSeam = (seamId<0)? (seamId+1)*(-1): seamId;
+        for(int j=whichSeam; j<whichSeam+1; j++){
+            seam* firstSeam = seamsList[j];
+            auto stP1 = firstSeam-> getStartAndPatch1();
+            auto stP2 = firstSeam-> getStartAndPatch2ForCorres();
+            int len = firstSeam -> seamLength();
+            int boundLen1; bool es1 =  (stP1.second >=boundaryUsed.size() )? false : true;
+            if(es1 ) {
+                boundLen1 = boundaryUsed[stP1.second].size();
+            }
+            int boundLen2; bool es2 =  (stP2.second >=boundaryUsed.size() )? false : true;
+            if(es2){
+                boundLen2 = boundaryUsed[stP2.second].size();
+            }
+            if(!es1 && !es2)continue;
+            int size ;
+            if(!es1 || !es2) {size = len; }else size = 2*len;
+            edgesMat.resize(size, 2);
+            for(int i=0; i<=len; i++){
+                if(es1) {
+                    int next = (stP1.first + i) % boundLen1;
+                    if (i != 0) edgesMat(2 * (i - 1), 1) = boundaryUsed[stP1.second][next];
+                    if (i != len)edgesMat(2 * i, 0) = boundaryUsed[stP1.second][next];
+                }
+                if(es2){
+                int setAccess = (stP2.first-i)% boundLen2;
+                if(setAccess < 0) {
+                    setAccess +=boundLen2;
+                }
+                if(seamsList[j]->inverted) setAccess = (stP2.first + i) % boundLen2;
+                if (i!= 0) edgesMat(2*i-1, 1) = boundaryUsed[stP2.second][setAccess];
+                if (i!= len)edgesMat(2*i+1, 0) = boundaryUsed[stP2.second][setAccess];
+                }
+            }
+        }
+    }else{
+        int whichSeam = seamId;
+        for(int j = whichSeam; j<whichSeam+1; j++) {
+            minusOneSeam *currSeam = minusOneSeamsList[j];
+            int patch = currSeam->getPatch();
+            bool es1 =  (patch >=boundaryUsed.size() )? false : true;
+            if(!es1) continue;
+            int idx = currSeam->getStartIdx();
+            int len = currSeam->getLength();
+            edgesMat.resize(2 * (len), 2);
+            int ps = boundaryUsed[patch].size();
+            for (int i = 0; i <= len; i++) {
+
+                int next = (idx + i) % ps;
+                if (i != 0) edgesMat(2 * (i - 1), 1) = boundaryUsed[patch][next];
+                if (i != len)edgesMat(2 * i, 0) = boundaryUsed[ps][next];
+            }
+        }
+    }
+
+    viewer.selected_data_index = 1;
+    viewer.data().clear();
+    viewer.data().set_edges(currPattern, edgesMat, Eigen::RowVector3d(1, 0, 0));
+
+    viewer.selected_data_index = 0;
+    viewer.data().clear();
+    viewer.data().set_mesh(currPattern, Fg_pattern_curr);
+    viewer.data().uniform_colors(ambient, diffuse, specular);
+    viewer.data().show_texture = false;
+    viewer.data().set_face_based(false);
+    //remove wireframe
+    viewer.data().show_lines = false;
+}
+void findSeamOfVert(int v, igl::opengl::glfw::Viewer& viewer){
+    bool found = false; int seamId, seamType;
+    vector<vector<int>> boundaryUsed;
+    igl::boundary_loop( mapFromFg, boundaryUsed);
+    for(int j=0; j<seamsList.size(); j++ ) {
+        seam* firstSeam = seamsList[j];
+        auto stP1 = firstSeam-> getStartAndPatch1();
+        auto stP2 = firstSeam-> getStartAndPatch2ForCorres();
+        int len = firstSeam -> seamLength();
+
+        int boundLen1 = boundaryUsed[stP1.second].size();
+        int boundLen2 = boundaryUsed[stP2.second].size();
+
+        for(int i=0; i<=len; i++){
+            if(boundaryUsed[stP1.second][(stP1.first+i)% boundLen1] == v) {
+                found = true;
+                seamId = j; seamType = 1;
+                constrainedSeamsSingle =make_pair(seamId, seamType);
+
+            }
+            int setAccess = (stP2.first-i)% boundLen2;
+            if(setAccess < 0) {
+                setAccess +=boundLen2;
+            }
+            if(boundaryUsed[stP2.second][setAccess] == v) {
+                found = true;
+
+                seamId = (j+1)*(-1);
+                seamType = 1;
+                constrainedSeamsSingle =make_pair(seamId, seamType);
+
+            }
+        }
+    }
+    for(int j=0; j<minusOneSeamsList.size(); j++){
+        minusOneSeam *currSeam = minusOneSeamsList[j];
+        int patch = currSeam->getPatch();
+        int idx =  currSeam->getStartIdx();
+        int len = currSeam->getLength();
+        int ps = boundaryUsed[patch].size();
+        for(int i=0; i<len; i++){
+            if(boundaryUsed[patch][(idx+i)% ps] == v ){
+                found = true;
+                seamType = -1;
+                seamId = j ;
+
+                constrainedSeamsSingle = make_pair(seamId, seamType);
+
+            }
+        }
+    }
+    if(found){
+        visualizeSeam(constrainedSeamsSingle, viewer);
+    }
+}
 bool callback_mouse_down(igl::opengl::glfw::Viewer& viewer, int button, int modifier){
     if(mouse_mode == SELECTBOUNDARY || mouse_mode == SELECTPATCH ){
         if (button == (int)igl::opengl::glfw::Viewer::MouseButton::Right)
@@ -2002,8 +2167,8 @@ bool callback_mouse_down(igl::opengl::glfw::Viewer& viewer, int button, int modi
             int v_id = computeClosestVertexOnMesh(b, fid, Fg_pattern_curr);
             viewer.data().set_points(Vrs.row(v_id), RowVector3d(1.0, 0.0, 0.0));
             cout<<"Selected vertex "<<v_id<<endl;
+             startAndEnd.push_back(v_id);
 
-            startAndEnd.push_back(v_id);
             return true;
         }
     }
@@ -2131,6 +2296,20 @@ bool callback_mouse_down(igl::opengl::glfw::Viewer& viewer, int button, int modi
         }
 
     }
+    if(mouse_mode == SELECTBOUNDSEAM){
+        int fid;
+        Eigen::Vector3d b;
+        MatrixXd Vrs = currPattern;
+
+        if (computePointOnMesh(viewer, Vrs, Fg_pattern_curr, b, fid)) {
+            int v_id = computeClosestVertexOnMesh(b, fid, Fg_pattern_curr);
+            viewer.data().set_points(Vrs.row(v_id), RowVector3d(1.0, 0.0, 0.0));
+            cout<<"Selected vertex "<<v_id<<endl;
+            findSeamOfVert(v_id, viewer);
+
+            return true;
+        }
+    }
     return false;
 }
 
@@ -2187,18 +2366,11 @@ void computeBaryCoordsGarOnNewMannequin(igl::opengl::glfw::Viewer& viewer){
             double oldx = -1;
             if(abs(Vg(i, 0))<1){
                oldx = Vg(i, 0);
-//                cout<<i<<" was "<<Vg.row(i)<<endl;
             }
             Vg.row(i) = newPos.transpose() + distVec(i) * N.row(i);
             if(oldx !=-1){
                 Vg(i, 0) = oldx ;
-//                cout<<"is now "<<Vg.row(i)<<endl;
             }
-//            if (i == 694 || i == 508 || i == 696 || i == 1290) {
-//                cout << i << " has closest face " << closestFaceId(i) << endl;
-//                cout << " its bary coords are " << Bary << " and the normal is " << N.row(i) << endl;
-//                cout << " so we bring it back as " << newPos.transpose() << " and finial " << Vg.row(i) << endl;
-//            }
         }
     }
 
@@ -2274,50 +2446,6 @@ void showMannequin(igl::opengl::glfw::Viewer& viewer) {
     viewer.data().uniform_colors(ambient_grey, diffuse_grey, specular);
     viewer.data().show_texture = false;
     viewer.data().set_face_based(false);
-}
-void translateMesh(igl::opengl::glfw::Viewer& viewer, int whichMesh ){
-    if (whichMesh == 1){
-        // we translate the garment, but based on the original mesh vg_orig in order to simplify gui
-        for(int i=0; i<3; i++){
-            auto temp = Vg_orig.col(i).array()+garment_translation[i];
-            Vg.col(i) = temp;
-        }
-        Vg *= garment_scale;
-        Vg_pattern = Vg_pattern_orig * garment_scale;
-//        igl::writeOBJ("shrinkedGarment_2D.obj", Vg_pattern, Fg_pattern);
-//        std::cout<<" 2D Garment file written"<<endl;
-
-        // recompute the garment edge lengths
-        for (int j=0; j<e4size; j++) {
-            int id0 = e4list(j, 0);
-            int id1 = e4list(j, 1);
-            int id2 = e4list(j, 2);
-            int id3 = e4list(j, 3);
-            Vector3r pos0 = Vg.row(id0);
-            Vector3r pos1 = Vg.row(id1);
-            Vector3r pos2 = Vg.row(id2);
-            Vector3r pos3 = Vg.row(id3);
-
-            PBD.init_IsometricBendingConstraint(pos0, pos1, pos2, pos3, Q(j));
-        }
-        igl::edge_lengths(Vg, Fg, edgeLengths);
-        preComputeConstraintsForRestshape();
-        preComputeStretch();
-        computeStress(viewer);
-        showGarment(viewer);
-    }else if (whichMesh == 2){
-        // we translate the mannequin, hence the vertices Vm
-        for(int i=0; i<3; i++){
-            auto temp = Vm_orig.col(i).array()+mannequin_translation[i];
-            Vm.col(i)=temp;
-        }
-        Vm *= mannequin_scale;
-        showMannequin(viewer);
-        setNewMannequinMesh(viewer);
-        cout<<" setting collision mesh "<<endl;
-        setCollisionMesh();
-        cout<<" collision mesh finished "<<endl;
-    }
 }
 bool callback_key_down(igl::opengl::glfw::Viewer& viewer, unsigned char key, int modifiers) {
     bool keyRecognition= false;
