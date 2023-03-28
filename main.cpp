@@ -186,7 +186,7 @@ VectorXd geoDistDist; // geodesic distances
 vector<vector<int>> boundaryLFrom;
 
 void preComputeAdaption();
-void computeBaryCoordsGarOnNewMannequin(igl::opengl::glfw::Viewer& viewer);
+void computeBaryCoordsGarOnNewMannequin(igl::opengl::glfw::Viewer& viewer,bool otherUsed, MatrixXd& otherM);
 void setNewGarmentMesh(igl::opengl::glfw::Viewer& viewer);
 void setNewMannequinMesh(igl::opengl::glfw::Viewer& viewer);
 void showGarment(igl::opengl::glfw::Viewer& viewer);
@@ -215,7 +215,7 @@ bool callback_mouse_down(igl::opengl::glfw::Viewer& viewer, int button, int modi
 void updateChangedBaryCoordinates(int changedPosition, vector<vector<int>>& vfFromPatt);
 bool midFractureForbidden= false ;
 bool forceCut= false; bool forceClosed = false;
-bool showOnly = false;
+bool showOnly = false;BodyInterpolator* body_interpolator;
 pair<int, int> constrainedSeamsSingle;
 set<pair<int, int>> constrainedSeamsSet;
 void visualizeSeam(pair<int, int> which, igl::opengl::glfw::Viewer& viewer);
@@ -443,6 +443,7 @@ int main(int argc, char *argv[])
 //    string morphBody1right =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/avatar/avatar_one_component_right.ply";
 
     igl::readPLY(morphBody1, testMorph_V1, testMorph_F1);
+    body_interpolator = new BodyInterpolator(Vm_orig, testMorph_V1, testMorph_F1);
     igl::readPLY(morphBody1left, testMorph_V1left, testMorph_F1left);
     igl::readPLY(morphBody1right, testMorph_V1right, testMorph_F1right);
 
@@ -489,7 +490,8 @@ int main(int argc, char *argv[])
     Vg_orig = Vg;
 
     setCollisionMesh();
-    computeBaryCoordsGarOnNewMannequin(viewer);// contains boundary vertices now, needed for simulation, colsestFaceId
+    MatrixXd dummy;
+    computeBaryCoordsGarOnNewMannequin(viewer, false,dummy );// contains boundary vertices now, needed for simulation, colsestFaceId
 //    Vg = Vg_orig;
     Vm = testMorph_V1;
     Vm_orig = testMorph_V1;
@@ -2318,16 +2320,18 @@ bool callback_mouse_down(igl::opengl::glfw::Viewer& viewer, int button, int modi
     return false;
 }
 
-void computeBaryCoordsGarOnNewMannequin(igl::opengl::glfw::Viewer& viewer){
-    VectorXd distVec(Vg.rows());
-
+void computeBaryCoordsGarOnNewMannequin(igl::opengl::glfw::Viewer& viewer, bool useOtherModel, MatrixXd& otherM){
+    VectorXd distVec(garmentPreInterpol.rows());
+    MatrixXd targetM;
+    if(useOtherModel){targetM = otherM;
+    }else {targetM =  testMorph_V1; }
     constrainedVertexIds.clear();
     vector<vector<int> > vvAdj, vfAdj;
     igl::adjacency_list(Fg,vvAdj);
     createVertexFaceAdjacencyList(Fg, vfAdj);
     int boundarycount = 0;
 
-    igl::signed_distance(Vg, Vm, Fm, igl::SIGNED_DISTANCE_TYPE_UNSIGNED, distVec, closestFaceId, C, N);
+    igl::signed_distance(garmentPreInterpol, mannequinPreInterpol, Fm, igl::SIGNED_DISTANCE_TYPE_UNSIGNED, distVec, closestFaceId, C, N);
     N.resize(Vg.rows(), 3);
 
 
@@ -2340,37 +2344,37 @@ void computeBaryCoordsGarOnNewMannequin(igl::opengl::glfw::Viewer& viewer){
             int closestFace = closestFaceId(i);
 
 
-            Vector3d a = Vm.row(Fm(closestFace, 0));
-            Vector3d b = Vm.row(Fm(closestFace, 1));
-            Vector3d c = Vm.row(Fm(closestFace, 2));
+            Vector3d a = mannequinPreInterpol.row(Fm(closestFace, 0));
+            Vector3d b = mannequinPreInterpol.row(Fm(closestFace, 1));
+            Vector3d c = mannequinPreInterpol.row(Fm(closestFace, 2));
 //don't quite understand why it is not the normal of the new mannequin
             Vector3d normalVec = FN_m.row(closestFace);// N.row(i);
 
-            Vector3d currVert = Vg.row(i) - (distVec(i) * normalVec).transpose();
+            Vector3d currVert = garmentPreInterpol.row(i) - (distVec(i) * normalVec).transpose();
             MatrixXd input(1, 3);
             input.row(0) = currVert;
             MatrixXd Bary;
-            igl::barycentric_coordinates(input, Vm.row(Fm(closestFace, 0)), Vm.row(Fm(closestFace, 1)),
-                                         Vm.row(Fm(closestFace, 2)), Bary);
+            igl::barycentric_coordinates(input, mannequinPreInterpol.row(Fm(closestFace, 0)), mannequinPreInterpol.row(Fm(closestFace, 1)),
+                                         mannequinPreInterpol.row(Fm(closestFace, 2)), Bary);
 
             Vector3d currInBary = Bary.row(0);
-
-            if (isBoundaryVertex(Vg, i, vvAdj, vfAdj)) {
-                constrainedVertexIds.emplace_back(i); // (i)= 1;
-                boundarycount++;
-                constrainedVertexBarycentricCoords.emplace_back(std::make_pair(currInBary, closestFace));
-                constrainedVertexDistance.push_back(distVec(i));
+            if(!useOtherModel) {
+                if (isBoundaryVertex(garmentPreInterpol, i, vvAdj, vfAdj)) {
+                    constrainedVertexIds.emplace_back(i); // (i)= 1;
+                    boundarycount++;
+                    constrainedVertexBarycentricCoords.emplace_back(std::make_pair(currInBary, closestFace));
+                    constrainedVertexDistance.push_back(distVec(i));
+                }
+                allVertexBarycentricCoords.emplace_back(std::make_pair(currInBary, closestFace));
             }
-            allVertexBarycentricCoords.emplace_back(std::make_pair(currInBary, closestFace));
-
-            a = testMorph_V1.row(Fm(closestFace, 0));
-            b = testMorph_V1.row(Fm(closestFace, 1));
-            c = testMorph_V1.row(Fm(closestFace, 2));
+            a = targetM.row(Fm(closestFace, 0));
+            b = targetM.row(Fm(closestFace, 1));
+            c = targetM.row(Fm(closestFace, 2));
             N.row(i) = ((b - a).cross(c - a)).normalized();
             Vector3d newPos = currInBary(0) * a + currInBary(1) * b + currInBary(2) * c;
             double oldx = -1;
-            if(abs(Vg(i, 0))<1){
-               oldx = Vg(i, 0);
+            if(abs(garmentPreInterpol(i, 0))<1){
+               oldx = garmentPreInterpol(i, 0);
             }
             Vg.row(i) = newPos.transpose() + distVec(i) * N.row(i);
             if(oldx !=-1){
@@ -2384,8 +2388,8 @@ void computeBaryCoordsGarOnNewMannequin(igl::opengl::glfw::Viewer& viewer){
     igl::adjacency_list(Fg, vvAdjGar);
     createVertexFaceAdjacencyList(Fg, vfAdjGar);
 
-    for(int i = 0; i<Vg.rows(); i++){
-        bool isBound = isBoundaryVertex(Vg, i, vvAdjGar, vfAdjGar );
+    for(int i = 0; i<garmentPreInterpol.rows(); i++){
+        bool isBound = isBoundaryVertex(garmentPreInterpol, i, vvAdjGar, vfAdjGar );
         if(abs(Vg(i,0))<1 && !isBound){
             double zcoord = 0;
             for(int j=0; j<vvAdjGar[i].size(); j++){
@@ -2452,6 +2456,7 @@ void showMannequin(igl::opengl::glfw::Viewer& viewer) {
     viewer.data().show_texture = false;
     viewer.data().set_face_based(false);
 }
+double interp=0;
 bool callback_key_down(igl::opengl::glfw::Viewer& viewer, unsigned char key, int modifiers) {
     bool keyRecognition= false;
 
@@ -2547,18 +2552,21 @@ bool callback_key_down(igl::opengl::glfw::Viewer& viewer, unsigned char key, int
     }
     if(key == 'B'){     // Bending
         cout<<" writing mapped pattern "<<endl;
-        igl::writeOBJ("mappedPattern.obj", currPattern, Fg_pattern);
-       // reset(viewer);
-//        simulate= false;
-//        Fm = testMorph_F0;
-//        Vm = testMorph_V0;
-//        cout<<Vm.rows()<<" and faces "<<Fm.rows()<<endl;
-//        viewer.selected_data_index = 0;
-//        viewer.data().clear();
  //       setNewMannequinMesh(viewer);
-//        cout<<"should be set"<<endl;
-//        body_interpolator = new BodyInterpolator(testMorph_V0, testMorph_V1, testMorph_F0);
-//       //
+
+        MatrixXd V_updated;
+        interp +=0.1;
+        if(interp>1) interp = 1;
+        body_interpolator->interpolateMesh(interp, V_updated);
+        viewer.selected_data_index = 0;
+        viewer.data().clear();
+        viewer.selected_data_index = 2;
+        viewer.data().clear();
+        viewer.selected_data_index = 1;
+        viewer.data().clear();
+        viewer.data().set_mesh(V_updated, Fm);
+        computeBaryCoordsGarOnNewMannequin(viewer, true, V_updated);
+        showGarment(viewer);
         keyRecognition = true;
 
     }
@@ -3061,7 +3069,7 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
 
     changedPos = -1;
 //    t.printTime(" init ");
-    for(int i=0; i<1; i++){
+    for(int i=0; i<12; i++){
         solveStretchAdaption();
 //        t.printTime(" stretch ");
 
