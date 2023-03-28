@@ -214,7 +214,7 @@ int computeClosestVertexOnMesh(Vector3d& b, int& fid, MatrixXi& F);
 bool callback_mouse_down(igl::opengl::glfw::Viewer& viewer, int button, int modifier);
 void updateChangedBaryCoordinates(int changedPosition, vector<vector<int>>& vfFromPatt);
 bool midFractureForbidden= false ;
-bool forceCut= false;
+bool forceCut= false; bool forceClosed = false;
 bool showOnly = false;
 pair<int, int> constrainedSeamsSingle;
 set<pair<int, int>> constrainedSeamsSet;
@@ -292,14 +292,14 @@ int main(int argc, char *argv[])
     inverseMap = false;
 //    garment = "tshirt";
 
-    garment = "top";
+//    garment = "top";
 //    string garment_file_name = prefix+ "leggins/leggins_3d/leggins_3d_merged.obj"; //smaller collision thereshold to make sure it is not "eaten" after intial step , 3.5 instead of 4.5
 //    garment = "dress";
 //   string garmentExt = garment +"_4";
     garment = "skirt";
-//    string garmentExt = garment+ "_1";
-//
-    string garmentExt = garment+ "_2";
+    string garmentExt = garment+ "_1";
+
+//    string garmentExt = garment+ "_2";
     string garment_file_name = prefix + "moreGarments/"+ garmentExt+"/"+garment+"_3d.obj";
 
     igl::readOBJ(garment_file_name, Vg, Fg);
@@ -312,7 +312,7 @@ int main(int argc, char *argv[])
 //    string garment_pattern_file_name = prefix +"leggins/leggins_2d/leggins_2d.obj"; //
     string garment_pattern_file_name = prefix +"moreGarments/"+garmentExt+"/"+garment+"_2d.obj";
     igl::readOBJ(garment_pattern_file_name, Vg_pattern, Fg_pattern);
-    garment = "skirt_no2";
+//    garment = "skirt_no2";
     symetry = true;
     if(symetry){
         bool insertPlane = true;
@@ -351,49 +351,49 @@ int main(int argc, char *argv[])
             splitAndSmooth(Vg, Fg, Vg_pattern, Fg_pattern, VgPatternRet, FgPatternRet, VgRet, FgRet, garment);
             startAndEnd.clear();
             if (garment == "skirt_no2"){
-                startAndEnd.push_back(711);
-                startAndEnd.push_back(714);
-                startAndEnd.push_back(708);
+                startAndEnd.push_back(698);
+                startAndEnd.push_back(695);
+                startAndEnd.push_back(693);
             }else if (garment == "skirt"){
-                startAndEnd.push_back(410);
-                startAndEnd.push_back(413);
-                startAndEnd.push_back(409);
+                startAndEnd.push_back(405);
+                startAndEnd.push_back(406);
+                startAndEnd.push_back(404);
             }
             smoothBetweenVertices(VgPatternRet, FgPatternRet, startAndEnd);
             igl::writeOBJ("leftPattern_SmoothBoundAfter1.obj", VgPatternRet, FgPatternRet);
 
             startAndEnd.clear();
             if (garment == "skirt_no2") {
-                startAndEnd.push_back(679);
-                startAndEnd.push_back(697);
-                startAndEnd.push_back(670);
+                startAndEnd.push_back(700);
+                startAndEnd.push_back(699);
+                startAndEnd.push_back(696);
             }else if  (garment == "skirt"){
-                startAndEnd.push_back(404);
-                startAndEnd.push_back(403);
-                startAndEnd.push_back(400);
+                startAndEnd.push_back(425);
+                startAndEnd.push_back(424);
+                startAndEnd.push_back(427);
             }
             smoothBetweenVertices(VgPatternRet, FgPatternRet, startAndEnd);
 
             startAndEnd.clear();
             if (garment == "skirt_no2") {
-                startAndEnd.push_back(704);
-                startAndEnd.push_back(700);
-                startAndEnd.push_back(698);
+                startAndEnd.push_back(677);
+                startAndEnd.push_back(669);
+                startAndEnd.push_back(651);
             }else if  (garment == "skirt"){
-                startAndEnd.push_back(406);
-                startAndEnd.push_back(407);
-                startAndEnd.push_back(405);
+                startAndEnd.push_back(400);
+                startAndEnd.push_back(399);
+                startAndEnd.push_back(398);
             }
             smoothBetweenVertices(VgPatternRet, FgPatternRet, startAndEnd);
             startAndEnd.clear();
             if (garment == "skirt_no2") {
-                startAndEnd.push_back(707);
-                startAndEnd.push_back(706);
-                startAndEnd.push_back(702);
+                startAndEnd.push_back(704);
+                startAndEnd.push_back(703);
+                startAndEnd.push_back(701);
             }else if  (garment == "skirt"){
-                startAndEnd.push_back(448);
-                startAndEnd.push_back(446);
-                startAndEnd.push_back(456);
+                startAndEnd.push_back(402);
+                startAndEnd.push_back(397);
+                startAndEnd.push_back(401);
             }
             smoothBetweenVertices(VgPatternRet, FgPatternRet, startAndEnd);
 
@@ -1161,9 +1161,14 @@ int main(int argc, char *argv[])
                 igl::writeOBJ("finished_tear_writtenPattern_"+avName+"_"+garment+".obj", currPattern, Fg_pattern_curr);
                 cout<<"File written to finished_tear_writtenPattern_ "<<endl;
             }
-            if(ImGui::Button("Zip Tears:Check or Next", ImVec2(-1, 0))){
-                zipTears( cutPositions, currPattern, Fg_pattern_curr, mapFromFg, mapFromVg, halfPatternFaceToFullPatternFace, inverseMap);
+            if (ImGui::CollapsingHeader("Zip Tears ", ImGuiTreeNodeFlags_OpenOnArrow)){
+                if(ImGui::Button("Zip Tears:Check or Next", ImVec2(-1, 0))){
+                    zipTears( cutPositions, currPattern, Fg_pattern_curr, mapFromFg, mapFromVg, halfPatternFaceToFullPatternFace, inverseMap, forceClosed);
+                    forceClosed = false;
+                }
+                if(ImGui::Checkbox("Force keep closed ", &forceClosed)){}
             }
+
             if(ImGui::Checkbox("Allow L-shaped fabric insertion", &LShapeAllowed)){}
             if(ImGui::Checkbox("Prioritize Inner Cuts", &prioInner)){
                 prioOuter = false;

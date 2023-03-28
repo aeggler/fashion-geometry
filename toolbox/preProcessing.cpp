@@ -621,9 +621,10 @@ bool isCorner(int id, MatrixXi& Fg,set<int>& cornersOfGar,  MatrixXi& Fg_pattern
 //    }
 //    return false;
 }
-void edgeCollapse(MatrixXd& Vg, MatrixXi& Fg, MatrixXd Vg_pattern, MatrixXi Fg_pattern, string garment) {
+void edgeCollapse(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg_pattern, string garment) {
     set<int> cornersOfGar;
     set<int> freecorners;
+    double theresh = 7.;
     if (garment == "skirt_no2") {
         freecorners.insert(704);
         freecorners.insert(707);
@@ -641,6 +642,22 @@ void edgeCollapse(MatrixXd& Vg, MatrixXi& Fg, MatrixXd Vg_pattern, MatrixXi Fg_p
         cornersOfGar.insert(708);
         cornersOfGar.insert(711);
 
+    }else if(garment=="skirt"){
+        theresh= 9;
+        cornersOfGar.insert(404);
+        cornersOfGar.insert(400);
+        cornersOfGar.insert(405);
+        cornersOfGar.insert(406);
+
+        cornersOfGar.insert(410);
+        cornersOfGar.insert(409);
+        cornersOfGar.insert(456);
+        cornersOfGar.insert(448);
+
+        freecorners.insert(404);
+        freecorners.insert(406);
+        freecorners.insert(456);
+        freecorners.insert(409);
     }
     int count = 0;
     vector<vector<int>> boundaryLoop;
@@ -653,8 +670,6 @@ for(int iterations = 0; iterations < 5 ; iterations++){
             createVertexFaceAdjacencyList(Fg, vfAdjGar);
             igl::adjacency_list(Fg_pattern, vvAdj);
             igl::adjacency_list(Fg, vvAdjGar);
-
-            double theresh = 7.;
 
             int id0 = boundaryLoop[i][l];
             int id1 = boundaryLoop[i][(l + 1) % boundaryLoop[i].size()];
@@ -675,31 +690,21 @@ for(int iterations = 0; iterations < 5 ; iterations++){
                 while (Fg_pattern(face, idx1) != id1) { idx1++; }
                 int id1G = Fg(face, idx1);
 
-                cout << "Collapsing edge between " << id0 << " and " << id1 << endl;
-                cout << "or edge between " << id0G << " and " << id1G << endl;
-
                 RowVectorXd newpos, newposGar;
                 if (corner0) {
                     if(freecorners.find(id0)==freecorners.end()){
-                        cout<<"nope 0"<<endl;
                         continue;
                     }
-
-                    cout << "corner 0 " << endl;
                     newpos = Vg_pattern.row(id0);
                     newposGar = Vg.row(id0G);
                 } else if (corner1) {
                     if(freecorners.find(id1)==freecorners.end()){
-                        cout<<"nope 1"<<endl;
-
                         continue;
                     }
-                    cout << "corner 1 " << endl;
                     newpos = Vg_pattern.row(id1);
                     newposGar = Vg.row(id1G);
 
                 } else {
-                    cout << " no corner involved" << endl;
                     newpos = (Vg_pattern.row(id0) + Vg_pattern.row(id1)) / 2;
                     newposGar = (Vg.row(id0G) + Vg.row(id1G)) / 2;
 
@@ -707,15 +712,12 @@ for(int iterations = 0; iterations < 5 ; iterations++){
                 Vg_pattern.row(id0) = newpos;
                 Vg.row(id0G) = newposGar;
 
-
                 for (int j = 0; j < vfAdj[id1].size(); j++) {
                     int ii = 0;
                     while (Fg_pattern(vfAdj[id1][j], ii) != id1) {
                         ii++;
                     }
                     Fg_pattern(vfAdj[id1][j], ii) = id0;
-                    cout<<Fg_pattern(vfAdj[id1][j])<<" updating pattern face "<<vfAdj[id1][j] <<endl;
-
                 }
 
                 for (int j = 0; j < vfAdjGar[id1G].size(); j++) {
@@ -724,7 +726,6 @@ for(int iterations = 0; iterations < 5 ; iterations++){
                         ii++;
                     }
                     Fg(vfAdjGar[id1G][j], ii) = id0G;
-                    cout<<Fg(vfAdjGar[id1G][j])<<" updating face "<<vfAdjGar[id1G][j] <<endl;
                 }
 
                 MatrixXd VgNew(Vg_pattern.rows() - 1, 3);
@@ -752,8 +753,6 @@ for(int iterations = 0; iterations < 5 ; iterations++){
                 set<int> cornersNew, freecornersNew;
                 for (int it: cornersOfGar) {
                     if (it > id1) {
-
-                        cout<<"update corner "<<it - 1<<" "<<id1G<<endl;
                         cornersNew.insert(it - 1);
                         if(freecorners.find(it)!=freecorners.end()){
                             freecornersNew.insert(it-1);
@@ -789,19 +788,18 @@ for(int iterations = 0; iterations < 5 ; iterations++){
                 Vg_pattern = VgNew;
                 Fg_pattern.resize(FgNew_pat.rows(), 3);
                 Fg_pattern = FgNew_pat;
-                igl::writeOBJ("collapsed.obj", Vg_pattern, Fg_pattern);
+//                igl::writeOBJ("leftPatternBeforeSmooth.obj", Vg_pattern, Fg_pattern);
 
                 Vg.resize(VgGarNew.rows(), 3);
                 Vg = VgGarNew;
                 Fg.resize(FgGarNew.rows(), 3);
                 Fg = FgGarNew;
-                igl::writeOBJ("collapsedGar.obj", Vg, Fg);
+//                igl::writeOBJ("leftGarmentBeforeSmooth.obj", Vg, Fg);
                 vector<vector<int>> boundaryLoopNew;
                 igl::boundary_loop(Fg_pattern, boundaryLoopNew);
                 boundaryLoop.clear();
                 boundaryLoop = boundaryLoopNew;
                 count ++;
-//                if(count==6) return;
 
             }
         }
@@ -809,6 +807,7 @@ for(int iterations = 0; iterations < 5 ; iterations++){
     }
 }
     igl::writeOBJ("collapsed.obj", Vg_pattern, Fg_pattern);
+
 
 }
 void splitAndSmooth(MatrixXd& Vg,MatrixXi& Fg,MatrixXd& Vg_pattern,MatrixXi& Fg_pattern,
@@ -897,7 +896,7 @@ void splitAndSmooth(MatrixXd& Vg,MatrixXi& Fg,MatrixXd& Vg_pattern,MatrixXi& Fg_
             count++;
         }
     }
-    if(newVg_pattern.rows() == 691){// risky tweak for shirt
+    if(garment =="skirt"){
         VectorXi componentIdPerVert;
         igl::vertex_components(newFg_pattern, componentIdPerVert);
         for(int i=0; i<newVg_pattern.rows(); i++){
@@ -907,6 +906,8 @@ void splitAndSmooth(MatrixXd& Vg,MatrixXi& Fg,MatrixXd& Vg_pattern,MatrixXi& Fg_
             }
         }
     }
+    igl::writeOBJ("leftPatternBeforecoll.obj", newVg_pattern, newFg_pattern);
+    edgeCollapse (newVg, newFg, newVg_pattern, newFg_pattern, garment);
 
     VgRet.resize(newVg.rows(), 3);
     VgRet= newVg;
@@ -918,7 +919,6 @@ void splitAndSmooth(MatrixXd& Vg,MatrixXi& Fg,MatrixXd& Vg_pattern,MatrixXi& Fg_
     FgPatternRet.resize(newFg_pattern.rows(), 3);
     FgPatternRet= newFg_pattern;
     igl::writeOBJ("leftPatternBeforeSmooth.obj", newVg_pattern, newFg_pattern);
-    edgeCollapse (newVg, newFg, newVg_pattern, newFg_pattern, garment);
 }
 
 void preProcessGarment(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg_pattern, bool insPlane, int symVert1, int symVert2 ,VectorXd& T_sym, string garment){

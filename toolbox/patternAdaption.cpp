@@ -324,7 +324,9 @@ void findCorrectSeamAndAddToDuplicates(vector<seam*>& seamsList, vector<minusOne
 }
 void checkIfCutIsUsefulForAdjFace(bool& tearIsUseful,  vector<vector<int> >& vfAdj,cutVertEntry*& cve,
                                   Vector3d& cutDirection, MatrixXi& Fg, set<int>& handledVerticesSet ,bool isBound ){
+    cout<<" checking if cut is useful";
     for(auto faceIdx : vfAdj[cve->vert]){
+        cout<<" for face "<<faceIdx<<" ";
         auto cd = cutDirection.normalized();
         cd(0)= -cutDirection.normalized()(1);
         cd(1)= cutDirection.normalized()(0);
@@ -1189,6 +1191,8 @@ void addVarToModel (bool inverseMap, int vert, int prevVert, int nextVert, vecto
                 cutVar[varCount].set(GRB_DoubleAttr_Obj, 0);
             }else{
                 int tailorLazyFactor = 1; if(corner) tailorLazyFactor*= tailor_lazyness;
+                if(vert==23||vert==362)cout<<tailorLazyFactor*w_init<<"fin w of "<<vert<<endl;
+
                 try{
                     cutVar[varCount].set(GRB_DoubleAttr_Obj, tailorLazyFactor * w_init);
 
@@ -1536,13 +1540,14 @@ void setLP(bool inverseMap, std::vector<std::vector<int> >& boundaryL , vector<v
 
                     // check if the corners exist already. If so then connect with corner, else add the indices
                     // todo for L cutting allowance
-                    if(!inverseMap){
+                    if(!inverseMap && !midIllegal ){
                         if(trackCornerIds.find(vert) != trackCornerIds.end()){
                             model.addConstr(cutVar[ trackCornerIds[vert]] + cutVar[varCount] <= 1);
                         }else{
                             trackCornerIds[vert] = varCount;
                         }
                     }
+
 
                     int prevVert = -1;
                     while (vert != end) {// first part always exits
@@ -1584,7 +1589,8 @@ void setLP(bool inverseMap, std::vector<std::vector<int> >& boundaryL , vector<v
                     }// handle the last, add it to the right sum
 
                     //  make sure duplicate corner is chosen only once, and if we found the last consider its duplicate with start of this patch
-                    if(!inverseMap) {
+                    if(!inverseMap && !midIllegal) {
+                        cout<<"mid illegal?"<<midIllegal<<endl;
                         if (trackCornerIds.find(end) != trackCornerIds.end()) {
                             model.addConstr(cutVar[trackCornerIds[end]] + cutVar[varCount] <= 1);
                         } else {
@@ -1639,7 +1645,7 @@ void setLP(bool inverseMap, std::vector<std::vector<int> >& boundaryL , vector<v
                     int nextvert = boundaryL[patch1][nextidx];
 
                     // check if vert is in map, if so then add constraint to connect it
-                    if(!inverseMap){
+                    if(!inverseMap && !midIllegal ){
                         if(trackCornerIds.find(vert) != trackCornerIds.end()){
                             model.addConstr(cutVar[ trackCornerIds[vert]] + cutVar[varCount] <= 1);
                         }else{
@@ -1683,7 +1689,7 @@ void setLP(bool inverseMap, std::vector<std::vector<int> >& boundaryL , vector<v
                         if(inHalfOther) otherVert =  boundaryL[patch2][(idx2Orig + count) %  boundaryL[patch2].size() ];
 
                     }// handle the least element and set constraints
-                    if(!inverseMap) {
+                    if(!inverseMap && !midIllegal) {
                         if (trackCornerIds.find(end) != trackCornerIds.end()) {
                             model.addConstr(cutVar[trackCornerIds[end]] + cutVar[varCount] <= 1);
                         } else {
@@ -1768,7 +1774,7 @@ void setLP(bool inverseMap, std::vector<std::vector<int> >& boundaryL , vector<v
                      seamsList, minusOneSeams,  boundaryL, Fg_pattern, currPattern,vfAdj, inverted , fullPatternVertToHalfPatternVert);
             int searchedVert = ( halfPatternVertToFullPatternVert.find(vert) == halfPatternVertToFullPatternVert.end()) ? (-1)*vert : vert;
             if( inverseMap|| cornerVert[halfPatternVertToFullPatternVert[vert]]==1 ){
-                cout<<"corner   TODO CHECK IF STARTER OR END! "<<endl;
+                cout<<"corner "<<endl;//checkif starttorend
                 cve->cornerInitial = vert;
 //                // left or right corner?
                 int firstInSeam;
@@ -2133,26 +2139,26 @@ int computeTear(bool inverseMap, Eigen::MatrixXd & fromPattern, MatrixXd&  currP
 
         prevFinished = cutPositions[count] -> finFlag;
 
-        if( releasedVertNew.find(currVert) != releasedVertNew.end()){
-            // dann können müssen wir ja auch die passende andere seite des cuts öffnen
-            // achtung, das ist nicht die corresponding seam
-            // es kann aber noch nicht von einer anderen Seite geöffnett sein. daher nimm idx [0] von den released vert
-            int parallel;
-            if(symetry && inverseMap){
-                parallel = openParallelPositionInvSym(cutPositions[count]-> cornerInitial, releasedVertNew[currVert][0], seamsList, cutPositions, fullPatternVertToHalfPatternVert, halfPatternVertToFullPatternVert);
-
-            }else parallel = openParallelPosition(cutPositions[count]-> cornerInitial, releasedVertNew[currVert][0], seamsList, cutPositions, fullPatternVertToHalfPatternVert, halfPatternVertToFullPatternVert);
-            if(parallel<0) {cout<<"no proper parallel found"<<endl;continue;}else{
-                cout<<endl<<"Working on parallel: "<<parallel<<endl<<endl;
-            }
-
-            splitVertexFromCVE(cutPositions[parallel], currPattern, Fg_pattern_curr, vfAdj, boundaryL, seamsList,
-                               minusOneSeams, releasedVert, toPattern_boundaryVerticesSet,
-                               cornerSet, handledVerticesSet, LShapeAllowed, fromPattern, mapFromFg,
-                               fullPatternVertToHalfPatternVert, halfPatternVertToFullPatternVert, halfPatternFaceToFullPatternFace);
-            prevFinished = (prevFinished && cutPositions[parallel] -> finFlag);
-
-        }
+//        if( releasedVertNew.find(currVert) != releasedVertNew.end()){
+//            // dann können müssen wir ja auch die passende andere seite des cuts öffnen
+//            // achtung, das ist nicht die corresponding seam
+//            // es kann aber noch nicht von einer anderen Seite geöffnett sein. daher nimm idx [0] von den released vert
+//            int parallel;
+//            if(symetry && inverseMap){
+//                parallel = openParallelPositionInvSym(cutPositions[count]-> cornerInitial, releasedVertNew[currVert][0], seamsList, cutPositions, fullPatternVertToHalfPatternVert, halfPatternVertToFullPatternVert);
+//
+//            }else parallel = openParallelPosition(cutPositions[count]-> cornerInitial, releasedVertNew[currVert][0], seamsList, cutPositions, fullPatternVertToHalfPatternVert, halfPatternVertToFullPatternVert);
+//            if(parallel<0) {cout<<"no proper parallel found"<<endl;continue;}else{
+//                cout<<endl<<"Working on parallel: "<<parallel<<endl<<endl;
+//            }
+//
+//            splitVertexFromCVE(cutPositions[parallel], currPattern, Fg_pattern_curr, vfAdj, boundaryL, seamsList,
+//                               minusOneSeams, releasedVert, toPattern_boundaryVerticesSet,
+//                               cornerSet, handledVerticesSet, LShapeAllowed, fromPattern, mapFromFg,
+//                               fullPatternVertToHalfPatternVert, halfPatternVertToFullPatternVert, halfPatternFaceToFullPatternFace);
+//            prevFinished = (prevFinished && cutPositions[parallel] -> finFlag);
+//
+//        }
 
     }
 
@@ -2592,15 +2598,24 @@ void fitVecToPointSet( MatrixXd& pointVec, VectorXd& vec ){
 
 }
 int zipCount = 0 ;
-void checkZip( cutVertEntry*& cve,  MatrixXd& Vg, MatrixXi& Fg, MatrixXi& mapFromFg, MatrixXd& mapFromVg, map<int, int>& halfPatternFaceToFullPatternFace, bool inverseMap){
+void checkZip( cutVertEntry*& cve,  MatrixXd& Vg, MatrixXi& Fg, MatrixXi& mapFromFg, MatrixXd& mapFromVg, map<int, int>& halfPatternFaceToFullPatternFace, bool inverseMap, bool forceClosed){
     // simple measure: if the stress at the start vert is too high, release
     bool tearIsUseful = false;
     set<int> dummy;
     Vector3d cutDirection;
     bool isCorner = (cve->startCorner || cve-> endCorner);
+    cout<<"checking zip " <<isCorner<<endl;
     if(isCorner){
+        if(cve-> boundaryFrac.size()==0) {
+            cout<<" nothing to do"<<endl;
+            return;
+        }
         cutDirection = (Vg.row(cve-> boundaryFrac[1].first) - Vg.row(cve-> boundaryFrac[0].first));
     }else{
+        if(cve-> dulicatePairs.size()==0) {
+            cout<<" nothingtodo"<<endl;
+            return;
+        }
         cutDirection = (Vg.row(cve-> dulicatePairs[1].first) - Vg.row(cve-> dulicatePairs[0].first));
     }
     vector<vector<int> > vfAdj;
@@ -2608,7 +2623,7 @@ void checkZip( cutVertEntry*& cve,  MatrixXd& Vg, MatrixXi& Fg, MatrixXi& mapFro
     computePerFaceUV( Fg,   mapFromFg,  mapFromVg, Vg, halfPatternFaceToFullPatternFace, inverseMap);
 
     checkIfCutIsUsefulForAdjFace(tearIsUseful, vfAdj, cve, cutDirection, Fg, dummy, isCorner );
-    if(tearIsUseful){
+    if(tearIsUseful && !forceClosed){
         cout<<"Undo previous zip"<<endl;
         cout<<"erasing ";
         if(isCorner){
@@ -2632,10 +2647,11 @@ void checkZip( cutVertEntry*& cve,  MatrixXd& Vg, MatrixXi& Fg, MatrixXi& mapFro
     cout<<" Remainig zip back vert "<<zipBack.size()<<" "<<zipMiddle.size() <<endl;
 
 }
-void zipTears(vector<cutVertEntry*>& cutPositions, MatrixXd& Vg, MatrixXi& Fg, MatrixXi& mapFromFg, MatrixXd& mapFromVg, map<int, int>& halfPatternFaceToFullPatternFace, bool inverseMap){
+void zipTears(vector<cutVertEntry*>& cutPositions, MatrixXd& Vg, MatrixXi& Fg, MatrixXi& mapFromFg, MatrixXd& mapFromVg,
+              map<int, int>& halfPatternFaceToFullPatternFace, bool inverseMap, bool forceClosed){
     cout<<zipCount<<" in Zip Tears function"<<endl;
     if(zipCount == 0 ) sort(cutPositions.begin(), cutPositions.end(), []( cutVertEntry* &a,  cutVertEntry* &b) { return a->cutId < b-> cutId; });
-    if(zipCount > 0) checkZip(cutPositions[zipCount-1], Vg, Fg, mapFromFg, mapFromVg,halfPatternFaceToFullPatternFace, inverseMap );
+    if(zipCount > 0) checkZip(cutPositions[zipCount-1], Vg, Fg, mapFromFg, mapFromVg,halfPatternFaceToFullPatternFace, inverseMap, forceClosed );
 
     int i = zipCount;
     cutVertEntry* cve = cutPositions[i];

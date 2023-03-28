@@ -170,12 +170,15 @@ void computeAllSeams(const std::vector<std::vector<int> >& boundaryL, std::map<i
     }else if (garment == "skirt_no2"){
         additionalCorners.insert(369);
         additionalCorners.insert(31);
-        additionalCorners.insert(804);
-        additionalCorners.insert(1142);
-        additionalCorners.insert(296);
-        additionalCorners.insert(1069);
+
+        additionalCorners.insert(772);
+        additionalCorners.insert(1110);
+
+        additionalCorners.insert(1043);
         additionalCorners.insert(302);
-        additionalCorners.insert(1075);
+
+        additionalCorners.insert(296);
+        additionalCorners.insert(1037);
     }
 
 //

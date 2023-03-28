@@ -142,6 +142,7 @@ void setUpMap( const std::vector<std::vector<int> >& boundaryL,map<int,int> & fu
 
 void updatePatchId(vector<cutVertEntry*>& cutPositions, const std::vector<std::vector<int> >& boundaryLnew, vector<seam*>& seamsList, vector<minusOneSeam*> & minusOneSeams, map<int, int >& fullPatternVertToHalfPatternVert);
 void fitVecToPointSet( MatrixXd& pointVec, VectorXd& vec );
-void zipTears(vector<cutVertEntry*>& cutPositions, MatrixXd& Vg, MatrixXi& Fg, MatrixXi& mapFromFg, MatrixXd& mapFromVg, map<int, int>& halfPatternFaceToFullPatternFace, bool inverseMap);
+void zipTears(vector<cutVertEntry*>& cutPositions, MatrixXd& Vg, MatrixXi& Fg, MatrixXi& mapFromFg, MatrixXd& mapFromVg,
+              map<int, int>& halfPatternFaceToFullPatternFace, bool inverseMap, bool forceClosed);
 
 #endif //EXAMPLE_PATTERNADAPTION_H
