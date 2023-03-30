@@ -38,6 +38,7 @@ file(GLOB SRC_FILES main.cpp
         toolbox/postProcessing.cpp          toolbox/postProcessing.h
         triangle/triangle.c                 triangle/triangle.h
         toolbox/preProcessing.cpp           toolbox/preProcessing.h
+        toolbox/exportFunctions.cpp         toolbox/exportFunctions.h
         )
 add_executable(${PROJECT_NAME} ${SRC_FILES})
 target_link_libraries(${PROJECT_NAME} PUBLIC igl::glfw igl::imgui  )#igl_restricted::triangle

@@ -39,7 +39,7 @@
 #include "toolbox/postProcessing.h"
 #include "toolbox/preProcessing.h"
 #include "toolbox/seam.h"
-
+#include "toolbox/exportFunctions.h"
 using namespace std;
 using namespace Eigen;
 typedef double Real;
@@ -297,9 +297,9 @@ int main(int argc, char *argv[])
 //    garment = "dress";
 //   string garmentExt = garment +"_4";
     garment = "skirt";
-    string garmentExt = garment+ "_1";
+//    string garmentExt = garment+ "_1";
 
-//    string garmentExt = garment+ "_2";
+    string garmentExt = garment+ "_2";
     string garment_file_name = prefix + "moreGarments/"+ garmentExt+"/"+garment+"_3d.obj";
 
     igl::readOBJ(garment_file_name, Vg, Fg);
@@ -312,7 +312,7 @@ int main(int argc, char *argv[])
 //    string garment_pattern_file_name = prefix +"leggins/leggins_2d/leggins_2d.obj"; //
     string garment_pattern_file_name = prefix +"moreGarments/"+garmentExt+"/"+garment+"_2d.obj";
     igl::readOBJ(garment_pattern_file_name, Vg_pattern, Fg_pattern);
-//    garment = "skirt_no2";
+    garment = "skirt_no2";
     symetry = true;
     if(symetry){
         bool insertPlane = true;
@@ -2409,6 +2409,7 @@ void setNewGarmentMesh(igl::opengl::glfw::Viewer& viewer) {
     igl::edges(Fg, Eg);
     showGarment(viewer);
 }
+double interp=0;
 void showGarment(igl::opengl::glfw::Viewer& viewer) {
     viewer.selected_data_index = 0;
     viewer.data().clear();
@@ -2427,6 +2428,14 @@ void showGarment(igl::opengl::glfw::Viewer& viewer) {
     if(whichStressVisualize == 1){
         igl::jet(normU, 0., 2., colU);
         viewer.data().set_colors(colU);
+        MatrixXd Ka, Ks, Kd;
+        Ka = viewer.data().F_material_ambient;
+        Kd = viewer.data().F_material_diffuse;
+        Ks = viewer.data().F_material_specular;
+        string dir = "u";
+        writeMTL(Ka,Ks, Kd, Vg, Fg, garment, avName, interp, dir );
+
+        cout<<"finished writing "<<endl;
     }else if (whichStressVisualize == 2){
         igl::jet(normV, 0.5, 1.5, colV);
         viewer.data().set_colors(colV);
@@ -2456,7 +2465,7 @@ void showMannequin(igl::opengl::glfw::Viewer& viewer) {
     viewer.data().show_texture = false;
     viewer.data().set_face_based(false);
 }
-double interp=0;
+
 bool callback_key_down(igl::opengl::glfw::Viewer& viewer, unsigned char key, int modifiers) {
     bool keyRecognition= false;
 
@@ -2565,7 +2574,9 @@ bool callback_key_down(igl::opengl::glfw::Viewer& viewer, unsigned char key, int
         viewer.selected_data_index = 1;
         viewer.data().clear();
         viewer.data().set_mesh(V_updated, Fm);
+        viewer.data().uniform_colors(ambient_grey, diffuse_grey, specular);
         computeBaryCoordsGarOnNewMannequin(viewer, true, V_updated);
+        computeStress(viewer);
         showGarment(viewer);
         keyRecognition = true;
 
