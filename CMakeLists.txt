@@ -20,7 +20,7 @@ igl_include_optional(restricted triangle)
 #igl_include(triangle)
 #set(PMP_VERSION 1.2.0)
 #include_directories("external/triangle")
-
+include_directories(Clipper)
 # which directories to process
 
 
@@ -39,6 +39,7 @@ file(GLOB SRC_FILES main.cpp
         triangle/triangle.c                 triangle/triangle.h
         toolbox/preProcessing.cpp           toolbox/preProcessing.h
         toolbox/exportFunctions.cpp         toolbox/exportFunctions.h
+        Clipper/clipper.cpp                 Clipper/clipper.hpp
         )
 add_executable(${PROJECT_NAME} ${SRC_FILES})
 target_link_libraries(${PROJECT_NAME} PUBLIC igl::glfw igl::imgui  )#igl_restricted::triangle

@@ -11,3 +11,6 @@
 using namespace Eigen;
 using namespace std;
 void writeMTL(MatrixXd& Ka, MatrixXd& Ks, MatrixXd& Kd, MatrixXd& Vg, MatrixXi& Fg, string garment, string avName, double interp, string dir);
+
+void clipDifference(vector<vector<int>>& boundaryL_adaptedFromPattern,vector<vector<int>>& boundaryL_toPattern,
+                    MatrixXd & currPattern, MatrixXd& Vg_to,  vector<vector<VectorXd>>& returnVec);

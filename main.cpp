@@ -1370,7 +1370,14 @@ int main(int argc, char *argv[])
                 //todo changes with mesh, maybe constrain the boundary vertices
                 computeAllBetweens( polylineSelected, polylineIndex,polyLineMeshIndicator, boundaryL_adaptedFromPattern,
                                     boundaryL_toPattern, currPattern, mapToVg ,polyLineInput, connectedVert, isAscVert, isAscMerge );
-
+                vector<vector<VectorXd>> returnVec;
+                clipDifference(boundaryL_adaptedFromPattern,
+                               boundaryL_toPattern, currPattern, mapToVg, returnVec);
+                for(int i=0; i<returnVec.size(); i++){
+                    MatrixXd cliV; MatrixXi cliF;
+                    startRetriangulation(returnVec[i], cliV, cliF);
+                    igl::writeOBJ("clipper_"+to_string(i)+".obj", cliV, cliF);
+                }
 
                 startRetriangulation(polyLineInput, Vg_retri, Fg_retri);
                 cout<<" vertices inserted "<<Vg_retri.rows()<<endl;
