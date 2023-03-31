@@ -379,11 +379,20 @@ bool vertOnEdge(const VectorXd& R, const VectorXd& Q, VectorXd& p,int v, int v1)
     double tt=  (p-R)(1)/(QR)(1);
 // numerically instable as quite often the x or y corrdinate is the same... compute both and take better choice
     double finalT = t;
-    if((0 > t || t > 1 ) && (0> tt || tt>1 )) return false;
-    if (0 > t || t > 1 ) {// t does not work anyways ,try with tt
-        finalT =tt; if((v==282 && v1 ==283) ||(v==283 && v1 ==282) )cout<<" t is illegal";
-    }else if (0> tt || tt>1 )  {
-        finalT =t; if((v==282 && v1 ==283) ||(v==283 && v1 ==282) )cout<<" tt is illegal";
+    if(v==354|| v1 ==354)cout<<v<<" v, "<<t<<" or tt "<<tt<<endl;
+    if(abs(t)<0.01) t=0;
+    if(abs(tt)<0.01) tt=0;
+    if(v==354|| v1 ==354)cout<<v<<" v, "<<t<<" or tt "<<tt<<endl;
+    if((-0.01 > t || t > 1.01 ) && (-0.01> tt || tt>1.01 )) {
+            if(v==354|| v1 ==354) cout<<"both too small, returning"<<endl;
+            return false;
+    }
+    if (0.01 > t || t > 1.01 ) {// t does not work anyways ,try with tt
+        finalT =tt;
+        if((v==354|| v1 ==354) ||(v==283 && v1 ==282) )cout<<" t is illegal";
+    }else if (0.01> tt || tt>1.01 )  {
+        finalT =t;
+        if((v==282 && v1 ==283) ||(v==283 && v1 ==282) )cout<<" tt is illegal";
     }else if( ((R+t*(QR))-p).norm()< ((R+tt*(QR))-p).norm())
     {
         finalT = t; if((v==282 && v1 ==283) ||(v==283 && v1 ==282) ) cout<<"use t "<<t<<endl;

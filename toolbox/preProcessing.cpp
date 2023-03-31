@@ -1174,6 +1174,9 @@ void preProcessGarment(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixX
         T_sym(2)=0;
     }else{
         T_sym = Vg_pattern.row(symVert1 ) - VgDupl_pattern.row(symVert2);
+        if(garment =="top"){
+            T_sym(0)+=50;
+        }
 
     }
     VgDupl_pattern.rowwise() += T_sym.transpose();

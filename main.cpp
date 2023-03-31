@@ -292,14 +292,14 @@ int main(int argc, char *argv[])
     inverseMap = false;
 //    garment = "tshirt";
 
-//    garment = "top";
+    garment = "top";
 //    string garment_file_name = prefix+ "leggins/leggins_3d/leggins_3d_merged.obj"; //smaller collision thereshold to make sure it is not "eaten" after intial step , 3.5 instead of 4.5
 //    garment = "dress";
 //   string garmentExt = garment +"_4";
-    garment = "skirt";
-//    string garmentExt = garment+ "_1";
-
-    string garmentExt = garment+ "_2";
+//    garment = "skirt";
+    string garmentExt = garment+ "_1";
+//
+//    string garmentExt = garment+ "_2";
     string garment_file_name = prefix + "moreGarments/"+ garmentExt+"/"+garment+"_3d.obj";
 
     igl::readOBJ(garment_file_name, Vg, Fg);
@@ -312,7 +312,7 @@ int main(int argc, char *argv[])
 //    string garment_pattern_file_name = prefix +"leggins/leggins_2d/leggins_2d.obj"; //
     string garment_pattern_file_name = prefix +"moreGarments/"+garmentExt+"/"+garment+"_2d.obj";
     igl::readOBJ(garment_pattern_file_name, Vg_pattern, Fg_pattern);
-    garment = "skirt_no2";
+//    garment = "skirt_no2";
     symetry = true;
     if(symetry){
         bool insertPlane = true;
@@ -431,9 +431,9 @@ int main(int argc, char *argv[])
 //    string morphBody1 =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/moreGarments/dress_4/avatar_oneComponent.ply";
 //    string morphBody1left =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/moreGarments/dress_4/avatar_oneComponent_left.ply";
 //    string morphBody1right =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/moreGarments/dress_4/avatar_oneComponent_right.ply";
-     avName = "avatar_missy_straight_05_OC";// good for skirt
+//     avName = "avatar_missy_straight_05_OC";// good for skirt
 //     avName = "avatar_petite_curvy_01_OC";
-//    avName = "avatar_maternity_05_OC";
+    avName = "avatar_maternity_05_OC";
     string morphBody1 =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/CLO_avatars_oneComponent/"+ avName +".ply";//
     string morphBody1left =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/CLO_avatars_oneComponent/"+ avName +"_left.ply";
     string morphBody1right =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/CLO_avatars_oneComponent/"+ avName +"_right.ply";
@@ -1105,6 +1105,7 @@ int main(int argc, char *argv[])
                     cout<<seamsList[1]->getStart1()<<" and end "<<seamsList[1] ->getEndCornerIds().first<<endl;
                     updatePatchId(cutPositions, boundaryLnew,seamsList, minusOneSeamsList, fullPatternVertToHalfPatternVert );
                     cout<<seamsList[1]->getStart1()<<" and after "<<seamsList[1] ->getEndCornerIds().first<<endl;
+                    igl::writeOBJ("debugPattern.obj", currPattern, Fg_pattern_curr);
                 }
                 boundaryL.clear();
                 boundaryL= boundaryLnew;
@@ -2565,7 +2566,7 @@ bool callback_key_down(igl::opengl::glfw::Viewer& viewer, unsigned char key, int
 
         MatrixXd V_updated;
         interp +=0.1;
-        if(interp>1) interp = 1;
+        if(interp>1) interp -= 1;
         body_interpolator->interpolateMesh(interp, V_updated);
         viewer.selected_data_index = 0;
         viewer.data().clear();
