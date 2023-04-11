@@ -1368,22 +1368,32 @@ int main(int argc, char *argv[])
                 igl::boundary_loop( Fg_pattern_curr, boundaryL_adaptedFromPattern );
 
                 //todo changes with mesh, maybe constrain the boundary vertices
-                computeAllBetweens( polylineSelected, polylineIndex,polyLineMeshIndicator, boundaryL_adaptedFromPattern,
-                                    boundaryL_toPattern, currPattern, mapToVg ,polyLineInput, connectedVert, isAscVert, isAscMerge );
+//                computeAllBetweens( polylineSelected, polylineIndex,polyLineMeshIndicator, boundaryL_adaptedFromPattern,
+//                                    boundaryL_toPattern, currPattern, mapToVg ,polyLineInput, connectedVert, isAscVert, isAscMerge );
                 vector<vector<VectorXd>> returnVec;
                 clipDifference(boundaryL_adaptedFromPattern,
                                boundaryL_toPattern, currPattern, mapToVg, returnVec);
                 for(int i=0; i<returnVec.size(); i++){
                     MatrixXd cliV; MatrixXi cliF;
                     startRetriangulation(returnVec[i], cliV, cliF);
-                    igl::writeOBJ("clipper_"+to_string(i)+".obj", cliV, cliF);
+                    VectorXd dblA;
+                    igl::doublearea(cliV, cliF, dblA);
+                    double sum=0;
+                    for(int i=0; i<dblA.rows(); i++){
+                        sum+= dblA(i);
+                    }
+                    cout<<"Sum of "<<i<<" is "<<sum<<endl;
+                    if(sum>=100){
+                        igl::writeOBJ("clipper_"+to_string(i)+".obj", cliV, cliF);
+
+                    }
                 }
 
-                startRetriangulation(polyLineInput, Vg_retri, Fg_retri);
-                cout<<" vertices inserted "<<Vg_retri.rows()<<endl;
-                cout<<" faces inserted"<<Fg_retri.rows()<<endl;
+//                startRetriangulation(polyLineInput, Vg_retri, Fg_retri);
+//                cout<<" vertices inserted "<<Vg_retri.rows()<<endl;
+//                cout<<" faces inserted"<<Fg_retri.rows()<<endl;
 
-
+                igl::readOBJ("clipper_"+to_string(0)+".obj", Vg_retri, Fg_retri);
                 viewer.selected_data_index = 1;
                 viewer.data().clear();
                 viewer.data().show_lines = true;

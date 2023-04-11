@@ -211,6 +211,8 @@ void startRetriangulation(vector<VectorXd>& polylineSelected, MatrixXd& V2, Matr
 
     triangulateFAKE(V, E, H, flags, V2, F2 );
 
+
+
 }
 void duplicatePattern(MatrixXd& currPattern, MatrixXi& Fg_pattern_curr, MatrixXd& addedFabricPatternVg, MatrixXi& addedFabricPatternFg, VectorXd& T_symetry){
 // create symmetric vertices and add them to matrix
