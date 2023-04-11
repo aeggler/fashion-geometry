@@ -219,6 +219,7 @@ bool showOnly = false;BodyInterpolator* body_interpolator;
 pair<int, int> constrainedSeamsSingle;
 set<pair<int, int>> constrainedSeamsSet;
 void visualizeSeam(pair<int, int> which, igl::opengl::glfw::Viewer& viewer);
+int patchCounter = 0;
 bool pre_draw(igl::opengl::glfw::Viewer& viewer){
     viewer.data().dirty |= igl::opengl::MeshGL::DIRTY_DIFFUSE | igl::opengl::MeshGL::DIRTY_SPECULAR;
     if(simulate){
@@ -1244,132 +1245,11 @@ int main(int argc, char *argv[])
                 mouse_mode = NONE;
                 cout<<"End smoothing selection"<<endl;
             }
-
-            if(ImGui::Checkbox("Select area to triangulate", &choosePatchArea)){
-                cout<<"Please choose an area to triangulate. Attention, the following order is required "<<endl;
-                cout<<"      |           |        "<<endl;
-                cout<<"      v2          v3       "<<endl;
-                cout<<"      |           |        "<<endl;
-                cout<<" --v0--v1         v4 -- v5 "<<endl;
-                cout<<"       |           |       "<<endl;
-                cout<<"Note that v0, ,v1, v4 and v5 should be inside the original mesh i.e yellow area. Click on the area within the mesh to get the closest point. "
-
-                      "v2, v3 should be withing the blue boundary line, in direction of the triangulated area. "<<endl<<endl;
-                cout<<"For a single cut insertion simply chose the corner points (#2)"<<endl<<endl;
-                cout<<"For an insertion between two disconnected parts of a patch, click 8 vertices, current and blue line alternating"<<endl<<endl;
-
-                polylineSelected.clear();
-                polylineIndex.clear();
-                polyLineMeshIndicator.clear();
-                connectedVert.clear();
-                isAscVert.clear();
-                isAscMerge.clear();
-
-                viewer.selected_data_index = 0;
-                viewer.data().clear();
-                viewer.data().show_lines = true;
-                viewer.data().set_mesh(currPattern, Fg_pattern_curr);
-                viewer.data().uniform_colors(ambient, diffuse, specular);
-                viewer.data().show_texture = false;
-                viewer.data().set_face_based(false);
-
-                viewer.selected_data_index = 1;
-                viewer.data().clear();
-                viewer.data().show_lines = true;
-
-                MatrixXd visToPattern = mapToVg;
-                MatrixXi Fg_toPattern = mapToFg; // todo not always
-                igl::boundary_loop(Fg_toPattern, boundaryL_toPattern);
-                int boundVert = 0;
-                for(auto bl: boundaryL_toPattern){
-                    boundVert += bl.size();
-                    for(auto  blj : bl){
-                        toPattern_boundaryVerticesSet.insert(blj);
-                    }
-                }
-                MatrixXi boundaryOfToPattern(boundVert, 2);
-//                MatrixXd vertPoints (boundVert, 3);
-                int curr = 0;
-                for (auto bli:  boundaryL_toPattern){
-                    for(int j=0; j<bli.size(); j++){
-//                        vertPoints.row(curr) = visToPattern.row(boundaryL_toPattern[i][j]);
-                        boundaryOfToPattern(curr, 0) = bli [j];
-                        boundaryOfToPattern(curr, 1) = bli [(j + 1) % (bli.size())];
-                        curr++;
-                    }
-                }
-
-                viewer.data().set_edges(visToPattern, boundaryOfToPattern, Eigen::RowVector3d(0, 0, 1));
-//                viewer.data().point_size = 5.f;
-//                viewer.data().set_points(vertPoints, Eigen::RowVector3d(0, 0, 1));
-                mouse_mode= SELECTAREA;
-            }
-            if(ImGui::Checkbox("Connect patches to triangulate", &choosePatches)){
-                cout<<" V0 _________________ v9, v10, v11"<<endl;
-                cout<<" |                 |V8"<<endl;
-                cout<<" |                 |"<<endl;
-                cout<<" |V1               |"<<endl;
-                cout<<" |                 |V7"<<endl;
-                cout<<" |                 |"<<endl;
-                cout<<" |V2___v3___v4__v5_|V6"<<endl;
-                cout<<" we assume V0-2 to be on the current pattern (patch 1), and V6-8 patch2"<<endl;
-                cout<< "further v2-4 & 9-11 are on patch c on the vg_to pattern"<<endl;
-                cout<< "if for some the vertices are the same, there is just not enough between"<<endl;
-                polylineSelected.clear();
-                polylineIndex.clear();
-                polyLineMeshIndicator.clear();
-                connectedVert.clear();
-                viewer.selected_data_index = 0;
-                viewer.data().clear();
-                viewer.data().show_lines = true;
-                viewer.data().set_mesh(currPattern, Fg_pattern_curr);
-                viewer.data().uniform_colors(ambient, diffuse, specular);
-                viewer.data().show_texture = false;
-                viewer.data().set_face_based(false);
-
-                viewer.selected_data_index = 1;
-                viewer.data().clear();
-                viewer.data().show_lines = true;
-
-                MatrixXd visToPattern = mapToVg;
-                MatrixXi Fg_toPattern = mapToFg; // todo not always
-                igl::boundary_loop(Fg_toPattern, boundaryL_toPattern);
-                int boundVert = 0;
-                for(auto bli : boundaryL_toPattern){
-                    boundVert += bli.size();
-                    for(auto blij : bli){
-                        toPattern_boundaryVerticesSet.insert(blij);
-                    }
-                }
-                MatrixXi boundaryOfToPattern(boundVert, 2);
-                MatrixXd vertPoints (boundVert, 3);
-                int curr = 0;
-                for(auto bli : boundaryL_toPattern){
-                    for(int j=0; j<bli.size(); j++){
-                        vertPoints.row(curr) = visToPattern.row(bli[j]);
-                        boundaryOfToPattern(curr, 0) = bli[j];
-                        boundaryOfToPattern(curr, 1) = bli[(j + 1) % (bli.size())];
-                        curr++;
-                    }
-                }
-
-                viewer.data().set_edges(visToPattern, boundaryOfToPattern, Eigen::RowVector3d(0, 0, 1));
-                viewer.data().point_size = 8.f;
-                viewer.data().set_points(vertPoints, Eigen::RowVector3d(0, 0, 1));
-                mouse_mode= SELECTAREAPATCHES;
-            }
-            if(ImGui::Button("Confirm area", ImVec2(-1, 0))){
-                if(polylineSelected.size()<2){
-                    cout<<"No, choose at least 2 positions"<<endl;
-                }
-
-                vector<VectorXd> polyLineInput ;
+            if(ImGui::Button("Clip area", ImVec2(-1, 0))){
                 std::vector<std::vector<int> > boundaryL_adaptedFromPattern;
                 igl::boundary_loop( Fg_pattern_curr, boundaryL_adaptedFromPattern );
-
-                //todo changes with mesh, maybe constrain the boundary vertices
-//                computeAllBetweens( polylineSelected, polylineIndex,polyLineMeshIndicator, boundaryL_adaptedFromPattern,
-//                                    boundaryL_toPattern, currPattern, mapToVg ,polyLineInput, connectedVert, isAscVert, isAscMerge );
+                MatrixXi Fg_toPattern = mapToFg; // todo not always
+                igl::boundary_loop(Fg_toPattern, boundaryL_toPattern);
                 vector<vector<VectorXd>> returnVec;
                 clipDifference(boundaryL_adaptedFromPattern,
                                boundaryL_toPattern, currPattern, mapToVg, returnVec);
@@ -1384,49 +1264,47 @@ int main(int argc, char *argv[])
                     }
                     cout<<"Sum of "<<i<<" is "<<sum<<endl;
                     if(sum>=100){
-                        igl::writeOBJ("clipper_"+to_string(i)+".obj", cliV, cliF);
-
+                        igl::writeOBJ("clipper_"+to_string(patchCounter)+".obj", cliV, cliF);
+                        patchCounter++;
                     }
                 }
 
-//                startRetriangulation(polyLineInput, Vg_retri, Fg_retri);
-//                cout<<" vertices inserted "<<Vg_retri.rows()<<endl;
-//                cout<<" faces inserted"<<Fg_retri.rows()<<endl;
-
                 igl::readOBJ("clipper_"+to_string(0)+".obj", Vg_retri, Fg_retri);
-                viewer.selected_data_index = 1;
-                viewer.data().clear();
-                viewer.data().show_lines = true;
-                viewer.data().set_mesh(Vg_retri, Fg_retri);
-                viewer.data().uniform_colors(ambient, diffuse, specular);
-                viewer.data().show_texture = false;
-                viewer.data().set_face_based(false);
-            }
-            if(ImGui::Button("Add Area to Pattern", ImVec2(-1, 0))) {
+
                 mouse_mode = NONE;
-                if(!inverseMap) {
-                    mergeTriagulatedAndPattern(connectedVert, isAscVert, isAscMerge, Vg_retri, Fg_retri, currPattern,
-                                               Fg_pattern_curr, newFaces, avName, garment);
-                }else{
-                    int offset = removePatchVg.rows();
-                    for(int i=0; i<Fg_retri.rows(); i++){
-                        for(int j=0; j<3; j++){
-                            Fg_retri(i,j)+= offset;
+                for(int patchi=0; patchi< patchCounter; patchi++) {
+                    MatrixXd Vg_retrii;
+                    MatrixXi Fg_retrii;
+                    igl::readOBJ("clipper_" + to_string(patchi) + ".obj", Vg_retrii, Fg_retrii);
+                    Fg_retri.resize(Fg_retrii.rows(), Fg_retrii.cols());
+                    Fg_retri= Fg_retrii;
+
+                    Vg_retri.resize(Vg_retrii.rows(), Vg_retrii.cols());
+                    Vg_retri= Vg_retrii;
+
+                    if (!inverseMap) {
+                        mergeTriagulatedAndPattern(connectedVert, isAscVert, isAscMerge, Vg_retri, Fg_retri,
+                                                   currPattern,
+                                                   Fg_pattern_curr, newFaces, avName, garment);
+                    } else {
+                        int offset = removePatchVg.rows();
+                        for (int i = 0; i < Fg_retri.rows(); i++) {
+                            for (int j = 0; j < 3; j++) {
+                                Fg_retri(i, j) += offset;
+                            }
                         }
+                        MatrixXd dupl = removePatchVg;
+                        removePatchVg.resize(offset + Vg_retri.rows(), 3);
+                        removePatchVg.block(0, 0, offset, 3) = dupl;
+                        removePatchVg.block(offset, 0, Vg_retri.rows(), 3) = Vg_retri;
+
+                        MatrixXi duplF = removePatchFg;
+                        removePatchFg.resize(duplF.rows() + Fg_retri.rows(), 3);
+                        removePatchFg.block(0, 0, duplF.rows(), 3) = duplF;
+                        removePatchFg.block(duplF.rows(), 0, Fg_retri.rows(), 3) = Fg_retri;
+                        igl::writeOBJ("removedAreas_" + avName + "_" + garment + ".obj", removePatchVg, removePatchFg);
+
                     }
-                    MatrixXd dupl = removePatchVg;
-                    removePatchVg.resize(offset+ Vg_retri.rows(), 3);
-                    removePatchVg.block(0,0,offset, 3)= dupl;
-                    removePatchVg.block(offset, 0,  Vg_retri.rows(), 3) =  Vg_retri;
-
-
-                    MatrixXi duplF = removePatchFg;
-                    removePatchFg.resize(duplF.rows()+ Fg_retri.rows(), 3);
-                    removePatchFg.block(0,0,duplF.rows(), 3)= duplF;
-                    removePatchFg.block(duplF.rows(), 0,  Fg_retri.rows(), 3) =  Fg_retri;
-                    igl::writeOBJ("removedAreas_"+avName+"_"+garment+".obj",removePatchVg, removePatchFg );
-
-
                 }
                 viewer.selected_data_index = 1;
                 viewer.data().clear();
@@ -1446,10 +1324,7 @@ int main(int argc, char *argv[])
                 patchcount++;
 
             }
-            if(ImGui::Button("End Area", ImVec2(-1, 0))) {
-                cout<<"End area selection"<<endl;
-                mouse_mode = NONE;
-            }
+
             if(ImGui::Button("Visualize to be removed Area", ImVec2(-1, 0))) {
                 // or use removedPatchVg & Fg
                 string prefPattern = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/";
