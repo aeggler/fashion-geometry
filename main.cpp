@@ -164,7 +164,7 @@ vector<int> polyLineMeshIndicator;
 //Eigen::SparseMatrix<double> L;
 MatrixXd Vg_retri;// re triangulated area
 MatrixXi Fg_retri;// re triangulated face
-vector<vector<int>> connectedVert; vector<int> newFaces;// indices of new faces (for coloring), and boundary vertices that are now duplicated
+vector<vector<VectorXd>> connectedVert; vector<int> newFaces;// indices of new faces (for coloring), and boundary vertices that are now duplicated
 vector<int> isAscVert; vector<bool> isAscMerge;
 VectorXd cornerVertices;
 vector<cutVertEntry*> cutPositions;
@@ -288,20 +288,20 @@ int main(int argc, char *argv[])
 //    cout<<garment_file_name<<" chosen file, thanks. "<<endl;
 
     string prefix = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/";
-//    garment = "leggins";
+    garment = "leggins";
     bool patternExists = true;
-    inverseMap = false;
+    inverseMap = true;
 //    garment = "tshirt";
 
-    garment = "top";
-//    string garment_file_name = prefix+ "leggins/leggins_3d/leggins_3d_merged.obj"; //smaller collision thereshold to make sure it is not "eaten" after intial step , 3.5 instead of 4.5
+//    garment = "top";
+    string garment_file_name = prefix+ "leggins/leggins_3d/leggins_3d_merged.obj"; //smaller collision thereshold to make sure it is not "eaten" after intial step , 3.5 instead of 4.5
 //    garment = "dress";
 //   string garmentExt = garment +"_4";
 //    garment = "skirt";
     string garmentExt = garment+ "_1";
 //
 //    string garmentExt = garment+ "_2";
-    string garment_file_name = prefix + "moreGarments/"+ garmentExt+"/"+garment+"_3d.obj";
+//    string garment_file_name = prefix + "moreGarments/"+ garmentExt+"/"+garment+"_3d.obj";
 
     igl::readOBJ(garment_file_name, Vg, Fg);
     Timer t("Setup");
@@ -310,8 +310,8 @@ int main(int argc, char *argv[])
 //    string garment_pattern_file_name= igl::file_dialog_open();
 //    cout<<garment_pattern_file_name<<" chosen file for pattern, thanks. "<<endl;
 
-//    string garment_pattern_file_name = prefix +"leggins/leggins_2d/leggins_2d.obj"; //
-    string garment_pattern_file_name = prefix +"moreGarments/"+garmentExt+"/"+garment+"_2d.obj";
+    string garment_pattern_file_name = prefix +"leggins/leggins_2d/leggins_2d.obj"; //
+//    string garment_pattern_file_name = prefix +"moreGarments/"+garmentExt+"/"+garment+"_2d.obj";
     igl::readOBJ(garment_pattern_file_name, Vg_pattern, Fg_pattern);
 //    garment = "skirt_no2";
     symetry = true;
@@ -434,7 +434,9 @@ int main(int argc, char *argv[])
 //    string morphBody1right =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/moreGarments/dress_4/avatar_oneComponent_right.ply";
 //     avName = "avatar_missy_straight_05_OC";// good for skirt
 //     avName = "avatar_petite_curvy_01_OC";
-    avName = "avatar_maternity_05_OC";
+//    avName = "avatar_maternity_05_OC";
+
+    avName = "CLO_avatar_to_bodyScan_Anna_rem 2";
     string morphBody1 =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/CLO_avatars_oneComponent/"+ avName +".ply";//
     string morphBody1left =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/CLO_avatars_oneComponent/"+ avName +"_left.ply";
     string morphBody1right =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/CLO_avatars_oneComponent/"+ avName +"_right.ply";
@@ -1266,8 +1268,10 @@ int main(int argc, char *argv[])
                     if(sum>=100){
                         igl::writeOBJ("clipper_"+to_string(patchCounter)+".obj", cliV, cliF);
                         patchCounter++;
+                        connectedVert.emplace_back(returnVec[i]);
                     }
                 }
+                cout<<boundaryL_adaptedFromPattern.size()<<" the boundaryy sizes "<<boundaryL_toPattern.size()<<endl;
 
                 igl::readOBJ("clipper_"+to_string(0)+".obj", Vg_retri, Fg_retri);
 
@@ -1283,7 +1287,7 @@ int main(int argc, char *argv[])
                     Vg_retri= Vg_retrii;
 
                     if (!inverseMap) {
-                        mergeTriagulatedAndPattern(connectedVert, isAscVert, isAscMerge, Vg_retri, Fg_retri,
+                        mergeTriagulatedAndPattern(connectedVert[patchi],Vg_retri, Fg_retri,
                                                    currPattern,
                                                    Fg_pattern_curr, newFaces, avName, garment);
                     } else {

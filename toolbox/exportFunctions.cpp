@@ -53,7 +53,14 @@ currPattern, MatrixXd& Vg_to,  vector<vector<VectorXd>>& returnVec){
     // Create a Clipper object
 
     int mult = 10000;
-    for(int i=0; i< boundaryL_adaptedFromPattern.size();i++){
+    int toCut;
+    if(boundaryL_adaptedFromPattern.size() == boundaryL_toPattern.size()){
+        // heuristic for inverse
+        toCut = boundaryL_adaptedFromPattern.size()/2;
+    }else{
+        toCut= boundaryL_adaptedFromPattern.size();
+    }
+    for(int i=0; i<toCut ; i++){
         Path p;
         for(int j=0; j<boundaryL_adaptedFromPattern[i].size(); j++){
             int var = boundaryL_adaptedFromPattern[i][j];
@@ -116,11 +123,11 @@ currPattern, MatrixXd& Vg_to,  vector<vector<VectorXd>>& returnVec){
     // print the resulting solution
     double th = 0.001;
     for (int i = 0; i < solution.size(); i++) {
-        cout << "Polygon " << i << ": ";
+//        cout << "Polygon " << i << ": ";
         vector<VectorXd> poly;
         set<int> xmap, ymap;
         for (int j = 0; j < solution[i].size(); j++) {
-            cout << "(" << solution[i][j].X/ mult << "," << solution[i][j].Y/ mult << ") ";
+//            cout << "(" << solution[i][j].X/ mult << "," << solution[i][j].Y/ mult << ") ";
             VectorXd point(3);
             point(0)= solution[i][j].X; point(0)/= double(mult);
             point(1) = solution[i][j].Y/ double(mult);

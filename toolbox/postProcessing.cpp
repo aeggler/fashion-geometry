@@ -957,7 +957,54 @@ void replaceInFaces(int id, int newId, MatrixXi& Fg){
     }
 }
 int patchCount = 0; vector<int> faceSizes;
-void mergeTriagulatedAndPattern(const vector<vector<int>>& connectedVertVec, const vector<int>& patchId,const vector<bool>& isAscVec,
+void insertVert(MatrixXd& currPattern, int offset, MatrixXd& Vg_retri, int next, MatrixXi& Fg_pattern, vector<vector<int>>& boundaryLGar ,
+                int currVertPatt, int nextVertPatt ,bool& notFound
+                ){
+    notFound = false;
+    MatrixXd Vg_new (currPattern.rows()+1, 3);
+    Vg_new.block(0,0,currPattern.rows(), 3) = currPattern;
+    Vg_new.row(offset) = Vg_retri.row(next);
+
+    vector<vector<int>> vfAdj;
+    createVertexFaceAdjacencyList(Fg_pattern, vfAdj);
+    int faceToDupl = adjacentFaceToEdge(currVertPatt,nextVertPatt, -1, vfAdj);
+    cout<<"face to dupl "<<faceToDupl<<" "<<currVertPatt<<"  vertices searched"<<nextVertPatt<<endl;
+    MatrixXi Fg_new(Fg_pattern.rows()+1, 3);
+    Fg_new.block(0,0,Fg_pattern.rows(), 3 ) = Fg_pattern;
+    Fg_new.row(Fg_pattern.rows()) = Fg_pattern.row(faceToDupl);
+
+    if(Fg_new(Fg_pattern.rows(), 0) == nextVertPatt){
+        Fg_new(Fg_pattern.rows(), 0) = offset;
+    }else if(Fg_new(Fg_pattern.rows(), 1) == nextVertPatt ){
+        Fg_new(Fg_pattern.rows(), 1) = offset;
+    }else{
+        if(Fg_new(Fg_pattern.rows(), 2) !=nextVertPatt ){
+            cout<<"NOT FOUND"<<endl;
+            cout<<Fg_pattern.row(faceToDupl)<<endl;
+            cout<<nextVertPatt<<" and other"<<currVertPatt<<endl;
+             notFound = true;
+            return;
+        }
+        Fg_new(Fg_pattern.rows(), 2) = offset;
+    }
+
+    if(Fg_new(faceToDupl, 0) == currVertPatt ){
+        Fg_new(faceToDupl, 0) = offset;
+    }else if(Fg_new(Fg_pattern.rows(), 1) == currVertPatt ){
+        Fg_new(faceToDupl, 1) = offset;
+    }else{
+        if(Fg_new(Fg_pattern.rows(), 2) != currVertPatt ){
+            cout<<"NOT FOUND duple"<<endl;
+            notFound = true;
+            return;
+        }
+        Fg_new(faceToDupl, 2) = offset;
+    }
+
+    Fg_pattern.resize(Fg_new.rows(), 3); Fg_pattern = Fg_new;
+    currPattern.resize(Vg_new.rows(), 3); currPattern = Vg_new;
+}
+void mergeTriagulatedAndPattern(const vector<VectorXd>& connectedVertVec,
                            MatrixXd& Vg_retri, MatrixXi& Fg_retri, MatrixXd& currPattern, MatrixXi& Fg_pattern, vector<int> & newFaces, string avName, string garment){
     currPattern.col(2).setConstant(200);
     vector<vector<int>> boundaryLinsert, boundaryLGar;
@@ -967,105 +1014,154 @@ void mergeTriagulatedAndPattern(const vector<vector<int>>& connectedVertVec, con
     mergedIds.setConstant(-1);
     igl::writeOBJ("retriPatch_"+ to_string(patchCount) +".obj", Vg_retri, Fg_retri); patchCount++;
     // insertion on each pattern individually
-    for(int i=0; i<isAscVec.size(); i++){
-        int vertId = connectedVertVec[i][0];
-        vector<int> boundary = boundaryLGar[patchId[i]];
-        vector<int> boundaryIns = boundaryLinsert[0];
-        int patchSize = boundaryLGar[patchId[i]].size();
-        int patchSizeIns = boundaryLinsert[0].size();
+    cout<<connectedVertVec.size()<<" connectedVertVec"<<endl;
+    VectorXi pattMer(currPattern.rows());
+    pattMer.setConstant(-1);
+    int patch  = -1;
+    for(int i = 0; i<boundaryLGar.size(); i++){
+        for(int j=0; j<boundaryLGar[i].size(); j++){
+            int vert = boundaryLGar[i][j];
+            int minId = -1;
+            double minDist= 0.01;
+            for(int ii=0; ii < connectedVertVec.size(); ii++){
+                VectorXd patV = connectedVertVec[ii];
+                double dist = (currPattern.row(vert)-patV).norm();
 
-        int garIdx =0;
-        while(boundary[garIdx] != vertId && garIdx < patchSize){
-            garIdx++;
-        }
-        if(boundary[garIdx] != vertId){cout<<"Something went wrong, index not found. "<<vertId<< endl; return; }
-        int insertIdx=0;
-        while(Vg_retri.row(boundaryIns[insertIdx]) != currPattern.row(vertId) && insertIdx < patchSizeIns){
-//            if(vertId==704)cout<<boundaryIns[insertIdx];
-            insertIdx++;
-        }
-        if(Vg_retri.row(boundaryIns[insertIdx]) != currPattern.row(vertId)){
-            cout<<"Something went wrong. Not found in insert patch. "<<vertId<<endl;
-            cout<<Vg_retri.row(boundaryIns[insertIdx]) - currPattern.row(vertId)<<endl;
-            cout<<Vg_retri.row(7) - currPattern.row(vertId)<<endl;
-            return;
-        }
+                if(dist<minDist){
+                    minDist = dist;
+                    bool found = false;
+                    for(int vgrow=0; vgrow < boundaryLinsert[0].size(); vgrow++){
+                        if((Vg_retri.row(boundaryLinsert[0][vgrow])- patV ).norm()< 0.0000001){
+                            cout<<"found on boundary of patch ";
+                            minId = boundaryLinsert[0][vgrow];
+                            pattMer(vert) = vgrow;
+                            found = true;
+                        }
+                    }
 
-        mergedIds(boundaryIns[insertIdx])= boundary[garIdx];
-        for(auto it : boundaryIns) cout<<it<<" ";
-        cout<<"merge "<<boundaryIns[insertIdx]<< " and "<< boundary[garIdx]<<endl;
+                    cout<<" candidate for "<<vert<<" has id "<< minId <<endl;
+                    if(!found)cout<<"not found we have a problem"<<endl;
 
-        int currVertIdGar = boundary[garIdx];
-        int currVertIdInsert = boundaryIns[insertIdx];
-        int jcounter = 1; int j=1;
-        for(int jj=1; jj < connectedVertVec[i].size(); jj++){//
-            int nextVertId, nextVertIdInserted;
-//            cout<<"another"<<endl;
-            if(isAscVec[i]){
-//                 cout<<" is asc"<<endl;
-                nextVertId = boundary[ (garIdx + jcounter) % patchSize];
-                nextVertIdInserted = (insertIdx - j) ;
-                if(nextVertIdInserted < 0) nextVertIdInserted += patchSizeIns;
-                nextVertIdInserted = boundaryIns[nextVertIdInserted ];
-
-            }else{
-//                cout<<" not asc"<<endl;
-                nextVertId = (garIdx - jcounter) ;
-                if(nextVertId < 0) nextVertId += patchSize;
-                nextVertId = boundary[nextVertId];
-                nextVertIdInserted = boundaryIns[(insertIdx + j) % patchSizeIns];
-
-            }
-            if((Vg_retri.row(nextVertIdInserted) - currPattern.row(nextVertId )).norm() >0.01){
-//                if(currVertIdGar > 800)return;
-                cout<<nextVertIdInserted<<" We have to insert a vertex "<<currVertIdGar<<" "<<nextVertId<<endl ;
-                vector<vector<int>> vfAdj;
-                createVertexFaceAdjacencyList(Fg_pattern, vfAdj);
-                int faceToDupl = adjacentFaceToEdge(nextVertId,currVertIdGar, -1, vfAdj);
-                MatrixXi Fg_new (Fg_pattern.rows()+1, 3);
-                MatrixXd currPattern_new (currPattern.rows()+1, 3);
-                Fg_new.block(0,0,Fg_pattern.rows(), 3 ) = Fg_pattern;
-                Fg_new.row(Fg_pattern.rows()) = Fg_pattern.row(faceToDupl);
-                currPattern_new.block(0,0,currPattern.rows(), 3 ) = currPattern;
-                cout<<faceToDupl<<" face tp dupl with new vert "<<Vg_retri.row(nextVertIdInserted)  <<endl;
-                currPattern_new.row(currPattern.rows()) = Vg_retri.row(nextVertIdInserted);
-
-                if(Fg_new(Fg_pattern.rows(), 0) == nextVertId){
-                    Fg_new(Fg_pattern.rows(), 0) = currPattern.rows();
-                }else if(Fg_new(Fg_pattern.rows(), 1) == nextVertId ){
-                    Fg_new(Fg_pattern.rows(), 1) = currPattern.rows();
-                }else{
-                    if(Fg_new(Fg_pattern.rows(), 2) != nextVertId )cout<<"NOT FOUND"<<endl;
-                    Fg_new(Fg_pattern.rows(), 2) = currPattern.rows();
+                    patch = i;
                 }
-                if(Fg_new(faceToDupl, 0) == currVertIdGar ){
-                    Fg_new(faceToDupl, 0) = currPattern.rows();
-                }else if(Fg_new(Fg_pattern.rows(), 1) == currVertIdGar ){
-                    Fg_new(faceToDupl, 1) = currPattern.rows();
-                }else{
-                    if(Fg_new(Fg_pattern.rows(), 2) != currVertIdGar )cout<<"NOT FOUND duple"<<endl;
-                    Fg_new(faceToDupl, 2) = currPattern.rows();
-                }
-
-                mergedIds(nextVertIdInserted) = currPattern.rows();
-                Fg_pattern.resize(Fg_new.rows(), 3); Fg_pattern = Fg_new;
-                currPattern.resize(currPattern_new.rows(), 3); currPattern = currPattern_new;
-                jj--;
-                currVertIdGar = currPattern.rows()-1;//  nextVertId;
-                cout<<"fin added vert"<<endl;
-            }else{
-                cout<<"norm issue"<<endl;
-                mergedIds(nextVertIdInserted)= nextVertId;
-                jcounter++;
-                currVertIdGar = nextVertId;
             }
-            j++;
-
-            currVertIdInsert = nextVertIdInserted;
 
         }
-
     }
+    for(int j=0; j<boundaryLGar[patch].size()-1; j++){
+        if(pattMer(j)!=-1 && pattMer(j+1)!=-1){
+            int diff = pattMer(j)-pattMer(j+1);
+            if(abs(diff ) != 1){
+                cout<<patch<<" between are "<<diff<<endl;
+                // insert something
+                if(diff<0){//asc
+                    int counter = pattMer(j)+1;
+                    int next = boundaryLinsert[0][counter];
+
+                    int offset = currPattern.rows();
+                    int currVertPatt = boundaryLGar[patch][j];
+                    int nextVertPatt = boundaryLGar[patch][(j+1)%  boundaryLGar[patch].size()];
+                    while(next != boundaryLinsert[0][pattMer(j+1)]){
+                        bool notFound;
+                        insertVert( currPattern, offset, Vg_retri, next, Fg_pattern, boundaryLGar ,currVertPatt, nextVertPatt, notFound);
+                        if(notFound)return;
+                        currVertPatt = currPattern.rows();
+
+                        next = boundaryLinsert[0][counter];
+                        counter++;
+
+                    }
+                }else{//desc
+                    int counter = pattMer(j)-1;
+                    int next = boundaryLinsert[0][counter];
+                    int currVertPatt = boundaryLGar[patch][j];
+                    int nextVertPatt = boundaryLGar[patch][(j+1)%  boundaryLGar[patch].size()];
+                    int offset = currPattern.rows();
+                    while(next != boundaryLinsert[0][pattMer(j+1)]){
+                        bool notFound;
+                        insertVert( currPattern, offset, Vg_retri, next, Fg_pattern, boundaryLGar ,currVertPatt, nextVertPatt, notFound);
+                        if(notFound)return;
+                        currVertPatt = currPattern.rows();
+
+                        next = boundaryLinsert[0][counter];
+                        counter--;
+                    }
+                }
+                igl::writeOBJ("testMerge.obj", currPattern, Fg_pattern);
+
+            }
+        }
+    }
+//    for(int i=0; i<1; i++){
+//        int vertId = connectedVertVec[i][0];
+//        cout<< connectedVertVec[i][0];
+//        vector<int> boundary = boundaryLGar[patchId[i]];
+//        vector<int> boundaryIns = boundaryLinsert[0];
+//        int patchSize = boundaryLGar[patchId[i]].size();
+//        int patchSizeIns = boundaryLinsert[0].size();
+//
+//        mergedIds(boundaryIns[insertIdx])= boundary[garIdx];
+//        for(auto it : boundaryIns) cout<<it<<" ";
+//        cout<<"merge "<<boundaryIns[insertIdx]<< " and "<< boundary[garIdx]<<endl;
+//
+//        int currVertIdGar = boundary[garIdx];
+//        int currVertIdInsert = boundaryIns[insertIdx];
+//        int jcounter = 1; int j=1;
+//        for(int jj=1; jj < connectedVertVec[i].size(); jj++){//
+//            int nextVertId, nextVertIdInserted;
+//
+//            if((Vg_retri.row(nextVertIdInserted) - currPattern.row(nextVertId )).norm() >0.01){
+////                if(currVertIdGar > 800)return;
+//                cout<<nextVertIdInserted<<" We have to insert a vertex "<<currVertIdGar<<" "<<nextVertId<<endl ;
+//                vector<vector<int>> vfAdj;
+//                createVertexFaceAdjacencyList(Fg_pattern, vfAdj);
+//                int faceToDupl = adjacentFaceToEdge(nextVertId,currVertIdGar, -1, vfAdj);
+//                MatrixXi Fg_new (Fg_pattern.rows()+1, 3);
+//                MatrixXd currPattern_new (currPattern.rows()+1, 3);
+//                Fg_new.block(0,0,Fg_pattern.rows(), 3 ) = Fg_pattern;
+
+
+//                Fg_new.row(Fg_pattern.rows()) = Fg_pattern.row(faceToDupl);
+//                currPattern_new.block(0,0,currPattern.rows(), 3 ) = currPattern;
+//                cout<<faceToDupl<<" face tp dupl with new vert "<<Vg_retri.row(nextVertIdInserted)  <<endl;
+//                currPattern_new.row(currPattern.rows()) = Vg_retri.row(nextVertIdInserted);
+//
+//                if(Fg_new(Fg_pattern.rows(), 0) == nextVertId){
+//                    Fg_new(Fg_pattern.rows(), 0) = currPattern.rows();
+//                }else if(Fg_new(Fg_pattern.rows(), 1) == nextVertId ){
+//                    Fg_new(Fg_pattern.rows(), 1) = currPattern.rows();
+//                }else{
+//                    if(Fg_new(Fg_pattern.rows(), 2) != nextVertId )cout<<"NOT FOUND"<<endl;
+//                    Fg_new(Fg_pattern.rows(), 2) = currPattern.rows();
+//                }
+//                if(Fg_new(faceToDupl, 0) == currVertIdGar ){
+//                    Fg_new(faceToDupl, 0) = currPattern.rows();
+//                }else if(Fg_new(Fg_pattern.rows(), 1) == currVertIdGar ){
+//                    Fg_new(faceToDupl, 1) = currPattern.rows();
+//                }else{
+//                    if(Fg_new(Fg_pattern.rows(), 2) != currVertIdGar )cout<<"NOT FOUND duple"<<endl;
+//                    Fg_new(faceToDupl, 2) = currPattern.rows();
+//                }
+//
+//                mergedIds(nextVertIdInserted) = currPattern.rows();
+//                Fg_pattern.resize(Fg_new.rows(), 3); Fg_pattern = Fg_new;
+//                currPattern.resize(currPattern_new.rows(), 3); currPattern = currPattern_new;
+//                jj--;
+//                currVertIdGar = currPattern.rows()-1;//  nextVertId;
+//                cout<<"fin added vert"<<endl;
+//            }else{
+//                cout<<"norm issue"<<endl;
+//                mergedIds(nextVertIdInserted)= nextVertId;
+//                jcounter++;
+//                currVertIdGar = nextVertId;
+//            }
+//            j++;
+//
+//            currVertIdInsert = nextVertIdInserted;
+//
+//        }
+//
+//    }
     cout<<"starting the merger"<<endl;
     //merging part
     int count = 0;
@@ -1737,8 +1833,72 @@ void findPatchAndIdx(int& vert, int& patch, int& idx, vector<vector<int>>& bound
     }
     idx = -1;
 }
+
+void stitchAdded(MatrixXd& Vg, MatrixXi& Fg, MatrixXi& Fg_pattern_orig, vector<seam*>& seamsList,map<int, int >& mapCornerToCorner,
+                     map<int, int> &halfPatternVertToFullPatternVert , MatrixXd& Vg_pattern, MatrixXi& Fg_pattern){
+    vector<vector<int>> boundaryLCurr;
+    igl::boundary_loop(Fg_pattern, boundaryLCurr);
+    int count = 0;
+    for(int i=0; i<boundaryLCurr.size(); i++){
+        for(int j=0; j<boundaryLCurr[i].size(); j++){
+            VectorXd p = Vg_pattern.row(boundaryLCurr[i][j]);
+            double minDist = 100;
+            int minId = -1;
+            for(int ii = i+1; ii<boundaryLCurr.size(); ii++){
+                for(int jj = 0; jj<boundaryLCurr[ii].size(); jj++){
+
+                    double dist = (p-Vg_pattern.row(boundaryLCurr[ii][jj])).norm();
+                    if(boundaryLCurr[i][j]==25 && ii ==4 ){cout<<dist<<" to "<< boundaryLCurr[ii][jj]<<endl; }
+                    if(dist<=0.1 && dist<minDist){
+                        cout<< boundaryLCurr[i][j]<<" and "<< boundaryLCurr[ii][jj]<<" should be merged"<<endl;
+                        if(boundaryLCurr[i][j]== 27){
+                            cout<< i <<" and "<< ii <<" are the patches"<<endl;
+                        }
+                        minDist = dist;
+                        minId = boundaryLCurr[ii][jj];
+                    }
+                }
+            }
+            if(boundaryLCurr[i][j]==25){
+                cout << minId << " min id of 25 "<< minDist << endl;
+            }
+            if(minDist<0.1){
+                cout<<"final min dist "<<minDist<<endl;
+                // give it the higher id
+                for(int ii = 0; ii < Fg_pattern.rows(); ii++){
+                    for(int jj = 0; jj < 3; jj++){
+                        if(Fg_pattern(ii,jj) == minId){
+                            Fg_pattern(ii,jj) = boundaryLCurr[i][j];
+                        }
+                    }
+                }
+                //remove the vertex
+                MatrixXd Vg_patternNew(Vg_pattern.rows()-1, 3);
+                Vg_patternNew.block(0,0,minId ,3) = Vg_pattern.block(0,0,minId ,3) ;
+                Vg_patternNew.block(minId,0,Vg_patternNew.rows()-minId ,3) = Vg_pattern.block(minId+1,0, Vg_patternNew.rows()-minId ,3) ;
+                Vg_pattern.resize(Vg_patternNew.rows(), 3);
+                Vg_pattern = Vg_patternNew;
+                count++;
+                for(int ii = 0; ii < Fg_pattern.rows(); ii++){
+                    for(int jj = 0; jj < 3; jj++){
+                        if(Fg_pattern(ii,jj) >= minId){
+                            Fg_pattern(ii,jj) --;
+                        }
+                    }
+                }
+
+            }
+            if(boundaryLCurr[i][j]==27) return; //count == 50)return;
+
+            igl::writeOBJ("testMerge.obj", Vg_pattern, Fg_pattern);
+        }
+    }
+
+}
 void stitchAdapted3D(MatrixXd& Vg, MatrixXi& Fg, MatrixXi& Fg_pattern_orig, vector<seam*>& seamsList,map<int, int >& mapCornerToCorner,
                      map<int, int> &halfPatternVertToFullPatternVert , MatrixXd& Vg_pattern, MatrixXi& Fg_pattern){
+//    stitchAdded(Vg, Fg, Fg_pattern_orig, seamsList, mapCornerToCorner, halfPatternVertToFullPatternVert, Vg_pattern, Fg_pattern);
+
     vector<vector<int>> vfAdj;
     createVertexFaceAdjacencyList(Fg, vfAdj);
     vector<vector<int>> vfAdjorig;
@@ -1802,13 +1962,18 @@ void stitchAdapted3D(MatrixXd& Vg, MatrixXi& Fg, MatrixXi& Fg_pattern_orig, vect
         auto ends = seamsList[i]->getEndCornerIds();
         int end1 = ends.first;
         int end2 = ends.second;
+        cout<<endl<<"Seam "<<i<<" end "<<end1<<" "<<end2 <<endl;
+
         end1 = mapCornerToCorner[end1];
         end2 = mapCornerToCorner[end2];
+        cout<<endl<<"Seam "<<i<<" end after map "<<end1<<" "<<end2 <<endl;
+
         int patch11, patch21, idx1end, idx2end;
         findPatchAndIdx(end1, patch11, idx1end, boundaryL);
         findPatchAndIdx(end2, patch21, idx2end, boundaryL);
         if(idx1end ==-1 || idx2end==-1) cout<<"One of the ends not found!! "<<endl;
-        if(patch1 != patch11 || patch2 != patch21) cout<<"something in the patches does not add up"<<endl;
+        if(patch1 != patch11 || patch2 != patch21) cout<<"something in the patches does not add up "<<patch1<<" "<<patch2<<" "<<patch11
+        <<" "<<patch21 <<endl;
 
         // all clean , iterate along the boundary
 

@@ -490,11 +490,12 @@ void insertPlane(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg_
     }
 
     igl::writeOBJ("dress_3d.obj", Vg, Fg);
+    cout<<Fg.row(5113)<<" row 5113"<<endl;
     Vg_pattern.col(2).setConstant(200);
     igl::writeOBJ("dress_2d.obj", Vg_pattern, Fg_pattern);
     int addedVert = Vg_pattern.rows()- vgsize;
     cout<<addCount<<" zero vertices and added vert "<<addedVert<<endl;
-    int added=addedVert+ addCount;
+    int added = addedVert+ addCount;
 
     int vgnewsize = Vg_pattern.rows();
     MatrixXd Vgp (Vg_pattern.rows()+ added, 3);
@@ -518,6 +519,8 @@ void insertPlane(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg_
         }
     }
     cout<<"continue"<<endl;
+    cout<<Fg.row(5113)<<" row 5113 after "<<endl;
+
     // we duplicate the new vertices to split them
     duplCount=0;
     for (int i=0; i<Fg_pattern.rows(); i++){
@@ -526,12 +529,17 @@ void insertPlane(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg_
 
                 int other = (j+1)%3;
                 int co=0;
+
                 while(Vg(Fg(i, other), 0) == 0 && co<6){
                     co++;
                     other++;
                     other %= 3;
                 }// find one that is not 0
-                if(co>=3) cout<<i<<" face, vertex issues  "<<endl;
+                if(co>=3) {cout<<i<<" face, vertex issues  "<<Vg(Fg(i, other), 0)<<" "<<Vg(Fg(i, (other+1)%3 ), 0)<<" "<<
+                    Vg(Fg(i, (other+2)%3 ), 0)<<endl;
+                    cout<<Fg(i, other)<<" "<<Fg(i, (other+1)%3 ) <<" "<<Fg(i, (other+2)%3 )<<endl;
+                    cout<<Vg.row(Fg(i, (other+1)%3 ))<<endl;
+                }
                 bool isLeft = false;
                 if(Vg(Fg(i, other), 0)<0){
                     isLeft= true;

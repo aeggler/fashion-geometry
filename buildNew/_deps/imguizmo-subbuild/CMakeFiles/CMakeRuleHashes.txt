@@ -1,0 +1,11 @@
+# Hashes of file build rules.
+7c82cbe8a8656a8e1c82b75761182a30 CMakeFiles/imguizmo-populate
+738a3fef26c357112a29fc83fc3a7c86 CMakeFiles/imguizmo-populate-complete
+9598388b2f6a0d027d2d9e9e54d4e204 imguizmo-populate-prefix/src/imguizmo-populate-stamp/imguizmo-populate-build
+cbec39c57a3ecb9d7cc87428613932a4 imguizmo-populate-prefix/src/imguizmo-populate-stamp/imguizmo-populate-configure
+c80b0fb90383c0790f25134a1ef47589 imguizmo-populate-prefix/src/imguizmo-populate-stamp/imguizmo-populate-download
+b317c665d89d5e6365b8bff4fc5efd3a imguizmo-populate-prefix/src/imguizmo-populate-stamp/imguizmo-populate-install
+5fd7cf37d9f3ebb6ed97d74419519214 imguizmo-populate-prefix/src/imguizmo-populate-stamp/imguizmo-populate-mkdir
+ad446e95b5f7931346ce045891597297 imguizmo-populate-prefix/src/imguizmo-populate-stamp/imguizmo-populate-patch
+3e3d6d2bcaa0c2c0c997ed18a667add5 imguizmo-populate-prefix/src/imguizmo-populate-stamp/imguizmo-populate-test
+0d5e21fec49ad71d54bc182bfe954f57 imguizmo-populate-prefix/src/imguizmo-populate-stamp/imguizmo-populate-update
