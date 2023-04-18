@@ -1037,11 +1037,13 @@ void mergeTriagulatedAndPattern(const vector<VectorXd>& connectedVertVec,
             for(int j=0; j<boundaryLGar[i].size(); j++){
                 int vert = boundaryLGar[i][j];
                 int minId = -1;
-                double minDist= 0.01;
+                double minDist= 0.1;
                 bool found = false;
                 for(int vgrow=0; vgrow < boundaryLinsert[0].size(); vgrow++){
                     VectorXd patV =  Vg_retri.row(boundaryLinsert[0][vgrow]);
                     double dist = (currPattern.row(vert)-patV.transpose()).norm();
+                    if(boundaryLinsert[0][vgrow]==8&& globCount ==1 && vert== 1444 ) cout<<" 8 dist"<<dist<<endl;
+
                     if(dist<minDist){
                         cout<< dist<<" found ";
                         minId = boundaryLinsert[0][vgrow];
@@ -1112,6 +1114,7 @@ void mergeTriagulatedAndPattern(const vector<VectorXd>& connectedVertVec,
     for(int i=0; i< getsOldId.rows(); i++){
         if(mergeSetPatchToFull.find(i) != mergeSetPatchToFull.end()){
             //it is an old one
+            cout<<"item "<<i<<" gets "<<mergeSetPatchToFull[i]<<endl;
             pair<int, int> it =  make_pair(i, mergeSetPatchToFull[i]);
             replaceInFacesWO(it.first , it.second , Fg_retri, Fg_orig);
             getsOldId(it.first) = 1;
@@ -1122,6 +1125,7 @@ void mergeTriagulatedAndPattern(const vector<VectorXd>& connectedVertVec,
             replaceInFacesWO(i, newId(i), Fg_retri, Fg_orig);
         }
     }
+    if(globCount==0)cout<<Fg_retri.row(2)<<endl;
 
     int faceOffset = Fg_pattern.rows();
     MatrixXi Fg_new (faceOffset+ Fg_retri.rows(), 3);
@@ -1131,6 +1135,7 @@ void mergeTriagulatedAndPattern(const vector<VectorXd>& connectedVertVec,
     }
     Fg_new.block(0,0,Fg_pattern.rows(), 3 ) = Fg_pattern;
     Fg_new.block(faceOffset, 0, Fg_retri.rows(), 3) = Fg_retri;
+    cout<<"Face "<<faceOffset+2<<" "<<Fg_new.row(faceOffset+2)<<endl;
     currPattern_new.block(0,0,currPattern.rows(), 3 ) = currPattern;
     currPattern_new.block(offset, 0,count, 3 ) = Vg_help.block(0,0, count, 3);
 
@@ -1827,7 +1832,7 @@ void stitchAdded(MatrixXd& Vg, MatrixXi& Fg, MatrixXi& Fg_pattern_orig, vector<s
                 }
 
             }
-            if(boundaryLCurr[i][j]==27) return; //count == 50)return;
+//            if(boundaryLCurr[i][j]==27) return; //count == 50)return;
 
             igl::writeOBJ("testMerge.obj", Vg_pattern, Fg_pattern);
         }

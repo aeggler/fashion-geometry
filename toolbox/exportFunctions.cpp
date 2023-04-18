@@ -8,6 +8,8 @@
 #include <fstream>  // include the fstream header file
 #include "../Clipper/clipper.hpp"
 #include <map>
+#include <igl/hsv_to_rgb.h>
+#include <cmath>
 
 
 using namespace Eigen;
@@ -46,7 +48,7 @@ void writeMTL(MatrixXd& Ka, MatrixXd& Ks, MatrixXd& Kd, MatrixXd& Vg, MatrixXi& 
 
 }
 void clipDifference(vector<vector<int>>& boundaryL_adaptedFromPattern,vector<vector<int>>& boundaryL_toPattern, MatrixXd &
-currPattern, MatrixXd& Vg_to,  vector<vector<VectorXd>>& returnVec){
+    currPattern, MatrixXd& Vg_to,  vector<vector<VectorXd>>& returnVec){
 
     Paths subj_dbl(boundaryL_adaptedFromPattern.size()), clip_dbl(boundaryL_toPattern.size()), clip_bef(boundaryL_toPattern.size());
     double offset_distance = 10.4;
@@ -152,4 +154,76 @@ currPattern, MatrixXd& Vg_to,  vector<vector<VectorXd>>& returnVec){
         returnVec.push_back(poly);
         cout << endl;
     }
+}
+
+// Convert HSV color to RGB color
+void hsv_to_rgb(float h, float s, float v, float& r, float& g, float& b)
+{
+    if (s == 0.0) {
+        r = g = b = v;
+    }
+    else {
+        h *= 6.0;
+        int i = static_cast<int>(h);
+        float f = h - static_cast<float>(i);
+        float p = v * (1.0 - s);
+        float q = v * (1.0 - s * f);
+        float t = v * (1.0 - s * (1.0 - f));
+
+        switch (i) {
+            case 0:
+                r = v; g = t; b = p; break;
+            case 1:
+                r = q; g = v; b = p; break;
+            case 2:
+                r = p; g = v; b = t; break;
+            case 3:
+                r = p; g = q; b = v; break;
+            case 4:
+                r = t; g = p; b = v; break;
+            default:
+                r = v; g = p; b = q; break;
+        }
+    }
+}
+
+// Generate a set of distinct colors using the HSV color space
+void generate_colors(int num,MatrixXd& cols )
+{
+    std::vector<std::vector<float>> colors;
+    colors.reserve(num);
+
+    float golden_ratio_conjugate = (1 + std::sqrt(5)) / 2;
+    float hue = std::fmod(std::rand() * golden_ratio_conjugate, 1.0f);
+
+    for (int i = 0; i < num; ++i) {
+        float saturation = 0.5f + (float)i / (float)num / 2.0f;
+        float value = 0.95f - (float)i / (float)num / 20.0f;
+
+        float r, g, b;
+        hsv_to_rgb(hue, saturation, value, r, g, b);
+
+        colors.emplace_back(std::vector<float>{ r, g, b });
+
+        hue += golden_ratio_conjugate;
+        hue = std::fmod(hue, 1.0f);
+    }
+
+    std::random_shuffle(colors.begin(), colors.end());
+    for(int i=0; i<num; i++){
+        cout<<endl;
+        for(int j=0; j<colors[i].size(); j++){
+            cols(i,j)= colors[i][j];
+            cout<<colors[i][j];
+        }
+    }
+
+}
+
+
+void computeCols(int num, MatrixXd& cols){
+    cols.resize(num, 3);
+    generate_colors(num, cols);
+
+
 }

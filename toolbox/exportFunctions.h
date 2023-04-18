@@ -14,3 +14,5 @@ void writeMTL(MatrixXd& Ka, MatrixXd& Ks, MatrixXd& Kd, MatrixXd& Vg, MatrixXi& 
 
 void clipDifference(vector<vector<int>>& boundaryL_adaptedFromPattern,vector<vector<int>>& boundaryL_toPattern,
                     MatrixXd & currPattern, MatrixXd& Vg_to,  vector<vector<VectorXd>>& returnVec);
+
+void computeCols(int num, MatrixXd& cols);
