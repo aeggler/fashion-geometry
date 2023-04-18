@@ -290,7 +290,7 @@ int main(int argc, char *argv[])
     string prefix = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/";
     garment = "leggins";
     bool patternExists = true;
-    inverseMap = true;
+    inverseMap = false;
 //    garment = "tshirt";
 
 //    garment = "top";
@@ -1286,7 +1286,7 @@ int main(int argc, char *argv[])
                     Vg_retri.resize(Vg_retrii.rows(), Vg_retrii.cols());
                     Vg_retri= Vg_retrii;
 
-                    if (!inverseMap) {
+                    if (!inverseMap && patchi<= 3) {
                         mergeTriagulatedAndPattern(connectedVert[patchi],Vg_retri, Fg_retri,
                                                    currPattern,
                                                    Fg_pattern_curr, newFaces, avName, garment);
@@ -1575,7 +1575,7 @@ int main(int argc, char *argv[])
                 if(garment == "leggins"|| "top") patchcount = 5;
 
                 string filename = "newFacesAfterPatch_"+avName+"_"+garment+"_"+ to_string(patchcount) +".txt";
-//                     filename  = "newFacesAfterPatch_"+avName+"_"+garment+"_final" +".txt";
+                     filename  = "newFacesAfterPatch_"+avName+"_"+garment+"_final" +".txt";
                 ifstream in("/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/" + filename);
                 in>>size;
                 for(int i=0; i<size; i++ ){

@@ -206,7 +206,7 @@ void startRetriangulation(vector<VectorXd>& polylineSelected, MatrixXd& V2, Matr
         E(i, 1) = (i+1) % n;
     }
     MatrixXd H;
-    string flags = "qa234.64";
+    string flags = "a234.64";
     cout<<" starting triangulation with "<<E.rows()<<" edges and "<<V.rows()<<" points"<<endl;
 
     triangulateFAKE(V, E, H, flags, V2, F2 );
@@ -968,7 +968,7 @@ void insertVert(MatrixXd& currPattern, int offset, MatrixXd& Vg_retri, int next,
     vector<vector<int>> vfAdj;
     createVertexFaceAdjacencyList(Fg_pattern, vfAdj);
     int faceToDupl = adjacentFaceToEdge(currVertPatt,nextVertPatt, -1, vfAdj);
-    cout<<"face to dupl "<<faceToDupl<<" "<<currVertPatt<<"  vertices searched"<<nextVertPatt<<endl;
+    cout<<"face to dupl "<<faceToDupl<<" : "<<currVertPatt<<" vertices searched "<<nextVertPatt <<endl;
     MatrixXi Fg_new(Fg_pattern.rows()+1, 3);
     Fg_new.block(0,0,Fg_pattern.rows(), 3 ) = Fg_pattern;
     Fg_new.row(Fg_pattern.rows()) = Fg_pattern.row(faceToDupl);
@@ -1002,8 +1002,11 @@ void insertVert(MatrixXd& currPattern, int offset, MatrixXd& Vg_retri, int next,
     }
 
     Fg_pattern.resize(Fg_new.rows(), 3); Fg_pattern = Fg_new;
+    cout<<"Face "<<Fg_pattern.rows()-1<<" "<<Fg_pattern.row(Fg_pattern.rows()-1)<<endl;
+    cout<<"Face "<<faceToDupl<<" "<< Fg_pattern.row(faceToDupl)<<endl;
     currPattern.resize(Vg_new.rows(), 3); currPattern = Vg_new;
 }
+int globCount = 0;
 void mergeTriagulatedAndPattern(const vector<VectorXd>& connectedVertVec,
                            MatrixXd& Vg_retri, MatrixXi& Fg_retri, MatrixXd& currPattern, MatrixXi& Fg_pattern, vector<int> & newFaces, string avName, string garment){
     currPattern.col(2).setConstant(200);
@@ -1018,176 +1021,109 @@ void mergeTriagulatedAndPattern(const vector<VectorXd>& connectedVertVec,
     VectorXi pattMer(currPattern.rows());
     pattMer.setConstant(-1);
     int patch  = -1;
-    for(int i = 0; i<boundaryLGar.size(); i++){
-        for(int j=0; j<boundaryLGar[i].size(); j++){
-            int vert = boundaryLGar[i][j];
-            int minId = -1;
-            double minDist= 0.01;
-            for(int ii=0; ii < connectedVertVec.size(); ii++){
-                VectorXd patV = connectedVertVec[ii];
-                double dist = (currPattern.row(vert)-patV).norm();
-
-                if(dist<minDist){
-                    minDist = dist;
-                    bool found = false;
-                    for(int vgrow=0; vgrow < boundaryLinsert[0].size(); vgrow++){
-                        if((Vg_retri.row(boundaryLinsert[0][vgrow])- patV ).norm()< 0.0000001){
-                            cout<<"found on boundary of patch ";
-                            minId = boundaryLinsert[0][vgrow];
-                            pattMer(vert) = vgrow;
-                            found = true;
-                        }
+    map<int, int> mergeSet, mergeSetPatchToFull;
+    cout<<"*****************"<<endl;
+    cout<<"Clip item No "<<globCount<<endl;
+        for(int i = 0; i< boundaryLGar.size(); i++){
+            for(int j=0; j<boundaryLGar[i].size(); j++){
+                int vert = boundaryLGar[i][j];
+                int minId = -1;
+                double minDist= 0.01;
+                bool found = false;
+                for(int vgrow=0; vgrow < boundaryLinsert[0].size(); vgrow++){
+                    VectorXd patV =  Vg_retri.row(boundaryLinsert[0][vgrow]);
+                    double dist = (currPattern.row(vert)-patV).norm();
+                    if(boundaryLGar[i][j]==1503 && boundaryLinsert[0][vgrow]==10)cout<<"extra dist "<<dist<<endl;
+                    if(dist<minDist){
+                        cout<< dist<<" found ";
+                        minId = boundaryLinsert[0][vgrow];
+                        pattMer(vert) = vgrow;
+                        found = true;
+                        minDist = dist;
                     }
-
-                    cout<<" candidate for "<<vert<<" has id "<< minId <<endl;
-                    if(!found)cout<<"not found we have a problem"<<endl;
-
-                    patch = i;
                 }
+
+                if(found){cout<<" candidate for "<<vert<<" has id "<< minId <<endl;
+                    mergeSet[vert] = minId;
+                    mergeSetPatchToFull[minId] = vert;
+                }
+//                if(!found){cout<<"not found we have a problem"<<endl;return; }
+
+                patch = i;
             }
 
         }
-    }
-    for(int j=0; j<boundaryLGar[patch].size()-1; j++){
-        if(pattMer(j)!=-1 && pattMer(j+1)!=-1){
-            int diff = pattMer(j)-pattMer(j+1);
+
+    for(int j=0; j< boundaryLGar[patch].size()-1; j++){
+        int currVertPatt = boundaryLGar[patch][j];
+        int nextVertPatt = boundaryLGar[patch][(j+1)%  boundaryLGar[patch].size()];
+        if(pattMer(currVertPatt)!=-1 && pattMer(nextVertPatt)!=-1){
+            int diff = pattMer(currVertPatt)-pattMer(nextVertPatt);
             if(abs(diff ) != 1){
-                cout<<patch<<" between are "<<diff<<endl;
-                // insert something
-                if(diff<0){//asc
-                    int counter = pattMer(j)+1;
+                cout<<endl<<"Vertices "<<currVertPatt<<" "<<nextVertPatt<<" on the boundary"<<endl;
+                cout<<pattMer(currVertPatt)<<" "<<pattMer(nextVertPatt)<<endl;
+                cout<<boundaryLinsert[0].size()<<" between are "<<diff<<endl;
+                    int counter = pattMer(boundaryLGar[patch][j])-1;
+                    if(counter<0) counter += boundaryLinsert[0].size();
+                    cout<<"counter: " << counter<<endl;
                     int next = boundaryLinsert[0][counter];
-
+                    int end =  boundaryLinsert[0][pattMer(nextVertPatt) ];
+                    cout<<" next "<<next<<"and to find is "<<end<<endl;
+                    double prevDist = 100;
+                    double dist = (Vg_retri.row(next)- Vg_retri.row(end)).norm();
                     int offset = currPattern.rows();
-                    int currVertPatt = boundaryLGar[patch][j];
-                    int nextVertPatt = boundaryLGar[patch][(j+1)%  boundaryLGar[patch].size()];
-                    while(next != boundaryLinsert[0][pattMer(j+1)]){
+                    while(next != end && dist<prevDist){
+                        cout<<counter<<"next "<<next<<endl;
                         bool notFound;
                         insertVert( currPattern, offset, Vg_retri, next, Fg_pattern, boundaryLGar ,currVertPatt, nextVertPatt, notFound);
+                        offset++;
                         if(notFound)return;
-                        currVertPatt = currPattern.rows();
-
-                        next = boundaryLinsert[0][counter];
-                        counter++;
-
-                    }
-                }else{//desc
-                    int counter = pattMer(j)-1;
-                    int next = boundaryLinsert[0][counter];
-                    int currVertPatt = boundaryLGar[patch][j];
-                    int nextVertPatt = boundaryLGar[patch][(j+1)%  boundaryLGar[patch].size()];
-                    int offset = currPattern.rows();
-                    while(next != boundaryLinsert[0][pattMer(j+1)]){
-                        bool notFound;
-                        insertVert( currPattern, offset, Vg_retri, next, Fg_pattern, boundaryLGar ,currVertPatt, nextVertPatt, notFound);
-                        if(notFound)return;
-                        currVertPatt = currPattern.rows();
-
+                        currVertPatt = currPattern.rows()-1;
+//
                         next = boundaryLinsert[0][counter];
                         counter--;
+                        if(counter<0) counter += boundaryLinsert[0].size();
+                        prevDist = dist;
+                        dist = (Vg_retri.row(next)- Vg_retri.row(end)).norm();
+
                     }
+
                 }
-                igl::writeOBJ("testMerge.obj", currPattern, Fg_pattern);
 
             }
         }
-    }
-//    for(int i=0; i<1; i++){
-//        int vertId = connectedVertVec[i][0];
-//        cout<< connectedVertVec[i][0];
-//        vector<int> boundary = boundaryLGar[patchId[i]];
-//        vector<int> boundaryIns = boundaryLinsert[0];
-//        int patchSize = boundaryLGar[patchId[i]].size();
-//        int patchSizeIns = boundaryLinsert[0].size();
-//
-//        mergedIds(boundaryIns[insertIdx])= boundary[garIdx];
-//        for(auto it : boundaryIns) cout<<it<<" ";
-//        cout<<"merge "<<boundaryIns[insertIdx]<< " and "<< boundary[garIdx]<<endl;
-//
-//        int currVertIdGar = boundary[garIdx];
-//        int currVertIdInsert = boundaryIns[insertIdx];
-//        int jcounter = 1; int j=1;
-//        for(int jj=1; jj < connectedVertVec[i].size(); jj++){//
-//            int nextVertId, nextVertIdInserted;
-//
-//            if((Vg_retri.row(nextVertIdInserted) - currPattern.row(nextVertId )).norm() >0.01){
-////                if(currVertIdGar > 800)return;
-//                cout<<nextVertIdInserted<<" We have to insert a vertex "<<currVertIdGar<<" "<<nextVertId<<endl ;
-//                vector<vector<int>> vfAdj;
-//                createVertexFaceAdjacencyList(Fg_pattern, vfAdj);
-//                int faceToDupl = adjacentFaceToEdge(nextVertId,currVertIdGar, -1, vfAdj);
-//                MatrixXi Fg_new (Fg_pattern.rows()+1, 3);
-//                MatrixXd currPattern_new (currPattern.rows()+1, 3);
-//                Fg_new.block(0,0,Fg_pattern.rows(), 3 ) = Fg_pattern;
 
-
-//                Fg_new.row(Fg_pattern.rows()) = Fg_pattern.row(faceToDupl);
-//                currPattern_new.block(0,0,currPattern.rows(), 3 ) = currPattern;
-//                cout<<faceToDupl<<" face tp dupl with new vert "<<Vg_retri.row(nextVertIdInserted)  <<endl;
-//                currPattern_new.row(currPattern.rows()) = Vg_retri.row(nextVertIdInserted);
-//
-//                if(Fg_new(Fg_pattern.rows(), 0) == nextVertId){
-//                    Fg_new(Fg_pattern.rows(), 0) = currPattern.rows();
-//                }else if(Fg_new(Fg_pattern.rows(), 1) == nextVertId ){
-//                    Fg_new(Fg_pattern.rows(), 1) = currPattern.rows();
-//                }else{
-//                    if(Fg_new(Fg_pattern.rows(), 2) != nextVertId )cout<<"NOT FOUND"<<endl;
-//                    Fg_new(Fg_pattern.rows(), 2) = currPattern.rows();
-//                }
-//                if(Fg_new(faceToDupl, 0) == currVertIdGar ){
-//                    Fg_new(faceToDupl, 0) = currPattern.rows();
-//                }else if(Fg_new(Fg_pattern.rows(), 1) == currVertIdGar ){
-//                    Fg_new(faceToDupl, 1) = currPattern.rows();
-//                }else{
-//                    if(Fg_new(Fg_pattern.rows(), 2) != currVertIdGar )cout<<"NOT FOUND duple"<<endl;
-//                    Fg_new(faceToDupl, 2) = currPattern.rows();
-//                }
-//
-//                mergedIds(nextVertIdInserted) = currPattern.rows();
-//                Fg_pattern.resize(Fg_new.rows(), 3); Fg_pattern = Fg_new;
-//                currPattern.resize(currPattern_new.rows(), 3); currPattern = currPattern_new;
-//                jj--;
-//                currVertIdGar = currPattern.rows()-1;//  nextVertId;
-//                cout<<"fin added vert"<<endl;
-//            }else{
-//                cout<<"norm issue"<<endl;
-//                mergedIds(nextVertIdInserted)= nextVertId;
-//                jcounter++;
-//                currVertIdGar = nextVertId;
-//            }
-//            j++;
-//
-//            currVertIdInsert = nextVertIdInserted;
-//
-//        }
-//
-//    }
     cout<<"starting the merger"<<endl;
     //merging part
     int count = 0;
+    VectorXi getsOldId(Vg_retri.rows()); getsOldId.setConstant(-1);
     VectorXi newId(Vg_retri.rows());
     MatrixXd Vg_help (Vg_retri.rows(), 3);
-    for (int i=0 ; i<Vg_retri.rows(); i++){
-        if(mergedIds(i) == -1){
-            newId(i) = count;
+
+    int offset = currPattern.rows();
+    for(auto& it: mergeSetPatchToFull){
+//        cout<<it.first<<" and "<<it.second<<endl;
+        replaceInFaces(it.first , it.second , Fg_retri);
+        getsOldId(it.first) = 1;
+    }
+    for(int i=0; i< getsOldId.rows(); i++){
+        if(getsOldId(i)==-1){// it does not get an old id,, a new one!
+//            cout<<i<<" is new"<<endl;
+            newId(i) = offset+count;
             Vg_help.row(count) = Vg_retri.row(i);
             count++;
+            replaceInFaces(i, newId(i), Fg_retri);
+
+
         }
     }
-    int offset = currPattern.rows();
-    for (int i = 0; i < Fg_retri.rows(); i++){
-        for(int j=0; j<3; j++){
-            if(mergedIds(Fg_retri(i, j)) != -1){
-                Fg_retri(i, j) = mergedIds(Fg_retri(i, j));
-            }else {
-                Fg_retri(i, j) = newId(Fg_retri(i,j)) + offset;
-            }
-        }
-    }
+
 
     int faceOffset = Fg_pattern.rows();
     MatrixXi Fg_new (faceOffset+ Fg_retri.rows(), 3);
     MatrixXd currPattern_new (offset + count, 3);
+    cout<<count<<" added vertices"<<endl;
+//    cout<<Vg_help.block(0,0, count, 3)<< endl;
     for(int i= faceOffset; i<currPattern_new.rows(); i++){
         newFaces.push_back(i);
     }
@@ -1202,6 +1138,8 @@ void mergeTriagulatedAndPattern(const vector<VectorXd>& connectedVertVec,
     for(int i= faceOffset; i<Fg_pattern.rows(); i++){
         newFaces.push_back(i); countFace++;
     }
+    igl::writeOBJ("testMerge"+ to_string(globCount)+".obj", currPattern, Fg_pattern);
+    globCount++;
     faceSizes.push_back(countFace);
     ofstream out("newFacesAfterPatch_"+avName+"_"+garment+"_"+ to_string(patchCount-1) +".txt");
     ofstream out2("newFacesAfterPatch_"+avName+"_"+garment+"_final.txt");
