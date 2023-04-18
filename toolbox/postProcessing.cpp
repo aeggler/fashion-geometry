@@ -956,6 +956,16 @@ void replaceInFaces(int id, int newId, MatrixXi& Fg){
         }
     }
 }
+
+void replaceInFacesWO(int id, int newId, MatrixXi& Fg, MatrixXi & Fg_orig){
+    for(int i = 0; i< Fg.rows(); i++){
+        for(int j = 0; j < 3; j++){
+            if(Fg_orig(i, j) == id){
+                Fg(i, j) = newId;
+            }
+        }
+    }
+}
 int patchCount = 0; vector<int> faceSizes;
 void insertVert(MatrixXd& currPattern, int offset, MatrixXd& Vg_retri, int next, MatrixXi& Fg_pattern, vector<vector<int>>& boundaryLGar ,
                 int currVertPatt, int nextVertPatt ,bool& notFound
@@ -1017,7 +1027,6 @@ void mergeTriagulatedAndPattern(const vector<VectorXd>& connectedVertVec,
     mergedIds.setConstant(-1);
     igl::writeOBJ("retriPatch_"+ to_string(patchCount) +".obj", Vg_retri, Fg_retri); patchCount++;
     // insertion on each pattern individually
-    cout<<connectedVertVec.size()<<" connectedVertVec"<<endl;
     VectorXi pattMer(currPattern.rows());
     pattMer.setConstant(-1);
     int patch  = -1;
@@ -1032,8 +1041,7 @@ void mergeTriagulatedAndPattern(const vector<VectorXd>& connectedVertVec,
                 bool found = false;
                 for(int vgrow=0; vgrow < boundaryLinsert[0].size(); vgrow++){
                     VectorXd patV =  Vg_retri.row(boundaryLinsert[0][vgrow]);
-                    double dist = (currPattern.row(vert)-patV).norm();
-                    if(boundaryLGar[i][j]==1503 && boundaryLinsert[0][vgrow]==10)cout<<"extra dist "<<dist<<endl;
+                    double dist = (currPattern.row(vert)-patV.transpose()).norm();
                     if(dist<minDist){
                         cout<< dist<<" found ";
                         minId = boundaryLinsert[0][vgrow];
@@ -1047,7 +1055,6 @@ void mergeTriagulatedAndPattern(const vector<VectorXd>& connectedVertVec,
                     mergeSet[vert] = minId;
                     mergeSetPatchToFull[minId] = vert;
                 }
-//                if(!found){cout<<"not found we have a problem"<<endl;return; }
 
                 patch = i;
             }
@@ -1101,29 +1108,24 @@ void mergeTriagulatedAndPattern(const vector<VectorXd>& connectedVertVec,
     MatrixXd Vg_help (Vg_retri.rows(), 3);
 
     int offset = currPattern.rows();
-    for(auto& it: mergeSetPatchToFull){
-//        cout<<it.first<<" and "<<it.second<<endl;
-        replaceInFaces(it.first , it.second , Fg_retri);
-        getsOldId(it.first) = 1;
-    }
+   MatrixXi Fg_orig = Fg_retri;
     for(int i=0; i< getsOldId.rows(); i++){
-        if(getsOldId(i)==-1){// it does not get an old id,, a new one!
-//            cout<<i<<" is new"<<endl;
+        if(mergeSetPatchToFull.find(i) != mergeSetPatchToFull.end()){
+            //it is an old one
+            pair<int, int> it =  make_pair(i, mergeSetPatchToFull[i]);
+            replaceInFacesWO(it.first , it.second , Fg_retri, Fg_orig);
+            getsOldId(it.first) = 1;
+        }else{// it does not get an old id, a new one!
             newId(i) = offset+count;
             Vg_help.row(count) = Vg_retri.row(i);
             count++;
-            replaceInFaces(i, newId(i), Fg_retri);
-
-
+            replaceInFacesWO(i, newId(i), Fg_retri, Fg_orig);
         }
     }
-
 
     int faceOffset = Fg_pattern.rows();
     MatrixXi Fg_new (faceOffset+ Fg_retri.rows(), 3);
     MatrixXd currPattern_new (offset + count, 3);
-    cout<<count<<" added vertices"<<endl;
-//    cout<<Vg_help.block(0,0, count, 3)<< endl;
     for(int i= faceOffset; i<currPattern_new.rows(); i++){
         newFaces.push_back(i);
     }
@@ -1138,7 +1140,6 @@ void mergeTriagulatedAndPattern(const vector<VectorXd>& connectedVertVec,
     for(int i= faceOffset; i<Fg_pattern.rows(); i++){
         newFaces.push_back(i); countFace++;
     }
-    igl::writeOBJ("testMerge"+ to_string(globCount)+".obj", currPattern, Fg_pattern);
     globCount++;
     faceSizes.push_back(countFace);
     ofstream out("newFacesAfterPatch_"+avName+"_"+garment+"_"+ to_string(patchCount-1) +".txt");
