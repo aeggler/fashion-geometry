@@ -10,7 +10,9 @@
 #include <map>
 #include <igl/hsv_to_rgb.h>
 #include <cmath>
-
+#include <igl/barycentric_coordinates.h>
+#include <igl/doublearea.h>
+#include "postProcessing.h"
 
 using namespace Eigen;
 using namespace std;
@@ -45,6 +47,120 @@ void writeMTL(MatrixXd& Ka, MatrixXd& Ks, MatrixXd& Kd, MatrixXd& Vg, MatrixXi& 
 
     }
     mtlFile.close();
+
+}
+bool isPointInTriangle(Vector3d& curr,Vector3d& a,Vector3d& b,Vector3d& c ) {
+    VectorXd bary;
+    igl::barycentric_coordinates(curr.transpose(), a.transpose(), b.transpose(), c.transpose(), bary);
+    if (bary(0) + bary(1) + bary(2) != 1) {
+        return false;
+    }
+    if (bary(0) > 1 || bary(0) < 0) return false;
+    if (bary(1) > 1 || bary(1) < 0) return false;
+    if (bary(2) > 1 || bary(2) < 0) return false;
+    return true;
+}
+double triangleArea(const Eigen::Vector3d& a, const Eigen::Vector3d& b, const Eigen::Vector3d& c)
+{
+    Eigen::Vector3d ab = b - a;
+    Eigen::Vector3d ac = c - a;
+    double area = 0.5 * (ab.cross(ac)).norm();
+    return area;
+}
+bool is_ear( vector<VectorXd>& p, int a, int b, int c){
+    Vector3d p_a = p[a];
+    Vector3d p_b = p[b];
+    Vector3d p_c = p[c];
+
+    Vector3d ba = p_b-p_a;
+    Vector3d bc = p_c - p_b;
+    auto crossp = ba.cross(bc);
+    if(crossp(2) <= 0) {
+        cout<<"cross less 0, no ear "<<endl;
+        return false;}
+//    if(area>50) return false;
+//    cout<<crossp.transpose()<<" the cross product at "<<p[b].transpose()<<endl;
+
+    for(int i=0; i<p.size(); i++){
+        if(i==a|| i ==b || i==c){
+            continue;
+        }
+        Vector3d curr = p[i];
+        if(isPointInTriangle(curr, p_a, p_b, p_c)){
+            cout<<"something inside, no ear"<<endl;
+            return false;
+        }
+    }
+    auto banew = p_a-p_b;
+    auto angle = std::acos(banew.normalized().dot(bc.normalized()))* 180 / M_PI;
+    cout<<angle<<endl;
+    if(angle <20|| angle >340 ){
+
+        return true;
+    }
+    return false;
+}
+void clipEar( vector<vector<VectorXd>>& returnVec){
+    int count = 0;
+    for(int i=0; i<returnVec.size(); i++){
+        MatrixXd cliV; MatrixXi cliF;
+        startRetriangulation(returnVec[i], cliV, cliF);
+        VectorXd dblA;
+        igl::doublearea(cliV, cliF, dblA);
+        double sum=0;
+        for(int i=0; i<dblA.rows(); i++){
+            sum+= dblA(i);
+        }
+        cout<<"Sum of "<<i<<" is "<<sum<<endl;
+        if(sum< 100){
+            cout<<"sorry too small"<<endl;
+            continue;
+        }
+
+        cout<<endl<<endl<<returnVec.size()<<" working on clip "<<i<<" or "<<count<<endl;
+        count++;
+
+        int size = returnVec[i].size();
+        for(int j=0; j<returnVec[i].size(); j++) {
+            cout << returnVec[i][(j) ].transpose() << endl;
+        }
+        int count = 0;
+        int currVert = 0;
+        bool has_earF = true;
+
+        while (has_earF){
+            cout<<endl<<"New round!"<<endl;
+            has_earF = false;
+            for(int j=0; j<returnVec[i].size(); j++){
+                cout << returnVec[i][(j)%size].transpose() ;
+
+                if(is_ear(returnVec[i], (j-1+size) % size,(j) % size,(j+1) % size)){
+                    has_earF = true;
+                    cout<<" is ear"<<endl;
+                }
+            }
+            if(!has_earF) break;
+            cout<<" ear found? "<<has_earF<<endl;
+            while(!is_ear(returnVec[i], (currVert-1+size)%size, (currVert)%size, (currVert+1)%size )) {
+                currVert++;
+                currVert %= returnVec[i].size();
+            }
+            cout<<" ear found is "<<currVert<<" at position "<<returnVec[i][currVert].transpose()<<endl;
+
+            returnVec[i].erase(returnVec[i].begin()+currVert);
+            // we have found an ear
+//            has_earF = false;
+//            for(int j=0; j<returnVec[i].size(); j++){
+//                if(is_ear(returnVec[i], (j-1+size)%size, (j)%size, (j+1)%size )){
+//                    has_earF = true;
+//                    cout << "still ear "<<returnVec[i][(j)%size].transpose() << endl;
+//
+//                }
+//            }
+//            currVert++;
+
+        }
+    }
 
 }
 void clipDifference(vector<vector<int>>& boundaryL_adaptedFromPattern,vector<vector<int>>& boundaryL_toPattern, MatrixXd &
@@ -139,7 +255,7 @@ void clipDifference(vector<vector<int>>& boundaryL_adaptedFromPattern,vector<vec
                 if((it-point).norm()<th){// should go!!
                     cout<<"too close"<<endl;
                     point(0)+= 0.01;
-//                    ignore = true;
+                    ignore = true;
                     continue;
                 }
             }if(!ignore){
@@ -154,6 +270,9 @@ void clipDifference(vector<vector<int>>& boundaryL_adaptedFromPattern,vector<vec
         returnVec.push_back(poly);
         cout << endl;
     }
+
+
+    clipEar(returnVec);
 }
 
 // Convert HSV color to RGB color

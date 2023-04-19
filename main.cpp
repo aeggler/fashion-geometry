@@ -293,7 +293,7 @@ int main(int argc, char *argv[])
     inverseMap = false;
 //    garment = "tshirt";
 
-//    garment = "top";
+//    garment = "top_fromAnna";
     string garment_file_name = prefix+ "leggins/leggins_3d/leggins_3d_merged.obj"; //smaller collision thereshold to make sure it is not "eaten" after intial step , 3.5 instead of 4.5
 //    garment = "dress";
 //   string garmentExt = garment +"_4";
@@ -302,6 +302,7 @@ int main(int argc, char *argv[])
 //
 //    string garmentExt = garment+ "_2";
 //    string garment_file_name = prefix + "moreGarments/"+ garmentExt+"/"+garment+"_3d.obj";
+//    string garment_file_name = prefix + "moreGarments/top_1/"+garment+"_3d.obj";
 
     igl::readOBJ(garment_file_name, Vg, Fg);
     Timer t("Setup");
@@ -312,6 +313,8 @@ int main(int argc, char *argv[])
 
     string garment_pattern_file_name = prefix +"leggins/leggins_2d/leggins_2d.obj"; //
 //    string garment_pattern_file_name = prefix +"moreGarments/"+garmentExt+"/"+garment+"_2d.obj";
+//    string garment_pattern_file_name = prefix +"moreGarments/top_1/" + garment+"_2d.obj";
+//garment = "top";
     igl::readOBJ(garment_pattern_file_name, Vg_pattern, Fg_pattern);
 //    garment = "skirt_no2";
     symetry = true;
@@ -421,6 +424,8 @@ int main(int argc, char *argv[])
 
 // TODO remember to adapt the collision constraint solving dep on avatar, sometimes normalization is needed, sometimes not for whatever magic
 // this isi the same avatar for all garments we have: dress_4, leggins ,top_2 and skirt_1
+//    string avatar_file_name =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/CLO_avatars_oneComponent/CLO_avatar_to_bodyScan_Anna_rem 2.ply";
+//orig down here
     string avatar_file_name =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/avatar/avatar_one_component.ply";
 //    string avatar_file_name =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins_petite/avatar/avatar_one_component.ply";
 
@@ -600,7 +605,7 @@ int main(int argc, char *argv[])
     }
     int patchcount=0;
     bool showPatchBoundary = false ;
-
+    garmentExt = "top_fromAnna";
     menu.callback_draw_viewer_menu = [&]() {
         if (ImGui::CollapsingHeader("Garment", ImGuiTreeNodeFlags_OpenOnArrow)) {
             ImGui::InputInt("Vis Seam No", &whichSeam, 0, 0);
@@ -896,6 +901,58 @@ int main(int argc, char *argv[])
                 showGarment(viewer);
                 showMannequin(viewer);
             }
+        }
+        if (ImGui::CollapsingHeader("Smooth Pattern", ImGuiTreeNodeFlags_OpenOnArrow)){
+            bool startSmooth = false;
+            bool choosePatchArea = false;
+            bool choosePatches = false;
+            if(ImGui::Checkbox("init ", &startSmooth)) {
+                string smoothPatternFile =  "patternComputed_"+avName+"_"+garment+".obj";
+                igl::readOBJ(smoothPatternFile, currPattern, Fg_pattern_curr);
+            }
+
+
+            viewer.selected_data_index = 1;
+            viewer.data().clear();
+            viewer.selected_data_index = 2;
+            viewer.data().clear();
+            viewer.selected_data_index = 0;
+            viewer.data().clear();
+
+            viewer.data().set_mesh(currPattern, Fg_pattern_curr);
+            viewer.data().uniform_colors(ambient, diffuse, specular);
+            viewer.data().show_texture = false;
+            viewer.data().set_face_based(false);
+            viewer.data().show_lines = true;
+            if(ImGui::Checkbox("Start smooth", &startSmooth)) {
+                cout<<"Please choose 3 points to smooth between.  "<<endl;
+                startAndEnd.clear();
+                simulate = false;
+                adaptionFlag = false;
+                mouse_mode= SELECTVERT;
+            }
+            if(ImGui::Button("Confirm smooth", ImVec2(-1, 0))) {
+                if (startAndEnd.size() == 3) {
+                    cout << "Great, you selected " << startAndEnd[0] << " and " << startAndEnd[2]
+                         << " as endpoints. Let's get to work on smoothing. " << endl;
+
+                    smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+                }
+                viewer.selected_data_index = 0;
+                viewer.data().clear();
+                viewer.data().set_mesh(currPattern, Fg_pattern_curr);
+
+                viewer.data().uniform_colors(ambient, diffuse, specular);
+                viewer.data().show_texture = false;
+                viewer.data().set_face_based(false);
+                viewer.data().show_lines = true;
+            }
+            if(ImGui::Button("End smooth", ImVec2(-1, 0))) {
+                mouse_mode = NONE;
+                cout<<"End smoothing selection"<<endl;
+                igl::writeOBJ("patternSmoothed.obj", currPattern, Fg_pattern_curr);
+            }
+
         }
         if (ImGui::CollapsingHeader("Pattern adaption", ImGuiTreeNodeFlags_OpenOnArrow)){
             if(ImGui::Button("Compute adaptation", ImVec2(-1, 0))){
@@ -1271,7 +1328,7 @@ int main(int argc, char *argv[])
                         connectedVert.emplace_back(returnVec[i]);
                     }
                 }
-                cout<<boundaryL_adaptedFromPattern.size()<<" the boundaryy sizes "<<boundaryL_toPattern.size()<<endl;
+                cout<<boundaryL_adaptedFromPattern.size()<<" the boundary sizes "<<boundaryL_toPattern.size()<<endl;
 
                 igl::readOBJ("clipper_"+to_string(0)+".obj", Vg_retri, Fg_retri);
 
@@ -1286,7 +1343,7 @@ int main(int argc, char *argv[])
                     Vg_retri.resize(Vg_retrii.rows(), Vg_retrii.cols());
                     Vg_retri= Vg_retrii;
 
-                    if (!inverseMap && patchi<= 3) {
+                    if (!inverseMap ) {
                         mergeTriagulatedAndPattern(connectedVert[patchi],Vg_retri, Fg_retri,
                                                    currPattern,
                                                    Fg_pattern_curr, newFaces, avName, garment);
@@ -1593,15 +1650,17 @@ int main(int argc, char *argv[])
                 MatrixXd C = MatrixXd::Zero(adaptedPatternIn3d_faces.rows(), 3);
                 C.col(1).setConstant(1);
                 C.col(0).setConstant(1);
+                MatrixXd colrScatter;
+                computeCols(size, colrScatter);
                 int offset = C.rows()/2;
                 for(int i=0; i<size; i++){
                     for(int j=0; j<perFaceNewFaces[i].size(); j++){
                         double val = (((double)i)/((double)(size+1)));
-                        C(perFaceNewFaces[i][j], 0) = val;
-                        C(perFaceNewFaces[i][j], 2) = (1-val);
+                        C.row(perFaceNewFaces[i][j]) = colrScatter.row(i);
+//                        C(perFaceNewFaces[i][j], 2) = (1-val);
                         if(symetry){
-                            C(perFaceNewFaces[i][j]+offset, 0) = val;
-                            C(perFaceNewFaces[i][j]+offset, 2) = (1-val);
+                            C.row(perFaceNewFaces[i][j]+offset) = colrScatter.row(i);
+//                            C(perFaceNewFaces[i][j]+offset, 2) = (1-val);
                         }
 
                     }

@@ -376,7 +376,7 @@ void splitVertexFromCVE( cutVertEntry*& cve,
                          map<int, int> & halfPatternVertToFullPatternVert,
                          map<int, int> & halfPatternFaceToFullPatternFace
                          ){
-
+    cout<<"forced ? "<<globForceCut<<endl;
     cout<<" patch "<<cve->patch<<" of "<<boundaryL.size()<<" L Shape allowed? "<<LShapeAllowed <<endl;
 
     if(cve-> finFlag) {
@@ -496,8 +496,8 @@ void splitVertexFromCVE( cutVertEntry*& cve,
         bool tearIsUseful = false;
         checkIfCutIsUsefulForAdjFace(tearIsUseful, vfAdj, cve, cutDirection, Fg, handledVerticesSet, true );
 
-        if((!tearIsUseful&& !globForceCut)|| tipVertices.find(cve->vert) != tipVertices.end()){
-            cout<<"STOP now because of adj face stress condition  "<<endl;
+        if(!globForceCut && (!tearIsUseful|| tipVertices.find(cve->vert) != tipVertices.end())){
+            cout<<"STOP now because of adj face stress condition  "<<tearIsUseful<<globForceCut<<(tipVertices.find(cve->vert) != tipVertices.end())<<endl;
 
             cve->finFlag = true;
             cve->cutId = fractureId;
