@@ -297,8 +297,10 @@ int main(int argc, char *argv[])
 //    string garment_file_name = prefix+ "leggins/leggins_3d/leggins_3d_merged.obj"; //smaller collision thereshold to make sure it is not "eaten" after intial step , 3.5 instead of 4.5
 //    garment = "dress";
 //   string garmentExt = garment +"_4";
-    garment = "skirt";
-    string garmentExt = garment+ "_3";
+//    garment = "skirt";
+        garment = "hoodie";
+        string garmentExt = garment;
+//    string garmentExt = garment+ "_3";
 //
 //    string garmentExt = garment+ "_2";
     string garment_file_name = prefix + "moreGarments/"+ garmentExt+"/"+garment+"_3d.obj";
@@ -363,10 +365,17 @@ int main(int argc, char *argv[])
                 startAndEnd.push_back(1587);
                 startAndEnd.push_back(1561);
 
-            } else if (garment == "skirt" ){
+            }
+            else if (garment == "skirt" ){
                 startAndEnd.push_back(405);
                 startAndEnd.push_back(406);
                 startAndEnd.push_back(404);
+            }
+            else if (garment == "hoodie"){
+                startAndEnd.push_back(2173);
+                startAndEnd.push_back(2171);
+                startAndEnd.push_back(2177);
+
             }
             smoothBetweenVertices(VgPatternRet, FgPatternRet, startAndEnd);
             igl::writeOBJ("leftPattern_SmoothBoundAfter1.obj", VgPatternRet, FgPatternRet);
@@ -381,13 +390,17 @@ int main(int argc, char *argv[])
                 startAndEnd.push_back(1622);
                 startAndEnd.push_back(1620);
 //                igl::writeOBJ("leftPattern_SmoothBoundAfter2.obj", VgPatternRet, FgPatternRet);
-
-
             }
             else if  (garment == "skirt"){
                 startAndEnd.push_back(425);
                 startAndEnd.push_back(424);
                 startAndEnd.push_back(427);
+            }
+            else if (garment == "hoodie"){
+                startAndEnd.push_back(2164);
+                startAndEnd.push_back(2163);
+                startAndEnd.push_back(2161);
+
             }
             smoothBetweenVertices(VgPatternRet, FgPatternRet, startAndEnd);
 
@@ -396,18 +409,24 @@ int main(int argc, char *argv[])
                 startAndEnd.push_back(677);
                 startAndEnd.push_back(669);
                 startAndEnd.push_back(651);
-            }else if (garmentExt == "skirt_3"){
+            }
+            else if (garmentExt == "skirt_3"){
                 startAndEnd.push_back(1619);
                 startAndEnd.push_back(1618);
                 startAndEnd.push_back(1615);
 //                igl::writeOBJ("leftPattern_SmoothBoundAfter3.obj", VgPatternRet, FgPatternRet);
 
             }
-
             else if  (garment == "skirt"){
                 startAndEnd.push_back(400);
                 startAndEnd.push_back(399);
                 startAndEnd.push_back(398);
+            }
+            else if (garment == "hoodie"){
+                startAndEnd.push_back(2180);
+                startAndEnd.push_back(2179);
+                startAndEnd.push_back(2183);
+
             }
             smoothBetweenVertices(VgPatternRet, FgPatternRet, startAndEnd);
             startAndEnd.clear();
@@ -415,7 +434,8 @@ int main(int argc, char *argv[])
                 startAndEnd.push_back(704);
                 startAndEnd.push_back(703);
                 startAndEnd.push_back(701);
-            }else if (garmentExt == "skirt_3"){
+            }
+            else if (garmentExt == "skirt_3"){
                 startAndEnd.push_back(1505);
                 startAndEnd.push_back(1504);
                 startAndEnd.push_back(1518);
@@ -423,14 +443,31 @@ int main(int argc, char *argv[])
 
 
             }
-
             else if  (garment == "skirt"){
                 startAndEnd.push_back(402);
                 startAndEnd.push_back(397);
                 startAndEnd.push_back(401);
             }
+            else if (garment == "hoodie"){
+                startAndEnd.push_back(2105);
+                startAndEnd.push_back(2101);
+                startAndEnd.push_back(2104);
+            }
             smoothBetweenVertices(VgPatternRet, FgPatternRet, startAndEnd);
+            if(garment == "hoodie"){
+                startAndEnd.clear();
+                startAndEnd.push_back(2118);
+                startAndEnd.push_back(2114);
+                startAndEnd.push_back(2117);
+                smoothBetweenVertices(VgPatternRet, FgPatternRet, startAndEnd);
 
+                startAndEnd.clear();
+                startAndEnd.push_back(2111);
+                startAndEnd.push_back(2107);
+                startAndEnd.push_back(2110);
+                smoothBetweenVertices(VgPatternRet, FgPatternRet, startAndEnd);
+
+            }
 
             igl::writeOBJ("leftPattern_SmoothBound.obj", VgPatternRet, FgPatternRet);
 
@@ -637,7 +674,7 @@ int main(int argc, char *argv[])
     }
     int patchcount=0;
     bool showPatchBoundary = false ;
-    garmentExt = "top_fromAnna";
+//    garmentExt = "top_fromAnna";
     menu.callback_draw_viewer_menu = [&]() {
         if (ImGui::CollapsingHeader("Garment", ImGuiTreeNodeFlags_OpenOnArrow)) {
             ImGui::InputInt("Vis Seam No", &whichSeam, 0, 0);
@@ -2322,7 +2359,6 @@ void computeBaryCoordsGarOnNewMannequin(igl::opengl::glfw::Viewer& viewer, bool 
     igl::signed_distance(garmentPreInterpol, mannequinPreInterpol, Fm, igl::SIGNED_DISTANCE_TYPE_UNSIGNED, distVec, closestFaceId, C, N);
     N.resize(Vg.rows(), 3);
 
-
     VectorXd vis (Vg.rows()); vis.setConstant(0);
     for(int ii=0; ii<Fg.rows(); ii++){
         for(int j=0; j<3; j++) {
@@ -2330,7 +2366,6 @@ void computeBaryCoordsGarOnNewMannequin(igl::opengl::glfw::Viewer& viewer, bool 
             if(vis(i)!= 0 ) continue;
             vis(i) ++;
             int closestFace = closestFaceId(i);
-
 
             Vector3d a = mannequinPreInterpol.row(Fm(closestFace, 0));
             Vector3d b = mannequinPreInterpol.row(Fm(closestFace, 1));
@@ -2360,11 +2395,13 @@ void computeBaryCoordsGarOnNewMannequin(igl::opengl::glfw::Viewer& viewer, bool 
             c = targetM.row(Fm(closestFace, 2));
             N.row(i) = ((b - a).cross(c - a)).normalized();
             Vector3d newPos = currInBary(0) * a + currInBary(1) * b + currInBary(2) * c;
-            double oldx = -1;
-            if(abs(garmentPreInterpol(i, 0))<1){
-               oldx = garmentPreInterpol(i, 0);
-            }
+
+            double oldx = -1;//todo
+//            if(abs(garmentPreInterpol(i, 0))<1){
+//               oldx = garmentPreInterpol(i, 0);
+//            }
             Vg.row(i) = newPos.transpose() + distVec(i) * N.row(i);
+
             if(oldx !=-1){
                 Vg(i, 0) = oldx ;
             }

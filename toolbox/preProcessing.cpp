@@ -985,6 +985,7 @@ void splitAndSmooth(MatrixXd& Vg,MatrixXi& Fg,MatrixXd& Vg_pattern,MatrixXi& Fg_
         }
     }
     igl::writeOBJ("leftPatternBeforecoll.obj", newVg_pattern, newFg_pattern);
+    cout<<"starting edge collapse"<<endl;
     edgeCollapse (newVg, newFg, newVg_pattern, newFg_pattern, garment, garmentEXT);
 
     VgRet.resize(newVg.rows(), 3);
@@ -1055,7 +1056,6 @@ void preProcessGarment(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixX
                count_pattern++;
            }
        }
-
 
        int newFace = leftFaces.sum();
        newFg.resize(newFace, 3);
@@ -1139,6 +1139,7 @@ void preProcessGarment(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixX
         }
 
         writeOBJ("interpolLaplGar.obj", initGuess, newFg);
+        newVg.resize(initGuess.rows(), 3);
         newVg= initGuess;
 
    }
@@ -1169,15 +1170,20 @@ void preProcessGarment(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixX
             for(int j =0; j<3; j++){
 
                 if(checked(newFg(i,j))!=0)continue;
-                if(newFg(i,j)==320)cout<<origVg.row(newFg(i,j))<<" the orig row"<<endl;
-                 if(abs( origVg(newFg(i,j),0)) >= 0.05){
+                 if(abs( origVg(newFg(i,j),0)) >= 0.0005){
                     mapDupl(newFg(i,j)) = count;
                     count++;
                     onSeam2(newFg(i,j))= 0;
-                     if(newFg(i,j)==320)cout<<onSeam2(newFg(i,j))<<" on seam? and map "<<  mapDupl(newFg(i,j))<<endl;
+//                     if(newFg(i,j)==618)cout<<onSeam2(newFg(i,j))<<" on seam? and map "<<  mapDupl(newFg(i,j))<<endl;
                  }else{// if( newVg_pattern(newFg_pattern(i,j),0) == 0){
                     onSeam2(newFg(i,j))= 1;
-                }
+
+//                     if(newFg(i,j)==618){
+////                         cout<<onSeam2(newFg(i,j))<<" on seam? from face "<< i<<endl;
+////                         cout<<origVg.row(618)<<endl;
+//                     }
+
+                 }
                  checked(newFg(i,j))++;
             }
         }
@@ -1216,10 +1222,17 @@ void preProcessGarment(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixX
         for(int j=0; j<3; j++){
             // if the vertex is on the seam, we take the same one!
             if( onSeam2(newFg(i,j )) != 0){
+
                 FgDupl(i,j) = newFg(i,j);
+//                if(i==1239){
+//                    cout<<FgDupl(i,j)<<" from on seam "<<endl;
+//                }
             }else{
                 // else we take the duplicated vertex
                 FgDupl(i,j) = mapDupl(newFg(i,j)) + offset;
+//                if(FgDupl(i,j)<0){
+//                    cout<<FgDupl(i,j)<<" map Dupl"<<endl;
+//                }
             }
         }
     }
@@ -1258,6 +1271,8 @@ void preProcessGarment(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixX
             T_sym(0) = 300;
             T_sym(1) = 0;
             T_sym(2) = 0;
+        }else if (garment =="hoodie"){
+            T_sym (0) = 200;
         }
 
     }
