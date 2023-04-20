@@ -678,7 +678,50 @@ void edgeCollapse(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg
 //        freecorners.insert(1617);
 //        freecorners.insert(1507);
 //        freecorners.insert(1707);
+    }else if (garment == "hoodie"){
+        cornersOfGar.insert(2221);
+        cornersOfGar.insert(2226);
+        cornersOfGar.insert(1617);
+        cornersOfGar.insert(1624);
+        cornersOfGar.insert(1629);
 
+        cornersOfGar.insert(2205);
+        cornersOfGar.insert(1514);
+        cornersOfGar.insert(1520);
+        cornersOfGar.insert(1522);
+        cornersOfGar.insert(2202);
+
+        cornersOfGar.insert(2232);
+        cornersOfGar.insert(1722);
+        cornersOfGar.insert(3124);
+        cornersOfGar.insert(2236);
+
+        cornersOfGar.insert(11);
+        cornersOfGar.insert(14);
+        cornersOfGar.insert(2106);
+        cornersOfGar.insert(2105);
+
+        cornersOfGar.insert(1440);
+        cornersOfGar.insert(1458);
+        cornersOfGar.insert(1455);
+        cornersOfGar.insert(1443);
+
+        cornersOfGar.insert(723);
+        cornersOfGar.insert(790);
+        cornersOfGar.insert(768);
+        cornersOfGar.insert(745);
+
+        cornersOfGar.insert(2124);
+        cornersOfGar.insert(155);
+        cornersOfGar.insert(148);
+        cornersOfGar.insert(136);
+        cornersOfGar.insert(115);
+        cornersOfGar.insert(2123);
+
+        cornersOfGar.insert(63);
+        cornersOfGar.insert(60);
+        cornersOfGar.insert(2112);
+        cornersOfGar.insert(2113);
 
     }
     int count = 0;
