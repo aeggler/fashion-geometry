@@ -76,10 +76,8 @@ bool is_ear( vector<VectorXd>& p, int a, int b, int c){
     Vector3d bc = p_c - p_b;
     auto crossp = ba.cross(bc);
     if(crossp(2) <= 0) {
-        cout<<"cross less 0, no ear "<<endl;
-        return false;}
-//    if(area>50) return false;
-//    cout<<crossp.transpose()<<" the cross product at "<<p[b].transpose()<<endl;
+        return false;
+    }
 
     for(int i=0; i<p.size(); i++){
         if(i==a|| i ==b || i==c){
@@ -87,14 +85,13 @@ bool is_ear( vector<VectorXd>& p, int a, int b, int c){
         }
         Vector3d curr = p[i];
         if(isPointInTriangle(curr, p_a, p_b, p_c)){
-            cout<<"something inside, no ear"<<endl;
             return false;
         }
     }
     auto banew = p_a-p_b;
     auto angle = std::acos(banew.normalized().dot(bc.normalized()))* 180 / M_PI;
-    cout<<angle<<endl;
-    if(angle <20|| angle >340 ){
+    double thereshAngle = 10;// smaller angle and merge for better pattern!
+    if(angle <thereshAngle|| angle >360-thereshAngle ){
 
         return true;
     }
@@ -117,7 +114,6 @@ void clipEar( vector<vector<VectorXd>>& returnVec){
             continue;
         }
 
-        cout<<endl<<endl<<returnVec.size()<<" working on clip "<<i<<" or "<<count<<endl;
         count++;
 
         int size = returnVec[i].size();
@@ -129,35 +125,20 @@ void clipEar( vector<vector<VectorXd>>& returnVec){
         bool has_earF = true;
 
         while (has_earF){
-            cout<<endl<<"New round!"<<endl;
             has_earF = false;
             for(int j=0; j<returnVec[i].size(); j++){
-                cout << returnVec[i][(j)%size].transpose() ;
 
                 if(is_ear(returnVec[i], (j-1+size) % size,(j) % size,(j+1) % size)){
                     has_earF = true;
-                    cout<<" is ear"<<endl;
                 }
             }
             if(!has_earF) break;
-            cout<<" ear found? "<<has_earF<<endl;
             while(!is_ear(returnVec[i], (currVert-1+size)%size, (currVert)%size, (currVert+1)%size )) {
                 currVert++;
                 currVert %= returnVec[i].size();
             }
-            cout<<" ear found is "<<currVert<<" at position "<<returnVec[i][currVert].transpose()<<endl;
 
             returnVec[i].erase(returnVec[i].begin()+currVert);
-            // we have found an ear
-//            has_earF = false;
-//            for(int j=0; j<returnVec[i].size(); j++){
-//                if(is_ear(returnVec[i], (j-1+size)%size, (j)%size, (j+1)%size )){
-//                    has_earF = true;
-//                    cout << "still ear "<<returnVec[i][(j)%size].transpose() << endl;
-//
-//                }
-//            }
-//            currVert++;
 
         }
     }
@@ -172,11 +153,13 @@ void clipDifference(vector<vector<int>>& boundaryL_adaptedFromPattern,vector<vec
 
     int mult = 10000;
     int toCut;
+    bool isInverse = false;
     if(boundaryL_adaptedFromPattern.size() == boundaryL_toPattern.size()){
         // heuristic for inverse
         toCut = boundaryL_adaptedFromPattern.size()/2;
     }else{
         toCut= boundaryL_adaptedFromPattern.size();
+        isInverse = true;
     }
     for(int i=0; i<toCut ; i++){
         Path p;
@@ -185,9 +168,7 @@ void clipDifference(vector<vector<int>>& boundaryL_adaptedFromPattern,vector<vec
             double x = currPattern(var, 0); int xi = x*mult;
             double y = currPattern(var, 1); int yi = y*mult;
             p<< IntPoint(xi, yi);
-            if(i==0 && j==0){
-                cout<<xi<<" BEFORE "<<yi<<endl;
-            }
+
         }
         // Add the input polygon to the Clipper object
         ClipperOffset co;
@@ -198,32 +179,32 @@ void clipDifference(vector<vector<int>>& boundaryL_adaptedFromPattern,vector<vec
         Path pp;
         for (int j = 0; j <offset_clip[0].size(); j++) {
             pp << IntPoint( offset_clip[0][j].X , offset_clip[0][j].Y );
-            if(i==0 && j==0){
-                cout<<offset_clip[0][j].X<<"  AFTER "<<offset_clip[0][j].Y<<endl;
-            }
+
         }
 
         clip_dbl.push_back(pp);
     }
 
-
     for(int i=0; i< boundaryL_toPattern.size()/2;i++){
         Path pp;
         for(int j=0; j<boundaryL_toPattern[i].size(); j++){
+
             int var = boundaryL_toPattern[i][j];
             double x = Vg_to(var, 0); int xi = x*mult;
             double y = Vg_to(var, 1); int yi = y*mult;
+            double minDist = 0.;
+            for(int ii=0; ii<toCut ; ii++){
+                for(int jj=0; jj<boundaryL_adaptedFromPattern[ii].size(); jj++){
+                    int vvar = boundaryL_adaptedFromPattern[ii][jj];
+                    double dist = (currPattern.row(vvar)  - Vg_to.row(var)).norm();
+                    if(dist<minDist) {
+                        minDist = dist;
+                        x =  currPattern(vvar, 0); xi = x*mult;
+                         y = currPattern(vvar, 1); yi = y*mult;
+                    }
+                }
+            }
 
-//            for(auto paths: clip_dbl){
-//                for(auto pt: paths){
-//                    VectorXd other(2); other(0) = pt.X / double(mult); other(1)= pt.Y / double(mult);
-//                    VectorXd thi(2); thi(0) = xi / double(mult); thi(1) = yi / double(mult);
-//                    if((other-thi).norm()< 0.08){
-//                        xi = pt.X; yi= pt.Y; // merge them if they are close;
-//                        cout<<" SAME "<<pt.X<<" "<<pt.Y<<endl;
-//                    }
-//                }
-//            }
             pp<<IntPoint(xi, yi );
         }
         subj_dbl.push_back(pp);

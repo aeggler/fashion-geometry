@@ -288,20 +288,20 @@ int main(int argc, char *argv[])
 //    cout<<garment_file_name<<" chosen file, thanks. "<<endl;
 
     string prefix = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/";
-    garment = "leggins";
+//    garment = "leggins";
     bool patternExists = true;
     inverseMap = false;
 //    garment = "tshirt";
 
 //    garment = "top_fromAnna";
-    string garment_file_name = prefix+ "leggins/leggins_3d/leggins_3d_merged.obj"; //smaller collision thereshold to make sure it is not "eaten" after intial step , 3.5 instead of 4.5
+//    string garment_file_name = prefix+ "leggins/leggins_3d/leggins_3d_merged.obj"; //smaller collision thereshold to make sure it is not "eaten" after intial step , 3.5 instead of 4.5
 //    garment = "dress";
 //   string garmentExt = garment +"_4";
-//    garment = "skirt";
-    string garmentExt = garment+ "_1";
+    garment = "skirt";
+    string garmentExt = garment+ "_3";
 //
 //    string garmentExt = garment+ "_2";
-//    string garment_file_name = prefix + "moreGarments/"+ garmentExt+"/"+garment+"_3d.obj";
+    string garment_file_name = prefix + "moreGarments/"+ garmentExt+"/"+garment+"_3d.obj";
 //    string garment_file_name = prefix + "moreGarments/top_1/"+garment+"_3d.obj";
 
     igl::readOBJ(garment_file_name, Vg, Fg);
@@ -311,8 +311,8 @@ int main(int argc, char *argv[])
 //    string garment_pattern_file_name= igl::file_dialog_open();
 //    cout<<garment_pattern_file_name<<" chosen file for pattern, thanks. "<<endl;
 
-    string garment_pattern_file_name = prefix +"leggins/leggins_2d/leggins_2d.obj"; //
-//    string garment_pattern_file_name = prefix +"moreGarments/"+garmentExt+"/"+garment+"_2d.obj";
+//    string garment_pattern_file_name = prefix +"leggins/leggins_2d/leggins_2d.obj"; //
+    string garment_pattern_file_name = prefix +"moreGarments/"+garmentExt+"/"+garment+"_2d.obj";
 //    string garment_pattern_file_name = prefix +"moreGarments/top_1/" + garment+"_2d.obj";
 //garment = "top";
     igl::readOBJ(garment_pattern_file_name, Vg_pattern, Fg_pattern);
@@ -352,13 +352,18 @@ int main(int argc, char *argv[])
 
             MatrixXd VgPatternRet; MatrixXi FgPatternRet;
             MatrixXd VgRet; MatrixXi FgRet;
-            splitAndSmooth(Vg, Fg, Vg_pattern, Fg_pattern, VgPatternRet, FgPatternRet, VgRet, FgRet, garment);
+            splitAndSmooth(Vg, Fg, Vg_pattern, Fg_pattern, VgPatternRet, FgPatternRet, VgRet, FgRet, garment, garmentExt);
             startAndEnd.clear();
             if (garment == "skirt_no2"){
                 startAndEnd.push_back(698);
                 startAndEnd.push_back(695);
                 startAndEnd.push_back(693);
-            }else if (garment == "skirt"){
+            } else if (garmentExt == "skirt_3"){
+                startAndEnd.push_back(1566);
+                startAndEnd.push_back(1587);
+                startAndEnd.push_back(1561);
+
+            } else if (garment == "skirt" ){
                 startAndEnd.push_back(405);
                 startAndEnd.push_back(406);
                 startAndEnd.push_back(404);
@@ -371,7 +376,15 @@ int main(int argc, char *argv[])
                 startAndEnd.push_back(700);
                 startAndEnd.push_back(699);
                 startAndEnd.push_back(696);
-            }else if  (garment == "skirt"){
+            }else if (garmentExt == "skirt_3"){
+                startAndEnd.push_back(1616);
+                startAndEnd.push_back(1622);
+                startAndEnd.push_back(1620);
+//                igl::writeOBJ("leftPattern_SmoothBoundAfter2.obj", VgPatternRet, FgPatternRet);
+
+
+            }
+            else if  (garment == "skirt"){
                 startAndEnd.push_back(425);
                 startAndEnd.push_back(424);
                 startAndEnd.push_back(427);
@@ -383,7 +396,15 @@ int main(int argc, char *argv[])
                 startAndEnd.push_back(677);
                 startAndEnd.push_back(669);
                 startAndEnd.push_back(651);
-            }else if  (garment == "skirt"){
+            }else if (garmentExt == "skirt_3"){
+                startAndEnd.push_back(1619);
+                startAndEnd.push_back(1618);
+                startAndEnd.push_back(1615);
+//                igl::writeOBJ("leftPattern_SmoothBoundAfter3.obj", VgPatternRet, FgPatternRet);
+
+            }
+
+            else if  (garment == "skirt"){
                 startAndEnd.push_back(400);
                 startAndEnd.push_back(399);
                 startAndEnd.push_back(398);
@@ -394,7 +415,16 @@ int main(int argc, char *argv[])
                 startAndEnd.push_back(704);
                 startAndEnd.push_back(703);
                 startAndEnd.push_back(701);
-            }else if  (garment == "skirt"){
+            }else if (garmentExt == "skirt_3"){
+                startAndEnd.push_back(1505);
+                startAndEnd.push_back(1504);
+                startAndEnd.push_back(1518);
+//                igl::writeOBJ("leftPattern_SmoothBoundAfter4.obj", VgPatternRet, FgPatternRet);
+
+
+            }
+
+            else if  (garment == "skirt"){
                 startAndEnd.push_back(402);
                 startAndEnd.push_back(397);
                 startAndEnd.push_back(401);
@@ -405,7 +435,7 @@ int main(int argc, char *argv[])
             igl::writeOBJ("leftPattern_SmoothBound.obj", VgPatternRet, FgPatternRet);
 
         }
-        preProcessGarment(Vg, Fg, Vg_pattern, Fg_pattern, insertPlane, symVert1, symVert2, T_sym_pattern, garment);
+        preProcessGarment(Vg, Fg, Vg_pattern, Fg_pattern, insertPlane, symVert1, symVert2, T_sym_pattern, garment, garmentExt);
         Vg_orig = Vg; Fg_orig= Fg;
     }
     garmentPreInterpol = Vg;
@@ -426,7 +456,9 @@ int main(int argc, char *argv[])
 // this isi the same avatar for all garments we have: dress_4, leggins ,top_2 and skirt_1
 //    string avatar_file_name =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/CLO_avatars_oneComponent/CLO_avatar_to_bodyScan_Anna_rem 2.ply";
 //orig down here
-    string avatar_file_name =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/avatar/avatar_one_component.ply";
+//    string avatar_file_name =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/avatar/avatar_one_component.ply";
+    string avatar_file_name =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/avatar/avatar_flat.ply";
+
 //    string avatar_file_name =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins_petite/avatar/avatar_one_component.ply";
 
     //string avatar_file_name = igl::file_dialog_open();
@@ -438,10 +470,10 @@ int main(int argc, char *argv[])
 //    string morphBody1left =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/moreGarments/dress_4/avatar_oneComponent_left.ply";
 //    string morphBody1right =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/moreGarments/dress_4/avatar_oneComponent_right.ply";
 //     avName = "avatar_missy_straight_05_OC";// good for skirt
-//     avName = "avatar_petite_curvy_01_OC";
+     avName = "avatar_petite_curvy_01_OC";
 //    avName = "avatar_maternity_05_OC";
 
-    avName = "CLO_avatar_to_bodyScan_Anna_rem 2";
+//    avName = "CLO_avatar_to_bodyScan_Anna_rem 2";
     string morphBody1 =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/CLO_avatars_oneComponent/"+ avName +".ply";//
     string morphBody1left =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/CLO_avatars_oneComponent/"+ avName +"_left.ply";
     string morphBody1right =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/CLO_avatars_oneComponent/"+ avName +"_right.ply";
