@@ -298,7 +298,7 @@ int main(int argc, char *argv[])
 //    garment = "dress";
 //   string garmentExt = garment +"_4";
 //    garment = "skirt";
-        garment = "hoodie";
+        garment = "man_tshirt";
         string garmentExt = garment;
 //    string garmentExt = garment+ "_3";
 //
@@ -377,6 +377,11 @@ int main(int argc, char *argv[])
                 startAndEnd.push_back(2177);
 
             }
+            else if (garment == "man_tshirt"){
+                startAndEnd.push_back(1834);
+                startAndEnd.push_back(1835);
+                startAndEnd.push_back(1832);
+            }
             smoothBetweenVertices(VgPatternRet, FgPatternRet, startAndEnd);
             igl::writeOBJ("leftPattern_SmoothBoundAfter1.obj", VgPatternRet, FgPatternRet);
 
@@ -401,6 +406,11 @@ int main(int argc, char *argv[])
                 startAndEnd.push_back(2163);
                 startAndEnd.push_back(2161);
 
+            }
+            else if (garment == "man_tshirt"){
+                startAndEnd.push_back(1876);
+                startAndEnd.push_back(1878);
+                startAndEnd.push_back(1877);
             }
             smoothBetweenVertices(VgPatternRet, FgPatternRet, startAndEnd);
 
@@ -428,7 +438,7 @@ int main(int argc, char *argv[])
                 startAndEnd.push_back(2183);
 
             }
-            smoothBetweenVertices(VgPatternRet, FgPatternRet, startAndEnd);
+            if(garment !="man_tshirt") smoothBetweenVertices(VgPatternRet, FgPatternRet, startAndEnd);
             startAndEnd.clear();
             if (garment == "skirt_no2") {
                 startAndEnd.push_back(704);
@@ -453,7 +463,7 @@ int main(int argc, char *argv[])
                 startAndEnd.push_back(2101);
                 startAndEnd.push_back(2104);
             }
-            smoothBetweenVertices(VgPatternRet, FgPatternRet, startAndEnd);
+            if(garment !="man_tshirt") smoothBetweenVertices(VgPatternRet, FgPatternRet, startAndEnd);
             if(garment == "hoodie"){
                 startAndEnd.clear();
                 startAndEnd.push_back(2118);
@@ -494,7 +504,8 @@ int main(int argc, char *argv[])
 //    string avatar_file_name =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/CLO_avatars_oneComponent/CLO_avatar_to_bodyScan_Anna_rem 2.ply";
 //orig down here
 //    string avatar_file_name =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/avatar/avatar_one_component.ply";
-    string avatar_file_name =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/avatar/avatar_flat.ply";
+//    string avatar_file_name =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/avatar/avatar_flat.ply";
+    string avatar_file_name =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/moreGarments/man_tshirt/avatar.ply";
 
 //    string avatar_file_name =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins_petite/avatar/avatar_one_component.ply";
 

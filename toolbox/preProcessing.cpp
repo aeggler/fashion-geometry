@@ -375,16 +375,18 @@ void insertPlane(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg_
                 idfac1 = yToFaceAndIdx[newPos1(1)].second;
 
                 idx1 =Fg (fac1, idfac1 );
-                if(i== 1128 && garment== "skirt_no2") extra1 = true;
+                if(i== 1128 && garment== "skirt_no2"){ extra1 = true;}
                 if(i==102 && garment == "skirt") {
                     extra1 = true;
                 }
                 if(i==5596 && garmentEXT == "skirt_3") {
                     extra1 = true;
                 }
-
                 if(i == 6096 && garment == "hoodie"){
                     extra1 = true; //good
+                }
+                if(i==6427 && garment == "man_tshirt"){
+                    extra1 = true;
                 }
 
             }
@@ -403,7 +405,7 @@ void insertPlane(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg_
                 fac2 = yToFaceAndIdx[newPos2(1)].first;
                 idfac2 = yToFaceAndIdx[newPos2(1)].second;
                 idx2 =Fg ( fac2, idfac2 );
-                if(i== 1256 && garment== "skirt_no2") extra2 = true;
+                if(i== 1256 && garment== "skirt_no2"){ extra2 = true;}
                 if(i==849 && garment == "skirt") {
                     extra2 = true;
                 }
@@ -418,6 +420,9 @@ void insertPlane(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg_
                 }
                 if(i == 2089 && garment == "hoodie"){
                     extra2 = true;//good
+                }
+                if(i==3872 && garment == "man_tshirt"){
+                    extra2 = true;
                 }
 
             }
@@ -625,6 +630,7 @@ void edgeCollapse(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg
     set<int> cornersOfGar;
     set<int> freecorners;// corners in the outer of the gament in3D.not sure about them
     double theresh = 7.;
+
     if (garment == "skirt_no2") {
         freecorners.insert(704);
         freecorners.insert(707);
@@ -642,7 +648,8 @@ void edgeCollapse(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg
         cornersOfGar.insert(708);
         cornersOfGar.insert(711);
 
-    }else if(garment=="skirt" && garmentEXT !="skirt_3"){
+    }
+    else if(garment=="skirt" && garmentEXT !="skirt_3"){
         theresh= 9;
         cornersOfGar.insert(404);
         cornersOfGar.insert(400);
@@ -658,7 +665,8 @@ void edgeCollapse(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg
         freecorners.insert(406);
         freecorners.insert(456);
         freecorners.insert(409);
-    }else if (garmentEXT == "skirt_3"){
+    }
+    else if (garmentEXT == "skirt_3"){
         cornersOfGar.insert(1617);
         cornersOfGar.insert(733);
         cornersOfGar.insert(756);
@@ -678,7 +686,8 @@ void edgeCollapse(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg
 //        freecorners.insert(1617);
 //        freecorners.insert(1507);
 //        freecorners.insert(1707);
-    }else if (garment == "hoodie"){
+    }
+    else if (garment == "hoodie"){
         cornersOfGar.insert(2221);
         cornersOfGar.insert(2226);
         cornersOfGar.insert(1617);
@@ -724,12 +733,54 @@ void edgeCollapse(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg
         cornersOfGar.insert(2113);
 
     }
+    else if (garment == "man_tshirt"){
+        cornersOfGar.insert(1583);
+        cornersOfGar.insert(1588);
+        cornersOfGar.insert(1613);
+        cornersOfGar.insert(1618);
+
+        cornersOfGar.insert(1835);
+        cornersOfGar.insert(64);
+        cornersOfGar.insert(40);
+        cornersOfGar.insert(28);
+        cornersOfGar.insert(19);
+        cornersOfGar.insert(1840);
+
+        cornersOfGar.insert(2017);
+        cornersOfGar.insert(2019);
+        cornersOfGar.insert(1566);
+        cornersOfGar.insert(1582);
+
+        cornersOfGar.insert(1920);
+        cornersOfGar.insert(798);
+        cornersOfGar.insert(774);
+        cornersOfGar.insert(761);
+        cornersOfGar.insert(752);
+        cornersOfGar.insert(1918);
+
+        cornersOfGar.insert(1831);
+        cornersOfGar.insert(1833);
+        cornersOfGar.insert(6);
+        cornersOfGar.insert(5);
+        for(auto it: cornersOfGar){
+            if(it!= 64 && it != 798 )
+            freecorners.insert(it);
+        }
+
+    }
     int count = 0;
+    freecorners.insert (-4);
+    cout<<freecorners.size()<<"free corners size "<<endl;
+    for(auto item : freecorners){cout<<item; }
+    cout<<freecorners.size()<<" free corners size end "<<endl;
+
     vector<vector<int>> boundaryLoop;
     igl::boundary_loop(Fg_pattern, boundaryLoop);
-for(int iterations = 0; iterations < 5 ; iterations++){
+    int searched = 1918;
+    for(int iterations = 0; iterations < 5 ; iterations++){
     for (int i = 0; i < boundaryLoop.size(); i++) {
         for (int l = 0; l < boundaryLoop[i].size(); l++) {
+            freecorners.insert (-4);// should it always have at least one element?
             vector<vector<int>> vvAdj, vvAdjGar, vfAdj, vfAdjGar;
             createVertexFaceAdjacencyList(Fg_pattern, vfAdj);
             createVertexFaceAdjacencyList(Fg, vfAdjGar);
@@ -738,7 +789,7 @@ for(int iterations = 0; iterations < 5 ; iterations++){
 
             int id0 = boundaryLoop[i][l];
             int id1 = boundaryLoop[i][(l + 1) % boundaryLoop[i].size()];
-            int face = adjacentFaceToEdge(id0, id1, -1, vfAdj);
+//            int face = adjacentFaceToEdge(id0, id1, -1, vfAdj);
             bool corner0 = isCorner(id0, Fg, cornersOfGar, Fg_pattern, Vg, garment);
             bool corner1 = isCorner(id1, Fg, cornersOfGar, Fg_pattern, Vg, garment);
 
@@ -746,6 +797,8 @@ for(int iterations = 0; iterations < 5 ; iterations++){
             int v1Bound = isBoundaryVertex(Vg_pattern, id1, vvAdj, vfAdj);
             if (!v0Bound || !v1Bound)continue; // for now just look at two adjacent boundary vertices!
             double dist = (Vg_pattern.row(id0) - Vg_pattern.row(id1)).norm();
+            if(searched == id0&& searched-1 == id1) cout<<dist<<" for searched id"<<endl;
+
             if (dist < theresh) {
                 int face = adjacentFaceToEdge(id0, id1, -1, vfAdj);
                 int idx0 = 0;
@@ -757,15 +810,26 @@ for(int iterations = 0; iterations < 5 ; iterations++){
 
                 RowVectorXd newpos, newposGar;
                 if (corner0) {
+                    if(searched == id0&& searched-1 == id1) cout<<dist<<" for searched id is corner 0 "<<endl;
+
                     if(freecorners.find(id0)==freecorners.end()){
-//                        cout<<"freeCorner "<<id0<<endl;
+                         if(searched == id0){
+                            cout<<"freeCorner"<<endl;
+                            for(auto item: freecorners){
+                                cout<<item<<"; ";
+                            }
+                         }cout<<"after"<<endl;
                         continue;
                     }
+                    if(searched == id0&& searched-1 == id1) cout<<dist<<" for searched id has skipped continue "<<endl;
+
                     newpos = Vg_pattern.row(id0);
                     newposGar = Vg.row(id0G);
                 } else if (corner1) {
                     if(freecorners.find(id1)==freecorners.end()){
-//                        cout<<"free corner "<<id1<<endl ;
+                        if(searched == id0){
+                            cout<<"freeCorner"<<endl;
+                        }
                         continue;
                     }
                     newpos = Vg_pattern.row(id1);
@@ -818,26 +882,29 @@ for(int iterations = 0; iterations < 5 ; iterations++){
                     }
                 }
                 set<int> cornersNew, freecornersNew;
+                freecornersNew.clear();
                 for (int it: cornersOfGar) {
                     if (it > id1) {
                         cornersNew.insert(it - 1);
-                        if(freecorners.find(it)!=freecorners.end()){
+                        if(freecorners.find(it)!= freecorners.end()){
                             freecornersNew.insert(it-1);
                         }
 
                     } else if (it == id1) {
                         cornersNew.insert(id0);
-                        if(freecorners.find(it)!=freecorners.end()){
+                        if(freecorners.find(it)!= freecorners.end()){
                             freecornersNew.insert(id0);
                         }
                     } else {
                         cornersNew.insert(it);
-                        if(freecorners.find(it)!=freecorners.end()){
+                        if(freecorners.find(it)!= freecorners.end()){
                             freecornersNew.insert(it);
                         }
                     }
                 }
+                if(searched> id1) {searched--; }else if (searched==id1){searched=id0;}
                 cornersOfGar.clear();
+                
                 freecorners.clear();
                 cornersOfGar = cornersNew;
                 freecorners = freecornersNew;
@@ -874,6 +941,7 @@ for(int iterations = 0; iterations < 5 ; iterations++){
     }
 }
     igl::writeOBJ("collapsed.obj", Vg_pattern, Fg_pattern);
+    igl::writeOBJ("collapsed3d.obj", Vg, Fg);
 
 
 }
