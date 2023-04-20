@@ -382,6 +382,11 @@ void insertPlane(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg_
                 if(i==5596 && garmentEXT == "skirt_3") {
                     extra1 = true;
                 }
+
+                if(i == 6096 && garment == "hoodie"){
+                    extra1 = true; //good
+                }
+
             }
             if(yToFaceAndIdx.find(newPos2(1)) == yToFaceAndIdx.end()){
                 yToFaceAndIdx[newPos2(1)] = std::make_pair(i, (otherSide+2) % 3 );
@@ -399,16 +404,21 @@ void insertPlane(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg_
                 idfac2 = yToFaceAndIdx[newPos2(1)].second;
                 idx2 =Fg ( fac2, idfac2 );
                 if(i== 1256 && garment== "skirt_no2") extra2 = true;
-                if(i==138 && garment == "skirt") {
-                }
                 if(i==849 && garment == "skirt") {
                     extra2 = true;
                 }
-
                 if(i==5534 && garmentEXT == "skirt_3") {
                     extra2 = true;
                 }
-
+                if(i == 6433 && garment == "hoodie"){
+                    extra2 = true;// good!
+                }
+                if(i == 6456 && garment == "hoodie"){
+                    extra2 = true;// good
+                }
+                if(i == 2089 && garment == "hoodie"){
+                    extra2 = true;//good
+                }
 
             }
             int fgrow = Fg.rows();
@@ -855,6 +865,7 @@ void splitAndSmooth(MatrixXd& Vg,MatrixXi& Fg,MatrixXd& Vg_pattern,MatrixXi& Fg_
             }
         }
     }
+
     insertPlane(Vg, Fg, Vg_pattern, Fg_pattern, garment, garmentEXT);
 
     VectorXd leftFaces = VectorXd::Zero(Fg.rows());

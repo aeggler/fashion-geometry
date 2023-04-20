@@ -1,0 +1,25 @@
+# MTL Exporter v1.0 by Seungwoo Oh at CLO - Virtual Fashion Inc.
+newmtl Default_Fabric_FRONT_703713
+Ka 0.246040 0.089744 0.150246
+Kd 0.956863 0.349020 0.584314
+Ks 0.075000 0.075000 0.075000
+Ns 28.763239
+illum 2
+d 1.000000
+newmtl FABRIC_1_FRONT_703718
+Ka 0.257132 0.257132 0.257132
+Kd 1.000000 1.000000 1.000000
+Ks 0.075000 0.075000 0.075000
+Ns 28.763239
+illum 2
+d 1.000000
+newmtl Rib_2X2_468gsm_FRONT_703723
+Ka 0.246040 0.089744 0.150246
+Kd 0.956863 0.349020 0.584314
+Ks 0.075000 0.075000 0.075000
+Ns 28.763239
+illum 2
+d 1.000000
+map_Ka C:/users/raphael/Local Settings/Application Data/CLO/CLO Network OnlineAuth/38/1235/Grey_Rib_COL_DESATURATION.png
+map_Kd C:/users/raphael/Local Settings/Application Data/CLO/CLO Network OnlineAuth/38/1235/Grey_Rib_COL_DESATURATION.png
+map_bump C:/users/raphael/Local Settings/Application Data/CLO/CLO Network OnlineAuth/38/1225/Grey_Rib_NRM.jpg
