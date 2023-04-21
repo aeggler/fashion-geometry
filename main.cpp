@@ -301,10 +301,8 @@ int main(int argc, char *argv[])
         garment = "man_tshirt";
         string garmentExt = garment;
 //    string garmentExt = garment+ "_3";
-//
 //    string garmentExt = garment+ "_2";
     string garment_file_name = prefix + "moreGarments/"+ garmentExt+"/"+garment+"_3d.obj";
-//    string garment_file_name = prefix + "moreGarments/top_1/"+garment+"_3d.obj";
 
     igl::readOBJ(garment_file_name, Vg, Fg);
     Timer t("Setup");
@@ -315,8 +313,6 @@ int main(int argc, char *argv[])
 
 //    string garment_pattern_file_name = prefix +"leggins/leggins_2d/leggins_2d.obj"; //
     string garment_pattern_file_name = prefix +"moreGarments/"+garmentExt+"/"+garment+"_2d.obj";
-//    string garment_pattern_file_name = prefix +"moreGarments/top_1/" + garment+"_2d.obj";
-//garment = "top";
     igl::readOBJ(garment_pattern_file_name, Vg_pattern, Fg_pattern);
 //    garment = "skirt_no2";
     symetry = true;
@@ -505,7 +501,8 @@ int main(int argc, char *argv[])
 //orig down here
 //    string avatar_file_name =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/avatar/avatar_one_component.ply";
 //    string avatar_file_name =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/avatar/avatar_flat.ply";
-    string avatar_file_name =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/moreGarments/man_tshirt/avatar.ply";
+    string avatar_file_name =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/avatar/male_avatar_rem_20.ply";
+//    string avatar_file_name =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/moreGarments/man_tshirt/avatar.ply";
 
 //    string avatar_file_name =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins_petite/avatar/avatar_one_component.ply";
 
@@ -518,10 +515,12 @@ int main(int argc, char *argv[])
 //    string morphBody1left =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/moreGarments/dress_4/avatar_oneComponent_left.ply";
 //    string morphBody1right =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/moreGarments/dress_4/avatar_oneComponent_right.ply";
 //     avName = "avatar_missy_straight_05_OC";// good for skirt
-     avName = "avatar_petite_curvy_01_OC";
+//     avName = "avatar_petite_curvy_01_OC";
 //    avName = "avatar_maternity_05_OC";
 
-//    avName = "CLO_avatar_to_bodyScan_Anna_rem 2";
+    avName = "CLO_avatar_to_bodyScan_Anna_rem 2";
+    avName = "CLO_avatar_to_male_large_avatar_rem_20";
+
     string morphBody1 =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/CLO_avatars_oneComponent/"+ avName +".ply";//
     string morphBody1left =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/CLO_avatars_oneComponent/"+ avName +"_left.ply";
     string morphBody1right =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/CLO_avatars_oneComponent/"+ avName +"_right.ply";
@@ -610,6 +609,39 @@ int main(int argc, char *argv[])
 //        string perfPatternFile = "/Users/annaeggler/Desktop/AvatarToMaternity_01/patternComputed_maternity_01.obj";
         igl::readOBJ(perfPatternFile, perfPattVg_orig, perfPattFg_orig);
         perfPattVg_orig.col(2).setConstant(200);
+        MatrixXd addedHelperVg (Vg.rows() + 4 ,3);
+        MatrixXi addedHelperFg (Fg.rows() + 2 ,3);
+        addedHelperVg.block(0,0, Vg.rows(), Vg.cols()) = Vg;
+        addedHelperFg.block(0,0, Fg.rows(), Fg.cols()) = Fg;
+        int offHelp = Vg.rows();
+        addedHelperFg(Fg.rows(), 0)= offHelp;
+        addedHelperFg(Fg.rows(), 1)= offHelp+1;
+        addedHelperFg(Fg.rows(), 2)= offHelp+2;
+
+        addedHelperFg(Fg.rows()+1, 0)= offHelp;
+        addedHelperFg(Fg.rows()+1, 1)= offHelp+2;
+        addedHelperFg(Fg.rows()+1, 2)= offHelp+3;
+
+        addedHelperVg(offHelp, 0)= 760;
+        addedHelperVg(offHelp, 1)= 210;
+        addedHelperVg(offHelp, 2)= 200;
+        offHelp++;
+        addedHelperVg(offHelp, 0)= 770;
+        addedHelperVg(offHelp, 1)= 210;
+        addedHelperVg(offHelp, 2)= 200;
+        offHelp++;
+
+        addedHelperVg(offHelp, 0)= 770;
+        addedHelperVg(offHelp, 1)= 220;
+        addedHelperVg(offHelp, 2)= 200;
+        offHelp++;
+
+        addedHelperVg(offHelp, 0)= 760;
+        addedHelperVg(offHelp, 1)= 220;
+        addedHelperVg(offHelp, 2)= 200;
+
+//        igl::writeOBJ("addedSquare.obj", addedHelperVg, addedHelperFg);
+
 
         // copy the matrices to not mess with them
         if(inverseMap){
