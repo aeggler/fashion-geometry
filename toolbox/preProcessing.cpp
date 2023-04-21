@@ -295,7 +295,7 @@ void insertPlane(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg_
        this ensures we can split the garment safely in the pre processing
        we do the same for the pattern and duplicate x=0 vertices -> to make sure the patch is acutally disconnected and we can take only the half patch for symetry
     */
-     map<double, std::pair<int, int>> yToFaceAndIdx;
+     map<std::pair<double, double>, std::pair<int, int>> yToFaceAndIdx;
     int vgsize = Vg_pattern.rows();
     int vgGarOrig = Vg.rows();
     std::vector< std::vector<int> > vfAdj,vfAdjG, vvAdj;
@@ -304,6 +304,7 @@ void insertPlane(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg_
     createVertexFaceAdjacencyList(Fg_pattern, vfAdj);
     igl::adjacency_list(Fg_pattern, vvAdj);
     int addCount= 0 ;
+    double precision = 1000000.;
     for(int i=0; i<Vg.rows(); i++){
         if(Vg(i ,0) == 0){
             addCount++;
@@ -317,7 +318,11 @@ void insertPlane(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg_
         for (int j=0; j<3; j++){
             double x = Vg(Fg(i, j), 0);
             if(x==0) {
-                yToFaceAndIdx[ Vg(Fg(i, j), 1)] = std::make_pair(i,j );
+
+                double el1 = std::floor( Vg(Fg(i, j), 1))*precision/ precision;
+                double el2= std::floor( Vg(Fg(i, j), 2))*precision/ precision;
+                pair<double, double> pair1 = make_pair(el1, el2);
+                yToFaceAndIdx[ pair1] = std::make_pair(i,j );
 //                addCount++;
 //
                 continue;
@@ -352,16 +357,33 @@ void insertPlane(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg_
             VectorXd edge3 = Vg.row(v3) - Vg.row(v1);
             double t2 = -Vg(v1,0) / edge2(0);
             double t3 = -Vg(v1,0) / edge3(0);
+            //todo
             VectorXd newPos1 = Vg.row(v1) + t2 * edge2.transpose();
+            newPos1(1) = std::floor(newPos1(1) * precision)/ precision;
+            newPos1(2) = std::floor(newPos1(2) * precision)/ precision;
+            pair<double, double> pair1 = std::make_pair(newPos1(1), newPos1(2));
             newPos1(0)= 0;
             VectorXd newPos2 = Vg.row(v1) + t3 * edge3.transpose();
             newPos2(0) = 0;
+            newPos2(1) = std::floor(newPos2(1) * precision)/ precision;
+            newPos2(2) = std::floor(newPos2(2) * precision)/ precision;
+            pair<double, double> pair2 = std::make_pair(newPos2(1), newPos2(2));
+
 
             int idx1 , idx2; int fac1, idfac1, fac2, idfac2;
             bool new1= false; bool new2 = false;
             bool extra1= false; bool extra2 = false;
-            if(yToFaceAndIdx.find(newPos1(1)) == yToFaceAndIdx.end()){
-                yToFaceAndIdx[newPos1(1)] = std::make_pair(i, (otherSide+1) % 3 );
+            if(i == 3086 || i == 2059){
+                cout<<"found face i "<<i<<endl;
+                cout<<newPos1.transpose()<<endl;
+                cout<<newPos2.transpose()<<endl;
+            }
+            if(yToFaceAndIdx.find(pair1) == yToFaceAndIdx.end()){
+                if(i == 3086 || i == 2059){
+                            cout<<"not found prev 1 for face i "<<i<<endl;
+
+                }
+                yToFaceAndIdx[pair1] = std::make_pair(i, (otherSide+1) % 3 );
 
                 int vgrow =  Vg.rows();
                 MatrixXd Vgnew( vgrow + 1, 3);
@@ -371,8 +393,8 @@ void insertPlane(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg_
                 Vg = Vgnew;
                 idx1 = vgrow; new1= true;
             }else{
-                fac1 = yToFaceAndIdx[newPos1(1)].first;
-                idfac1 = yToFaceAndIdx[newPos1(1)].second;
+                fac1 = yToFaceAndIdx[pair1].first;
+                idfac1 = yToFaceAndIdx[pair1].second;
 
                 idx1 =Fg (fac1, idfac1 );
                 if(i== 1128 && garment== "skirt_no2"){ extra1 = true;}
@@ -390,8 +412,12 @@ void insertPlane(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg_
                 }
 
             }
-            if(yToFaceAndIdx.find(newPos2(1)) == yToFaceAndIdx.end()){
-                yToFaceAndIdx[newPos2(1)] = std::make_pair(i, (otherSide+2) % 3 );
+            if(yToFaceAndIdx.find(pair2) == yToFaceAndIdx.end()){
+                if(i == 3086 || i == 2059){
+                    cout<<"not found prev 2 for face i "<<i<<endl;
+
+                }
+                yToFaceAndIdx[pair2] = std::make_pair(i, (otherSide+2) % 3 );
 
                 int vgrow =  Vg.rows();
                 MatrixXd Vgnew( vgrow + 1, 3);
@@ -402,9 +428,9 @@ void insertPlane(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg_
                 idx2 = vgrow;
                 new2= true;
             }else{
-                fac2 = yToFaceAndIdx[newPos2(1)].first;
-                idfac2 = yToFaceAndIdx[newPos2(1)].second;
-                idx2 =Fg ( fac2, idfac2 );
+                fac2 = yToFaceAndIdx[pair2].first;
+                idfac2 = yToFaceAndIdx[pair2].second;
+                idx2 = Fg ( fac2, idfac2 );
                 if(i== 1256 && garment== "skirt_no2"){ extra2 = true;}
                 if(i==849 && garment == "skirt") {
                     extra2 = true;
@@ -769,18 +795,14 @@ void edgeCollapse(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg
 
     }
     int count = 0;
-    freecorners.insert (-4);
-    cout<<freecorners.size()<<"free corners size "<<endl;
-    for(auto item : freecorners){cout<<item; }
-    cout<<freecorners.size()<<" free corners size end "<<endl;
+    int countItems = 0 ;
 
     vector<vector<int>> boundaryLoop;
     igl::boundary_loop(Fg_pattern, boundaryLoop);
-    int searched = 1918;
     for(int iterations = 0; iterations < 5 ; iterations++){
     for (int i = 0; i < boundaryLoop.size(); i++) {
         for (int l = 0; l < boundaryLoop[i].size(); l++) {
-            freecorners.insert (-4);// should it always have at least one element?
+//            freecorners.insert (-4);// should it always have at least one element?
             vector<vector<int>> vvAdj, vvAdjGar, vfAdj, vfAdjGar;
             createVertexFaceAdjacencyList(Fg_pattern, vfAdj);
             createVertexFaceAdjacencyList(Fg, vfAdjGar);
@@ -797,51 +819,51 @@ void edgeCollapse(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg
             int v1Bound = isBoundaryVertex(Vg_pattern, id1, vvAdj, vfAdj);
             if (!v0Bound || !v1Bound)continue; // for now just look at two adjacent boundary vertices!
             double dist = (Vg_pattern.row(id0) - Vg_pattern.row(id1)).norm();
-            if(searched == id0&& searched-1 == id1) cout<<dist<<" for searched id"<<endl;
 
             if (dist < theresh) {
+
                 int face = adjacentFaceToEdge(id0, id1, -1, vfAdj);
+                if(countItems == 65){
+                    cout<<face<<" the face "<<endl;
+                }
                 int idx0 = 0;
                 while (Fg_pattern(face, idx0) != id0) { idx0++; }
                 int id0G = Fg(face, idx0);
                 int idx1 = 0;
                 while (Fg_pattern(face, idx1) != id1) { idx1++; }
                 int id1G = Fg(face, idx1);
+                if(countItems == 65){
+                    cout<<id0G<<" and one "<<id1G<<endl;
+                }
 
                 RowVectorXd newpos, newposGar;
                 if (corner0) {
-                    if(searched == id0&& searched-1 == id1) cout<<dist<<" for searched id is corner 0 "<<endl;
-
                     if(freecorners.find(id0)==freecorners.end()){
-                         if(searched == id0){
-                            cout<<"freeCorner"<<endl;
-                            for(auto item: freecorners){
-                                cout<<item<<"; ";
-                            }
-                         }cout<<"after"<<endl;
                         continue;
                     }
-                    if(searched == id0&& searched-1 == id1) cout<<dist<<" for searched id has skipped continue "<<endl;
 
                     newpos = Vg_pattern.row(id0);
                     newposGar = Vg.row(id0G);
                 } else if (corner1) {
                     if(freecorners.find(id1)==freecorners.end()){
-                        if(searched == id0){
-                            cout<<"freeCorner"<<endl;
-                        }
                         continue;
                     }
                     newpos = Vg_pattern.row(id1);
                     newposGar = Vg.row(id1G);
 
                 } else {
+                    if(countItems == 65){
+                        cout<<" none is a corner  "<<id1G<<endl;
+                    }
                     newpos = (Vg_pattern.row(id0) + Vg_pattern.row(id1)) / 2;
                     newposGar = (Vg.row(id0G) + Vg.row(id1G)) / 2;
 
                 }
                 Vg_pattern.row(id0) = newpos;
                 Vg.row(id0G) = newposGar;
+                if(countItems == 65){
+                    cout<<Vg.row(id0G)<<"  is the new position  "<<id0G<<endl;
+                }
 
                 for (int j = 0; j < vfAdj[id1].size(); j++) {
                     int ii = 0;
@@ -902,9 +924,8 @@ void edgeCollapse(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg
                         }
                     }
                 }
-                if(searched> id1) {searched--; }else if (searched==id1){searched=id0;}
                 cornersOfGar.clear();
-                
+
                 freecorners.clear();
                 cornersOfGar = cornersNew;
                 freecorners = freecornersNew;
@@ -935,11 +956,19 @@ void edgeCollapse(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg
                 boundaryLoop = boundaryLoopNew;
                 count ++;
 
+                countItems++;
+                if(countItems == 66 ) {
+                    igl::writeOBJ("testColl66.obj", Vg, Fg);
+                }
+                if(countItems == 65){
+                    igl::writeOBJ("testColl65.obj", Vg, Fg);
+                }
             }
         }
 
     }
 }
+    cout<<countItems<<" items collapsed "<<endl;
     igl::writeOBJ("collapsed.obj", Vg_pattern, Fg_pattern);
     igl::writeOBJ("collapsed3d.obj", Vg, Fg);
 
