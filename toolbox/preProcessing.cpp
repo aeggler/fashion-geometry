@@ -373,16 +373,9 @@ void insertPlane(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg_
             int idx1 , idx2; int fac1, idfac1, fac2, idfac2;
             bool new1= false; bool new2 = false;
             bool extra1= false; bool extra2 = false;
-            if(i == 3086 || i == 2059){
-                cout<<"found face i "<<i<<endl;
-                cout<<newPos1.transpose()<<endl;
-                cout<<newPos2.transpose()<<endl;
-            }
-            if(yToFaceAndIdx.find(pair1) == yToFaceAndIdx.end()){
-                if(i == 3086 || i == 2059){
-                            cout<<"not found prev 1 for face i "<<i<<endl;
 
-                }
+            if(yToFaceAndIdx.find(pair1) == yToFaceAndIdx.end()){
+
                 yToFaceAndIdx[pair1] = std::make_pair(i, (otherSide+1) % 3 );
 
                 int vgrow =  Vg.rows();
@@ -413,10 +406,7 @@ void insertPlane(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg_
 
             }
             if(yToFaceAndIdx.find(pair2) == yToFaceAndIdx.end()){
-                if(i == 3086 || i == 2059){
-                    cout<<"not found prev 2 for face i "<<i<<endl;
 
-                }
                 yToFaceAndIdx[pair2] = std::make_pair(i, (otherSide+2) % 3 );
 
                 int vgrow =  Vg.rows();
@@ -525,7 +515,7 @@ void insertPlane(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg_
             Fgnew(fgrow, 0) = Fg_pattern(i, (otherSide + 1) % 3 );
             Fgnew(fgrow, 1) = Fg_pattern(i, (otherSide + 2) % 3 );
             Fgnew(fgrow, 2) = idx1;
-////
+
             Fgnew(fgrow + 1, 0) = idx1;
             Fgnew(fgrow + 1, 1) = Fg_pattern(i, (otherSide + 2) % 3 );
             Fgnew(fgrow + 1, 2) = idx2;
@@ -565,7 +555,6 @@ void insertPlane(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg_
         }
     }
     cout<<"continue"<<endl;
-    cout<<Fg.row(5113)<<" row 5113 after "<<endl;
 
     // we duplicate the new vertices to split them
     duplCount=0;
@@ -823,18 +812,13 @@ void edgeCollapse(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg
             if (dist < theresh) {
 
                 int face = adjacentFaceToEdge(id0, id1, -1, vfAdj);
-                if(countItems == 65){
-                    cout<<face<<" the face "<<endl;
-                }
+
                 int idx0 = 0;
                 while (Fg_pattern(face, idx0) != id0) { idx0++; }
                 int id0G = Fg(face, idx0);
                 int idx1 = 0;
                 while (Fg_pattern(face, idx1) != id1) { idx1++; }
                 int id1G = Fg(face, idx1);
-                if(countItems == 65){
-                    cout<<id0G<<" and one "<<id1G<<endl;
-                }
 
                 RowVectorXd newpos, newposGar;
                 if (corner0) {
@@ -852,18 +836,13 @@ void edgeCollapse(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg
                     newposGar = Vg.row(id1G);
 
                 } else {
-                    if(countItems == 65){
-                        cout<<" none is a corner  "<<id1G<<endl;
-                    }
+
                     newpos = (Vg_pattern.row(id0) + Vg_pattern.row(id1)) / 2;
                     newposGar = (Vg.row(id0G) + Vg.row(id1G)) / 2;
 
                 }
                 Vg_pattern.row(id0) = newpos;
                 Vg.row(id0G) = newposGar;
-                if(countItems == 65){
-                    cout<<Vg.row(id0G)<<"  is the new position  "<<id0G<<endl;
-                }
 
                 for (int j = 0; j < vfAdj[id1].size(); j++) {
                     int ii = 0;
@@ -957,12 +936,6 @@ void edgeCollapse(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg
                 count ++;
 
                 countItems++;
-                if(countItems == 66 ) {
-                    igl::writeOBJ("testColl66.obj", Vg, Fg);
-                }
-                if(countItems == 65){
-                    igl::writeOBJ("testColl65.obj", Vg, Fg);
-                }
             }
         }
 
