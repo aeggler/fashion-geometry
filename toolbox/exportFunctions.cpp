@@ -13,6 +13,9 @@
 #include <igl/barycentric_coordinates.h>
 #include <igl/doublearea.h>
 #include "postProcessing.h"
+#include <igl/vertex_components.h>
+#include <igl/writeOBJ.h>
+#include <igl/readOBJ.h>
 
 using namespace Eigen;
 using namespace std;
@@ -325,5 +328,101 @@ void computeCols(int num, MatrixXd& cols){
     cols.resize(num, 3);
     generate_colors(num, cols);
 
+
+}
+
+void duplicateInitPattern(MatrixXd& Vg ,MatrixXi& Fg){
+    MatrixXd saveV = Vg;
+    MatrixXi saveF = Fg;
+    int vertSize = Vg.rows();
+    int faceSize = Fg.rows();
+// only for patch 2!!!!!!!!!!!!!!!!
+
+    Eigen::VectorXi componentIdPerVert;
+    igl::vertex_components(Fg, componentIdPerVert);
+    MatrixXd R_symetry = MatrixXd::Identity(3, 3);
+    R_symetry(0, 0) = -1;
+
+    for(int i = 0; i<faceSize/2; i++){
+        //bigger is the better oe
+        for(int j = 0; j<3; j++){
+            int id = Fg(i, j);
+            if(componentIdPerVert(id)==2){
+                Vg.row(id) = (R_symetry * Vg.row(id+vertSize/2).transpose()).transpose();
+                Vg(id, 0) -=50;
+
+            }
+        }
+//        int temp = Fg(i, 1);
+//        Fg(i, 1) = Fg(i, 2);
+//        Fg(i, 2) = temp;
+    }
+    igl::writeOBJ("patternSym.obj" , Vg, Fg);
+//    Vg = saveV;
+//    Fg = saveF;
+
+}
+
+void addedSquare(MatrixXi Fg, MatrixXd Vg) {
+    MatrixXd whichVg = Vg;
+    MatrixXi whichFg = Fg;
+    cout<<whichFg.rows()<<" new rows"<<endl;
+    MatrixXd addedHelperVg (whichVg.rows() + 4 ,3);
+    MatrixXi addedHelperFg (whichFg.rows() + 2 ,3);
+    addedHelperVg.block(0,0, whichVg.rows(), whichVg.cols()) = whichVg;
+    addedHelperFg.block(0,0, whichFg.rows(), whichFg.cols()) = whichFg;
+    cout<<addedHelperFg.rows()<<" new rows"<<endl;
+
+    int offHelp = whichVg.rows();
+    int offHelpF = whichFg.rows();
+    addedHelperFg(offHelpF, 0)= offHelp;
+    addedHelperFg(offHelpF, 1)= offHelp+1;
+    addedHelperFg(offHelpF, 2)= offHelp+2;
+
+    addedHelperFg(offHelpF + 1, 0)= offHelp;
+    addedHelperFg(offHelpF + 1, 1)= offHelp+2;
+    addedHelperFg(offHelpF + 1, 2)= offHelp+3;
+
+    addedHelperVg(offHelp, 0)= 760;
+    addedHelperVg(offHelp, 1)= 210;
+    addedHelperVg(offHelp, 2)= 200;
+    offHelp++;
+    addedHelperVg(offHelp, 0)= 770;
+    addedHelperVg(offHelp, 1)= 210;
+    addedHelperVg(offHelp, 2)= 200;
+    offHelp++;
+
+    addedHelperVg(offHelp, 0)= 770;
+    addedHelperVg(offHelp, 1)= 220;
+    addedHelperVg(offHelp, 2)= 200;
+    offHelp++;
+
+    addedHelperVg(offHelp, 0)= 760;
+    addedHelperVg(offHelp, 1)= 220;
+    addedHelperVg(offHelp, 2)= 200;
+
+    string name ;
+    if( addedHelperVg(300, 2) ==200){
+        name = "addedSquare_2D.obj";
+    }else{
+        name = "addedSquare_3D.obj";
+    }
+    igl::writeOBJ(name , addedHelperVg, addedHelperFg);
+}
+void movePatches(){
+    MatrixXi Fg;
+    MatrixXd Vg;
+    igl::readOBJ("addedSquare_2D.obj", Vg, Fg);
+    VectorXi comp;
+    igl::vertex_components(Fg, comp);
+
+    for(int i=0; i<comp.size(); i++){
+        if(comp(i) >=4&& comp(i) <= 9){
+            Vg(i, 0) += 800;
+        }else if (comp(i)>13 ){
+            Vg(i, 0 ) -= 800;
+        }
+    }
+    igl::writeOBJ("patchMoved2D.obj", Vg, Fg) ;
 
 }

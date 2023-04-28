@@ -16,3 +16,7 @@ void clipDifference(vector<vector<int>>& boundaryL_adaptedFromPattern,vector<vec
                     MatrixXd & currPattern, MatrixXd& Vg_to,  vector<vector<VectorXd>>& returnVec);
 
 void computeCols(int num, MatrixXd& cols);
+void duplicateInitPattern(MatrixXd& Vg ,MatrixXi& Fg);
+
+void addedSquare(MatrixXi Fg, MatrixXd Vg);
+void movePatches();

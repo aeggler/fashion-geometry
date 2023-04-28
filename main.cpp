@@ -288,21 +288,25 @@ int main(int argc, char *argv[])
 //    cout<<garment_file_name<<" chosen file, thanks. "<<endl;
 
     string prefix = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/";
-//    garment = "leggins";
+    garment = "leggins";
     bool patternExists = true;
     inverseMap = false;
-//    garment = "tshirt";
+    string patternFromName = "CLO_avatar_to_bodyScan_Luka_rem";
+    bool interPersonFlag = true;
 
+//    garment = "tshirt";
+//    garment = "top";
 //    garment = "top_fromAnna";
-//    string garment_file_name = prefix+ "leggins/leggins_3d/leggins_3d_merged.obj"; //smaller collision thereshold to make sure it is not "eaten" after intial step , 3.5 instead of 4.5
+    string garment_file_name = prefix+ "leggins/leggins_3d/leggins_3d_merged.obj"; //smaller collision thereshold to make sure it is not "eaten" after intial step , 3.5 instead of 4.5
 //    garment = "dress";
-//   string garmentExt = garment +"_4";
+//    string garmentExt = garment +"_1";
 //    garment = "skirt";
-        garment = "man_tshirt";
+//    garment = "hoodie";
+//    garment = "man_tshirt";
         string garmentExt = garment;
 //    string garmentExt = garment+ "_3";
 //    string garmentExt = garment+ "_2";
-    string garment_file_name = prefix + "moreGarments/"+ garmentExt+"/"+garment+"_3d.obj";
+//    string garment_file_name = prefix + "moreGarments/"+ garmentExt+"/"+garment+"_3d.obj";
 
     igl::readOBJ(garment_file_name, Vg, Fg);
     Timer t("Setup");
@@ -311,8 +315,9 @@ int main(int argc, char *argv[])
 //    string garment_pattern_file_name= igl::file_dialog_open();
 //    cout<<garment_pattern_file_name<<" chosen file for pattern, thanks. "<<endl;
 
-//    string garment_pattern_file_name = prefix +"leggins/leggins_2d/leggins_2d.obj"; //
-    string garment_pattern_file_name = prefix +"moreGarments/"+garmentExt+"/"+garment+"_2d.obj";
+//    string garment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/patternComputed_"+patternFromName+"_"+garment+".obj";
+    string garment_pattern_file_name = prefix +"leggins/leggins_2d/leggins_2d.obj"; //
+//    string garment_pattern_file_name = prefix +"moreGarments/"+garmentExt+"/"+garment+"_2d.obj";
     igl::readOBJ(garment_pattern_file_name, Vg_pattern, Fg_pattern);
 //    garment = "skirt_no2";
     symetry = true;
@@ -499,9 +504,9 @@ int main(int argc, char *argv[])
 // this isi the same avatar for all garments we have: dress_4, leggins ,top_2 and skirt_1
 //    string avatar_file_name =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/CLO_avatars_oneComponent/CLO_avatar_to_bodyScan_Anna_rem 2.ply";
 //orig down here
-//    string avatar_file_name =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/avatar/avatar_one_component.ply";
+    string avatar_file_name =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/avatar/avatar_one_component.ply";
 //    string avatar_file_name =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/avatar/avatar_flat.ply";
-    string avatar_file_name =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/avatar/male_avatar_rem_20.ply";
+//    string avatar_file_name =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/avatar/male_avatar_rem_20.ply";
 //    string avatar_file_name =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/moreGarments/man_tshirt/avatar.ply";
 
 //    string avatar_file_name =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins_petite/avatar/avatar_one_component.ply";
@@ -517,9 +522,8 @@ int main(int argc, char *argv[])
 //     avName = "avatar_missy_straight_05_OC";// good for skirt
 //     avName = "avatar_petite_curvy_01_OC";
 //    avName = "avatar_maternity_05_OC";
-
-    avName = "CLO_avatar_to_bodyScan_Anna_rem 2";
-    avName = "CLO_avatar_to_male_large_avatar_rem_20";
+    avName = "CLO_avatar_to_bodyScan_Raphael_rem";
+//    avName = "CLO_avatar_to_male_large_avatar_rem_20";
 
     string morphBody1 =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/CLO_avatars_oneComponent/"+ avName +".ply";//
     string morphBody1left =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/CLO_avatars_oneComponent/"+ avName +"_left.ply";
@@ -602,45 +606,28 @@ int main(int argc, char *argv[])
     }
     vector<seam*> seamsListDupl = seamsList;
     if(patternExists){
+
+        if(interPersonFlag){
+            string fromGarment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/patternComputed_"+patternFromName+"_"+garment+".obj";
+            igl::readOBJ(fromGarment_pattern_file_name, Vg_pattern, Fg_pattern);
+            Vg_pattern_orig.resize(Vg_pattern.rows(), 3);
+            Fg_pattern_orig.resize(Fg_pattern.rows() ,3);
+            Vg_pattern_orig = Vg_pattern;
+            Fg_pattern_orig = Fg_pattern;
+        }
+
         string prefPattern = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/";
         string perfPatternFile = prefPattern+ "patternComputed_"+avName+"_"+garment+".obj";
 //        string perfPatternFile = prefPattern+ "finished_tear_writtenPattern_"+avName+"_"+garment+".obj";
 
+
 //        string perfPatternFile = "/Users/annaeggler/Desktop/AvatarToMaternity_01/patternComputed_maternity_01.obj";
         igl::readOBJ(perfPatternFile, perfPattVg_orig, perfPattFg_orig);
+        if(garment == "top"){
+            duplicateInitPattern( perfPattVg_orig, perfPattFg_orig);
+        }
         perfPattVg_orig.col(2).setConstant(200);
-        MatrixXd addedHelperVg (Vg.rows() + 4 ,3);
-        MatrixXi addedHelperFg (Fg.rows() + 2 ,3);
-        addedHelperVg.block(0,0, Vg.rows(), Vg.cols()) = Vg;
-        addedHelperFg.block(0,0, Fg.rows(), Fg.cols()) = Fg;
-        int offHelp = Vg.rows();
-        addedHelperFg(Fg.rows(), 0)= offHelp;
-        addedHelperFg(Fg.rows(), 1)= offHelp+1;
-        addedHelperFg(Fg.rows(), 2)= offHelp+2;
 
-        addedHelperFg(Fg.rows()+1, 0)= offHelp;
-        addedHelperFg(Fg.rows()+1, 1)= offHelp+2;
-        addedHelperFg(Fg.rows()+1, 2)= offHelp+3;
-
-        addedHelperVg(offHelp, 0)= 760;
-        addedHelperVg(offHelp, 1)= 210;
-        addedHelperVg(offHelp, 2)= 200;
-        offHelp++;
-        addedHelperVg(offHelp, 0)= 770;
-        addedHelperVg(offHelp, 1)= 210;
-        addedHelperVg(offHelp, 2)= 200;
-        offHelp++;
-
-        addedHelperVg(offHelp, 0)= 770;
-        addedHelperVg(offHelp, 1)= 220;
-        addedHelperVg(offHelp, 2)= 200;
-        offHelp++;
-
-        addedHelperVg(offHelp, 0)= 760;
-        addedHelperVg(offHelp, 1)= 220;
-        addedHelperVg(offHelp, 2)= 200;
-
-//        igl::writeOBJ("addedSquare.obj", addedHelperVg, addedHelperFg);
 
 
         // copy the matrices to not mess with them
@@ -1058,6 +1045,189 @@ int main(int argc, char *argv[])
                 viewer.data().show_texture = false;
                 viewer.data().set_face_based(false);
                 viewer.data().show_lines = true;
+            }
+            if(ImGui::Button("Predefined smooth", ImVec2(-1, 0))) {
+                if(garment =="leggins"){
+                    simulate = false;
+                    adaptionFlag = false;
+                    startAndEnd.clear();
+                    startAndEnd.push_back(3019);
+                    startAndEnd.push_back(3020);
+                    startAndEnd.push_back(3027);
+                    smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+                    smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+                    startAndEnd.clear();
+
+
+                    startAndEnd.push_back(2968);
+                    startAndEnd.push_back(2969);
+                    startAndEnd.push_back(2976);
+                    smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+                    smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+                    startAndEnd.clear();
+
+                    startAndEnd.push_back(2987);
+                    startAndEnd.push_back(2986);
+                    startAndEnd.push_back(2978);
+                    smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+                    smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+                    startAndEnd.clear();
+
+                    startAndEnd.push_back(1524);
+                    startAndEnd.push_back(1525);
+                    startAndEnd.push_back(1533);
+                    smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+                    smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+                    startAndEnd.clear();
+
+                    startAndEnd.push_back(2363);
+                    startAndEnd.push_back(2364);
+                    startAndEnd.push_back(2372);
+                    smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+                    smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+                    startAndEnd.clear();
+
+                    startAndEnd.push_back(2372);
+                    startAndEnd.push_back(2373);
+                    startAndEnd.push_back(2307);
+                    smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+                    smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+                    startAndEnd.clear();
+
+                    startAndEnd.push_back(1524);
+                    startAndEnd.push_back(1638);
+                    startAndEnd.push_back(1592);
+                    smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+                    smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+                    startAndEnd.clear();
+
+                    startAndEnd.push_back(2312);
+                    startAndEnd.push_back(2311);
+                    startAndEnd.push_back(2307);
+                    smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+                    smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+                    startAndEnd.clear();
+
+                    startAndEnd.push_back(1592);
+                    startAndEnd.push_back(1591);
+                    startAndEnd.push_back(1586);
+                    smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+                    smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+                    startAndEnd.clear();
+// right side
+                    startAndEnd.push_back(1452);
+                    startAndEnd.push_back(1451);
+                    startAndEnd.push_back(1444);
+                    smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+                    smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+                    startAndEnd.clear();
+
+                    startAndEnd.push_back(1503);
+                    startAndEnd.push_back(1502);
+                    startAndEnd.push_back(1495);
+                    smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+                    smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+                    startAndEnd.clear();
+
+                    startAndEnd.push_back(1484);
+                    startAndEnd.push_back(1485);
+                    startAndEnd.push_back(1493);
+                    smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+                    smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+                    startAndEnd.clear();
+
+                    startAndEnd.push_back(1454);
+                    startAndEnd.push_back(1455);
+                    startAndEnd.push_back(1463);
+                    smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+                    smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+                    startAndEnd.clear();
+//main leg
+                    startAndEnd.push_back(9);
+                    startAndEnd.push_back(8);
+                    startAndEnd.push_back(0);
+                    smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+                    smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+                    startAndEnd.clear();
+
+                    startAndEnd.push_back(848);
+                    startAndEnd.push_back(847);
+                    startAndEnd.push_back(839);
+                    smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+                    smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+                    startAndEnd.clear();
+
+                    startAndEnd.push_back(848);
+                    startAndEnd.push_back(849);
+                    startAndEnd.push_back(783);
+                    smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+                    smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+                    startAndEnd.clear();
+
+                    startAndEnd.push_back(0);
+                    startAndEnd.push_back(114);
+                    startAndEnd.push_back(68);
+                    smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+                    smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+                    startAndEnd.clear();
+
+                    startAndEnd.push_back(783);
+                    startAndEnd.push_back(784);
+                    startAndEnd.push_back(788);
+                    smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+                    smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+                    startAndEnd.clear();
+
+                    startAndEnd.push_back(62);
+                    startAndEnd.push_back(63);
+                    startAndEnd.push_back(68);
+                    smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+                    smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+                    startAndEnd.clear();
+//only once
+                    startAndEnd.push_back(788);
+                    startAndEnd.push_back(789);
+                    startAndEnd.push_back(827);
+                    smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+                    startAndEnd.clear();
+
+                    startAndEnd.push_back(23);
+                    startAndEnd.push_back(24);
+                    startAndEnd.push_back(62);
+                    smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+                    startAndEnd.clear();
+
+                    startAndEnd.push_back(1586);
+                    startAndEnd.push_back(1585);
+                    startAndEnd.push_back(1547);
+
+                    startAndEnd.push_back(2351);
+                    startAndEnd.push_back(2313);
+                    startAndEnd.push_back(2312);
+                    smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+                    startAndEnd.clear();
+
+                    startAndEnd.push_back(9);
+                    startAndEnd.push_back(10);
+                    startAndEnd.push_back(23);
+                    smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+                    startAndEnd.clear();
+
+                    startAndEnd.push_back(1533);
+                    startAndEnd.push_back(1546);
+                    startAndEnd.push_back(1547);
+                    smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+                    startAndEnd.clear();
+                    viewer.selected_data_index = 0;
+                    viewer.data().clear();
+                    viewer.data().set_mesh(currPattern, Fg_pattern_curr);
+
+                    viewer.data().uniform_colors(ambient, diffuse, specular);
+                    viewer.data().show_texture = false;
+                    viewer.data().set_face_based(false);
+                    viewer.data().show_lines = true;
+
+                }
             }
             if(ImGui::Button("End smooth", ImVec2(-1, 0))) {
                 mouse_mode = NONE;
@@ -1584,6 +1754,13 @@ int main(int argc, char *argv[])
                     duplicatePattern(currPattern, Fg_pattern_curr,addedFabricPatternVg, addedFabricPatternFg, T_sym_pattern);
                     igl::writePLY("duplicate_Pattern_final_of_"+avName+"_"+garment+".ply" , currPattern, Fg_pattern_curr);
                     igl::writeOBJ("duplicate_Pattern_final_of_"+avName+"_"+garment+".obj" , currPattern, Fg_pattern_curr);
+                    MatrixXd Vg_notMerged ,Vg_notMerged_dupl; MatrixXi Fg_notMerged, Fg_notMerged_dupl;
+                    igl::readOBJ("notMergedPatches.obj", Vg_notMerged, Fg_notMerged);
+
+                    duplicatePattern(Vg_notMerged_dupl, Fg_notMerged_dupl,Vg_notMerged, Fg_notMerged, T_sym_pattern);
+
+                    igl::writeOBJ("notMergedPatches_dupl.obj", Vg_notMerged_dupl, Fg_notMerged_dupl);
+                    addedSquare(Fg_notMerged_dupl, Vg_notMerged_dupl);
 
                 }
             }
@@ -1610,6 +1787,9 @@ int main(int argc, char *argv[])
                 stitchAdapted3D(adaptedPatternIn3d, adaptedPatternIn3d_faces,Fg_pattern_orig, seamsListDupl, mapCornerToCorner, halfPatternVertToFullPatternVert, currPattern, Fg_pattern_curr);// compute adaptation first
                 igl::writeOBJ("finalGarmentPattern_"+avName+"_"+garment+"_Merged_In3d.obj", adaptedPatternIn3d, adaptedPatternIn3d_faces);
                 igl::writeOBJ("finalGarmentPattern_"+avName+"_"+garment+"_Merged_FaceCorrespWith3DMerged.obj", currPattern, Fg_pattern_curr );
+                addedSquare(adaptedPatternIn3d_faces, adaptedPatternIn3d);
+                movePatches();
+
                 MatrixXd cornersMat (mapCornerToCorner.size(), 3); int count = 0;
                 for(auto it: mapCornerToCorner){
                     cornersMat.row(count) = adaptedPatternIn3d.row(it.second);

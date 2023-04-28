@@ -22,6 +22,7 @@
 #include <igl/vertex_components.h>
 #include <igl/internal_angles.h>
 #include <igl/writeOBJ.h>
+#include <igl/readOBJ.h>
 
 
 
@@ -1019,13 +1020,41 @@ void insertVert(MatrixXd& currPattern, int offset, MatrixXd& Vg_retri, int next,
 int globCount = 0;
 void mergeTriagulatedAndPattern(const vector<VectorXd>& connectedVertVec,
                            MatrixXd& Vg_retri, MatrixXi& Fg_retri, MatrixXd& currPattern, MatrixXi& Fg_pattern, vector<int> & newFaces, string avName, string garment){
+
+    //not merged for patches to retri
+    MatrixXi Fg_prev_notMerge;
+    MatrixXd Vg_prev_notMerge;
+    if(globCount!=0){
+        igl::readOBJ("notMergedPatches.obj", Vg_prev_notMerge, Fg_prev_notMerge);
+
+    }else{
+        Fg_prev_notMerge.resize ( Fg_pattern.rows(), 3);
+        Fg_prev_notMerge = Fg_pattern;
+        Vg_prev_notMerge.resize(currPattern.rows(), 3);
+        Vg_prev_notMerge = currPattern;
+
+    }
+
+    MatrixXd Vg_notMerged( Vg_prev_notMerge.rows()+Vg_retri.rows(), 3);
+    Vg_notMerged << Vg_prev_notMerge, Vg_retri;
+
+    MatrixXi Fg_notMerged (Fg_prev_notMerge.rows()+ Fg_retri.rows(), 3);
+    MatrixXi Fg_retri_notMerged = Fg_retri;
+    int offsetPrev = Vg_prev_notMerge.rows();
+    MatrixXi offsetM= MatrixXi(Fg_retri.rows() ,3);
+    offsetM.setConstant(offsetPrev);
+    Fg_retri_notMerged += offsetM;
+    Fg_notMerged << Fg_prev_notMerge, Fg_retri_notMerged;
+    igl::writeOBJ("notMergedPatches.obj", Vg_notMerged, Fg_notMerged);
+
+
     currPattern.col(2).setConstant(200);
     vector<vector<int>> boundaryLinsert, boundaryLGar;
     igl::boundary_loop(Fg_retri, boundaryLinsert);
     igl::boundary_loop(Fg_pattern, boundaryLGar);
     VectorXi mergedIds(Vg_retri.rows());
     mergedIds.setConstant(-1);
-    igl::writeOBJ("retriPatch_"+ to_string(patchCount) +".obj", Vg_retri, Fg_retri); patchCount++;
+    igl::writeOBJ("retriPatch_"+ to_string(patchCount)+"_"+avName+"_"+garment +".obj", Vg_retri, Fg_retri); patchCount++;
     // insertion on each pattern individually
     VectorXi pattMer(currPattern.rows());
     pattMer.setConstant(-1);
@@ -1033,7 +1062,7 @@ void mergeTriagulatedAndPattern(const vector<VectorXd>& connectedVertVec,
     map<int, int> mergeSet, mergeSetPatchToFull;
     cout<<"*****************"<<endl;
     cout<<"Clip item No "<<globCount<<endl;
-        for(int i = 0; i< boundaryLGar.size(); i++){
+    for(int i = 0; i< boundaryLGar.size(); i++){
             for(int j=0; j<boundaryLGar[i].size(); j++){
                 int vert = boundaryLGar[i][j];
                 int minId = -1;
@@ -1042,7 +1071,6 @@ void mergeTriagulatedAndPattern(const vector<VectorXd>& connectedVertVec,
                 for(int vgrow=0; vgrow < boundaryLinsert[0].size(); vgrow++){
                     VectorXd patV =  Vg_retri.row(boundaryLinsert[0][vgrow]);
                     double dist = (currPattern.row(vert)-patV.transpose()).norm();
-                    if(boundaryLinsert[0][vgrow]==8&& globCount ==1 && vert== 1444 ) cout<<" 8 dist"<<dist<<endl;
 
                     if(dist<minDist){
                         cout<< dist<<" found ";
@@ -1070,19 +1098,18 @@ void mergeTriagulatedAndPattern(const vector<VectorXd>& connectedVertVec,
             int diff = pattMer(currVertPatt)-pattMer(nextVertPatt);
             if(abs(diff ) != 1){
                 cout<<endl<<"Vertices "<<currVertPatt<<" "<<nextVertPatt<<" on the boundary"<<endl;
-                cout<<pattMer(currVertPatt)<<" "<<pattMer(nextVertPatt)<<endl;
-                cout<<boundaryLinsert[0].size()<<" between are "<<diff<<endl;
+//                cout<<pattMer(currVertPatt)<<" "<<pattMer(nextVertPatt)<<endl;
                     int counter = pattMer(boundaryLGar[patch][j])-1;
                     if(counter<0) counter += boundaryLinsert[0].size();
-                    cout<<"counter: " << counter<<endl;
+//                    cout<<"counter: " << counter<<endl;
                     int next = boundaryLinsert[0][counter];
                     int end =  boundaryLinsert[0][pattMer(nextVertPatt) ];
-                    cout<<" next "<<next<<"and to find is "<<end<<endl;
+//                    cout<<" next "<<next<<"and to find is "<<end<<endl;
                     double prevDist = 100;
                     double dist = (Vg_retri.row(next)- Vg_retri.row(end)).norm();
                     int offset = currPattern.rows();
                     while(next != end && dist<prevDist){
-                        cout<<counter<<"next "<<next<<endl;
+//                        cout<<counter<<"next "<<next<<endl;
                         bool notFound;
                         insertVert( currPattern, offset, Vg_retri, next, Fg_pattern, boundaryLGar ,currVertPatt, nextVertPatt, notFound);
                         offset++;
@@ -1111,6 +1138,8 @@ void mergeTriagulatedAndPattern(const vector<VectorXd>& connectedVertVec,
 
     int offset = currPattern.rows();
    MatrixXi Fg_orig = Fg_retri;
+
+//   mergeSetPatchToFull.clear();
     for(int i=0; i< getsOldId.rows(); i++){
         if(mergeSetPatchToFull.find(i) != mergeSetPatchToFull.end()){
             //it is an old one
@@ -1124,8 +1153,12 @@ void mergeTriagulatedAndPattern(const vector<VectorXd>& connectedVertVec,
             count++;
             replaceInFacesWO(i, newId(i), Fg_retri, Fg_orig);
         }
+//        replaceInFacesWO(i, newId_notMerged, Fg_retri_notMerged, Fg_orig);
+//        newId_notMerged++;
+
+
     }
-    if(globCount==0)cout<<Fg_retri.row(2)<<endl;
+//    Fg_notMerged.block(Fg_pattern.rows() ,0 ,Fg_retri.rows(), 3) = Fg_retri_notMerged;
 
     int faceOffset = Fg_pattern.rows();
     MatrixXi Fg_new (faceOffset+ Fg_retri.rows(), 3);
@@ -1883,10 +1916,11 @@ void stitchAdapted3D(MatrixXd& Vg, MatrixXi& Fg, MatrixXi& Fg_pattern_orig, vect
         mapCornerToCorner[duplVert]= offsetVert;
 
     }
-    cout<<"end"<<endl;
     vector<vector<int>> boundaryL;
     igl::boundary_loop(Fg, boundaryL);
-
+    MatrixXi Fg_pattern_notMerged;
+    MatrixXd Vg_pattern_notMerged;
+    igl::readOBJ("addedSquare_2D.obj",Vg_pattern_notMerged, Fg_pattern_notMerged);
     for(int i=0; i<seamsList.size(); i++) {
         int start1 = seamsList[i]->getStart1();
         int start2 = seamsList[i]->getStart2();
@@ -1958,6 +1992,12 @@ void stitchAdapted3D(MatrixXd& Vg, MatrixXi& Fg, MatrixXi& Fg_pattern_orig, vect
                     MatrixXi FgNew_pattern = MatrixXi(Fg_pattern.rows()+1, Fg_pattern.cols());
                     FgNew_pattern.block(0,0,Fg_pattern.rows(), Fg_pattern.cols()) = Fg_pattern;
                     FgNew_pattern.row(Fg_pattern.rows())= Fg_pattern.row(face);
+                    // do the same for the not merged pattern
+                    MatrixXi FgNew_pattern_notMerged = MatrixXi(Fg_pattern_notMerged.rows()+1,3);
+                    FgNew_pattern_notMerged.block(0,0,Fg_pattern_notMerged.rows(),3) = Fg_pattern_notMerged;
+                    FgNew_pattern_notMerged.row(Fg_pattern_notMerged.rows())= Fg_pattern_notMerged.row(face);
+
+
                     // get bary coordinates of this new vertex
                     MatrixXd baryM;
                     igl::barycentric_coordinates(Vg.row(boundaryL[patch1][nextId1]), Vg.row(Fg(face, 0)),
@@ -1970,6 +2010,11 @@ void stitchAdapted3D(MatrixXd& Vg, MatrixXi& Fg, MatrixXi& Fg_pattern_orig, vect
                     MatrixXd VgNew_pattern = MatrixXd(Vg_pattern.rows()+1, 3);
                     VgNew_pattern.block(0,0,Vg_pattern.rows(), Vg_pattern.cols()) = Vg_pattern;
                     VgNew_pattern.row(Vg_pattern.rows())= newPosPattern;
+                    // duplicate for not merged
+                    MatrixXd VgNew_pattern_notMerged = MatrixXd(Vg_pattern_notMerged.rows()+1, 3);
+                    VgNew_pattern_notMerged.block(0,0,VgNew_pattern_notMerged.rows(), 3) = Vg_pattern_notMerged;
+                    VgNew_pattern_notMerged.row(Vg_pattern_notMerged.rows())= newPosPattern;
+
 
                     int idxprev=0;
                     while (Fg(face, idxprev) != prevVert2){idxprev++; }
@@ -1979,6 +2024,10 @@ void stitchAdapted3D(MatrixXd& Vg, MatrixXi& Fg, MatrixXi& Fg_pattern_orig, vect
                     FgNew(Fg.rows(), idxnext) = boundaryL[patch1][nextId1];
                     FgNew_pattern(face, idxprev) = Vg_pattern.rows();// the new vertex
                     FgNew_pattern(Fg_pattern.rows(), idxnext) = Vg_pattern.rows();
+                    // dupl for not merged
+                    FgNew_pattern_notMerged(face, idxprev) = Vg_pattern_notMerged.rows();
+                    FgNew_pattern_notMerged(Fg_pattern_notMerged.rows(), idxnext) = Vg_pattern_notMerged.rows();
+                    igl::writeOBJ("addedSquare_2D.obj", VgNew_pattern_notMerged, FgNew_pattern_notMerged);
 
                     prev1 = nextId1;
                     prevVert1 = boundaryL[patch1][prev1];
@@ -1995,6 +2044,13 @@ void stitchAdapted3D(MatrixXd& Vg, MatrixXi& Fg, MatrixXi& Fg_pattern_orig, vect
                     Vg_pattern.resize(VgNew_pattern.rows(), 3);
                     Vg_pattern = VgNew_pattern;
                     igl::writeOBJ("insertedFacesPattern.obj", Vg_pattern, Fg_pattern);
+                    // also for not merged
+                    Fg_pattern_notMerged.resize(FgNew_pattern_notMerged.rows(), 3);
+                    Fg_pattern_notMerged= FgNew_pattern_notMerged;
+                    Vg_pattern_notMerged.resize(VgNew_pattern_notMerged.rows(), 3);
+                    Vg_pattern_notMerged= VgNew_pattern_notMerged;
+
+
                 }else{
                     int face = adjacentFaceToEdge(boundaryL[patch1][nextId1], prevVert1, -1, vfAdj);
                     MatrixXi FgNew = MatrixXi(Fg.rows()+1, Fg.cols());
@@ -2004,6 +2060,12 @@ void stitchAdapted3D(MatrixXd& Vg, MatrixXi& Fg, MatrixXi& Fg_pattern_orig, vect
                     MatrixXi FgNew_pattern = MatrixXi(Fg_pattern.rows()+1, Fg_pattern.cols());
                     FgNew_pattern.block(0,0,Fg_pattern.rows(), Fg_pattern.cols()) = Fg_pattern;
                     FgNew_pattern.row(Fg_pattern.rows())= Fg_pattern.row(face);
+                    // also for not merged pattern
+                    MatrixXi FgNew_pattern_notMerged = MatrixXi(Fg_pattern_notMerged.rows()+1,3);
+                    FgNew_pattern_notMerged.block(0,0,Fg_pattern_notMerged.rows(),3) = Fg_pattern_notMerged;
+                    FgNew_pattern_notMerged.row(Fg_pattern_notMerged.rows())= Fg_pattern_notMerged.row(face);
+
+
                     // get bary coordinates of this new vertex
                     MatrixXd baryM;
                     igl::barycentric_coordinates(Vg.row(boundaryL[patch2][nextId2]), Vg.row(Fg(face, 0)),
@@ -2016,6 +2078,10 @@ void stitchAdapted3D(MatrixXd& Vg, MatrixXi& Fg, MatrixXi& Fg_pattern_orig, vect
                     MatrixXd VgNew_pattern = MatrixXd(Vg_pattern.rows()+1, 3);
                     VgNew_pattern.block(0,0,Vg_pattern.rows(), Vg_pattern.cols()) = Vg_pattern;
                     VgNew_pattern.row(Vg_pattern.rows())= newPosPattern;
+                    // duplicate for not merged
+                    MatrixXd VgNew_pattern_notMerged = MatrixXd(Vg_pattern_notMerged.rows()+1, 3);
+                    VgNew_pattern_notMerged.block(0,0,VgNew_pattern_notMerged.rows(), 3) = Vg_pattern_notMerged;
+                    VgNew_pattern_notMerged.row(Vg_pattern_notMerged.rows())= newPosPattern;
 
                     int idxprev = 0;
                     while(Fg(face, idxprev) != prevVert1){idxprev++;}
@@ -2026,6 +2092,11 @@ void stitchAdapted3D(MatrixXd& Vg, MatrixXi& Fg, MatrixXi& Fg_pattern_orig, vect
                     FgNew(Fg.rows(), idxnext) = boundaryL[patch2][nextId2];
                     FgNew_pattern(face, idxprev) = Vg_pattern.rows();// the new vertex
                     FgNew_pattern(Fg_pattern.rows(), idxnext) = Vg_pattern.rows();
+                    // dupl for not merged
+                    FgNew_pattern_notMerged(face, idxprev) = Vg_pattern_notMerged.rows();
+                    FgNew_pattern_notMerged(Fg_pattern_notMerged.rows(), idxnext) = Vg_pattern_notMerged.rows();
+                    igl::writeOBJ("addedSquare_2D.obj", VgNew_pattern_notMerged, FgNew_pattern_notMerged);
+
 
                     prev2 = nextId2;
                     prevVert2 = boundaryL[patch2][prev2];
@@ -2042,9 +2113,15 @@ void stitchAdapted3D(MatrixXd& Vg, MatrixXi& Fg, MatrixXi& Fg_pattern_orig, vect
                     Vg_pattern.resize(VgNew_pattern.rows(), 3);
                     Vg_pattern = VgNew_pattern;
                     igl::writeOBJ("insertedFacesPattern.obj", Vg_pattern, Fg_pattern);
+                    // also for not merged
+                    Fg_pattern_notMerged.resize(FgNew_pattern_notMerged.rows(), 3);
+                    Fg_pattern_notMerged= FgNew_pattern_notMerged;
+                    Vg_pattern_notMerged.resize(VgNew_pattern_notMerged.rows(), 3);
+                    Vg_pattern_notMerged= VgNew_pattern_notMerged;
                 }
             }
             igl::writeOBJ("stitched3d.obj",Vg,Fg);
+            igl::writeOBJ("final_addedFace_patternNotMerged.obj", Vg_pattern_notMerged, Fg_pattern_notMerged);
 
         }
 
