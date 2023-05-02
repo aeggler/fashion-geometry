@@ -366,7 +366,7 @@ void duplicateInitPattern(MatrixXd& Vg ,MatrixXi& Fg){
 void addedSquare(MatrixXi Fg, MatrixXd Vg) {
     MatrixXd whichVg = Vg;
     MatrixXi whichFg = Fg;
-    cout<<whichFg.rows()<<" new rows"<<endl;
+    cout<<whichFg.rows()<<" prev rows"<<endl;
     MatrixXd addedHelperVg (whichVg.rows() + 4 ,3);
     MatrixXi addedHelperFg (whichFg.rows() + 2 ,3);
     addedHelperVg.block(0,0, whichVg.rows(), whichVg.cols()) = whichVg;
@@ -379,26 +379,26 @@ void addedSquare(MatrixXi Fg, MatrixXd Vg) {
     addedHelperFg(offHelpF, 1)= offHelp+1;
     addedHelperFg(offHelpF, 2)= offHelp+2;
 
-    addedHelperFg(offHelpF + 1, 0)= offHelp;
-    addedHelperFg(offHelpF + 1, 1)= offHelp+2;
-    addedHelperFg(offHelpF + 1, 2)= offHelp+3;
+    addedHelperFg(offHelpF + 1, 0)= offHelp+1;
+    addedHelperFg(offHelpF + 1, 1)= offHelp+3;
+    addedHelperFg(offHelpF + 1, 2)= offHelp+2;
 
-    addedHelperVg(offHelp, 0)= 760;
-    addedHelperVg(offHelp, 1)= 210;
+    addedHelperVg(offHelp, 0)= 500;
+    addedHelperVg(offHelp, 1)= 1200;
     addedHelperVg(offHelp, 2)= 200;
     offHelp++;
-    addedHelperVg(offHelp, 0)= 770;
-    addedHelperVg(offHelp, 1)= 210;
-    addedHelperVg(offHelp, 2)= 200;
-    offHelp++;
-
-    addedHelperVg(offHelp, 0)= 770;
-    addedHelperVg(offHelp, 1)= 220;
+    addedHelperVg(offHelp, 0)= 510;
+    addedHelperVg(offHelp, 1)= 1200;
     addedHelperVg(offHelp, 2)= 200;
     offHelp++;
 
-    addedHelperVg(offHelp, 0)= 760;
-    addedHelperVg(offHelp, 1)= 220;
+    addedHelperVg(offHelp, 0)= 500;
+    addedHelperVg(offHelp, 1)= 1210;
+    addedHelperVg(offHelp, 2)= 200;
+    offHelp++;
+
+    addedHelperVg(offHelp, 0)= 510;
+    addedHelperVg(offHelp, 1)= 1210;
     addedHelperVg(offHelp, 2)= 200;
 
     string name ;

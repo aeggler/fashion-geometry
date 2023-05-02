@@ -1920,14 +1920,54 @@ void stitchAdapted3D(MatrixXd& Vg, MatrixXi& Fg, MatrixXi& Fg_pattern_orig, vect
     igl::boundary_loop(Fg, boundaryL);
     MatrixXi Fg_pattern_notMerged;
     MatrixXd Vg_pattern_notMerged;
+    map<int, int> cornersMerge;
     igl::readOBJ("addedSquare_2D.obj",Vg_pattern_notMerged, Fg_pattern_notMerged);
     for(int i=0; i<seamsList.size(); i++) {
         int start1 = seamsList[i]->getStart1();
         int start2 = seamsList[i]->getStart2();
         cout<<endl<<"Seam "<<i<<" start "<<start1<<" "<<start2<<endl;
 
-        start1 = mapCornerToCorner[start1];
-        start2 = mapCornerToCorner[start2];
+        if(mapCornerToCorner.find(start1) == mapCornerToCorner.end()){
+            cout<<"not found in map 1 "<<endl;
+        }else{
+            start1 = mapCornerToCorner[start1];
+
+        }
+        if(mapCornerToCorner.find(start2) == mapCornerToCorner.end()){
+            cout<<"not found in map 2 "<<endl;
+        }else{
+            start2 = mapCornerToCorner[start2];
+
+        }
+        cout<<endl<<"Seam after update "<<i<<" start "<<start1<<" "<<start2<<endl;
+
+        if(i==3) {
+            start1= 773;
+            Vg.row(374) = Vg.row(778);
+            Vg.row(1160) = Vg.row(1564);
+
+        }else if(i==5){
+            start1= 715;
+        }
+        else if (i==9){
+            start1 = 1510;
+        }else if (i==10){
+            start1 = 1163;
+//
+        }
+        else if (i==11){
+            start2 = 1559;
+            start1 = 1571;
+            cornersMerge[start1]= start2;
+        }else if (i== 12){
+            start1 = 1140;
+            start2= start1;
+        } else if (i==13){
+
+            start2= 777;
+            start1 = 1563;
+            cornersMerge[start1]= start2;
+        }
 
         int patch1, patch2, idx1start, idx2start;
         findPatchAndIdx(start1, patch1, idx1start, boundaryL);
@@ -1940,11 +1980,51 @@ void stitchAdapted3D(MatrixXd& Vg, MatrixXi& Fg, MatrixXi& Fg_pattern_orig, vect
         auto ends = seamsList[i]->getEndCornerIds();
         int end1 = ends.first;
         int end2 = ends.second;
-        cout<<endl<<"Seam "<<i<<" end "<<end1<<" "<<end2 <<endl;
 
-        end1 = mapCornerToCorner[end1];
-        end2 = mapCornerToCorner[end2];
-        cout<<endl<<"Seam "<<i<<" end after map "<<end1<<" "<<end2 <<endl;
+        cout<<endl<<"Seam "<<i<<" end "<<end1<<" "<<end2 <<endl;
+        if(mapCornerToCorner.find(end1) == mapCornerToCorner.end()){
+            cout<<"not found in map 1 "<<endl;
+        }else{
+            end1 = mapCornerToCorner[end1];
+
+        }
+        if(mapCornerToCorner.find(end2) == mapCornerToCorner.end()){
+            cout<<"not found in map 2 "<<endl;
+        }else{
+            end2 = mapCornerToCorner[end2];
+
+        }
+//        end1 = mapCornerToCorner[end1];
+//        end2 = mapCornerToCorner[end2];
+        if(i==5){
+            end1= 724;
+        }
+        else if (i==9){
+            end1 = 1501;
+        }
+        else if (i==10){
+            end1 = 1160;
+        }
+        else if (i==11){
+            end1= 1564;
+            end2= 1160;
+            cornersMerge[end1]= end2;
+        }
+        else if (i==12){
+            end1 = 1131 ;
+            end2= 1149;
+            cornersMerge[end1]= end2;
+
+        }
+        else if (i==13){
+            end2 = 402;
+            end1 = 1188;
+            cornersMerge[end1]= end2;
+
+        }
+//        cout<<endl<<"Seam "<<i<<" end after map "<<end1<<" "<<end2 <<endl;
+        cornersMerge[end1]= end2;
+        cornersMerge[start1]= start2;
 
         int patch11, patch21, idx1end, idx2end;
         findPatchAndIdx(end1, patch11, idx1end, boundaryL);
@@ -1964,9 +2044,13 @@ void stitchAdapted3D(MatrixXd& Vg, MatrixXi& Fg, MatrixXi& Fg_pattern_orig, vect
         int b1 = boundaryL[patch1].size();
         int b2 = boundaryL[patch2].size();
         nextId1 %= b1; if(nextId2 < 0 ) nextId2+= b2;
+        bool errorFound = false;
+        bool oneReach = false;
+        bool twoReach = false;
+        while (((boundaryL[patch1][nextId1] != end1 || boundaryL[patch2][nextId2]!= end2 ) && !errorFound)&&(!(oneReach && twoReach))){
+//            cout<<" on "<<boundaryL[patch1][nextId1]<<" "<< boundaryL[patch2][nextId2]<<endl;
+            if((Vg.row(boundaryL[patch1][nextId1]) - Vg.row(boundaryL[patch2][nextId2])).norm() < 2.1){
 
-        while (boundaryL[patch1][nextId1] != end1 || boundaryL[patch2][nextId2]!= end2){
-            if((Vg.row(boundaryL[patch1][nextId1]) - Vg.row(boundaryL[patch2][nextId2])).norm() < 0.1){
                 replaceInFaces(boundaryL[patch2][nextId2], boundaryL[patch1][nextId1],Fg );
                 prev1 = nextId1;prevVert1 = boundaryL[patch1][nextId1];
                 prev2 = nextId2;prevVert2 = boundaryL[patch1][nextId1];
@@ -1983,7 +2067,11 @@ void stitchAdapted3D(MatrixXd& Vg, MatrixXi& Fg, MatrixXi& Fg_pattern_orig, vect
                 if(dist1<dist2){
                     int face = adjacentFaceToEdge(boundaryL[patch2][nextId2], prevVert2, -1, vfAdj);
                     if(face == -1 ) {
-                        cout<<"ERROR FACE NOT FOUND "<<endl;
+                        cout<<prevVert2<<" ERROR FACE NOT FOUND "<<boundaryL[patch2][nextId2]<<endl;
+                        errorFound = true;
+                        continue;
+                    }else{
+                        cout<<"  "<<boundaryL[patch1][nextId1];
                     }
                     MatrixXi FgNew = MatrixXi(Fg.rows()+1, Fg.cols());
                     FgNew.block(0,0,Fg.rows(), Fg.cols()) = Fg;
@@ -2053,6 +2141,14 @@ void stitchAdapted3D(MatrixXd& Vg, MatrixXi& Fg, MatrixXi& Fg_pattern_orig, vect
 
                 }else{
                     int face = adjacentFaceToEdge(boundaryL[patch1][nextId1], prevVert1, -1, vfAdj);
+                    if(face == -1){
+                        cout<<prevVert2<<" ERROR FACE NOT FOUND second "<<boundaryL[patch2][nextId2]<<endl;
+                        errorFound = true;
+                        continue;
+                    }else{
+                        cout<<"  "<<boundaryL[patch1][nextId1];
+                    }
+
                     MatrixXi FgNew = MatrixXi(Fg.rows()+1, Fg.cols());
                     FgNew.block(0,0,Fg.rows(), Fg.cols()) = Fg;
                     FgNew.row(Fg.rows())= Fg.row(face);
@@ -2122,27 +2218,41 @@ void stitchAdapted3D(MatrixXd& Vg, MatrixXi& Fg, MatrixXi& Fg_pattern_orig, vect
             }
             igl::writeOBJ("stitched3d.obj",Vg,Fg);
             igl::writeOBJ("final_addedFace_patternNotMerged.obj", Vg_pattern_notMerged, Fg_pattern_notMerged);
+            if(!oneReach){
+                oneReach = (boundaryL[patch1][nextId1] == end1);
+
+            }if(!twoReach){
+                twoReach = (boundaryL[patch2][nextId2] == end2);
+
+            }
 
         }
-
+       cout<<"start next"<<endl;
     }
 
-    for(int i=0; i<seamsList.size(); i++) {
-        int start1 = seamsList[i]->getStart1();
-        int start2 = seamsList[i]->getStart2();
+//    for(int i=0; i<seamsList.size(); i++) {
+//        int start1 = seamsList[i]->getStart1();
+//        int start2 = seamsList[i]->getStart2();
+//
+//        start1 = mapCornerToCorner[start1];
+//        start2 = mapCornerToCorner[start2];
+//
+//        auto ends = seamsList[i]->getEndCornerIds();
+//        int end1 = ends.first;
+//        int end2 = ends.second;
+//        end1 = mapCornerToCorner[end1];
+//        end2 = mapCornerToCorner[end2];
+    for(auto& it: cornersMerge){
+            int start1= it.first;
+            int start2 = it.second;
+//            cout<<start1<<" "<<start2;
 
-        start1 = mapCornerToCorner[start1];
-        start2 = mapCornerToCorner[start2];
-
-        auto ends = seamsList[i]->getEndCornerIds();
-        int end1 = ends.first;
-        int end2 = ends.second;
-        end1 = mapCornerToCorner[end1];
-        end2 = mapCornerToCorner[end2];
 
         replaceInFaces(start2, start1, Fg);
-        replaceInFaces(end2, end1, Fg);
+//        replaceInFaces(end2, end1, Fg);
     }
+    replaceInFaces(778, 374, Fg);
+
     igl::writeOBJ("cornersMerged.obj", Vg, Fg);
 
 }

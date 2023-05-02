@@ -288,25 +288,25 @@ int main(int argc, char *argv[])
 //    cout<<garment_file_name<<" chosen file, thanks. "<<endl;
 
     string prefix = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/";
-    garment = "leggins";
+//    garment = "leggins";
     bool patternExists = true;
     inverseMap = false;
     string patternFromName = "CLO_avatar_to_bodyScan_Luka_rem";
-    bool interPersonFlag = true;
+    bool interPersonFlag = false;
 
 //    garment = "tshirt";
-//    garment = "top";
+    garment = "top";
 //    garment = "top_fromAnna";
-    string garment_file_name = prefix+ "leggins/leggins_3d/leggins_3d_merged.obj"; //smaller collision thereshold to make sure it is not "eaten" after intial step , 3.5 instead of 4.5
+//    string garment_file_name = prefix+ "leggins/leggins_3d/leggins_3d_merged.obj"; //smaller collision thereshold to make sure it is not "eaten" after intial step , 3.5 instead of 4.5
 //    garment = "dress";
-//    string garmentExt = garment +"_1";
+    string garmentExt = garment +"_1";
 //    garment = "skirt";
 //    garment = "hoodie";
 //    garment = "man_tshirt";
-        string garmentExt = garment;
+//        string garmentExt = garment;
 //    string garmentExt = garment+ "_3";
 //    string garmentExt = garment+ "_2";
-//    string garment_file_name = prefix + "moreGarments/"+ garmentExt+"/"+garment+"_3d.obj";
+    string garment_file_name = prefix + "moreGarments/"+ garmentExt+"/"+garment+"_3d.obj";
 
     igl::readOBJ(garment_file_name, Vg, Fg);
     Timer t("Setup");
@@ -316,8 +316,8 @@ int main(int argc, char *argv[])
 //    cout<<garment_pattern_file_name<<" chosen file for pattern, thanks. "<<endl;
 
 //    string garment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/patternComputed_"+patternFromName+"_"+garment+".obj";
-    string garment_pattern_file_name = prefix +"leggins/leggins_2d/leggins_2d.obj"; //
-//    string garment_pattern_file_name = prefix +"moreGarments/"+garmentExt+"/"+garment+"_2d.obj";
+//    string garment_pattern_file_name = prefix +"leggins/leggins_2d/leggins_2d.obj"; //
+    string garment_pattern_file_name = prefix +"moreGarments/"+garmentExt+"/"+garment+"_2d.obj";
     igl::readOBJ(garment_pattern_file_name, Vg_pattern, Fg_pattern);
 //    garment = "skirt_no2";
     symetry = true;
@@ -522,7 +522,7 @@ int main(int argc, char *argv[])
 //     avName = "avatar_missy_straight_05_OC";// good for skirt
 //     avName = "avatar_petite_curvy_01_OC";
 //    avName = "avatar_maternity_05_OC";
-    avName = "CLO_avatar_to_bodyScan_Raphael_rem";
+    avName = "CLO_avatar_to_bodyScan_Paola_rem";
 //    avName = "CLO_avatar_to_male_large_avatar_rem_20";
 
     string morphBody1 =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/CLO_avatars_oneComponent/"+ avName +".ply";//
@@ -1006,7 +1006,8 @@ int main(int argc, char *argv[])
             bool choosePatchArea = false;
             bool choosePatches = false;
             if(ImGui::Checkbox("init ", &startSmooth)) {
-                string smoothPatternFile =  "patternComputed_"+avName+"_"+garment+".obj";
+                string smoothPatternFile ="finished_tear_writtenPattern_CLO_avatar_to_bodyScan_Paola_rem_top.obj";
+//                string smoothPatternFile =  "patternComputed_"+avName+"_"+garment+".obj";
                 igl::readOBJ(smoothPatternFile, currPattern, Fg_pattern_curr);
             }
 
@@ -1603,8 +1604,15 @@ int main(int argc, char *argv[])
                     for(int i=0; i<dblA.rows(); i++){
                         sum+= dblA(i);
                     }
-                    cout<<"Sum of "<<i<<" is "<<sum<<endl;
+
+                            cout<<"Sum of "<<i<<" is "<<sum<<endl;
                     if(sum>=100){
+                        if(garment=="top" && avName == "CLO_avatar_to_bodyScan_Paola_rem" && patchCounter == 4){
+                            cliV.row(6) = currPattern.row(374);
+                            cout<<" in ACTION"<<endl;
+                        }else  if(garment=="top" && avName == "CLO_avatar_to_bodyScan_Paola_rem" && patchCounter == 5) {
+                            cliV.row(3) = currPattern.row(418);
+                        }else if (i==5) cout<<"NOT TAKEN"<<endl;
                         igl::writeOBJ("clipper_"+to_string(patchCounter)+".obj", cliV, cliF);
                         patchCounter++;
                         connectedVert.emplace_back(returnVec[i]);
