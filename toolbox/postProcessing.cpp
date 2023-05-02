@@ -2059,6 +2059,7 @@ void stitchAdapted3D(MatrixXd& Vg, MatrixXi& Fg, MatrixXi& Fg_pattern_orig, vect
                 vfAdj.clear();
                 createVertexFaceAdjacencyList(Fg, vfAdj);
 //                boundaryL[patch2][nextId2] = boundaryL[patch1][nextId1];
+                igl::writeOBJ("insertedFacesPattern"+to_string(i)+".obj", Vg_pattern, Fg_pattern);
 
 
             }else{
@@ -2131,6 +2132,8 @@ void stitchAdapted3D(MatrixXd& Vg, MatrixXi& Fg, MatrixXi& Fg_pattern_orig, vect
                     Fg_pattern = FgNew_pattern;
                     Vg_pattern.resize(VgNew_pattern.rows(), 3);
                     Vg_pattern = VgNew_pattern;
+                     igl::writeOBJ("insertedFacesPattern"+to_string(i)+".obj", Vg_pattern, Fg_pattern);
+
                     igl::writeOBJ("insertedFacesPattern.obj", Vg_pattern, Fg_pattern);
                     // also for not merged
                     Fg_pattern_notMerged.resize(FgNew_pattern_notMerged.rows(), 3);
@@ -2208,6 +2211,8 @@ void stitchAdapted3D(MatrixXd& Vg, MatrixXi& Fg, MatrixXi& Fg_pattern_orig, vect
                     Fg_pattern = FgNew_pattern;
                     Vg_pattern.resize(VgNew_pattern.rows(), 3);
                     Vg_pattern = VgNew_pattern;
+                     igl::writeOBJ("insertedFacesPattern"+to_string(i)+".obj", Vg_pattern, Fg_pattern);
+
                     igl::writeOBJ("insertedFacesPattern.obj", Vg_pattern, Fg_pattern);
                     // also for not merged
                     Fg_pattern_notMerged.resize(FgNew_pattern_notMerged.rows(), 3);
@@ -2216,6 +2221,7 @@ void stitchAdapted3D(MatrixXd& Vg, MatrixXi& Fg, MatrixXi& Fg_pattern_orig, vect
                     Vg_pattern_notMerged= VgNew_pattern_notMerged;
                 }
             }
+           igl::writeOBJ("stitched3d"+to_string(i)+".obj", Vg, Fg);
             igl::writeOBJ("stitched3d.obj",Vg,Fg);
             igl::writeOBJ("final_addedFace_patternNotMerged.obj", Vg_pattern_notMerged, Fg_pattern_notMerged);
             if(!oneReach){
@@ -2227,7 +2233,6 @@ void stitchAdapted3D(MatrixXd& Vg, MatrixXi& Fg, MatrixXi& Fg_pattern_orig, vect
             }
 
         }
-       cout<<"start next"<<endl;
     }
 
 //    for(int i=0; i<seamsList.size(); i++) {
@@ -2246,9 +2251,26 @@ void stitchAdapted3D(MatrixXd& Vg, MatrixXi& Fg, MatrixXi& Fg_pattern_orig, vect
             int start1= it.first;
             int start2 = it.second;
 //            cout<<start1<<" "<<start2;
+        bool abortFlag= false;
+        for(int i=0; i<Fg.rows(); i++){
+            bool contains1 = false;
+            bool contains2 = false;
+            for(int j=0; j<3; j++){
+                if(Fg(i,j)== start1){
+                    contains1= true;
+                }
+                if(Fg(i,j)== start2){
+                    contains2 = true;
+                }
+            }
+            if(contains1 && contains2){
+                abortFlag= true;
+                break;
+            }
 
+        }
 
-        replaceInFaces(start2, start1, Fg);
+        if(!abortFlag) replaceInFaces(start2, start1, Fg);
 //        replaceInFaces(end2, end1, Fg);
     }
     replaceInFaces(778, 374, Fg);

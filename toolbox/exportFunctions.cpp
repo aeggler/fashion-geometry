@@ -364,6 +364,14 @@ void duplicateInitPattern(MatrixXd& Vg ,MatrixXi& Fg){
 }
 
 void addedSquare(MatrixXi Fg, MatrixXd Vg) {
+    string name1 ;
+    if( Vg(300, 2) ==200){
+        name1 = "addedSquare_2D.obj";
+    }else{
+        name1 = "addedSquare_3D.obj";
+    }
+    igl::writeOBJ(name1 , Vg, Fg);
+    return;
     MatrixXd whichVg = Vg;
     MatrixXi whichFg = Fg;
     cout<<whichFg.rows()<<" prev rows"<<endl;
