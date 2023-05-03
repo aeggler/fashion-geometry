@@ -154,7 +154,7 @@ void push_to_Map(int whichKindOfSeam, int& idx, int& startId,int& startIdOther, 
 void computeAllSeams(const std::vector<std::vector<int> >& boundaryL, std::map<int,int>& vertexMapPattToGar, std::map<std::pair<int, int>,int>& vertexMapGarAndIdToPatch,
                      std::vector<std::vector<int> >& vfAdj, Eigen::VectorXi& componentIdPerFace, Eigen::VectorXi& componentIdPerVert,
                      Eigen::VectorXd& cornerVertices, std::vector<std::vector<std::pair<int, int>>>& vertAndLoopIdxPerCornerPerBoundary, std::vector<seam*>& seamsList, std::vector<minusOneSeam*>& minusSeams,
-                     map<int, vector<pair<int, int>>>& seamIdPerCorner, string garment
+                     map<int, vector<pair<int, int>>>& seamIdPerCorner, string garment, string garmentEXT
                      ){
 
     // we would like a seam to seam mapping where a seam is defined by its two endpoints
@@ -167,7 +167,7 @@ void computeAllSeams(const std::vector<std::vector<int> >& boundaryL, std::map<i
         additionalCorners.insert( 267);
         additionalCorners.insert( 35);
         additionalCorners.insert( 1045);
-    }else if (garment == "skirt_no2"){
+    }else if (garmentEXT == "skirt_2"){
         additionalCorners.insert(369);
         additionalCorners.insert(31);
 

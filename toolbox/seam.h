@@ -213,7 +213,7 @@ void computeAllSeams(const std::vector<std::vector<int> >& boundaryL, std::map<i
                      Eigen::VectorXi& componentIdPerVert,
                      Eigen::VectorXd& cornerVertices, std::vector<std::vector<std::pair<int, int>>>& vertAndLoopIdxPerCornerPerBoundary,
                      std::vector<seam*>& seamsList , std::vector<minusOneSeam*>& minusSeams,
-                     std::map<int, std::vector<std::pair<int, int>>>& seamIdPerCorner, std::string garment
+                     std::map<int, std::vector<std::pair<int, int>>>& seamIdPerCorner, std::string garment, std::string garmentEXT
 
 );
 

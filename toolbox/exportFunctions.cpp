@@ -16,6 +16,8 @@
 #include <igl/vertex_components.h>
 #include <igl/writeOBJ.h>
 #include <igl/readOBJ.h>
+#include <set>
+#include "postProcessing.h"
 
 using namespace Eigen;
 using namespace std;
@@ -432,5 +434,31 @@ void movePatches(){
         }
     }
     igl::writeOBJ("patchMoved2D.obj", Vg, Fg) ;
+
+}
+
+void insertToStartEnd(vector<int> &startAndEnd, std::set<int>& cornerset, MatrixXd& currPattern, MatrixXi& Fg_pattern_curr,
+                       vector<vector<int>> &bd ){
+
+   for(int i=0; i<bd.size(); i++){
+       int corner = -1; int prevCorner = -1; int next = -1;
+       for(int j=0; j< bd[i].size(); j++){
+
+           if(cornerset.find(bd[i][j])!= cornerset.end()){
+               //found corner
+               prevCorner = corner;
+               corner = bd[i][j];
+               if(j>0) next = bd[i][j-1];
+               if(prevCorner != -1){
+                   startAndEnd.clear();
+                   startAndEnd.push_back(prevCorner);
+                   startAndEnd.push_back(next);
+                   startAndEnd.push_back(corner);
+                   smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+                   smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+               }
+           }
+       }
+   }
 
 }

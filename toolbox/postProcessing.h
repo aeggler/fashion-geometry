@@ -29,7 +29,7 @@ void computeAllBetweensNew(vector<VectorXd>& polylineSelected,vector<int>& polyl
                            MatrixXd& currPattern, MatrixXd& Vg_to, vector<VectorXd>& polyLineInput, vector<vector<int>>& connectedVertVec, vector<int>& patchId, vector<bool>& isAscVec) ;
 
 void mergeTriagulatedAndPattern(const vector<VectorXd>& connectedVertVec, MatrixXd& Vg_retri, MatrixXi& Fg_retri,
-                                MatrixXd& currPattern, MatrixXi& Fg_pattern, vector<int> & newFaces, string avName, string garment);
+                                MatrixXd& currPattern, MatrixXi& Fg_pattern, vector<int> & newFaces, string avName, string garment, string garmentExt);
 void createHalfAvatarMap(MatrixXd& testMorph_V1, MatrixXi& testMorph_F1,
                          MatrixXd& testMorph_V1left, MatrixXi& testMorph_F1left,
                          MatrixXd& testMorph_V1right, MatrixXi& testMorph_F1right,

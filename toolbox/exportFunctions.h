@@ -7,6 +7,7 @@
 
 #endif //EXAMPLE_EXPORTFUNCTIONS_H
 #include <Eigen/Dense>
+#include <set>
 
 using namespace Eigen;
 using namespace std;
@@ -20,3 +21,6 @@ void duplicateInitPattern(MatrixXd& Vg ,MatrixXi& Fg);
 
 void addedSquare(MatrixXi Fg, MatrixXd Vg);
 void movePatches();
+
+void   insertToStartEnd(vector<int> &startAndEnd, std::set<int>& cornerset, MatrixXd& currPattern, MatrixXi& Fg_pattern_curr,
+                        vector<vector<int>> &bd );

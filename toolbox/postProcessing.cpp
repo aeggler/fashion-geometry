@@ -1019,7 +1019,7 @@ void insertVert(MatrixXd& currPattern, int offset, MatrixXd& Vg_retri, int next,
 }
 int globCount = 0;
 void mergeTriagulatedAndPattern(const vector<VectorXd>& connectedVertVec,
-                           MatrixXd& Vg_retri, MatrixXi& Fg_retri, MatrixXd& currPattern, MatrixXi& Fg_pattern, vector<int> & newFaces, string avName, string garment){
+                           MatrixXd& Vg_retri, MatrixXi& Fg_retri, MatrixXd& currPattern, MatrixXi& Fg_pattern, vector<int> & newFaces, string avName, string garment, string garmentExt){
 
     //not merged for patches to retri
     MatrixXi Fg_prev_notMerge;
@@ -1054,7 +1054,7 @@ void mergeTriagulatedAndPattern(const vector<VectorXd>& connectedVertVec,
     igl::boundary_loop(Fg_pattern, boundaryLGar);
     VectorXi mergedIds(Vg_retri.rows());
     mergedIds.setConstant(-1);
-    igl::writeOBJ("retriPatch_"+ to_string(patchCount)+"_"+avName+"_"+garment +".obj", Vg_retri, Fg_retri); patchCount++;
+    igl::writeOBJ("retriPatch_"+ to_string(patchCount)+"_"+avName+"_"+garmentExt +".obj", Vg_retri, Fg_retri); patchCount++;
     // insertion on each pattern individually
     VectorXi pattMer(currPattern.rows());
     pattMer.setConstant(-1);
@@ -1180,8 +1180,8 @@ void mergeTriagulatedAndPattern(const vector<VectorXd>& connectedVertVec,
     }
     globCount++;
     faceSizes.push_back(countFace);
-    ofstream out("newFacesAfterPatch_"+avName+"_"+garment+"_"+ to_string(patchCount-1) +".txt");
-    ofstream out2("newFacesAfterPatch_"+avName+"_"+garment+"_final.txt");
+    ofstream out("newFacesAfterPatch_"+avName+"_"+garmentExt+"_"+ to_string(patchCount-1) +".txt");
+    ofstream out2("newFacesAfterPatch_"+avName+"_"+garmentExt+"_final.txt");
 
     int size = newFaces.size(); int globC=0;
     out << patchCount<<" ";

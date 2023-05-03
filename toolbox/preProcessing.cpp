@@ -393,7 +393,7 @@ void insertPlane(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg_
                 idfac1 = yToFaceAndIdx[pair1].second;
 
                 idx1 =Fg (fac1, idfac1 );
-                if(i== 1128 && garment== "skirt_no2"){ extra1 = true;}
+                if(i== 1128 && garmentEXT == "skirt_2"){ extra1 = true;}
                 if(i==102 && garment == "skirt") {
                     extra1 = true;
                 }
@@ -424,8 +424,8 @@ void insertPlane(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg_
                 fac2 = yToFaceAndIdx[pair2].first;
                 idfac2 = yToFaceAndIdx[pair2].second;
                 idx2 = Fg ( fac2, idfac2 );
-                if(i== 1256 && garment== "skirt_no2"){ extra2 = true;}
-                if(i==849 && garment == "skirt") {
+                if(i== 1256 && garmentEXT == "skirt_2"){ extra2 = true;}
+                if(i==849 && garmentEXT == "skirt_1") {
                     extra2 = true;
                 }
                 if(i==5534 && garmentEXT == "skirt_3") {
@@ -649,7 +649,7 @@ void edgeCollapse(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg
     set<int> freecorners;// corners in the outer of the gament in3D.not sure about them
     double theresh = 7.;
 
-    if (garment == "skirt_no2") {
+    if (garmentEXT == "skirt_2") {
         freecorners.insert(704);
         freecorners.insert(707);
         freecorners.insert(670);
@@ -667,7 +667,7 @@ void edgeCollapse(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg
         cornersOfGar.insert(711);
 
     }
-    else if(garment=="skirt" && garmentEXT !="skirt_3"){
+    else if(garmentEXT =="skirt_1"){
         theresh= 9;
         cornersOfGar.insert(404);
         cornersOfGar.insert(400);
@@ -949,7 +949,7 @@ void splitAndSmooth(MatrixXd& Vg,MatrixXi& Fg,MatrixXd& Vg_pattern,MatrixXi& Fg_
                     MatrixXd& VgPatternRet,MatrixXi& FgPatternRet,
                     MatrixXd& VgRet, MatrixXi& FgRet, string garment, string garmentEXT ){
 
-    if(garment=="skirt"){
+    if(garmentEXT=="skirt_1"){
         VectorXi vertComp;
         igl::vertex_components( Fg_pattern, vertComp);
         for(int i=0; i< Vg_pattern.rows(); i++){
@@ -958,21 +958,111 @@ void splitAndSmooth(MatrixXd& Vg,MatrixXi& Fg,MatrixXd& Vg_pattern,MatrixXi& Fg_
             }
         }
     }
+    if(garmentEXT=="skirt_2"){
+        VectorXi vertComp;
+        igl::vertex_components( Fg_pattern, vertComp);
+        for(int i=0; i< Vg_pattern.rows(); i++){
+            if(vertComp(i)==0){
+                Vg_pattern(i, 0) +=200;
+            }
+        }
+    }
     if(garmentEXT =="skirt_3"){
         VectorXi vertComp;
         igl::vertex_components( Fg_pattern, vertComp);
         for(int i=0; i< Vg_pattern.rows(); i++){
             if(vertComp(i)==0){
-                Vg_pattern(i, 0) +=300;
+                Vg_pattern(i, 0) += 00;
             }
         }
     }
     if(garment == "tshirt"){
         for(int i=0; i< Vg.rows(); i++){
-            if(i<2)cout<<Vg(i,0)<<" for i "<<i<<endl;
             if(abs(Vg(i, 0)) <= 1.1){
-                cout<<i<<endl;
                 Vg(i, 0) = 0;
+            }
+        }
+    }
+    if(garment== "hoodie"){
+        VectorXi vertComp;
+        igl::vertex_components( Fg_pattern, vertComp);
+        int count0=0;
+        int count1 = 0;
+        int count2 = 0;
+        int count3 = 0;
+        int count4 = 0;
+        int count5 = 0;
+        int count6 = 0; int count7 = 0; int count8 = 0; int count9 = 0;
+        for(int i=0; i< Vg_pattern.rows(); i++){
+            if(vertComp(i)==0){
+                Vg_pattern(i, 1) -=100;
+                if(count0==0){
+                    count0++;
+                    cout<<"Vert for 0 "<<i<<endl;// done
+                }
+            }
+            else if(vertComp(i)==1){
+                Vg_pattern(i, 1) -=100;
+                if(count1==0){
+                    count1++;
+                    cout<<"Vert for 1 "<<i<<endl;//done
+                }
+            }
+            else if(vertComp(i)==2){
+//                Vg_pattern(i, 0) +=100;
+                if(count2==0){
+                    count2++;
+                    cout<<"Vert for 2 "<<i<<endl;//done
+                }
+            }
+            else if(vertComp(i)==3){
+                Vg_pattern(i, 1) -=100;
+                if(count3 ==0){
+                    count3++;
+                    cout<<"Vert for 3 "<<i<<endl;
+                }
+            }
+            else if(vertComp(i)==4){
+                Vg_pattern(i, 0) +=100;
+                if(count4==0){
+                    count4++;
+                    cout<<"Vert for 4 "<<i<<endl;
+                }
+            }
+            else if(vertComp(i)==6){
+                Vg_pattern(i, 1) -= 100;
+                if(count5==0){
+                    count5++;
+                    cout<<"Vert for 5 "<<i<<endl;
+                }
+            }
+            else if(vertComp(i)==5){
+                Vg_pattern(i, 1) += 200;
+                if(count6==0){
+                    count6++;
+                    cout<<"Vert for 6 "<<i<<endl;
+                }
+            }
+            else if(vertComp(i)==7){
+                Vg_pattern(i, 1) += 200;
+                if(count7==0){
+                    count7++;
+                    cout<<"Vert for 7 "<<i<<endl;
+                }
+            }
+            else if(vertComp(i)==8){
+                Vg_pattern(i, 1) += 400;
+                if(count8==0){
+                    count8++;
+                    cout<<"Vert for 8 "<<i<<endl;
+                }
+            }
+            else if(vertComp(i)==9){
+                Vg_pattern(i, 1) += 00;
+                if(count9==0){
+                    count9++;
+                    cout<<"Vert for 9 "<<i<<endl;
+                }
             }
         }
     }
@@ -1042,15 +1132,8 @@ void splitAndSmooth(MatrixXd& Vg,MatrixXi& Fg,MatrixXd& Vg_pattern,MatrixXi& Fg_
         }
     }
 
-    if(garment =="skirt"&& garmentEXT != "skirt_3"){
-        VectorXi componentIdPerVert;
-        igl::vertex_components(newFg_pattern, componentIdPerVert);
-        for(int i=0; i<newVg_pattern.rows(); i++){
-            if(componentIdPerVert(i) == 1){
-                newVg_pattern(i,0) -= 50;
-                newVg_pattern(i,1) -= 50;
-            }
-        }
+     if(garmentEXT == "skirt_1"){
+
     }
     igl::writeOBJ("leftPatternBeforecoll.obj", newVg_pattern, newFg_pattern);
     cout<<"starting edge collapse"<<endl;
@@ -1319,12 +1402,19 @@ void preProcessGarment(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixX
     VgDupl_pattern = (rot*newVg_pattern.transpose()).transpose();
     /* the translation between the initial patten (wihtout symmetry) and the duplicated (without offset)
     * Pick the reference vertices wisely to ensure no overlaps in the pattern computation */
-    if(garment =="skirt" && garmentEXT != "skirt_3"){
+    if(garmentEXT =="skirt_2"){
         T_sym.resize(3);
-        T_sym(0)=-100;
+        T_sym(0)= 550;
         T_sym(1)=0;
         T_sym(2)=0;
-    }else{
+    }
+    else if(garmentEXT =="skirt_1"){
+        T_sym.resize(3);
+        T_sym(0)= 0;
+        T_sym(1)=0;
+        T_sym(2)=0;
+    }
+    else{
         T_sym = Vg_pattern.row(symVert1 ) - VgDupl_pattern.row(symVert2);
         if(garment =="top"){
             T_sym(0)+=50;
