@@ -185,6 +185,7 @@ double geoDistChange = 0.97;// values <1 make it bigger. Conter inutitive
 VectorXd geoDistDist; // geodesic distances
 vector<vector<int>> boundaryLFrom;
 string garmentExt;
+set<int> nonSymSeam;
 void preComputeAdaption();
 void computeBaryCoordsGarOnNewMannequin(igl::opengl::glfw::Viewer& viewer,bool otherUsed, MatrixXd& otherM);
 void setNewGarmentMesh(igl::opengl::glfw::Viewer& viewer);
@@ -221,6 +222,7 @@ set<pair<int, int>> constrainedSeamsSet;
 void visualizeSeam(pair<int, int> which, igl::opengl::glfw::Viewer& viewer);
 int patchCounter = 0;
 void smoothGarment();
+void smoothGarmentOutline();
 bool pre_draw(igl::opengl::glfw::Viewer& viewer){
     viewer.data().dirty |= igl::opengl::MeshGL::DIRTY_DIFFUSE | igl::opengl::MeshGL::DIRTY_SPECULAR;
     if(simulate){
@@ -233,7 +235,7 @@ bool pre_draw(igl::opengl::glfw::Viewer& viewer){
             showGarment(viewer);// not sure if I actually need this, at least it breaks nothing
             t.printTime(" showing   ");cout<<endl;
             if(timestepCounter % convergeIterations == (convergeIterations-1)){
-                gar_adapt->performJacobianUpdateAndMerge(Vg, localGlobalIterations, baryCoords1, baryCoords2, Vg_pattern,  seamsList, boundaryL);
+                gar_adapt->performJacobianUpdateAndMerge(Vg, localGlobalIterations, baryCoords1, baryCoords2, Vg_pattern,  seamsList, boundaryL, nonSymSeam);
                 cout<<"after adaption"<<endl;
                 preComputeConstraintsForRestshape();
                 preComputeStretch();
@@ -295,17 +297,19 @@ int main(int argc, char *argv[])
     string patternFromName = "CLO_avatar_to_bodyScan_Luka_rem";// onnly needed if inter person flag is on
     bool interPersonFlag = false;
 
+
+
 //    garment = "tshirt";
 //    garment = "top";
 //    garment = "top_fromAnna";
 //    string garment_file_name = prefix+ "leggins/leggins_3d/leggins_3d_merged.obj"; //smaller collision thereshold to make sure it is not "eaten" after intial step , 3.5 instead of 4.5
 //    garment = "dress";
-//    string garmentExt = garment +"_1";
-//    garment = "skirt";
-    garment = "hoodie"; // attention also needs flat starter
-//    garment = "man_tshirt";
-    garmentExt = garment;
-//     garmentExt = garment+ "_1";// skirt 3 needs another avatar!!
+//     garmentExt = garment +"_1";
+    garment = "skirt";
+//    garment = "hoodie"; // attention also needs flat starter
+//    garment = "man_tshirt2";
+//    garmentExt = garment;
+     garmentExt = garment+ "_2";// skirt 3 needs another avatar!!
 
 //    string garmentExt = garment+ "_2";
     string garment_file_name = prefix + "moreGarments/"+ garmentExt+"/"+garment+"_3d.obj";
@@ -318,21 +322,17 @@ int main(int argc, char *argv[])
     string garment_pattern_file_name = prefix +"moreGarments/"+garmentExt+"/"+garment+"_2d.obj";
 
     //orig down here
-//    string avatar_file_name =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/avatar/avatar_one_component.ply";
-    string avatar_file_name =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/avatar/avatar_flat.ply";
+    string avatar_file_name =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/avatar/avatar_one_component.ply";
+//    string avatar_file_name =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/avatar/avatar_flat.ply";
 //    string avatar_file_name =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/avatar/male_avatar_rem_20.ply";
-//    string avatar_file_name =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/moreGarments/man_tshirt/avatar.ply";
 
     igl::readOBJ(garment_pattern_file_name, Vg_pattern, Fg_pattern);
 //    garment = "skirt_no2";
     symetry = true;
     if(symetry){
         bool insertPlane = true;
-
         int symVert1 ,symVert2;
-//        T_sym = Vg_pattern.row(symVert1 ) i.e  fill position index
-//        - VgDupl_pattern.row(symVert2); i.e. half position index!
-
+//
         if (garment == "leggins"){
             insertPlane = false;
             symVert1 = 1467;
@@ -388,6 +388,11 @@ int main(int argc, char *argv[])
                 startAndEnd.push_back(1835);
                 startAndEnd.push_back(1832);
             }
+            else if ( garment == "man_tshirt2"){
+                startAndEnd.push_back(1840);
+                startAndEnd.push_back(1841);
+                startAndEnd.push_back(1047);
+            }
             smoothBetweenVertices(VgPatternRet, FgPatternRet, startAndEnd);
             igl::writeOBJ("leftPattern_SmoothBoundAfter1.obj", VgPatternRet, FgPatternRet);
 
@@ -418,6 +423,11 @@ int main(int argc, char *argv[])
                 startAndEnd.push_back(1878);
                 startAndEnd.push_back(1877);
             }
+            else if ( garment == "man_tshirt2"){
+                startAndEnd.push_back(1786);
+                startAndEnd.push_back(1791);
+                startAndEnd.push_back(1787);
+            }
             smoothBetweenVertices(VgPatternRet, FgPatternRet, startAndEnd);
 
             startAndEnd.clear();
@@ -444,7 +454,7 @@ int main(int argc, char *argv[])
                 startAndEnd.push_back(2183);
 
             }
-            if(garment !="man_tshirt") smoothBetweenVertices(VgPatternRet, FgPatternRet, startAndEnd);
+            if(garment !="man_tshirt" && garment !="man_tshirt2" ) smoothBetweenVertices(VgPatternRet, FgPatternRet, startAndEnd);
             startAndEnd.clear();
             if (garmentExt == "skirt_2") {
                 startAndEnd.push_back(704);
@@ -469,7 +479,7 @@ int main(int argc, char *argv[])
                 startAndEnd.push_back(2101);
                 startAndEnd.push_back(2104);
             }
-            if(garment !="man_tshirt") smoothBetweenVertices(VgPatternRet, FgPatternRet, startAndEnd);
+            if(garment !="man_tshirt" && garment !="man_tshirt2") smoothBetweenVertices(VgPatternRet, FgPatternRet, startAndEnd);
             if(garment == "hoodie"){
                 startAndEnd.clear();
                 startAndEnd.push_back(2118);
@@ -490,6 +500,12 @@ int main(int argc, char *argv[])
         }
         preProcessGarment(Vg, Fg, Vg_pattern, Fg_pattern, insertPlane, symVert1, symVert2, T_sym_pattern, garment, garmentExt);
         Vg_orig = Vg; Fg_orig= Fg;
+    }
+    if(garment == "man_tshirt2"){
+        nonSymSeam.insert(0);
+        nonSymSeam.insert(2);
+        nonSymSeam.insert(5);
+        nonSymSeam.insert(8);
     }
     garmentPreInterpol = Vg;
     Vg_orig = Vg; Fg_orig= Fg;
@@ -521,13 +537,30 @@ int main(int argc, char *argv[])
 //     avName = "avatar_missy_straight_05_OC";// good for skirt
 //     avName = "avatar_petite_curvy_01_OC";
 //    avName = "avatar_maternity_05_OC";
-    avName = "avatar_plus_straight_05_OC";
-//    avName = "CLO_avatar_to_bodyScan_Paola_rem";
+//    avName = "avatar_missy_straight_09_OC";//new
+//    avName = "avatar_plus_straight_05_OC";
 //    avName = "CLO_avatar_to_male_large_avatar_rem_20";
+//    avName = "CLO_to_MH_Girl8n";
+//    avName = "CLO_to_MH_Girl17";
+// Teaserr Avatars
+    avName = "CLO_to_MH_GirlOld";
 
-    string morphBody1 =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/CLO_avatars_oneComponent/"+ avName +".ply";//
-    string morphBody1left =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/CLO_avatars_oneComponent/"+ avName +"_left.ply";
-    string morphBody1right =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/CLO_avatars_oneComponent/"+ avName +"_right.ply";
+//    avName = "CLO_to_MH_Girl24";
+//    avName = "CLO_to_MH_Girl89";
+//    avName = "CLO_to_MH_Girl24Curvy";
+//    avName = "CLO_to_MH_Girl24Shoulder";
+
+
+
+//    avName = "CLO_avatar_to_bodyScan_Paola_rem";
+
+    string morphBody1 =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/CLO_avatars_oneComponent/TeaserAvatarsRes/"+ avName +".ply";//
+    string morphBody1left =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/CLO_avatars_oneComponent/TeaserAvatarsRes/"+ avName +"_left.ply";
+    string morphBody1right =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/CLO_avatars_oneComponent/TeaserAvatarsRes/"+ avName +"_right.ply";
+
+//    string morphBody1 =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/CLO_avatars_oneComponent/"+ avName +".ply";//
+//    string morphBody1left =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/CLO_avatars_oneComponent/"+ avName +"_left.ply";
+//    string morphBody1right =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/CLO_avatars_oneComponent/"+ avName +"_right.ply";
 //     avName = "top_1Mess_Avatar";
 //    string morphBody1 =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/avatar/avatar_one_component.ply";
 //    string morphBody1left =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/avatar/avatar_one_component_left.ply";
@@ -704,6 +737,10 @@ int main(int argc, char *argv[])
     }
     int patchcount=0;
     bool showPatchBoundary = false ;
+    ofstream out("setupFile"+avName+"_"+garmentExt+ +".txt");
+    out<<inverseMap<<" inverseMap"<<endl;
+    out<<patternExists<<" pattern exists"<<endl;
+    out<<garment<<"  garment"<<endl;
 //    garmentExt = "top_fromAnna";
     menu.callback_draw_viewer_menu = [&]() {
         if (ImGui::CollapsingHeader("Garment", ImGuiTreeNodeFlags_OpenOnArrow)) {
@@ -806,6 +843,16 @@ int main(int argc, char *argv[])
         if (ImGui::CollapsingHeader("Pattern Computation", ImGuiTreeNodeFlags_OpenOnArrow)) {
             if(ImGui::Button("Smooth Garment ", ImVec2(-1, 0))){
                 smoothGarment();
+                showGarment(viewer);
+                out<<"garment smoothed"<<endl;
+
+
+            }
+            if(ImGui::Button("Smooth Outline ", ImVec2(-1, 0))){
+                smoothGarmentOutline();
+                showGarment(viewer);
+                out<<"outline garment smoothed"<<endl;
+
             }
             if(ImGui::Checkbox("Show Pattern", &showPattern)){
                 cout<<Vg_pattern.rows()<<" "<<Fg_pattern.rows()<<endl;
@@ -884,7 +931,7 @@ int main(int argc, char *argv[])
                 // we start computing the pattern for the current shape
                 Eigen::MatrixXd computed_Vg_pattern;//= Vg;
                 cout<<"start computing the pattern with "<<localGlobalIterations<<" local global iterations"<<endl;
-                gar_adapt->performJacobianUpdateAndMerge(Vg, localGlobalIterations, baryCoords1, baryCoords2, computed_Vg_pattern, seamsList, boundaryL);
+                gar_adapt->performJacobianUpdateAndMerge(Vg, localGlobalIterations, baryCoords1, baryCoords2, computed_Vg_pattern, seamsList, boundaryL, nonSymSeam);
                 if(!jacobianChanged ){
                     igl::writeOBJ("patternComputed_"+avName+"_"+garmentExt+".obj",Vg_pattern, Fg_pattern);
                     cout<<"pattern written to *patternComputed*"<<endl;
@@ -899,7 +946,7 @@ int main(int argc, char *argv[])
                 // we start computing the pattern for the current shape
                 Eigen::MatrixXd computed_Vg_pattern;//= Vg;
                 cout<<"start computing the pattern with "<<localGlobalIterations<<" local global iterations"<<endl;
-                gar_adapt->performJacobianUpdateAndMerge(Vg, localGlobalIterations, baryCoords1, baryCoords2, computed_Vg_pattern, seamsList, boundaryL);
+                gar_adapt->performJacobianUpdateAndMerge(Vg, localGlobalIterations, baryCoords1, baryCoords2, computed_Vg_pattern, seamsList, boundaryL, nonSymSeam);
                 igl::writeOBJ("patternComputed_"+avName+"_"+garmentExt+".obj", computed_Vg_pattern, Fg_pattern);
                 cout<<"pattern written to *patternComputed*"<<endl;
 
@@ -1027,8 +1074,6 @@ int main(int argc, char *argv[])
                 viewer.data().show_lines = true;
             }
 
-
-
             if(ImGui::Checkbox("Start smooth", &startSmooth)) {
                 cout<<"Please choose 3 points to smooth between.  "<<endl;
                 startAndEnd.clear();
@@ -1040,6 +1085,7 @@ int main(int argc, char *argv[])
                 if (startAndEnd.size() == 3) {
                     cout << "Great, you selected " << startAndEnd[0] << " and " << startAndEnd[2]
                          << " as endpoints. Let's get to work on smoothing. " << endl;
+                    out<<"Garment smoothed" << startAndEnd[0]<<", "<<startAndEnd[1] << " and " << startAndEnd[2]<<endl;
 
                     smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
                 }
@@ -1053,6 +1099,8 @@ int main(int argc, char *argv[])
                 viewer.data().show_lines = true;
             }
             if(ImGui::Button("Predefined smooth", ImVec2(-1, 0))) {
+                out<<"predefined smoothed"<<endl;
+
                 if(garment =="leggins"){
                     simulate = false;
                     adaptionFlag = false;
@@ -1329,7 +1377,7 @@ int main(int argc, char *argv[])
                     smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
                     startAndEnd.clear();
                 }
-                else if (garmentExt=="hoodie"){
+                else {
                     simulate = false;
                     adaptionFlag = false;
                     int count =0;
@@ -1350,6 +1398,7 @@ int main(int argc, char *argv[])
                 cout<<"End smoothing selection"<<endl;
                 igl::writeOBJ("patternSmoothed.obj", currPattern, Fg_pattern_curr);
             }
+
 
         }
         if (ImGui::CollapsingHeader("Pattern adaption", ImGuiTreeNodeFlags_OpenOnArrow)){
@@ -1457,6 +1506,14 @@ int main(int argc, char *argv[])
 
             }
             if(ImGui::Button("Compute first Tear", ImVec2(-1, 0))){
+                out<<" init cut "<<endl;
+                out<<"taylor_lazyness "<<taylor_lazyness<<endl;
+                out<<"setTheresholdlMid "<<setTheresholdlMid<<endl;
+                out<<"setTheresholdBound "<<to_string(setTheresholdBound)<<endl;
+                out<<"constrained seams: ";
+                for(auto it :  constrainedSeamsSet) out<<it.first<<","<<it.second<<" ";
+                out<<endl;
+
                 simulate = false;
                 adaptionFlag = false;
                 viewer.core().is_animating = false;
@@ -1534,6 +1591,7 @@ int main(int argc, char *argv[])
             }
 
             if(ImGui::Button("Compute further Tear", ImVec2(-1, 0))){
+                out<<" further "<<endl;
                 simulate = false;
                 adaptionFlag = false;
                 viewer.core().is_animating = false;
@@ -1616,7 +1674,9 @@ int main(int argc, char *argv[])
             if(ImGui::Button("Show next ", ImVec2(-1, 0))){
                 showOnly = true;
             }
-            if(ImGui::Checkbox("Force next cut", &forceCut)){}
+            if(ImGui::Checkbox("Force next cut", &forceCut)){
+                out<<" force next cut"<<endl;
+            }
 
             if(ImGui::Button("Finished Tear", ImVec2(-1, 0))){
                 igl::writeOBJ("finished_tear_writtenPattern_"+avName+"_"+garmentExt+".obj", currPattern, Fg_pattern_curr);
@@ -1624,13 +1684,18 @@ int main(int argc, char *argv[])
             }
             if (ImGui::CollapsingHeader("Zip Tears ", ImGuiTreeNodeFlags_OpenOnArrow)){
                 if(ImGui::Button("Zip Tears:Check or Next", ImVec2(-1, 0))){
+                    out<<"zip"<<endl;
                     zipTears( cutPositions, currPattern, Fg_pattern_curr, mapFromFg, mapFromVg, halfPatternFaceToFullPatternFace, inverseMap, forceClosed);
                     forceClosed = false;
                 }
-                if(ImGui::Checkbox("Force keep closed ", &forceClosed)){}
+                if(ImGui::Checkbox("Force keep closed ", &forceClosed)){
+                    out<<"force closed"<<endl;
+                }
             }
 
-            if(ImGui::Checkbox("Allow L-shaped fabric insertion", &LShapeAllowed)){}
+            if(ImGui::Checkbox("Allow L-shaped fabric insertion", &LShapeAllowed)){
+                out<<"Allow L-shaped"<<endl;
+            }
             if(ImGui::Checkbox("Prioritize Inner Cuts", &prioInner)){
                 prioOuter = false;
             }
@@ -1638,7 +1703,7 @@ int main(int argc, char *argv[])
                 prioInner = false;
             }
             if(ImGui::Checkbox("Forbid mid fracture ", &midFractureForbidden)){
-
+                out<<"forbid mid frac "<<endl;
             }
 
             if(ImGui::Button("Remove priorities ", ImVec2(-1, 0))){
@@ -2772,27 +2837,120 @@ void computeBaryCoordsGarOnNewMannequin(igl::opengl::glfw::Viewer& viewer, bool 
     }
 
 }
-void smoothGarment(){
+void smoothGarment() {
     MatrixXd Vg_dupl = Vg;
     vector<vector<int> > vvAdj, vfAdj;
-    igl::adjacency_list(Fg,vvAdj);
+    igl::adjacency_list(Fg, vvAdj);
     createVertexFaceAdjacencyList(Fg, vfAdj);
+    double lamda = 0.1;
+    double mu = -0.1;
+    int iterations = 300;
+    for(int it = 0; it<iterations; it++){
+        //shrink
+        Vg_dupl = Vg;
+        for (int i = 0; i < garmentPreInterpol.rows(); i++) {
+            bool isBound = isBoundaryVertex(garmentPreInterpol, i, vvAdj, vfAdj);
+            if (!isBound) {// we can smooth
+                VectorXd avg = VectorXd::Zero(3);
+                int count = 0;
+                for (int j = 0; j < vvAdj[i].size(); j++) {
+                    avg.transpose() += ( Vg_dupl.row(vvAdj[i][j])- Vg_dupl.row(i));
+                    count++;
+                }
+                avg /= count;
+                Vg.row(i) += lamda * avg.transpose();
 
-    for(int i = 0; i<garmentPreInterpol.rows(); i++){
-        bool isBound = isBoundaryVertex(garmentPreInterpol, i, vvAdj, vfAdj );
-        if( !isBound){// we can smooth
-            VectorXd avg= VectorXd::Zero(3);
-            int count = 0;
-            for(int j=0; j<vvAdj[i].size(); j++){
-                avg.transpose() += Vg_dupl.row(vvAdj[i][j]);
-                count++;
             }
-            avg/= count;
-            Vg.row(i) = avg.transpose();
+        }
+        Vg_dupl = Vg;
+        // inflate
+        for (int i = 0; i < garmentPreInterpol.rows(); i++) {
+            bool isBound = isBoundaryVertex(garmentPreInterpol, i, vvAdj, vfAdj);
+            if (!isBound) {// we can smooth
+                VectorXd avg = VectorXd::Zero(3);
+                int count = 0;
+                for (int j = 0; j < vvAdj[i].size(); j++) {
+                    avg.transpose() += ( Vg_dupl.row(vvAdj[i][j])- Vg_dupl.row(i));
+                    count++;
+                }
+                avg /= count;
+                Vg.row(i) += mu * avg.transpose();
+
+            }
+        }
+    }
+}
+void smoothGarmentOutline(){
+    std::vector<std::vector<int> > boundaryLnew;
+    igl::boundary_loop(Fg, boundaryLnew);
+    double lamda = 0.1;
+    double mu = -0.1;
+    int iterations = 100;
+    for(int it = 0; it<iterations; it++){
+        //shrink
+        MatrixXd Vg_dupl= Vg;
+        for(int i =0; i<boundaryLnew.size(); i++) {
+            Vector3d prev = Vg_dupl.row(boundaryLnew[i][0]);
+            for (int j = 1; j <= boundaryLnew[i].size(); j++) {
+                int id = j % boundaryLnew[i].size();
+                int idn = (j + 1) % (boundaryLnew[i].size());
+                Vector3d curr = Vg_dupl.row(boundaryLnew[i][id]);
+                Vector3d next = Vg_dupl.row(boundaryLnew[i][idn]);
+                auto diff = ((prev + next) / 2).transpose()- Vg.row(boundaryLnew[i][id]);
+                Vg.row(boundaryLnew[i][id]) += lamda * diff;
+                prev = curr;
+            }
+        }
+        //inflate
+        Vg_dupl= Vg;
+        for(int i =0; i<boundaryLnew.size(); i++) {
+            Vector3d prev = Vg_dupl.row(boundaryLnew[i][0]);
+            for (int j = 1; j <= boundaryLnew[i].size(); j++) {
+                int id = j % boundaryLnew[i].size();
+                int idn = (j + 1) % (boundaryLnew[i].size());
+                Vector3d curr = Vg_dupl.row(boundaryLnew[i][id]);
+                Vector3d next = Vg_dupl.row(boundaryLnew[i][idn]);
+                auto diff = ((prev + next) / 2).transpose()- Vg.row(boundaryLnew[i][id]);
+                Vg.row(boundaryLnew[i][id]) += mu * diff;
+                prev = curr;
+            }
+        }
+    }
+
+    VectorXd distVecNew(Vg.rows());
+    VectorXi closestFaceIdNew(Vg.rows());
+    MatrixXd Nnew, Cnew;
+    igl::signed_distance(Vg, Vm, Fm, igl::SIGNED_DISTANCE_TYPE_UNSIGNED, distVecNew, closestFaceIdNew, Cnew, Nnew);
+    constrainedVertexIds.clear();
+    constrainedVertexBarycentricCoords.clear();
+    constrainedVertexDistance.clear();
+
+    for(int i =0; i<boundaryLnew.size(); i++) {
+        for (int j = 0; j < boundaryLnew[i].size(); j++) {
+            int id = boundaryLnew[i][j];
+            int closestFace = closestFaceIdNew(id);
+
+            Vector3d a = Vm.row(Fm(closestFace, 0));
+            Vector3d b = Vm.row(Fm(closestFace, 1));
+            Vector3d c = Vm.row(Fm(closestFace, 2));
+
+            Vector3d currVert = Vg.row(id) - (distVecNew(id) * N.row(id).transpose()).transpose();
+
+            MatrixXd input(1, 3);
+            input.row(0) = currVert;
+            MatrixXd Bary;
+            igl::barycentric_coordinates(input, Vm.row(Fm(closestFace, 0)), Vm.row(Fm(closestFace, 1)),
+                                         Vm.row(Fm(closestFace, 2)), Bary);
+            Vector3d currInBary = Bary.row(0);
+            constrainedVertexIds.emplace_back(id); // (i)= 1;
+
+            constrainedVertexBarycentricCoords.emplace_back(std::make_pair(currInBary, closestFace));
+            constrainedVertexDistance.push_back(distVecNew(id));
 
         }
-
     }
+
+
 }
 void setNewGarmentMesh(igl::opengl::glfw::Viewer& viewer) {
     if (Vg.rows() == 0 || Fg.rows() == 0) {
@@ -2934,7 +3092,7 @@ bool callback_key_down(igl::opengl::glfw::Viewer& viewer, unsigned char key, int
         // we start computing the pattern for the current shape
         Eigen::MatrixXd computed_Vg_pattern= Vg;
         cout<<"start computing the pattern with "<<localGlobalIterations<<" local global iterations"<<endl;
-        gar_adapt->performJacobianUpdateAndMerge(Vg, localGlobalIterations, baryCoords1, baryCoords2, computed_Vg_pattern, seamsList, boundaryL);
+        gar_adapt->performJacobianUpdateAndMerge(Vg, localGlobalIterations, baryCoords1, baryCoords2, computed_Vg_pattern, seamsList, boundaryL ,nonSymSeam);
 
 
         if(!jacobianChanged){
@@ -3609,9 +3767,11 @@ void dotimeStep(igl::opengl::glfw::Viewer& viewer){
     Timer t("Time step ");
     std::cout<<endl;
     std::cout<<"-------------- Time Step ------------"<<timestepCounter<<endl;
+
     // the stress is already computed, we can use it here
     Eigen::MatrixXd x_new = Vg;
     p = Vg;
+
     t.printTime(" set p ");
     // line (5) of the algorithm https://matthias-research.github.io/pages/publications/posBasedDyn.pdf
     // we only use it to add gravity to the system
@@ -3626,32 +3786,31 @@ void dotimeStep(igl::opengl::glfw::Viewer& viewer){
     t.printTime(" setup p again ");
     setupCollisionConstraints();
     t.printTime(" setup collision constraints ");
-
+//
     init_stretchUV();
     t.printTime(" setup uv stretch ");
-    cout<<Vg.row(1450)<<endl;
     //(9)-(11), the loop should be repeated several times per timestep (according to Jan Bender)
     for(int i = 0; i < num_const_iterations; i++){
         solveBendingConstraint();
 //        t.printTime(" bend   ");
-        cout<<Vg.row(1450)<<" 1"<<endl;
+//        cout<<p.row(86)<<" 1"<<endl;
 
         solveStretchConstraint();
 //        t.printTime("  stretch ");
-        cout<<Vg.row(1450)<<" 2"<<endl;
+//        cout<<p.row(86)<<" 2"<<endl;
 
         solveStretchUV();
 //        t.printTime("  uv  ");
-        cout<<Vg.row(1450)<<" 3"<<endl;
+//        cout<<p.row(86)<<" 3"<<endl;
 
         solveConstrainedVertices();
 //        t.printTime("  constr ");
-        cout<<Vg.row(1450)<<" 4"<<endl;
+//        cout<<p.row(86)<<" 4"<<endl;
 
         /* we precomputed the normal and collision point of each vertex, now add the constraint (instead of checking collision in each iteration
          this is imprecise but much faster and acc to paper works fine in practice*/
         solveCollisionConstraint();
-        cout<<Vg.row(1450)<<" 5"<<endl;
+//        cout<<p.row(86)<<" 5"<<endl;
 
 //        t.printTime(" collision ");
     }
@@ -3673,10 +3832,10 @@ void dotimeStep(igl::opengl::glfw::Viewer& viewer){
             vel.row(i) = (t_vel - collision_damping * n_vel);
         }
     }
-    cout<<Vg.row(1450)<<" 6"<<endl;
 
     //(14)
     Vg= x_new;
+
     // (16) Velocity update
     /*The velocity of each vertex for which a collision constraint has been generated is dampened perpendicular to the collision normal
      * and reflected in the direction of the collision normal.*/

@@ -9,6 +9,7 @@
 #include<Eigen/SparseCholesky>
 #include "seam.h"
 #include <Eigen/Geometry>
+#include <set>
 using namespace std;
 using namespace Eigen;
 
@@ -48,7 +49,7 @@ public:
     /* Use local global to compute new positions of the pattern vertices, given the current 3D model. Input iterations defines how many local global steps are
      * performed. Bary coords are needed to align u or v direction. Output: v_newPattern  */
     void performJacobianUpdateAndMerge(Eigen::MatrixXd & V_curr, int iteratitons, const MatrixXd& baryCoords1, const MatrixXd& baryCoords2,
-                                       Eigen::MatrixXd & V_newPattern, vector<seam*>& seamsList, std::vector<std::vector<int>>& boundaryL);
+                                       Eigen::MatrixXd & V_newPattern, vector<seam*>& seamsList, std::vector<std::vector<int>>& boundaryL ,set<int>& nonSymSeam);
     /* additional feature to slim or widen a garment in a specific area byy a specific amount */
     void changeFitViaJacobian(bool geoDistU,bool geoDistV,double geoDistChange,  Eigen::VectorXd& affectedFaces );
 

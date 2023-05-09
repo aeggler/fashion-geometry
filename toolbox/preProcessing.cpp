@@ -785,6 +785,14 @@ void edgeCollapse(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixXi& Fg
             freecorners.insert(it);
         }
 
+    }else if (garment == "man_tshirt2"){
+        cornersOfGar.insert(1896);
+        cornersOfGar.insert(1888);
+        cornersOfGar.insert(1787);
+        cornersOfGar.insert(1789);
+        for(auto it: cornersOfGar){
+            freecorners.insert(it);
+        }
     }
     int count = 0;
 
@@ -955,6 +963,17 @@ void splitAndSmooth(MatrixXd& Vg,MatrixXi& Fg,MatrixXd& Vg_pattern,MatrixXi& Fg_
         for(int i=0; i< Vg_pattern.rows(); i++){
             if(vertComp(i)==0){
                 Vg_pattern(i, 0) -=300;
+            }
+        }
+    }
+    if(garmentEXT=="man_tshirt2"){
+        VectorXi vertComp;
+        igl::vertex_components( Fg_pattern, vertComp);
+        for(int i=0; i< Vg_pattern.rows(); i++){
+            if(vertComp(i)==0){
+                Vg_pattern(i, 0) +=200;
+            }else if (vertComp(i)== 1){
+                Vg_pattern(i, 0) -= 200;
             }
         }
     }
@@ -1411,6 +1430,12 @@ void preProcessGarment(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixX
     else if(garmentEXT =="skirt_1"){
         T_sym.resize(3);
         T_sym(0)= 0;
+        T_sym(1)=0;
+        T_sym(2)=0;
+    }
+    else if(garmentEXT =="man_tshirt2"){
+        T_sym.resize(3);
+        T_sym(0) = 200;
         T_sym(1)=0;
         T_sym(2)=0;
     }

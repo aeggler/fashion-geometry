@@ -13,6 +13,7 @@
 #include<Eigen/SparseCholesky>
 #include <igl/barycentric_coordinates.h>
 #include <igl/barycentric_interpolation.h>
+#include <set>
 
 using namespace std;
 using namespace Eigen;
@@ -305,7 +306,7 @@ void garment_adaption::setUpRotationMatrix(double angle,Vector3d& axis, Matrix4d
 
 void garment_adaption::performJacobianUpdateAndMerge(Eigen::MatrixXd & V_curr, int iterations, const MatrixXd& baryCoords1,
                                                      const MatrixXd& baryCoords2,Eigen::MatrixXd & V_newPattern,
-                                                     vector<seam*>& seamsList, std::vector<std::vector<int>>& boundaryL
+                                                     vector<seam*>& seamsList, std::vector<std::vector<int>>& boundaryL, std::set<int>& nonSymSeam
                                                      ){
     V= V_pattern;
    // this is the skrinked model, it has too much stress, we want to enlarge it
@@ -458,6 +459,7 @@ void garment_adaption::performJacobianUpdateAndMerge(Eigen::MatrixXd & V_curr, i
          * See A setup for more information on this approach
          * */
         for(int j = 0; j< seamsList.size(); j++){
+            bool seamSymOff = (nonSymSeam.find(j)!= nonSymSeam.end());
             // each seam is stored in a two matrices, from and to
             Eigen::MatrixXd fromMat(seamsList[j]->seamLength()+1, 2 );// just x y coords needed
             Eigen::MatrixXd toMat (seamsList[j]->seamLength()+1, 2);
@@ -498,15 +500,28 @@ void garment_adaption::performJacobianUpdateAndMerge(Eigen::MatrixXd & V_curr, i
             MatrixXd targetPosOfFromVertices = (toToFrom + fromMat) / 2;
             MatrixXd targetPorOfToVertices = (fromToTo + toMat) / 2;
             for(int i = 0; i <= seamsList[j]-> seamLength(); i++){
-                b(3 * counter) = targetPosOfFromVertices(i, 0);
-                b(3 * counter + 1) = targetPosOfFromVertices (i, 1);
-                b(3 * counter + 2) = V_pattern(0, 2);// messy but they should all be the same
+                // they don't have seam consistency in the first place
+                if(seamSymOff){
+                    b(3 * counter) = fromMat(i,0);
+                    b(3 * counter + 1) = fromMat(i,1);
+                    b(3 * counter + 2) = V_pattern(0, 2);// messy but they should all be the same
 
-                counter ++;
-                b(3 * counter) = targetPorOfToVertices(i, 0);
-                b(3 * counter + 1) = targetPorOfToVertices (i, 1);
-                b(3 * counter + 2) = V_pattern(0, 2);
-                counter++;
+                    counter ++;
+                    b(3 * counter) = toMat(i,0);
+                    b(3 * counter + 1) = toMat(i,1);
+                    b(3 * counter + 2) = V_pattern(0, 2);
+                    counter++;
+                }else{
+                    b(3 * counter) = targetPosOfFromVertices(i, 0);
+                    b(3 * counter + 1) = targetPosOfFromVertices (i, 1);
+                    b(3 * counter + 2) = V_pattern(0, 2);// messy but they should all be the same
+
+                    counter ++;
+                    b(3 * counter) = targetPorOfToVertices(i, 0);
+                    b(3 * counter + 1) = targetPorOfToVertices (i, 1);
+                    b(3 * counter + 2) = V_pattern(0, 2);
+                    counter++;
+                }
 
             }
 

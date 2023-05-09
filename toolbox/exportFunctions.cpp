@@ -442,14 +442,14 @@ void insertToStartEnd(vector<int> &startAndEnd, std::set<int>& cornerset, Matrix
 
    for(int i=0; i<bd.size(); i++){
        int corner = -1; int prevCorner = -1; int next = -1;
-       for(int j=0; j< bd[i].size(); j++){
-
-           if(cornerset.find(bd[i][j])!= cornerset.end()){
+       for(int j=0; j<= bd[i].size(); j++){
+            int val = j%(bd[i].size());
+           if(cornerset.find(bd[i][val])!= cornerset.end()){
                //found corner
                prevCorner = corner;
-               corner = bd[i][j];
+               corner = bd[i][val];
                if(j>0) next = bd[i][j-1];
-               if(prevCorner != -1){
+               if(prevCorner != -1 && next != prevCorner){
                    startAndEnd.clear();
                    startAndEnd.push_back(prevCorner);
                    startAndEnd.push_back(next);
