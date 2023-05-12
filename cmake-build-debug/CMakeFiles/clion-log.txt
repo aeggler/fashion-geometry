@@ -1,0 +1,38 @@
+"/Users/annaeggler/Library/Application Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/bin/cmake" -DCMAKE_BUILD_TYPE=Debug "-DCMAKE_MAKE_PROGRAM=/Users/annaeggler/Library/Application Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/ninja/mac/ninja" -G Ninja -S /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors -B /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug
+-- Creating target: igl::core (igl_core)
+-- Third-party: creating target 'Eigen3::Eigen'
+-- Forcing include of libigl module: glfw
+-- Creating target: igl::glfw (igl_glfw)
+-- Third-party: creating target 'glfw::glfw'
+-- Using Cocoa for window creation
+-- Forcing include of libigl module: opengl
+-- Creating target: igl::opengl (igl_opengl)
+-- Third-party: creating target 'glad::glad'
+-- Forcing include of libigl module: imgui
+-- Creating target: igl::imgui (igl_imgui)
+-- Third-party: creating target 'imgui::imgui'
+-- Third-party: creating target 'imguizmo::imguizmo'
+-- Third-party: creating target 'igl::imgui_fonts'
+-- Configuring done
+CMake Error: The following variables are used in this project, but they are set to NOTFOUND.
+Please set them or make sure they are set and tested correctly in the CMake files:
+/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/GUROBI_INCLUDE_DIRS
+   used as include directory in directory /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors
+
+-- Generating done
+CMake Error:
+  Running
+
+   '/Users/annaeggler/Library/Application Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/ninja/mac/ninja' '-C' '/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug' '-t' 'recompact'
+
+  failed with:
+
+   ninja: error: build.ninja:32: loading 'CMakeFiles/rules.ninja': No such file or directory
+
+  include CMakeFiles/rules.ninja
+
+                                ^ near here
+
+
+
+CMake Generate step failed.  Build files cannot be regenerated correctly.

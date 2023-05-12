@@ -24,3 +24,5 @@ void movePatches();
 
 void   insertToStartEnd(vector<int> &startAndEnd, std::set<int>& cornerset, MatrixXd& currPattern, MatrixXi& Fg_pattern_curr,
                         vector<vector<int>> &bd );
+
+void fixRafaPattern();

@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="VcsDirectoryMappings">
+    <mapping directory="$PROJECT_DIR$" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/PatternToSvg" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/build/_deps/eigen-src" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/build/_deps/glad-src" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/build/_deps/glfw-src" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/build/_deps/imgui-src" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/build/_deps/imguizmo-src" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/build/_deps/libigl-src" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/build/_deps/libigl_imgui_fonts-src" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/build/build/_deps/eigen-src" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/build/build/_deps/glad-src" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/build/build/_deps/glfw-src" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/build/build/_deps/imgui-src" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/build/build/_deps/imguizmo-src" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/build/build/_deps/libigl-src" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/build/build/_deps/libigl_imgui_fonts-src" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/build2/_deps/eigen-src" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/build2/_deps/glad-src" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/build2/_deps/glfw-src" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/build2/_deps/imgui-src" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/build2/_deps/imguizmo-src" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/build2/_deps/libigl-src" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/build2/_deps/libigl_imgui_fonts-src" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/build2/_deps/triangle-src" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/buildNew/_deps/eigen-src" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/buildNew/_deps/glad-src" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/buildNew/_deps/glfw-src" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/buildNew/_deps/imgui-src" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/buildNew/_deps/imguizmo-src" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/buildNew/_deps/libigl-src" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/buildNew/_deps/libigl_imgui_fonts-src" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/buildNew/_deps/triangle-src" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/cmake-build-debug/_deps/eigen-src" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/cmake-build-debug/_deps/glad-src" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/cmake-build-debug/_deps/glfw-src" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/cmake-build-debug/_deps/imgui-src" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/cmake-build-debug/_deps/imguizmo-src" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/cmake-build-debug/_deps/libigl-src" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/cmake-build-debug/_deps/libigl_imgui_fonts-src" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/ext/pmp-library" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/human_morphing" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/human_morphing/embedded_deformation/polyscope" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/human_morphing/embedded_deformation/polyscope/deps/glfw" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/human_morphing/embedded_deformation/polyscope/deps/happly" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/human_morphing/embedded_deformation/polyscope/deps/imgui/imgui" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/newMorph/human_morphing" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/newMorph/human_morphing/embedded_deformation/polyscope" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/newMorph/human_morphing/embedded_deformation/polyscope/deps/glfw" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/newMorph/human_morphing/embedded_deformation/polyscope/deps/happly" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/newMorph/human_morphing/embedded_deformation/polyscope/deps/imgui/imgui" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/triangle" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/triangle_libigl" vcs="Git" />
+  </component>
+</project>

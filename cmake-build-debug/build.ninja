@@ -1,0 +1,905 @@
+## This file contains all the build statements describing the
+# compilation DAG.
+
+# =============================================================================
+# Write statements declared in CMakeLists.txt:
+# 
+# Which is the root file.
+# =============================================================================
+
+# =============================================================================
+# Project: example
+# Configurations: Debug
+# =============================================================================
+
+#############################################
+# Minimal version of Ninja required by this file
+
+ninja_required_version = 1.5
+
+
+#############################################
+# Set configuration variable for custom commands.
+
+CONFIGURATION = Debug
+# =============================================================================
+# Include auxiliary files.
+
+
+#############################################
+# Include rules file.
+
+include CMakeFiles/rules.ninja
+
+# =============================================================================
+
+#############################################
+# Logical path to working directory; prefix for absolute paths.
+
+cmake_ninja_workdir = /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/
+
+#############################################
+# Utility command for igl_glfw
+
+build igl_glfw: phony
+
+
+#############################################
+# Utility command for igl_opengl
+
+build igl_opengl: phony
+
+
+#############################################
+# Utility command for igl_imgui
+
+build igl_imgui: phony
+
+# =============================================================================
+# Object build statements for STATIC_LIBRARY target imgui
+
+
+#############################################
+# Order-only phony target for imgui
+
+build cmake_object_order_depends_target_imgui: phony || cmake_object_order_depends_target_glad cmake_object_order_depends_target_glfw
+
+build CMakeFiles/imgui.dir/_deps/imgui-src/imgui.cpp.o: CXX_COMPILER__imgui_Debug /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/imgui-src/imgui.cpp || cmake_object_order_depends_target_imgui
+  DEFINES = -DIMGUI_DISABLE_OBSOLETE_FUNCTIONS -DIMGUI_IMPL_OPENGL_LOADER_GLAD
+  DEP_FILE = CMakeFiles/imgui.dir/_deps/imgui-src/imgui.cpp.o.d
+  FLAGS = -g -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX13.0.sdk
+  INCLUDES = -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/imgui-src -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-src/include -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glad-src/include
+  OBJECT_DIR = CMakeFiles/imgui.dir
+  OBJECT_FILE_DIR = CMakeFiles/imgui.dir/_deps/imgui-src
+
+build CMakeFiles/imgui.dir/_deps/imgui-src/imgui_demo.cpp.o: CXX_COMPILER__imgui_Debug /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/imgui-src/imgui_demo.cpp || cmake_object_order_depends_target_imgui
+  DEFINES = -DIMGUI_DISABLE_OBSOLETE_FUNCTIONS -DIMGUI_IMPL_OPENGL_LOADER_GLAD
+  DEP_FILE = CMakeFiles/imgui.dir/_deps/imgui-src/imgui_demo.cpp.o.d
+  FLAGS = -g -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX13.0.sdk
+  INCLUDES = -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/imgui-src -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-src/include -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glad-src/include
+  OBJECT_DIR = CMakeFiles/imgui.dir
+  OBJECT_FILE_DIR = CMakeFiles/imgui.dir/_deps/imgui-src
+
+build CMakeFiles/imgui.dir/_deps/imgui-src/imgui_draw.cpp.o: CXX_COMPILER__imgui_Debug /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/imgui-src/imgui_draw.cpp || cmake_object_order_depends_target_imgui
+  DEFINES = -DIMGUI_DISABLE_OBSOLETE_FUNCTIONS -DIMGUI_IMPL_OPENGL_LOADER_GLAD
+  DEP_FILE = CMakeFiles/imgui.dir/_deps/imgui-src/imgui_draw.cpp.o.d
+  FLAGS = -g -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX13.0.sdk
+  INCLUDES = -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/imgui-src -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-src/include -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glad-src/include
+  OBJECT_DIR = CMakeFiles/imgui.dir
+  OBJECT_FILE_DIR = CMakeFiles/imgui.dir/_deps/imgui-src
+
+build CMakeFiles/imgui.dir/_deps/imgui-src/imgui_widgets.cpp.o: CXX_COMPILER__imgui_Debug /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/imgui-src/imgui_widgets.cpp || cmake_object_order_depends_target_imgui
+  DEFINES = -DIMGUI_DISABLE_OBSOLETE_FUNCTIONS -DIMGUI_IMPL_OPENGL_LOADER_GLAD
+  DEP_FILE = CMakeFiles/imgui.dir/_deps/imgui-src/imgui_widgets.cpp.o.d
+  FLAGS = -g -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX13.0.sdk
+  INCLUDES = -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/imgui-src -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-src/include -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glad-src/include
+  OBJECT_DIR = CMakeFiles/imgui.dir
+  OBJECT_FILE_DIR = CMakeFiles/imgui.dir/_deps/imgui-src
+
+build CMakeFiles/imgui.dir/_deps/imgui-src/imgui_tables.cpp.o: CXX_COMPILER__imgui_Debug /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/imgui-src/imgui_tables.cpp || cmake_object_order_depends_target_imgui
+  DEFINES = -DIMGUI_DISABLE_OBSOLETE_FUNCTIONS -DIMGUI_IMPL_OPENGL_LOADER_GLAD
+  DEP_FILE = CMakeFiles/imgui.dir/_deps/imgui-src/imgui_tables.cpp.o.d
+  FLAGS = -g -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX13.0.sdk
+  INCLUDES = -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/imgui-src -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-src/include -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glad-src/include
+  OBJECT_DIR = CMakeFiles/imgui.dir
+  OBJECT_FILE_DIR = CMakeFiles/imgui.dir/_deps/imgui-src
+
+build CMakeFiles/imgui.dir/_deps/imgui-src/backends/imgui_impl_opengl3.cpp.o: CXX_COMPILER__imgui_Debug /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/imgui-src/backends/imgui_impl_opengl3.cpp || cmake_object_order_depends_target_imgui
+  DEFINES = -DIMGUI_DISABLE_OBSOLETE_FUNCTIONS -DIMGUI_IMPL_OPENGL_LOADER_GLAD
+  DEP_FILE = CMakeFiles/imgui.dir/_deps/imgui-src/backends/imgui_impl_opengl3.cpp.o.d
+  FLAGS = -g -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX13.0.sdk
+  INCLUDES = -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/imgui-src -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-src/include -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glad-src/include
+  OBJECT_DIR = CMakeFiles/imgui.dir
+  OBJECT_FILE_DIR = CMakeFiles/imgui.dir/_deps/imgui-src/backends
+
+build CMakeFiles/imgui.dir/_deps/imgui-src/backends/imgui_impl_glfw.cpp.o: CXX_COMPILER__imgui_Debug /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/imgui-src/backends/imgui_impl_glfw.cpp || cmake_object_order_depends_target_imgui
+  DEFINES = -DIMGUI_DISABLE_OBSOLETE_FUNCTIONS -DIMGUI_IMPL_OPENGL_LOADER_GLAD
+  DEP_FILE = CMakeFiles/imgui.dir/_deps/imgui-src/backends/imgui_impl_glfw.cpp.o.d
+  FLAGS = -g -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX13.0.sdk
+  INCLUDES = -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/imgui-src -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-src/include -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glad-src/include
+  OBJECT_DIR = CMakeFiles/imgui.dir
+  OBJECT_FILE_DIR = CMakeFiles/imgui.dir/_deps/imgui-src/backends
+
+build CMakeFiles/imgui.dir/_deps/imgui-src/misc/cpp/imgui_stdlib.cpp.o: CXX_COMPILER__imgui_Debug /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/imgui-src/misc/cpp/imgui_stdlib.cpp || cmake_object_order_depends_target_imgui
+  DEFINES = -DIMGUI_DISABLE_OBSOLETE_FUNCTIONS -DIMGUI_IMPL_OPENGL_LOADER_GLAD
+  DEP_FILE = CMakeFiles/imgui.dir/_deps/imgui-src/misc/cpp/imgui_stdlib.cpp.o.d
+  FLAGS = -g -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX13.0.sdk
+  INCLUDES = -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/imgui-src -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-src/include -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glad-src/include
+  OBJECT_DIR = CMakeFiles/imgui.dir
+  OBJECT_FILE_DIR = CMakeFiles/imgui.dir/_deps/imgui-src/misc/cpp
+
+
+# =============================================================================
+# Link build statements for STATIC_LIBRARY target imgui
+
+
+#############################################
+# Link the static library libimgui.a
+
+build libimgui.a: CXX_STATIC_LIBRARY_LINKER__imgui_Debug CMakeFiles/imgui.dir/_deps/imgui-src/imgui.cpp.o CMakeFiles/imgui.dir/_deps/imgui-src/imgui_demo.cpp.o CMakeFiles/imgui.dir/_deps/imgui-src/imgui_draw.cpp.o CMakeFiles/imgui.dir/_deps/imgui-src/imgui_widgets.cpp.o CMakeFiles/imgui.dir/_deps/imgui-src/imgui_tables.cpp.o CMakeFiles/imgui.dir/_deps/imgui-src/backends/imgui_impl_opengl3.cpp.o CMakeFiles/imgui.dir/_deps/imgui-src/backends/imgui_impl_glfw.cpp.o CMakeFiles/imgui.dir/_deps/imgui-src/misc/cpp/imgui_stdlib.cpp.o || _deps/glad-build/libglad.a _deps/glfw-build/src/libglfw3.a
+  ARCH_FLAGS = -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX13.0.sdk
+  LANGUAGE_COMPILE_FLAGS = -g
+  OBJECT_DIR = CMakeFiles/imgui.dir
+  POST_BUILD = :
+  PRE_LINK = :
+  TARGET_FILE = libimgui.a
+  TARGET_PDB = imgui.a.dbg
+
+# =============================================================================
+# Object build statements for STATIC_LIBRARY target imguizmo
+
+
+#############################################
+# Order-only phony target for imguizmo
+
+build cmake_object_order_depends_target_imguizmo: phony || cmake_object_order_depends_target_glad cmake_object_order_depends_target_glfw cmake_object_order_depends_target_imgui
+
+build CMakeFiles/imguizmo.dir/_deps/imguizmo-src/ImGuizmo.cpp.o: CXX_COMPILER__imguizmo_Debug /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/imguizmo-src/ImGuizmo.cpp || cmake_object_order_depends_target_imguizmo
+  DEFINES = -DIMGUI_DISABLE_OBSOLETE_FUNCTIONS -DIMGUI_IMPL_OPENGL_LOADER_GLAD
+  DEP_FILE = CMakeFiles/imguizmo.dir/_deps/imguizmo-src/ImGuizmo.cpp.o.d
+  FLAGS = -g -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX13.0.sdk -std=gnu++11
+  INCLUDES = -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/imguizmo-src -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/imgui-src -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-src/include -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glad-src/include
+  OBJECT_DIR = CMakeFiles/imguizmo.dir
+  OBJECT_FILE_DIR = CMakeFiles/imguizmo.dir/_deps/imguizmo-src
+
+
+# =============================================================================
+# Link build statements for STATIC_LIBRARY target imguizmo
+
+
+#############################################
+# Link the static library libimguizmo.a
+
+build libimguizmo.a: CXX_STATIC_LIBRARY_LINKER__imguizmo_Debug CMakeFiles/imguizmo.dir/_deps/imguizmo-src/ImGuizmo.cpp.o || _deps/glad-build/libglad.a _deps/glfw-build/src/libglfw3.a libimgui.a
+  ARCH_FLAGS = -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX13.0.sdk
+  LANGUAGE_COMPILE_FLAGS = -g
+  OBJECT_DIR = CMakeFiles/imguizmo.dir
+  POST_BUILD = :
+  PRE_LINK = :
+  TARGET_FILE = libimguizmo.a
+  TARGET_PDB = imguizmo.a.dbg
+
+# =============================================================================
+# Object build statements for EXECUTABLE target example
+
+
+#############################################
+# Order-only phony target for example
+
+build cmake_object_order_depends_target_example: phony || _deps/libigl-build/igl_core cmake_object_order_depends_target_glad cmake_object_order_depends_target_glfw cmake_object_order_depends_target_imgui cmake_object_order_depends_target_imguizmo igl_glfw igl_imgui igl_opengl
+
+build CMakeFiles/example.dir/main.cpp.o: CXX_COMPILER__example_Debug /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/main.cpp || cmake_object_order_depends_target_example
+  DEFINES = -DIMGUI_DISABLE_OBSOLETE_FUNCTIONS -DIMGUI_IMPL_OPENGL_LOADER_GLAD
+  DEP_FILE = CMakeFiles/example.dir/main.cpp.o.d
+  FLAGS = -g -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX13.0.sdk -std=gnu++11
+  INCLUDES = -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/libigl-src/include -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glad-src/include -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-src/include -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/imgui-src -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/imguizmo-src -isystem /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/eigen-src -iframework /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX13.0.sdk/System/Library/Frameworks -isystem /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/libigl_imgui_fonts-src
+  OBJECT_DIR = CMakeFiles/example.dir
+  OBJECT_FILE_DIR = CMakeFiles/example.dir
+
+build CMakeFiles/example.dir/toolbox/MathFunctions.cpp.o: CXX_COMPILER__example_Debug /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/toolbox/MathFunctions.cpp || cmake_object_order_depends_target_example
+  DEFINES = -DIMGUI_DISABLE_OBSOLETE_FUNCTIONS -DIMGUI_IMPL_OPENGL_LOADER_GLAD
+  DEP_FILE = CMakeFiles/example.dir/toolbox/MathFunctions.cpp.o.d
+  FLAGS = -g -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX13.0.sdk -std=gnu++11
+  INCLUDES = -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/libigl-src/include -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glad-src/include -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-src/include -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/imgui-src -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/imguizmo-src -isystem /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/eigen-src -iframework /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX13.0.sdk/System/Library/Frameworks -isystem /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/libigl_imgui_fonts-src
+  OBJECT_DIR = CMakeFiles/example.dir
+  OBJECT_FILE_DIR = CMakeFiles/example.dir/toolbox
+
+build CMakeFiles/example.dir/toolbox/PositionBasedDynamics.cpp.o: CXX_COMPILER__example_Debug /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/toolbox/PositionBasedDynamics.cpp || cmake_object_order_depends_target_example
+  DEFINES = -DIMGUI_DISABLE_OBSOLETE_FUNCTIONS -DIMGUI_IMPL_OPENGL_LOADER_GLAD
+  DEP_FILE = CMakeFiles/example.dir/toolbox/PositionBasedDynamics.cpp.o.d
+  FLAGS = -g -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX13.0.sdk -std=gnu++11
+  INCLUDES = -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/libigl-src/include -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glad-src/include -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-src/include -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/imgui-src -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/imguizmo-src -isystem /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/eigen-src -iframework /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX13.0.sdk/System/Library/Frameworks -isystem /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/libigl_imgui_fonts-src
+  OBJECT_DIR = CMakeFiles/example.dir
+  OBJECT_FILE_DIR = CMakeFiles/example.dir/toolbox
+
+build CMakeFiles/example.dir/toolbox/Timer.cpp.o: CXX_COMPILER__example_Debug /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/toolbox/Timer.cpp || cmake_object_order_depends_target_example
+  DEFINES = -DIMGUI_DISABLE_OBSOLETE_FUNCTIONS -DIMGUI_IMPL_OPENGL_LOADER_GLAD
+  DEP_FILE = CMakeFiles/example.dir/toolbox/Timer.cpp.o.d
+  FLAGS = -g -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX13.0.sdk -std=gnu++11
+  INCLUDES = -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/libigl-src/include -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glad-src/include -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-src/include -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/imgui-src -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/imguizmo-src -isystem /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/eigen-src -iframework /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX13.0.sdk/System/Library/Frameworks -isystem /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/libigl_imgui_fonts-src
+  OBJECT_DIR = CMakeFiles/example.dir
+  OBJECT_FILE_DIR = CMakeFiles/example.dir/toolbox
+
+build CMakeFiles/example.dir/toolbox/adjacency.cpp.o: CXX_COMPILER__example_Debug /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/toolbox/adjacency.cpp || cmake_object_order_depends_target_example
+  DEFINES = -DIMGUI_DISABLE_OBSOLETE_FUNCTIONS -DIMGUI_IMPL_OPENGL_LOADER_GLAD
+  DEP_FILE = CMakeFiles/example.dir/toolbox/adjacency.cpp.o.d
+  FLAGS = -g -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX13.0.sdk -std=gnu++11
+  INCLUDES = -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/libigl-src/include -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glad-src/include -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-src/include -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/imgui-src -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/imguizmo-src -isystem /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/eigen-src -iframework /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX13.0.sdk/System/Library/Frameworks -isystem /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/libigl_imgui_fonts-src
+  OBJECT_DIR = CMakeFiles/example.dir
+  OBJECT_FILE_DIR = CMakeFiles/example.dir/toolbox
+
+build CMakeFiles/example.dir/toolbox/body_interpolation.cpp.o: CXX_COMPILER__example_Debug /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/toolbox/body_interpolation.cpp || cmake_object_order_depends_target_example
+  DEFINES = -DIMGUI_DISABLE_OBSOLETE_FUNCTIONS -DIMGUI_IMPL_OPENGL_LOADER_GLAD
+  DEP_FILE = CMakeFiles/example.dir/toolbox/body_interpolation.cpp.o.d
+  FLAGS = -g -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX13.0.sdk -std=gnu++11
+  INCLUDES = -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/libigl-src/include -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glad-src/include -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-src/include -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/imgui-src -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/imguizmo-src -isystem /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/eigen-src -iframework /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX13.0.sdk/System/Library/Frameworks -isystem /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/libigl_imgui_fonts-src
+  OBJECT_DIR = CMakeFiles/example.dir
+  OBJECT_FILE_DIR = CMakeFiles/example.dir/toolbox
+
+build CMakeFiles/example.dir/toolbox/constraint_utils.cpp.o: CXX_COMPILER__example_Debug /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/toolbox/constraint_utils.cpp || cmake_object_order_depends_target_example
+  DEFINES = -DIMGUI_DISABLE_OBSOLETE_FUNCTIONS -DIMGUI_IMPL_OPENGL_LOADER_GLAD
+  DEP_FILE = CMakeFiles/example.dir/toolbox/constraint_utils.cpp.o.d
+  FLAGS = -g -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX13.0.sdk -std=gnu++11
+  INCLUDES = -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/libigl-src/include -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glad-src/include -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-src/include -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/imgui-src -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/imguizmo-src -isystem /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/eigen-src -iframework /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX13.0.sdk/System/Library/Frameworks -isystem /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/libigl_imgui_fonts-src
+  OBJECT_DIR = CMakeFiles/example.dir
+  OBJECT_FILE_DIR = CMakeFiles/example.dir/toolbox
+
+build CMakeFiles/example.dir/toolbox/garment_adaption.cpp.o: CXX_COMPILER__example_Debug /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/toolbox/garment_adaption.cpp || cmake_object_order_depends_target_example
+  DEFINES = -DIMGUI_DISABLE_OBSOLETE_FUNCTIONS -DIMGUI_IMPL_OPENGL_LOADER_GLAD
+  DEP_FILE = CMakeFiles/example.dir/toolbox/garment_adaption.cpp.o.d
+  FLAGS = -g -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX13.0.sdk -std=gnu++11
+  INCLUDES = -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/libigl-src/include -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glad-src/include -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-src/include -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/imgui-src -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/imguizmo-src -isystem /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/eigen-src -iframework /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX13.0.sdk/System/Library/Frameworks -isystem /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/libigl_imgui_fonts-src
+  OBJECT_DIR = CMakeFiles/example.dir
+  OBJECT_FILE_DIR = CMakeFiles/example.dir/toolbox
+
+build CMakeFiles/example.dir/toolbox/patternAdaption.cpp.o: CXX_COMPILER__example_Debug /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/toolbox/patternAdaption.cpp || cmake_object_order_depends_target_example
+  DEFINES = -DIMGUI_DISABLE_OBSOLETE_FUNCTIONS -DIMGUI_IMPL_OPENGL_LOADER_GLAD
+  DEP_FILE = CMakeFiles/example.dir/toolbox/patternAdaption.cpp.o.d
+  FLAGS = -g -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX13.0.sdk -std=gnu++11
+  INCLUDES = -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/libigl-src/include -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glad-src/include -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-src/include -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/imgui-src -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/imguizmo-src -isystem /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/eigen-src -iframework /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX13.0.sdk/System/Library/Frameworks -isystem /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/libigl_imgui_fonts-src
+  OBJECT_DIR = CMakeFiles/example.dir
+  OBJECT_FILE_DIR = CMakeFiles/example.dir/toolbox
+
+build CMakeFiles/example.dir/toolbox/seam.cpp.o: CXX_COMPILER__example_Debug /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/toolbox/seam.cpp || cmake_object_order_depends_target_example
+  DEFINES = -DIMGUI_DISABLE_OBSOLETE_FUNCTIONS -DIMGUI_IMPL_OPENGL_LOADER_GLAD
+  DEP_FILE = CMakeFiles/example.dir/toolbox/seam.cpp.o.d
+  FLAGS = -g -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX13.0.sdk -std=gnu++11
+  INCLUDES = -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/libigl-src/include -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glad-src/include -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-src/include -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/imgui-src -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/imguizmo-src -isystem /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/eigen-src -iframework /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX13.0.sdk/System/Library/Frameworks -isystem /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/libigl_imgui_fonts-src
+  OBJECT_DIR = CMakeFiles/example.dir
+  OBJECT_FILE_DIR = CMakeFiles/example.dir/toolbox
+
+
+# =============================================================================
+# Link build statements for EXECUTABLE target example
+
+
+#############################################
+# Link the executable example
+
+build example: CXX_EXECUTABLE_LINKER__example_Debug CMakeFiles/example.dir/main.cpp.o CMakeFiles/example.dir/toolbox/MathFunctions.cpp.o CMakeFiles/example.dir/toolbox/PositionBasedDynamics.cpp.o CMakeFiles/example.dir/toolbox/Timer.cpp.o CMakeFiles/example.dir/toolbox/adjacency.cpp.o CMakeFiles/example.dir/toolbox/body_interpolation.cpp.o CMakeFiles/example.dir/toolbox/constraint_utils.cpp.o CMakeFiles/example.dir/toolbox/garment_adaption.cpp.o CMakeFiles/example.dir/toolbox/patternAdaption.cpp.o CMakeFiles/example.dir/toolbox/seam.cpp.o | /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX13.0.sdk/System/Library/Frameworks/OpenGL.framework/OpenGL.tbd libimguizmo.a libimgui.a _deps/glfw-build/src/libglfw3.a _deps/glad-build/libglad.a || _deps/glad-build/libglad.a _deps/glfw-build/src/libglfw3.a _deps/libigl-build/igl_core igl_glfw igl_imgui igl_opengl libimgui.a libimguizmo.a
+  FLAGS = -g -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX13.0.sdk
+  LINK_LIBRARIES = /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX13.0.sdk/System/Library/Frameworks/OpenGL.framework/OpenGL.tbd  libimguizmo.a  libimgui.a  _deps/glfw-build/src/libglfw3.a  -framework Cocoa  -framework IOKit  -framework CoreFoundation  _deps/glad-build/libglad.a
+  OBJECT_DIR = CMakeFiles/example.dir
+  POST_BUILD = :
+  PRE_LINK = :
+  TARGET_FILE = example
+  TARGET_PDB = example.dbg
+
+
+#############################################
+# Utility command for edit_cache
+
+build CMakeFiles/edit_cache.util: CUSTOM_COMMAND
+  COMMAND = cd /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug && "/Users/annaeggler/Library/Application Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/bin/cmake" -E echo No\ interactive\ CMake\ dialog\ available.
+  DESC = No interactive CMake dialog available...
+  restat = 1
+
+build edit_cache: phony CMakeFiles/edit_cache.util
+
+
+#############################################
+# Utility command for rebuild_cache
+
+build CMakeFiles/rebuild_cache.util: CUSTOM_COMMAND
+  COMMAND = cd /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug && "/Users/annaeggler/Library/Application Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/bin/cmake" --regenerate-during-build -S/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors -B/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug
+  DESC = Running CMake to regenerate build system...
+  pool = console
+  restat = 1
+
+build rebuild_cache: phony CMakeFiles/rebuild_cache.util
+
+
+#############################################
+# Utility command for list_install_components
+
+build list_install_components: phony
+
+
+#############################################
+# Utility command for install
+
+build CMakeFiles/install.util: CUSTOM_COMMAND all
+  COMMAND = cd /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug && "/Users/annaeggler/Library/Application Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/bin/cmake" -P cmake_install.cmake
+  DESC = Install the project...
+  pool = console
+  restat = 1
+
+build install: phony CMakeFiles/install.util
+
+
+#############################################
+# Utility command for install/local
+
+build CMakeFiles/install/local.util: CUSTOM_COMMAND all
+  COMMAND = cd /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug && "/Users/annaeggler/Library/Application Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/bin/cmake" -DCMAKE_INSTALL_LOCAL_ONLY=1 -P cmake_install.cmake
+  DESC = Installing only the local directory...
+  pool = console
+  restat = 1
+
+build install/local: phony CMakeFiles/install/local.util
+
+
+#############################################
+# Utility command for install/strip
+
+build CMakeFiles/install/strip.util: CUSTOM_COMMAND all
+  COMMAND = cd /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug && "/Users/annaeggler/Library/Application Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/bin/cmake" -DCMAKE_INSTALL_DO_STRIP=1 -P cmake_install.cmake
+  DESC = Installing the project stripped...
+  pool = console
+  restat = 1
+
+build install/strip: phony CMakeFiles/install/strip.util
+
+# =============================================================================
+# Write statements declared in CMakeLists.txt:
+# /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake/libigl.cmake
+# =============================================================================
+
+
+#############################################
+# Utility command for igl_core
+
+build _deps/libigl-build/igl_core: phony
+
+
+#############################################
+# Utility command for edit_cache
+
+build _deps/libigl-build/CMakeFiles/edit_cache.util: CUSTOM_COMMAND
+  COMMAND = cd /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/libigl-build && "/Users/annaeggler/Library/Application Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/bin/cmake" -E echo No\ interactive\ CMake\ dialog\ available.
+  DESC = No interactive CMake dialog available...
+  restat = 1
+
+build _deps/libigl-build/edit_cache: phony _deps/libigl-build/CMakeFiles/edit_cache.util
+
+
+#############################################
+# Utility command for rebuild_cache
+
+build _deps/libigl-build/CMakeFiles/rebuild_cache.util: CUSTOM_COMMAND
+  COMMAND = cd /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/libigl-build && "/Users/annaeggler/Library/Application Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/bin/cmake" --regenerate-during-build -S/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors -B/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug
+  DESC = Running CMake to regenerate build system...
+  pool = console
+  restat = 1
+
+build _deps/libigl-build/rebuild_cache: phony _deps/libigl-build/CMakeFiles/rebuild_cache.util
+
+
+#############################################
+# Utility command for list_install_components
+
+build _deps/libigl-build/list_install_components: phony
+
+
+#############################################
+# Utility command for install
+
+build _deps/libigl-build/CMakeFiles/install.util: CUSTOM_COMMAND _deps/libigl-build/all
+  COMMAND = cd /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/libigl-build && "/Users/annaeggler/Library/Application Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/bin/cmake" -P cmake_install.cmake
+  DESC = Install the project...
+  pool = console
+  restat = 1
+
+build _deps/libigl-build/install: phony _deps/libigl-build/CMakeFiles/install.util
+
+
+#############################################
+# Utility command for install/local
+
+build _deps/libigl-build/CMakeFiles/install/local.util: CUSTOM_COMMAND _deps/libigl-build/all
+  COMMAND = cd /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/libigl-build && "/Users/annaeggler/Library/Application Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/bin/cmake" -DCMAKE_INSTALL_LOCAL_ONLY=1 -P cmake_install.cmake
+  DESC = Installing only the local directory...
+  pool = console
+  restat = 1
+
+build _deps/libigl-build/install/local: phony _deps/libigl-build/CMakeFiles/install/local.util
+
+
+#############################################
+# Utility command for install/strip
+
+build _deps/libigl-build/CMakeFiles/install/strip.util: CUSTOM_COMMAND _deps/libigl-build/all
+  COMMAND = cd /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/libigl-build && "/Users/annaeggler/Library/Application Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/bin/cmake" -DCMAKE_INSTALL_DO_STRIP=1 -P cmake_install.cmake
+  DESC = Installing the project stripped...
+  pool = console
+  restat = 1
+
+build _deps/libigl-build/install/strip: phony _deps/libigl-build/CMakeFiles/install/strip.util
+
+# =============================================================================
+# Write statements declared in CMakeLists.txt:
+# /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/libigl-src/cmake/recipes/external/glfw.cmake
+# =============================================================================
+
+
+#############################################
+# Utility command for edit_cache
+
+build _deps/glfw-build/CMakeFiles/edit_cache.util: CUSTOM_COMMAND
+  COMMAND = cd /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-build && "/Users/annaeggler/Library/Application Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/bin/cmake" -E echo No\ interactive\ CMake\ dialog\ available.
+  DESC = No interactive CMake dialog available...
+  restat = 1
+
+build _deps/glfw-build/edit_cache: phony _deps/glfw-build/CMakeFiles/edit_cache.util
+
+
+#############################################
+# Utility command for rebuild_cache
+
+build _deps/glfw-build/CMakeFiles/rebuild_cache.util: CUSTOM_COMMAND
+  COMMAND = cd /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-build && "/Users/annaeggler/Library/Application Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/bin/cmake" --regenerate-during-build -S/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors -B/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug
+  DESC = Running CMake to regenerate build system...
+  pool = console
+  restat = 1
+
+build _deps/glfw-build/rebuild_cache: phony _deps/glfw-build/CMakeFiles/rebuild_cache.util
+
+
+#############################################
+# Utility command for list_install_components
+
+build _deps/glfw-build/list_install_components: phony
+
+
+#############################################
+# Utility command for install
+
+build _deps/glfw-build/CMakeFiles/install.util: CUSTOM_COMMAND _deps/glfw-build/all
+  COMMAND = cd /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-build && "/Users/annaeggler/Library/Application Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/bin/cmake" -P cmake_install.cmake
+  DESC = Install the project...
+  pool = console
+  restat = 1
+
+build _deps/glfw-build/install: phony _deps/glfw-build/CMakeFiles/install.util
+
+
+#############################################
+# Utility command for install/local
+
+build _deps/glfw-build/CMakeFiles/install/local.util: CUSTOM_COMMAND _deps/glfw-build/all
+  COMMAND = cd /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-build && "/Users/annaeggler/Library/Application Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/bin/cmake" -DCMAKE_INSTALL_LOCAL_ONLY=1 -P cmake_install.cmake
+  DESC = Installing only the local directory...
+  pool = console
+  restat = 1
+
+build _deps/glfw-build/install/local: phony _deps/glfw-build/CMakeFiles/install/local.util
+
+
+#############################################
+# Utility command for install/strip
+
+build _deps/glfw-build/CMakeFiles/install/strip.util: CUSTOM_COMMAND _deps/glfw-build/all
+  COMMAND = cd /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-build && "/Users/annaeggler/Library/Application Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/bin/cmake" -DCMAKE_INSTALL_DO_STRIP=1 -P cmake_install.cmake
+  DESC = Installing the project stripped...
+  pool = console
+  restat = 1
+
+build _deps/glfw-build/install/strip: phony _deps/glfw-build/CMakeFiles/install/strip.util
+
+# =============================================================================
+# Write statements declared in CMakeLists.txt:
+# /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-src/CMakeLists.txt
+# =============================================================================
+
+# =============================================================================
+# Object build statements for STATIC_LIBRARY target glfw
+
+
+#############################################
+# Order-only phony target for glfw
+
+build cmake_object_order_depends_target_glfw: phony || _deps/glfw-build/src/CMakeFiles/glfw.dir
+
+build _deps/glfw-build/src/CMakeFiles/glfw.dir/context.c.o: C_COMPILER__glfw_Debug /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-src/src/context.c || cmake_object_order_depends_target_glfw
+  DEFINES = -D_GLFW_USE_CONFIG_H
+  DEP_FILE = _deps/glfw-build/src/CMakeFiles/glfw.dir/context.c.o.d
+  FLAGS = -g -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX13.0.sdk -fPIC -Wall -Wno-missing-field-initializers -Wno-objc-multiple-method-names -std=c99
+  INCLUDES = -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-src/include -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-src/src -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-build/src
+  OBJECT_DIR = _deps/glfw-build/src/CMakeFiles/glfw.dir
+  OBJECT_FILE_DIR = _deps/glfw-build/src/CMakeFiles/glfw.dir
+
+build _deps/glfw-build/src/CMakeFiles/glfw.dir/init.c.o: C_COMPILER__glfw_Debug /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-src/src/init.c || cmake_object_order_depends_target_glfw
+  DEFINES = -D_GLFW_USE_CONFIG_H
+  DEP_FILE = _deps/glfw-build/src/CMakeFiles/glfw.dir/init.c.o.d
+  FLAGS = -g -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX13.0.sdk -fPIC -Wall -Wno-missing-field-initializers -Wno-objc-multiple-method-names -std=c99
+  INCLUDES = -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-src/include -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-src/src -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-build/src
+  OBJECT_DIR = _deps/glfw-build/src/CMakeFiles/glfw.dir
+  OBJECT_FILE_DIR = _deps/glfw-build/src/CMakeFiles/glfw.dir
+
+build _deps/glfw-build/src/CMakeFiles/glfw.dir/input.c.o: C_COMPILER__glfw_Debug /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-src/src/input.c || cmake_object_order_depends_target_glfw
+  DEFINES = -D_GLFW_USE_CONFIG_H
+  DEP_FILE = _deps/glfw-build/src/CMakeFiles/glfw.dir/input.c.o.d
+  FLAGS = -g -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX13.0.sdk -fPIC -Wall -Wno-missing-field-initializers -Wno-objc-multiple-method-names -std=c99
+  INCLUDES = -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-src/include -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-src/src -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-build/src
+  OBJECT_DIR = _deps/glfw-build/src/CMakeFiles/glfw.dir
+  OBJECT_FILE_DIR = _deps/glfw-build/src/CMakeFiles/glfw.dir
+
+build _deps/glfw-build/src/CMakeFiles/glfw.dir/monitor.c.o: C_COMPILER__glfw_Debug /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-src/src/monitor.c || cmake_object_order_depends_target_glfw
+  DEFINES = -D_GLFW_USE_CONFIG_H
+  DEP_FILE = _deps/glfw-build/src/CMakeFiles/glfw.dir/monitor.c.o.d
+  FLAGS = -g -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX13.0.sdk -fPIC -Wall -Wno-missing-field-initializers -Wno-objc-multiple-method-names -std=c99
+  INCLUDES = -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-src/include -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-src/src -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-build/src
+  OBJECT_DIR = _deps/glfw-build/src/CMakeFiles/glfw.dir
+  OBJECT_FILE_DIR = _deps/glfw-build/src/CMakeFiles/glfw.dir
+
+build _deps/glfw-build/src/CMakeFiles/glfw.dir/vulkan.c.o: C_COMPILER__glfw_Debug /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-src/src/vulkan.c || cmake_object_order_depends_target_glfw
+  DEFINES = -D_GLFW_USE_CONFIG_H
+  DEP_FILE = _deps/glfw-build/src/CMakeFiles/glfw.dir/vulkan.c.o.d
+  FLAGS = -g -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX13.0.sdk -fPIC -Wall -Wno-missing-field-initializers -Wno-objc-multiple-method-names -std=c99
+  INCLUDES = -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-src/include -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-src/src -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-build/src
+  OBJECT_DIR = _deps/glfw-build/src/CMakeFiles/glfw.dir
+  OBJECT_FILE_DIR = _deps/glfw-build/src/CMakeFiles/glfw.dir
+
+build _deps/glfw-build/src/CMakeFiles/glfw.dir/window.c.o: C_COMPILER__glfw_Debug /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-src/src/window.c || cmake_object_order_depends_target_glfw
+  DEFINES = -D_GLFW_USE_CONFIG_H
+  DEP_FILE = _deps/glfw-build/src/CMakeFiles/glfw.dir/window.c.o.d
+  FLAGS = -g -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX13.0.sdk -fPIC -Wall -Wno-missing-field-initializers -Wno-objc-multiple-method-names -std=c99
+  INCLUDES = -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-src/include -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-src/src -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-build/src
+  OBJECT_DIR = _deps/glfw-build/src/CMakeFiles/glfw.dir
+  OBJECT_FILE_DIR = _deps/glfw-build/src/CMakeFiles/glfw.dir
+
+build _deps/glfw-build/src/CMakeFiles/glfw.dir/cocoa_init.m.o: C_COMPILER__glfw_Debug /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-src/src/cocoa_init.m || cmake_object_order_depends_target_glfw
+  DEFINES = -D_GLFW_USE_CONFIG_H
+  DEP_FILE = _deps/glfw-build/src/CMakeFiles/glfw.dir/cocoa_init.m.o.d
+  FLAGS = -g -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX13.0.sdk -fPIC -Wall -Wno-missing-field-initializers -Wno-objc-multiple-method-names -std=c99
+  INCLUDES = -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-src/include -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-src/src -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-build/src
+  OBJECT_DIR = _deps/glfw-build/src/CMakeFiles/glfw.dir
+  OBJECT_FILE_DIR = _deps/glfw-build/src/CMakeFiles/glfw.dir
+
+build _deps/glfw-build/src/CMakeFiles/glfw.dir/cocoa_joystick.m.o: C_COMPILER__glfw_Debug /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-src/src/cocoa_joystick.m || cmake_object_order_depends_target_glfw
+  DEFINES = -D_GLFW_USE_CONFIG_H
+  DEP_FILE = _deps/glfw-build/src/CMakeFiles/glfw.dir/cocoa_joystick.m.o.d
+  FLAGS = -g -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX13.0.sdk -fPIC -Wall -Wno-missing-field-initializers -Wno-objc-multiple-method-names -std=c99
+  INCLUDES = -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-src/include -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-src/src -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-build/src
+  OBJECT_DIR = _deps/glfw-build/src/CMakeFiles/glfw.dir
+  OBJECT_FILE_DIR = _deps/glfw-build/src/CMakeFiles/glfw.dir
+
+build _deps/glfw-build/src/CMakeFiles/glfw.dir/cocoa_monitor.m.o: C_COMPILER__glfw_Debug /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-src/src/cocoa_monitor.m || cmake_object_order_depends_target_glfw
+  DEFINES = -D_GLFW_USE_CONFIG_H
+  DEP_FILE = _deps/glfw-build/src/CMakeFiles/glfw.dir/cocoa_monitor.m.o.d
+  FLAGS = -g -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX13.0.sdk -fPIC -Wall -Wno-missing-field-initializers -Wno-objc-multiple-method-names -std=c99
+  INCLUDES = -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-src/include -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-src/src -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-build/src
+  OBJECT_DIR = _deps/glfw-build/src/CMakeFiles/glfw.dir
+  OBJECT_FILE_DIR = _deps/glfw-build/src/CMakeFiles/glfw.dir
+
+build _deps/glfw-build/src/CMakeFiles/glfw.dir/cocoa_window.m.o: C_COMPILER__glfw_Debug /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-src/src/cocoa_window.m || cmake_object_order_depends_target_glfw
+  DEFINES = -D_GLFW_USE_CONFIG_H
+  DEP_FILE = _deps/glfw-build/src/CMakeFiles/glfw.dir/cocoa_window.m.o.d
+  FLAGS = -g -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX13.0.sdk -fPIC -Wall -Wno-missing-field-initializers -Wno-objc-multiple-method-names -std=c99
+  INCLUDES = -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-src/include -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-src/src -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-build/src
+  OBJECT_DIR = _deps/glfw-build/src/CMakeFiles/glfw.dir
+  OBJECT_FILE_DIR = _deps/glfw-build/src/CMakeFiles/glfw.dir
+
+build _deps/glfw-build/src/CMakeFiles/glfw.dir/cocoa_time.c.o: C_COMPILER__glfw_Debug /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-src/src/cocoa_time.c || cmake_object_order_depends_target_glfw
+  DEFINES = -D_GLFW_USE_CONFIG_H
+  DEP_FILE = _deps/glfw-build/src/CMakeFiles/glfw.dir/cocoa_time.c.o.d
+  FLAGS = -g -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX13.0.sdk -fPIC -Wall -Wno-missing-field-initializers -Wno-objc-multiple-method-names -std=c99
+  INCLUDES = -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-src/include -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-src/src -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-build/src
+  OBJECT_DIR = _deps/glfw-build/src/CMakeFiles/glfw.dir
+  OBJECT_FILE_DIR = _deps/glfw-build/src/CMakeFiles/glfw.dir
+
+build _deps/glfw-build/src/CMakeFiles/glfw.dir/posix_thread.c.o: C_COMPILER__glfw_Debug /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-src/src/posix_thread.c || cmake_object_order_depends_target_glfw
+  DEFINES = -D_GLFW_USE_CONFIG_H
+  DEP_FILE = _deps/glfw-build/src/CMakeFiles/glfw.dir/posix_thread.c.o.d
+  FLAGS = -g -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX13.0.sdk -fPIC -Wall -Wno-missing-field-initializers -Wno-objc-multiple-method-names -std=c99
+  INCLUDES = -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-src/include -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-src/src -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-build/src
+  OBJECT_DIR = _deps/glfw-build/src/CMakeFiles/glfw.dir
+  OBJECT_FILE_DIR = _deps/glfw-build/src/CMakeFiles/glfw.dir
+
+build _deps/glfw-build/src/CMakeFiles/glfw.dir/nsgl_context.m.o: C_COMPILER__glfw_Debug /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-src/src/nsgl_context.m || cmake_object_order_depends_target_glfw
+  DEFINES = -D_GLFW_USE_CONFIG_H
+  DEP_FILE = _deps/glfw-build/src/CMakeFiles/glfw.dir/nsgl_context.m.o.d
+  FLAGS = -g -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX13.0.sdk -fPIC -Wall -Wno-missing-field-initializers -Wno-objc-multiple-method-names -std=c99
+  INCLUDES = -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-src/include -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-src/src -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-build/src
+  OBJECT_DIR = _deps/glfw-build/src/CMakeFiles/glfw.dir
+  OBJECT_FILE_DIR = _deps/glfw-build/src/CMakeFiles/glfw.dir
+
+build _deps/glfw-build/src/CMakeFiles/glfw.dir/egl_context.c.o: C_COMPILER__glfw_Debug /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-src/src/egl_context.c || cmake_object_order_depends_target_glfw
+  DEFINES = -D_GLFW_USE_CONFIG_H
+  DEP_FILE = _deps/glfw-build/src/CMakeFiles/glfw.dir/egl_context.c.o.d
+  FLAGS = -g -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX13.0.sdk -fPIC -Wall -Wno-missing-field-initializers -Wno-objc-multiple-method-names -std=c99
+  INCLUDES = -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-src/include -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-src/src -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-build/src
+  OBJECT_DIR = _deps/glfw-build/src/CMakeFiles/glfw.dir
+  OBJECT_FILE_DIR = _deps/glfw-build/src/CMakeFiles/glfw.dir
+
+build _deps/glfw-build/src/CMakeFiles/glfw.dir/osmesa_context.c.o: C_COMPILER__glfw_Debug /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-src/src/osmesa_context.c || cmake_object_order_depends_target_glfw
+  DEFINES = -D_GLFW_USE_CONFIG_H
+  DEP_FILE = _deps/glfw-build/src/CMakeFiles/glfw.dir/osmesa_context.c.o.d
+  FLAGS = -g -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX13.0.sdk -fPIC -Wall -Wno-missing-field-initializers -Wno-objc-multiple-method-names -std=c99
+  INCLUDES = -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-src/include -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-src/src -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-build/src
+  OBJECT_DIR = _deps/glfw-build/src/CMakeFiles/glfw.dir
+  OBJECT_FILE_DIR = _deps/glfw-build/src/CMakeFiles/glfw.dir
+
+
+# =============================================================================
+# Link build statements for STATIC_LIBRARY target glfw
+
+
+#############################################
+# Link the static library _deps/glfw-build/src/libglfw3.a
+
+build _deps/glfw-build/src/libglfw3.a: C_STATIC_LIBRARY_LINKER__glfw_Debug _deps/glfw-build/src/CMakeFiles/glfw.dir/context.c.o _deps/glfw-build/src/CMakeFiles/glfw.dir/init.c.o _deps/glfw-build/src/CMakeFiles/glfw.dir/input.c.o _deps/glfw-build/src/CMakeFiles/glfw.dir/monitor.c.o _deps/glfw-build/src/CMakeFiles/glfw.dir/vulkan.c.o _deps/glfw-build/src/CMakeFiles/glfw.dir/window.c.o _deps/glfw-build/src/CMakeFiles/glfw.dir/cocoa_init.m.o _deps/glfw-build/src/CMakeFiles/glfw.dir/cocoa_joystick.m.o _deps/glfw-build/src/CMakeFiles/glfw.dir/cocoa_monitor.m.o _deps/glfw-build/src/CMakeFiles/glfw.dir/cocoa_window.m.o _deps/glfw-build/src/CMakeFiles/glfw.dir/cocoa_time.c.o _deps/glfw-build/src/CMakeFiles/glfw.dir/posix_thread.c.o _deps/glfw-build/src/CMakeFiles/glfw.dir/nsgl_context.m.o _deps/glfw-build/src/CMakeFiles/glfw.dir/egl_context.c.o _deps/glfw-build/src/CMakeFiles/glfw.dir/osmesa_context.c.o
+  ARCH_FLAGS = -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX13.0.sdk
+  LANGUAGE_COMPILE_FLAGS = -g
+  OBJECT_DIR = _deps/glfw-build/src/CMakeFiles/glfw.dir
+  POST_BUILD = :
+  PRE_LINK = :
+  TARGET_FILE = _deps/glfw-build/src/libglfw3.a
+  TARGET_PDB = glfw3.a.dbg
+
+
+#############################################
+# Utility command for edit_cache
+
+build _deps/glfw-build/src/CMakeFiles/edit_cache.util: CUSTOM_COMMAND
+  COMMAND = cd /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-build/src && "/Users/annaeggler/Library/Application Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/bin/cmake" -E echo No\ interactive\ CMake\ dialog\ available.
+  DESC = No interactive CMake dialog available...
+  restat = 1
+
+build _deps/glfw-build/src/edit_cache: phony _deps/glfw-build/src/CMakeFiles/edit_cache.util
+
+
+#############################################
+# Utility command for rebuild_cache
+
+build _deps/glfw-build/src/CMakeFiles/rebuild_cache.util: CUSTOM_COMMAND
+  COMMAND = cd /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-build/src && "/Users/annaeggler/Library/Application Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/bin/cmake" --regenerate-during-build -S/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors -B/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug
+  DESC = Running CMake to regenerate build system...
+  pool = console
+  restat = 1
+
+build _deps/glfw-build/src/rebuild_cache: phony _deps/glfw-build/src/CMakeFiles/rebuild_cache.util
+
+
+#############################################
+# Utility command for list_install_components
+
+build _deps/glfw-build/src/list_install_components: phony
+
+
+#############################################
+# Utility command for install
+
+build _deps/glfw-build/src/CMakeFiles/install.util: CUSTOM_COMMAND _deps/glfw-build/src/all
+  COMMAND = cd /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-build/src && "/Users/annaeggler/Library/Application Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/bin/cmake" -P cmake_install.cmake
+  DESC = Install the project...
+  pool = console
+  restat = 1
+
+build _deps/glfw-build/src/install: phony _deps/glfw-build/src/CMakeFiles/install.util
+
+
+#############################################
+# Utility command for install/local
+
+build _deps/glfw-build/src/CMakeFiles/install/local.util: CUSTOM_COMMAND _deps/glfw-build/src/all
+  COMMAND = cd /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-build/src && "/Users/annaeggler/Library/Application Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/bin/cmake" -DCMAKE_INSTALL_LOCAL_ONLY=1 -P cmake_install.cmake
+  DESC = Installing only the local directory...
+  pool = console
+  restat = 1
+
+build _deps/glfw-build/src/install/local: phony _deps/glfw-build/src/CMakeFiles/install/local.util
+
+
+#############################################
+# Utility command for install/strip
+
+build _deps/glfw-build/src/CMakeFiles/install/strip.util: CUSTOM_COMMAND _deps/glfw-build/src/all
+  COMMAND = cd /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-build/src && "/Users/annaeggler/Library/Application Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/bin/cmake" -DCMAKE_INSTALL_DO_STRIP=1 -P cmake_install.cmake
+  DESC = Installing the project stripped...
+  pool = console
+  restat = 1
+
+build _deps/glfw-build/src/install/strip: phony _deps/glfw-build/src/CMakeFiles/install/strip.util
+
+# =============================================================================
+# Write statements declared in CMakeLists.txt:
+# /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/libigl-src/cmake/recipes/external/glad.cmake
+# =============================================================================
+
+# =============================================================================
+# Object build statements for STATIC_LIBRARY target glad
+
+
+#############################################
+# Order-only phony target for glad
+
+build cmake_object_order_depends_target_glad: phony || _deps/glad-build/CMakeFiles/glad.dir
+
+build _deps/glad-build/CMakeFiles/glad.dir/src/glad.c.o: C_COMPILER__glad_Debug /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glad-src/src/glad.c || cmake_object_order_depends_target_glad
+  DEP_FILE = _deps/glad-build/CMakeFiles/glad.dir/src/glad.c.o.d
+  FLAGS = -g -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX13.0.sdk -fPIC
+  INCLUDES = -I/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glad-src/include
+  OBJECT_DIR = _deps/glad-build/CMakeFiles/glad.dir
+  OBJECT_FILE_DIR = _deps/glad-build/CMakeFiles/glad.dir/src
+
+
+# =============================================================================
+# Link build statements for STATIC_LIBRARY target glad
+
+
+#############################################
+# Link the static library _deps/glad-build/libglad.a
+
+build _deps/glad-build/libglad.a: C_STATIC_LIBRARY_LINKER__glad_Debug _deps/glad-build/CMakeFiles/glad.dir/src/glad.c.o
+  ARCH_FLAGS = -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX13.0.sdk
+  LANGUAGE_COMPILE_FLAGS = -g
+  OBJECT_DIR = _deps/glad-build/CMakeFiles/glad.dir
+  POST_BUILD = :
+  PRE_LINK = :
+  TARGET_FILE = _deps/glad-build/libglad.a
+  TARGET_PDB = glad.a.dbg
+
+
+#############################################
+# Utility command for edit_cache
+
+build _deps/glad-build/CMakeFiles/edit_cache.util: CUSTOM_COMMAND
+  COMMAND = cd /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glad-build && "/Users/annaeggler/Library/Application Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/bin/cmake" -E echo No\ interactive\ CMake\ dialog\ available.
+  DESC = No interactive CMake dialog available...
+  restat = 1
+
+build _deps/glad-build/edit_cache: phony _deps/glad-build/CMakeFiles/edit_cache.util
+
+
+#############################################
+# Utility command for rebuild_cache
+
+build _deps/glad-build/CMakeFiles/rebuild_cache.util: CUSTOM_COMMAND
+  COMMAND = cd /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glad-build && "/Users/annaeggler/Library/Application Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/bin/cmake" --regenerate-during-build -S/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors -B/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug
+  DESC = Running CMake to regenerate build system...
+  pool = console
+  restat = 1
+
+build _deps/glad-build/rebuild_cache: phony _deps/glad-build/CMakeFiles/rebuild_cache.util
+
+
+#############################################
+# Utility command for list_install_components
+
+build _deps/glad-build/list_install_components: phony
+
+
+#############################################
+# Utility command for install
+
+build _deps/glad-build/CMakeFiles/install.util: CUSTOM_COMMAND _deps/glad-build/all
+  COMMAND = cd /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glad-build && "/Users/annaeggler/Library/Application Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/bin/cmake" -P cmake_install.cmake
+  DESC = Install the project...
+  pool = console
+  restat = 1
+
+build _deps/glad-build/install: phony _deps/glad-build/CMakeFiles/install.util
+
+
+#############################################
+# Utility command for install/local
+
+build _deps/glad-build/CMakeFiles/install/local.util: CUSTOM_COMMAND _deps/glad-build/all
+  COMMAND = cd /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glad-build && "/Users/annaeggler/Library/Application Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/bin/cmake" -DCMAKE_INSTALL_LOCAL_ONLY=1 -P cmake_install.cmake
+  DESC = Installing only the local directory...
+  pool = console
+  restat = 1
+
+build _deps/glad-build/install/local: phony _deps/glad-build/CMakeFiles/install/local.util
+
+
+#############################################
+# Utility command for install/strip
+
+build _deps/glad-build/CMakeFiles/install/strip.util: CUSTOM_COMMAND _deps/glad-build/all
+  COMMAND = cd /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glad-build && "/Users/annaeggler/Library/Application Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/bin/cmake" -DCMAKE_INSTALL_DO_STRIP=1 -P cmake_install.cmake
+  DESC = Installing the project stripped...
+  pool = console
+  restat = 1
+
+build _deps/glad-build/install/strip: phony _deps/glad-build/CMakeFiles/install/strip.util
+
+# =============================================================================
+# Target aliases.
+
+build glad: phony _deps/glad-build/libglad.a
+
+build glfw: phony _deps/glfw-build/src/libglfw3.a
+
+build igl_core: phony _deps/libigl-build/igl_core
+
+build imgui: phony libimgui.a
+
+build imguizmo: phony libimguizmo.a
+
+build libglad.a: phony _deps/glad-build/libglad.a
+
+build libglfw3.a: phony _deps/glfw-build/src/libglfw3.a
+
+# =============================================================================
+# Folder targets.
+
+# =============================================================================
+
+#############################################
+# Folder: /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug
+
+build all: phony igl_glfw igl_opengl igl_imgui libimgui.a libimguizmo.a example _deps/libigl-build/all _deps/glfw-build/all _deps/glad-build/all
+
+# =============================================================================
+
+#############################################
+# Folder: /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glad-build
+
+build _deps/glad-build/all: phony _deps/glad-build/libglad.a
+
+# =============================================================================
+
+#############################################
+# Folder: /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-build
+
+build _deps/glfw-build/all: phony _deps/glfw-build/src/all
+
+# =============================================================================
+
+#############################################
+# Folder: /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/glfw-build/src
+
+build _deps/glfw-build/src/all: phony _deps/glfw-build/src/libglfw3.a
+
+# =============================================================================
+
+#############################################
+# Folder: /Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/cmake-build-debug/_deps/libigl-build
+
+build _deps/libigl-build/all: phony _deps/libigl-build/igl_core
+
+# =============================================================================
+# Built-in targets
+
+
+#############################################
+# Re-run CMake if any of its inputs changed.
+
+build build.ninja: RERUN_CMAKE | ../CMakeLists.txt ../cmake/libigl.cmake /Users/annaeggler/Library/Application$ Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/share/cmake-3.23/Modules/BasicConfigVersion-SameMajorVersion.cmake.in /Users/annaeggler/Library/Application$ Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/share/cmake-3.23/Modules/CMakeCInformation.cmake /Users/annaeggler/Library/Application$ Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/share/cmake-3.23/Modules/CMakeCXXInformation.cmake /Users/annaeggler/Library/Application$ Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/share/cmake-3.23/Modules/CMakeCommonLanguageInclude.cmake /Users/annaeggler/Library/Application$ Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/share/cmake-3.23/Modules/CMakeDependentOption.cmake /Users/annaeggler/Library/Application$ Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/share/cmake-3.23/Modules/CMakeGenericSystem.cmake /Users/annaeggler/Library/Application$ Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/share/cmake-3.23/Modules/CMakeInitializeConfigs.cmake /Users/annaeggler/Library/Application$ Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/share/cmake-3.23/Modules/CMakeLanguageInformation.cmake /Users/annaeggler/Library/Application$ Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/share/cmake-3.23/Modules/CMakePackageConfigHelpers.cmake /Users/annaeggler/Library/Application$ Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/share/cmake-3.23/Modules/CMakeSystemSpecificInformation.cmake /Users/annaeggler/Library/Application$ Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/share/cmake-3.23/Modules/CMakeSystemSpecificInitialize.cmake /Users/annaeggler/Library/Application$ Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/share/cmake-3.23/Modules/CheckCSourceCompiles.cmake /Users/annaeggler/Library/Application$ Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/share/cmake-3.23/Modules/CheckIncludeFile.cmake /Users/annaeggler/Library/Application$ Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/share/cmake-3.23/Modules/CheckLibraryExists.cmake /Users/annaeggler/Library/Application$ Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/share/cmake-3.23/Modules/Compiler/AppleClang-C.cmake /Users/annaeggler/Library/Application$ Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/share/cmake-3.23/Modules/Compiler/AppleClang-CXX.cmake /Users/annaeggler/Library/Application$ Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/share/cmake-3.23/Modules/Compiler/CMakeCommonCompilerMacros.cmake /Users/annaeggler/Library/Application$ Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/share/cmake-3.23/Modules/Compiler/Clang.cmake /Users/annaeggler/Library/Application$ Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/share/cmake-3.23/Modules/Compiler/GNU.cmake /Users/annaeggler/Library/Application$ Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/share/cmake-3.23/Modules/FetchContent.cmake /Users/annaeggler/Library/Application$ Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/share/cmake-3.23/Modules/FetchContent/CMakeLists.cmake.in /Users/annaeggler/Library/Application$ Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/share/cmake-3.23/Modules/FindGit.cmake /Users/annaeggler/Library/Application$ Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/share/cmake-3.23/Modules/FindOpenGL.cmake /Users/annaeggler/Library/Application$ Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/share/cmake-3.23/Modules/FindPackageHandleStandardArgs.cmake /Users/annaeggler/Library/Application$ Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/share/cmake-3.23/Modules/FindPackageMessage.cmake /Users/annaeggler/Library/Application$ Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/share/cmake-3.23/Modules/FindThreads.cmake /Users/annaeggler/Library/Application$ Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/share/cmake-3.23/Modules/GNUInstallDirs.cmake /Users/annaeggler/Library/Application$ Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/share/cmake-3.23/Modules/Internal/CheckSourceCompiles.cmake /Users/annaeggler/Library/Application$ Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/share/cmake-3.23/Modules/Platform/Apple-AppleClang-C.cmake /Users/annaeggler/Library/Application$ Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/share/cmake-3.23/Modules/Platform/Apple-AppleClang-CXX.cmake /Users/annaeggler/Library/Application$ Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/share/cmake-3.23/Modules/Platform/Apple-Clang-C.cmake /Users/annaeggler/Library/Application$ Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/share/cmake-3.23/Modules/Platform/Apple-Clang-CXX.cmake /Users/annaeggler/Library/Application$ Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/share/cmake-3.23/Modules/Platform/Apple-Clang.cmake /Users/annaeggler/Library/Application$ Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/share/cmake-3.23/Modules/Platform/Darwin-Initialize.cmake /Users/annaeggler/Library/Application$ Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/share/cmake-3.23/Modules/Platform/Darwin.cmake /Users/annaeggler/Library/Application$ Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/share/cmake-3.23/Modules/Platform/UnixPaths.cmake /Users/annaeggler/Library/Application$ Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/share/cmake-3.23/Modules/WriteBasicConfigVersionFile.cmake CMakeCache.txt CMakeFiles/3.23.2/CMakeCCompiler.cmake CMakeFiles/3.23.2/CMakeCXXCompiler.cmake CMakeFiles/3.23.2/CMakeSystem.cmake _deps/glad-src/CMakeLists.txt _deps/glfw-src/CMake/glfw3.pc.in _deps/glfw-src/CMake/glfw3Config.cmake.in _deps/glfw-src/CMakeLists.txt _deps/glfw-src/src/CMakeLists.txt _deps/glfw-src/src/glfw_config.h.in _deps/libigl-src/CMakeLists.txt _deps/libigl-src/cmake/igl/igl_add_library.cmake _deps/libigl-src/cmake/igl/igl_add_test.cmake _deps/libigl-src/cmake/igl/igl_add_tutorial.cmake _deps/libigl-src/cmake/igl/igl_copy_dll.cmake _deps/libigl-src/cmake/igl/igl_include.cmake _deps/libigl-src/cmake/igl/igl_install.cmake _deps/libigl-src/cmake/igl/igl_target_sources.cmake _deps/libigl-src/cmake/igl/igl_windows.cmake _deps/libigl-src/cmake/igl/modules/core.cmake _deps/libigl-src/cmake/igl/modules/glfw.cmake _deps/libigl-src/cmake/igl/modules/imgui.cmake _deps/libigl-src/cmake/igl/modules/opengl.cmake _deps/libigl-src/cmake/libigl.cmake _deps/libigl-src/cmake/recipes/external/eigen.cmake _deps/libigl-src/cmake/recipes/external/glad.cmake _deps/libigl-src/cmake/recipes/external/glfw.cmake _deps/libigl-src/cmake/recipes/external/imgui.cmake _deps/libigl-src/cmake/recipes/external/imguizmo.cmake _deps/libigl-src/cmake/recipes/external/libigl_imgui_fonts.cmake
+  pool = console
+
+
+#############################################
+# A missing CMake input file is not an error.
+
+build ../CMakeLists.txt ../cmake/libigl.cmake /Users/annaeggler/Library/Application$ Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/share/cmake-3.23/Modules/BasicConfigVersion-SameMajorVersion.cmake.in /Users/annaeggler/Library/Application$ Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/share/cmake-3.23/Modules/CMakeCInformation.cmake /Users/annaeggler/Library/Application$ Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/share/cmake-3.23/Modules/CMakeCXXInformation.cmake /Users/annaeggler/Library/Application$ Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/share/cmake-3.23/Modules/CMakeCommonLanguageInclude.cmake /Users/annaeggler/Library/Application$ Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/share/cmake-3.23/Modules/CMakeDependentOption.cmake /Users/annaeggler/Library/Application$ Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/share/cmake-3.23/Modules/CMakeGenericSystem.cmake /Users/annaeggler/Library/Application$ Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/share/cmake-3.23/Modules/CMakeInitializeConfigs.cmake /Users/annaeggler/Library/Application$ Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/share/cmake-3.23/Modules/CMakeLanguageInformation.cmake /Users/annaeggler/Library/Application$ Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/share/cmake-3.23/Modules/CMakePackageConfigHelpers.cmake /Users/annaeggler/Library/Application$ Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/share/cmake-3.23/Modules/CMakeSystemSpecificInformation.cmake /Users/annaeggler/Library/Application$ Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/share/cmake-3.23/Modules/CMakeSystemSpecificInitialize.cmake /Users/annaeggler/Library/Application$ Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/share/cmake-3.23/Modules/CheckCSourceCompiles.cmake /Users/annaeggler/Library/Application$ Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/share/cmake-3.23/Modules/CheckIncludeFile.cmake /Users/annaeggler/Library/Application$ Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/share/cmake-3.23/Modules/CheckLibraryExists.cmake /Users/annaeggler/Library/Application$ Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/share/cmake-3.23/Modules/Compiler/AppleClang-C.cmake /Users/annaeggler/Library/Application$ Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/share/cmake-3.23/Modules/Compiler/AppleClang-CXX.cmake /Users/annaeggler/Library/Application$ Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/share/cmake-3.23/Modules/Compiler/CMakeCommonCompilerMacros.cmake /Users/annaeggler/Library/Application$ Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/share/cmake-3.23/Modules/Compiler/Clang.cmake /Users/annaeggler/Library/Application$ Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/share/cmake-3.23/Modules/Compiler/GNU.cmake /Users/annaeggler/Library/Application$ Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/share/cmake-3.23/Modules/FetchContent.cmake /Users/annaeggler/Library/Application$ Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/share/cmake-3.23/Modules/FetchContent/CMakeLists.cmake.in /Users/annaeggler/Library/Application$ Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/share/cmake-3.23/Modules/FindGit.cmake /Users/annaeggler/Library/Application$ Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/share/cmake-3.23/Modules/FindOpenGL.cmake /Users/annaeggler/Library/Application$ Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/share/cmake-3.23/Modules/FindPackageHandleStandardArgs.cmake /Users/annaeggler/Library/Application$ Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/share/cmake-3.23/Modules/FindPackageMessage.cmake /Users/annaeggler/Library/Application$ Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/share/cmake-3.23/Modules/FindThreads.cmake /Users/annaeggler/Library/Application$ Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/share/cmake-3.23/Modules/GNUInstallDirs.cmake /Users/annaeggler/Library/Application$ Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/share/cmake-3.23/Modules/Internal/CheckSourceCompiles.cmake /Users/annaeggler/Library/Application$ Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/share/cmake-3.23/Modules/Platform/Apple-AppleClang-C.cmake /Users/annaeggler/Library/Application$ Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/share/cmake-3.23/Modules/Platform/Apple-AppleClang-CXX.cmake /Users/annaeggler/Library/Application$ Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/share/cmake-3.23/Modules/Platform/Apple-Clang-C.cmake /Users/annaeggler/Library/Application$ Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/share/cmake-3.23/Modules/Platform/Apple-Clang-CXX.cmake /Users/annaeggler/Library/Application$ Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/share/cmake-3.23/Modules/Platform/Apple-Clang.cmake /Users/annaeggler/Library/Application$ Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/share/cmake-3.23/Modules/Platform/Darwin-Initialize.cmake /Users/annaeggler/Library/Application$ Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/share/cmake-3.23/Modules/Platform/Darwin.cmake /Users/annaeggler/Library/Application$ Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/share/cmake-3.23/Modules/Platform/UnixPaths.cmake /Users/annaeggler/Library/Application$ Support/JetBrains/Toolbox/apps/CLion/ch-0/222.4167.35/CLion.app/Contents/bin/cmake/mac/share/cmake-3.23/Modules/WriteBasicConfigVersionFile.cmake CMakeCache.txt CMakeFiles/3.23.2/CMakeCCompiler.cmake CMakeFiles/3.23.2/CMakeCXXCompiler.cmake CMakeFiles/3.23.2/CMakeSystem.cmake _deps/glad-src/CMakeLists.txt _deps/glfw-src/CMake/glfw3.pc.in _deps/glfw-src/CMake/glfw3Config.cmake.in _deps/glfw-src/CMakeLists.txt _deps/glfw-src/src/CMakeLists.txt _deps/glfw-src/src/glfw_config.h.in _deps/libigl-src/CMakeLists.txt _deps/libigl-src/cmake/igl/igl_add_library.cmake _deps/libigl-src/cmake/igl/igl_add_test.cmake _deps/libigl-src/cmake/igl/igl_add_tutorial.cmake _deps/libigl-src/cmake/igl/igl_copy_dll.cmake _deps/libigl-src/cmake/igl/igl_include.cmake _deps/libigl-src/cmake/igl/igl_install.cmake _deps/libigl-src/cmake/igl/igl_target_sources.cmake _deps/libigl-src/cmake/igl/igl_windows.cmake _deps/libigl-src/cmake/igl/modules/core.cmake _deps/libigl-src/cmake/igl/modules/glfw.cmake _deps/libigl-src/cmake/igl/modules/imgui.cmake _deps/libigl-src/cmake/igl/modules/opengl.cmake _deps/libigl-src/cmake/libigl.cmake _deps/libigl-src/cmake/recipes/external/eigen.cmake _deps/libigl-src/cmake/recipes/external/glad.cmake _deps/libigl-src/cmake/recipes/external/glfw.cmake _deps/libigl-src/cmake/recipes/external/imgui.cmake _deps/libigl-src/cmake/recipes/external/imguizmo.cmake _deps/libigl-src/cmake/recipes/external/libigl_imgui_fonts.cmake: phony
+
+
+#############################################
+# Clean all the built files.
+
+build clean: CLEAN
+
+
+#############################################
+# Print all primary targets available.
+
+build help: HELP
+
+
+#############################################
+# Make the all target the default.
+
+default all

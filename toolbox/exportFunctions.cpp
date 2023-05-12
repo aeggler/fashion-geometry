@@ -24,7 +24,20 @@ using namespace std;
 using namespace ClipperLib;
 void writeMTL(MatrixXd& Ka, MatrixXd& Ks, MatrixXd& Kd, MatrixXd& Vg, MatrixXi& Fg, string garment, string avName, double interp, string dir){
     cout<<" write file "<<endl;
-    string fileName = "testing_"+avName + "_"+garment+"_stress_in_"+dir+"_interpolate_"+to_string(interp);
+    string fileName;
+    if(interp == 0.){// it is the stress
+        fileName = "coloredGarment_"+avName + "_"+garment+"_stress_in_"+dir;
+    }else if (interp == 1.){// it is the adaption3D
+        fileName = "adaption3D_"+avName + "_"+garment;
+
+    }else if (interp == 2.){
+        fileName = "outline3D_"+avName + "_"+garment;
+    }else if (interp == 3. ){
+        fileName = "adaption2D_"+avName + "_"+garment;
+    }else if (interp == 4.){
+        fileName = "outline2D_"+avName + "_"+garment;
+
+    }
     string objName= fileName+".obj";
     string mtlName = fileName +".mtl";
 
@@ -73,6 +86,14 @@ double triangleArea(const Eigen::Vector3d& a, const Eigen::Vector3d& b, const Ei
     return area;
 }
 bool is_ear( vector<VectorXd>& p, int a, int b, int c){
+//    if(p[a][0]< 909 && p[a][0]>865 && p[a][1]<1067){
+//        return true;
+//    }
+//    if(p[b][0]< 909 && p[b][0]>865 && p[b][1]<1066 &&  p[b][1]> 300){
+//        return true;
+//    }if(p[c][0]< 909 && p[c][0]>865 && p[c][1]<1067){
+//        return true;
+//    }
     Vector3d p_a = p[a];
     Vector3d p_b = p[b];
     Vector3d p_c = p[c];
@@ -95,7 +116,7 @@ bool is_ear( vector<VectorXd>& p, int a, int b, int c){
     }
     auto banew = p_a-p_b;
     auto angle = std::acos(banew.normalized().dot(bc.normalized()))* 180 / M_PI;
-    double thereshAngle = 10;// smaller angle and merge for better pattern!
+    double thereshAngle =5;// smaller angle and merge for better pattern!
     if(angle <thereshAngle|| angle >360-thereshAngle ){
 
         return true;
@@ -460,5 +481,326 @@ void insertToStartEnd(vector<int> &startAndEnd, std::set<int>& cornerset, Matrix
            }
        }
    }
+
+}
+
+void fixRafaPattern(){
+    return;
+    string pref = "/Users/annaeggler/Desktop/Masterarbeit/PatternToSvg/test_data/Paola_top/";
+    string patternFile = pref+"top3D.obj";
+
+    MatrixXd Vg_pattern;
+    MatrixXi Fg_pattern;
+
+    igl::readOBJ(patternFile, Vg_pattern, Fg_pattern);
+    int vert_Size = Vg_pattern.rows();
+    int face_Size = Fg_pattern.rows();
+
+    MatrixXd Vg_patternNew (vert_Size + 4, 3);
+    Vg_patternNew.block(0,0,vert_Size, 3) = Vg_pattern;
+    Vg_patternNew.row(vert_Size ) = Vg_patternNew.row(832);
+    Vg_patternNew(vert_Size, 1) -= 100;
+
+    Vg_patternNew.row(vert_Size+1 ) = Vg_patternNew.row(vert_Size);
+    Vg_patternNew(vert_Size+1, 0) += 10;
+
+    Vg_patternNew.row(vert_Size+2 ) = Vg_patternNew.row(vert_Size);
+    Vg_patternNew(vert_Size+2,0 ) += 10;
+    Vg_patternNew(vert_Size+2,1 ) += 10;
+
+    Vg_patternNew.row(vert_Size+3 ) = Vg_patternNew.row(vert_Size);
+    Vg_patternNew(vert_Size+3,1 ) += 10;
+
+
+    MatrixXi Fg_patternNew (face_Size + 2, 3);
+    Fg_patternNew.block(0,0,face_Size, 3) = Fg_pattern;
+    Fg_patternNew(face_Size,0 ) = vert_Size;
+    Fg_patternNew(face_Size, 1) = vert_Size+1;
+    Fg_patternNew(face_Size, 2) = vert_Size+3;
+
+    Fg_patternNew(face_Size+1,0 ) = vert_Size+1;
+    Fg_patternNew(face_Size+1, 1) = vert_Size+2;
+    Fg_patternNew(face_Size+1, 2) = vert_Size+3;
+
+    igl::writeOBJ ( pref+"paola3D_with_sq.obj", Vg_patternNew,  Fg_patternNew);
+
+
+    //first done
+    patternFile = pref+"top2D.obj";
+
+    MatrixXd Vg_patternP;
+    MatrixXi Fg_patternP;
+
+    igl::readOBJ(patternFile, Vg_patternP, Fg_patternP);
+    vert_Size = Vg_patternP.rows();
+//    face_Size = Fg_patternP;
+
+    Vg_patternNew.resize (vert_Size + 4, 3);
+    Vg_patternNew.block(0,0,vert_Size, 3) = Vg_patternP;
+    Vg_patternNew.row(vert_Size ) = Vg_patternNew.row(1704);
+    Vg_patternNew(vert_Size, 1) -= 100;
+
+    Vg_patternNew.row(vert_Size+1 ) = Vg_patternNew.row(vert_Size);
+    Vg_patternNew(vert_Size+1, 0) += 10;
+
+    Vg_patternNew.row(vert_Size+2 ) = Vg_patternNew.row(vert_Size);
+    Vg_patternNew(vert_Size+2,0 ) += 10;
+    Vg_patternNew(vert_Size+2,1 ) += 10;
+
+    Vg_patternNew.row(vert_Size+3 ) = Vg_patternNew.row(vert_Size);
+    Vg_patternNew(vert_Size+3,1 ) += 10;
+
+     Fg_patternNew.resize (face_Size + 2, 3);
+    Fg_patternNew.block(0,0,face_Size, 3) = Fg_patternP;
+    Fg_patternNew(face_Size,0 ) = vert_Size;
+    Fg_patternNew(face_Size, 1) = vert_Size+1;
+    Fg_patternNew(face_Size, 2) = vert_Size+3;
+
+    Fg_patternNew(face_Size+1,0 ) = vert_Size+1;
+    Fg_patternNew(face_Size+1, 1) = vert_Size+2;
+    Fg_patternNew(face_Size+1, 2) = vert_Size+3;
+
+    igl::writeOBJ ( pref+"paola2D_with_sq.obj", Vg_patternNew,  Fg_patternNew);
+
+    return;
+//    string patternFileNew = "/Users/annaeggler/Desktop/Masterarbeit/Fashion-descriptors/data/moreGarments/man_pants/man_pants_3d_nonCentered.obj";
+//    MatrixXd Vg_pat3;
+//    MatrixXi Fg_pat3;
+//
+//    igl::readOBJ(patternFileNew, Vg_pat3, Fg_pat3);
+//    Vg_pat3(1040,0)=0;
+//    Vg_pat3(1070,0)=0;
+//    Vg_pat3(1024,0)=0;
+//    for(int i= 1094; i<1101; i++){
+//        Vg_pat3(i,0)=0;
+//    }
+//    for(int i= 28; i<39; i++){
+//        Vg_pat3(i,0)=0;
+//    }
+//    Vg_pat3(1076,0)=0;
+//    Vg_pat3(1088,0)=0;
+//    string patternFileWrite = "/Users/annaeggler/Desktop/Masterarbeit/Fashion-descriptors/data/moreGarments/man_pants/man_pants_3d_C.obj";
+//    igl::writeOBJ(patternFileWrite, Vg_pat3, Fg_pat3);
+//
+//    patternFileNew = "/Users/annaeggler/Desktop/Masterarbeit/Fashion-descriptors/data/moreGarments/man_pants/man_pants_2d.obj";
+//    MatrixXd Vg_pat;
+//    MatrixXi Fg_pat;
+//
+//    igl::readOBJ(patternFileNew, Vg_pat, Fg_pat);
+//    MatrixXd VgNew (Vg_pat.rows()+6,3);
+//    VgNew.block(0,0,Vg_pat.rows(), 3) = Vg_pat;
+//   int off = Vg_pat.rows();
+//    VgNew.row(off)= Vg_pat.row(Fg_pat(1891,2));
+//    VgNew.row(off+1)= Vg_pat.row(Fg_pat(1891,1));
+//    VgNew.row(off+2)= Vg_pat.row(Fg_pat(1909,1));
+//    VgNew.row(off+3)= Vg_pat.row(Fg_pat(1958,0));
+//    VgNew.row(off+4)= Vg_pat.row(Fg_pat(1961,0));
+//    VgNew.row(off+5)= Vg_pat.row(Fg_pat(1973,2));
+//    Fg_pat(1891,2) = off;//wrong?
+//    Fg_pat(1891,1) = off+1;
+//    Fg_pat(1901,1) = off+1;
+//    Fg_pat(1917,0) = off+1;
+//    Fg_pat(1909,2) = off+1;
+//    Fg_pat(1909,1) = off+2;
+//
+//
+//    //work fine!
+//    Fg_pat(1958,0) = off+3 ;
+//    Fg_pat(1961,1) = off+3 ;
+//    Fg_pat(1961,0) = off+4 ;
+//    Fg_pat(1973,0) = off+4 ;
+//    Fg_pat(1973,2) = off+5 ;
+//    Fg_pat(1964,0) = off+5 ;
+//    string retString = "/Users/annaeggler/Desktop/Masterarbeit/Fashion-descriptors/data/moreGarments/man_pants/man_pants_2d_split.obj";
+//
+//    igl::writeOBJ ( retString, VgNew,  Fg_pat);
+//
+//
+//return;
+//    string pref = "/Users/annaeggler/Desktop/Masterarbeit/PatternToSvg/test_data/Raphael-Luka/";
+//    string patternFile = pref+"Rapha_2D_add.obj";
+//
+//    MatrixXd Vg_pattern;
+//    MatrixXi Fg_pattern;
+//
+//    igl::readOBJ(patternFile, Vg_pattern, Fg_pattern);
+//    int vert_Size = Vg_pattern.rows();
+//    int face_Size = Fg_pattern.rows();
+//    int offset = 0 ;
+//
+//    MatrixXd Vg_patternNew (vert_Size+offset +2, 3);
+//    Vg_patternNew.block(0,0,vert_Size, 3) = Vg_pattern;
+//    Vg_patternNew.row(vert_Size) = Vg_patternNew.row(1842);
+//    Vg_patternNew.row(vert_Size+1 ) = Vg_patternNew.row(1818);
+//
+//    Fg_pattern(3201, 0) = vert_Size+1;
+//    Fg_pattern(3201, 1) = vert_Size;
+//    Fg_pattern(3195, 0) = vert_Size+1;
+//
+//    Vg_pattern.resize(Vg_patternNew.rows(), 3);
+//    Vg_pattern = Vg_patternNew;
+//    igl::writeOBJ ( pref+"Rapha_2D_add_split.obj", Vg_patternNew,  Fg_pattern);
+//    //first done
+//
+//    vert_Size = Vg_pattern.rows();
+//    Vg_patternNew.resize (vert_Size +3, 3);
+//    Vg_patternNew.block(0,0,vert_Size, 3) = Vg_pattern;
+//
+//    Vg_patternNew.row(vert_Size) = Vg_pattern.row(1854);
+//    Vg_patternNew.row(vert_Size + 1) = Vg_pattern.row(1902);
+//    Vg_patternNew.row(vert_Size + 2) = Vg_pattern.row(1808);
+//    Fg_pattern(3110, 2) = vert_Size;
+//    Fg_pattern(3110, 1) = vert_Size +1 ;
+//    Fg_pattern(3156, 1) = vert_Size +1 ;
+//    Fg_pattern(3214, 0) = vert_Size +1 ;
+//    Fg_pattern(3216, 2) = vert_Size +1 ;
+//    Fg_pattern(3216, 1) = vert_Size +2 ;
+//    igl::writeOBJ ( pref+"Rapha_2D_add_split.obj", Vg_patternNew,  Fg_pattern);
+//    Vg_pattern.resize(Vg_patternNew.rows(), 3);
+//    Vg_pattern = Vg_patternNew;
+//    //second done
+//
+//    vert_Size = Vg_pattern.rows();
+//    Vg_patternNew.resize (vert_Size +2, 3);
+//    Vg_patternNew.block(0,0,vert_Size, 3) = Vg_pattern;
+//    Vg_patternNew(1769, 0) = Vg_patternNew(788, 0);
+//    Vg_patternNew.row(vert_Size) = Vg_patternNew.row(788);
+//    Vg_patternNew.row(vert_Size + 1) = Vg_patternNew.row(1769);
+//    Fg_pattern(3032, 0) = vert_Size;
+//    Fg_pattern(3032, 2) = vert_Size + 1;
+//    igl::writeOBJ ( pref+"Rapha_2D_add_split.obj", Vg_patternNew,  Fg_pattern);
+//    Vg_pattern.resize(Vg_patternNew.rows(), 3);
+//    Vg_pattern = Vg_patternNew;
+//    // third done
+//
+//    vert_Size = Vg_pattern.rows();
+//    Vg_patternNew.resize (vert_Size +2, 3);
+//    Vg_patternNew.block(0,0,vert_Size, 3) = Vg_pattern;
+//    Vg_patternNew.row(vert_Size) = Vg_patternNew.row(1708);
+//    Vg_patternNew.row(vert_Size + 1) = Vg_patternNew.row(3931);
+//    Fg_pattern(3021, 2) = vert_Size;
+//    Fg_pattern(3021, 1) = vert_Size + 1;
+//    Fg_pattern(3016 ,2) = vert_Size;
+//    igl::writeOBJ ( pref+"Rapha_2D_add_split.obj", Vg_patternNew,  Fg_pattern);
+//    Vg_pattern.resize(Vg_patternNew.rows(), 3);
+//    Vg_pattern = Vg_patternNew;
+//    // fourth done
+//
+//    vert_Size = Vg_pattern.rows();
+//    Vg_patternNew.resize (vert_Size +2, 3);
+//    Vg_patternNew.block(0,0,vert_Size, 3) = Vg_pattern;
+//    Vg_patternNew.row(vert_Size) = Vg_patternNew.row(1621);
+//    Vg_patternNew.row(vert_Size + 1) = Vg_patternNew.row(1699);
+//    Fg_pattern(2910, 2) = vert_Size;
+//    Fg_pattern(2910, 1) = vert_Size + 1;
+//    Fg_pattern(2919 ,0) = vert_Size+1;
+//    igl::writeOBJ ( pref+"Rapha_2D_add_split.obj", Vg_patternNew,  Fg_pattern);
+//    Vg_pattern.resize(Vg_patternNew.rows(), 3);
+//    Vg_pattern = Vg_patternNew;
+//    // fifth done
+//
+//    vert_Size = Vg_pattern.rows();
+//    Vg_patternNew.resize (vert_Size +2, 3);
+//    Vg_patternNew.block(0,0,vert_Size, 3) = Vg_pattern;
+//    Vg_patternNew.row(vert_Size) = Vg_patternNew.row(1632);
+//    Vg_patternNew.row(vert_Size + 1) = Vg_patternNew.row(1685);
+//    Fg_pattern(2978, 1) = vert_Size;
+//    Fg_pattern(2862, 1) = vert_Size;
+//    Fg_pattern(2978, 0) = vert_Size + 1;
+//    Fg_pattern(2866 ,0) = vert_Size+1;
+//    igl::writeOBJ ( pref+"Rapha_2D_add_split.obj", Vg_patternNew,  Fg_pattern);
+//    Vg_pattern.resize(Vg_patternNew.rows(), 3);
+//    Vg_pattern = Vg_patternNew;
+//    // sixth done
+//
+//    vert_Size = Vg_pattern.rows();
+//    Vg_patternNew.resize (vert_Size +2, 3);
+//    Vg_patternNew.block(0,0,vert_Size, 3) = Vg_pattern;
+//    Vg_patternNew.row(vert_Size) = Vg_patternNew.row(3635);
+//    Vg_patternNew.row(vert_Size + 1) = Vg_patternNew.row(3582);
+//    Fg_pattern(6118, 2) = vert_Size;
+//    Fg_pattern(6117, 0) = vert_Size;
+//    Fg_pattern(6118, 0) = vert_Size + 1;
+////    Fg_pattern(2866 ,0) = vert_Size+1;
+//    igl::writeOBJ ( pref+"Rapha_2D_add_split.obj", Vg_patternNew,  Fg_pattern);
+//    Vg_pattern.resize(Vg_patternNew.rows(), 3);
+//    Vg_pattern = Vg_patternNew;
+//    // seventh done
+//
+//    vert_Size = Vg_pattern.rows();
+//    Vg_patternNew.resize (vert_Size +2, 3);
+//    Vg_patternNew.block(0,0,vert_Size, 3) = Vg_pattern;
+////    Vg_patternNew(3571,0)=209;
+////    Vg_patternNew(3571,1)= Vg_patternNew(1959,1);
+//    Vg_patternNew.row(vert_Size) = Vg_patternNew.row(3571);
+//    Vg_patternNew.row(vert_Size + 1) = Vg_patternNew.row(3649);
+//    Fg_pattern(6152, 1) = vert_Size;
+//    Fg_pattern(6161, 0) = vert_Size+1;
+//    Fg_pattern(6152, 2) = vert_Size + 1;
+//    igl::writeOBJ ( pref+"Rapha_2D_add_split.obj", Vg_patternNew,  Fg_pattern);
+//    Vg_pattern.resize(Vg_patternNew.rows(), 3);
+//    Vg_pattern = Vg_patternNew;
+//    // eighth done
+//
+//    vert_Size = Vg_pattern.rows();
+//    Vg_patternNew.resize (vert_Size +2, 3);
+//    Vg_patternNew.block(0,0,vert_Size, 3) = Vg_pattern;
+//    Vg_patternNew.row(vert_Size) = Vg_patternNew.row(1950);
+//    Vg_patternNew.row(vert_Size + 1) = Vg_patternNew.row(4176);
+//    Fg_pattern(6758, 1) = vert_Size;
+//    Fg_pattern(6758, 2) = vert_Size+1;
+//    Fg_pattern(6258, 1) = vert_Size ;
+//    igl::writeOBJ ( pref+"Rapha_2D_add_split.obj", Vg_patternNew,  Fg_pattern);
+//    Vg_pattern.resize(Vg_patternNew.rows(), 3);
+//    Vg_pattern = Vg_patternNew;
+//    // nineth done
+//
+//    vert_Size = Vg_pattern.rows();
+//    Vg_patternNew.resize (vert_Size +2, 3);
+//    Vg_patternNew.block(0,0,vert_Size, 3) = Vg_pattern;
+//    Vg_patternNew.row(vert_Size) = Vg_patternNew.row(3792);
+//    Vg_patternNew.row(vert_Size + 1) = Vg_patternNew.row(3768);
+//    Fg_pattern(6443, 2) = vert_Size;
+//    Fg_pattern(6443, 0) = vert_Size+1;
+//    Fg_pattern(6437, 0) = vert_Size+1 ;
+//    igl::writeOBJ ( pref+"Rapha_2D_add_split.obj", Vg_patternNew,  Fg_pattern);
+//    Vg_pattern.resize(Vg_patternNew.rows(), 3);
+//    Vg_pattern = Vg_patternNew;
+//    // tenth done
+//
+//    vert_Size = Vg_pattern.rows();
+//    Vg_patternNew.resize (vert_Size +3, 3);
+//    Vg_patternNew.block(0,0,vert_Size, 3) = Vg_pattern;
+//    Vg_patternNew.row(vert_Size) = Vg_patternNew.row(3804);
+//    Vg_patternNew.row(vert_Size + 1) = Vg_patternNew.row(3885);
+//    Vg_patternNew.row(vert_Size + 2) = Vg_patternNew.row(3760);
+//
+//    Fg_pattern(6352, 1) = vert_Size;
+//    Fg_pattern(6304, 1) = vert_Size;
+//    Fg_pattern(6304, 2) = vert_Size+1;
+//    Fg_pattern(6457, 0) = vert_Size+1;
+//    Fg_pattern(6343, 2) = vert_Size+1;
+//    Fg_pattern(6343, 0) = vert_Size+2;
+//    Fg_pattern(6460, 1) = vert_Size+2 ;
+//    igl::writeOBJ ( pref+"Rapha_2D_add_split.obj", Vg_patternNew,  Fg_pattern);
+//    Vg_pattern.resize(Vg_patternNew.rows(), 3);
+//    Vg_pattern = Vg_patternNew;
+//    // 11th done
+//
+//    vert_Size = Vg_pattern.rows();
+//    Vg_patternNew.resize (vert_Size +2, 3);
+//    Vg_patternNew.block(0,0,vert_Size, 3) = Vg_pattern;
+//    Vg_patternNew.row(vert_Size) = Vg_patternNew.row(3843);
+//    Vg_patternNew(3719, 0)= Vg_patternNew(2738, 0);
+//    Vg_patternNew.row(vert_Size + 1) = Vg_patternNew.row(3719);
+//
+//    Fg_pattern(6274, 0) = vert_Size;
+//    Fg_pattern(6274, 1) = vert_Size+1;
+//    Fg_pattern(6272, 2) = vert_Size+1;
+//
+//    igl::writeOBJ ( pref+"Rapha_2D_add_split.obj", Vg_patternNew,  Fg_pattern);
+//    Vg_pattern.resize(Vg_patternNew.rows(), 3);
+//    Vg_pattern = Vg_patternNew;
+//    // 11th done
 
 }

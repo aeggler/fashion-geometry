@@ -1,0 +1,3 @@
+/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build2/_deps/libigl_imgui_fonts-subbuild/CMakeFiles/libigl_imgui_fonts-populate.dir
+/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build2/_deps/libigl_imgui_fonts-subbuild/CMakeFiles/edit_cache.dir
+/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build2/_deps/libigl_imgui_fonts-subbuild/CMakeFiles/rebuild_cache.dir

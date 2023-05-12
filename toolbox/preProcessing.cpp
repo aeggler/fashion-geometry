@@ -1085,6 +1085,26 @@ void splitAndSmooth(MatrixXd& Vg,MatrixXi& Fg,MatrixXd& Vg_pattern,MatrixXi& Fg_
             }
         }
     }
+    if(garment == "man_pants"){
+        cout<<"in man pants"<<endl; cout<<"************"<<endl;
+         vector< vector<int> > vvAdj, vfAdj;
+         createVertexFaceAdjacencyList(Fg_pattern, vfAdj);
+         igl::adjacency_list(Fg_pattern, vvAdj);
+        Vg(1088,0)=0;
+         for(int i=0; i<Fg_pattern.rows(); i++){
+             for(int j = 0; j< 3; j++){
+                 if( isBoundaryVertex(Vg_pattern,Fg_pattern(i,j),vvAdj, vfAdj)){
+                     if(abs(Vg(Fg(i,j), 0)) < 2 ||
+                     (Fg(i,j)<=38 && Fg(i,j)>=34 )||
+                     Fg(i,j)==1076
+                    ){
+                         Vg(Fg(i,j),0) = 0;
+                     }
+                 }
+             }
+         }
+         igl::writeOBJ("changedPositions.obj", Vg, Fg);
+    }
 
     insertPlane(Vg, Fg, Vg_pattern, Fg_pattern, garment, garmentEXT);
 
