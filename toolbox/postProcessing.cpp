@@ -34,7 +34,7 @@ using namespace Eigen;
 // from start to end in direction of the middle vertex
 
 void smoothBetweenVertices(MatrixXd& currPattern, MatrixXi& Fg_pattern, vector<int>& startAndEnd){
-    cout<<startAndEnd.size()<<" start and end size"<<endl;
+//    cout<<startAndEnd.size()<<" start and end size"<<endl;
     vector<vector<int>> boundaryL;
     int patch =-1; int startIdx = -1; int midIdx = -1; int endIdx = -1;
 
@@ -1064,9 +1064,10 @@ void mergeTriagulatedAndPattern(const vector<VectorXd>& connectedVertVec,
     cout<<"Clip item No "<<globCount<<endl;
     for(int i = 0; i< boundaryLGar.size(); i++){
             for(int j=0; j<boundaryLGar[i].size(); j++){
+
                 int vert = boundaryLGar[i][j];
                 int minId = -1;
-                double minDist= 0.1;
+                double minDist= 2.1;
                 bool found = false;
                 for(int vgrow=0; vgrow < boundaryLinsert[0].size(); vgrow++){
                     VectorXd patV =  Vg_retri.row(boundaryLinsert[0][vgrow]);
@@ -1090,8 +1091,8 @@ void mergeTriagulatedAndPattern(const vector<VectorXd>& connectedVertVec,
             }
 
         }
-
-    for(int j=0; j< boundaryLGar[patch].size()-1; j++){
+//changed from size()-1
+    for(int j=0; j< boundaryLGar[patch].size(); j++){
         int currVertPatt = boundaryLGar[patch][j];
         int nextVertPatt = boundaryLGar[patch][(j+1)%  boundaryLGar[patch].size()];
         if(pattMer(currVertPatt)!=-1 && pattMer(nextVertPatt)!=-1){
@@ -1155,8 +1156,6 @@ void mergeTriagulatedAndPattern(const vector<VectorXd>& connectedVertVec,
         }
 //        replaceInFacesWO(i, newId_notMerged, Fg_retri_notMerged, Fg_orig);
 //        newId_notMerged++;
-
-
     }
 //    Fg_notMerged.block(Fg_pattern.rows() ,0 ,Fg_retri.rows(), 3) = Fg_retri_notMerged;
 
@@ -1168,7 +1167,6 @@ void mergeTriagulatedAndPattern(const vector<VectorXd>& connectedVertVec,
     }
     Fg_new.block(0,0,Fg_pattern.rows(), 3 ) = Fg_pattern;
     Fg_new.block(faceOffset, 0, Fg_retri.rows(), 3) = Fg_retri;
-    cout<<"Face "<<faceOffset+2<<" "<<Fg_new.row(faceOffset+2)<<endl;
     currPattern_new.block(0,0,currPattern.rows(), 3 ) = currPattern;
     currPattern_new.block(offset, 0,count, 3 ) = Vg_help.block(0,0, count, 3);
 

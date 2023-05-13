@@ -512,6 +512,109 @@ void insertToStartEnd(vector<int> &startAndEnd, std::set<int>& cornerset, Matrix
 }
 
 void fixRafaPattern(){
+    for(int iterations = 0 ; iterations <3; iterations++){
+        for(int i =1; i<=5; i++){
+            for(int j = 1; j<= 5; j++){
+                if(i == 5&&j>3) continue;
+                MatrixXd currPattern;
+                MatrixXi Fg_pattern_curr;
+                string avName = "CLO_to_MH_woman_"+to_string(i)+"_"+ to_string(j);
+                string smoothPatternFile =  "patternComputed_"+avName+"_"+"skirt_2"+".obj";
+                igl::readOBJ(smoothPatternFile, currPattern, Fg_pattern_curr);
+                vector<int> startAndEnd;
+                startAndEnd.clear();
+                startAndEnd.push_back(1392);
+                startAndEnd.push_back(1391);
+                startAndEnd.push_back(1418);
+                smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+                smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+                startAndEnd.clear();
+
+                startAndEnd.push_back(704);
+                startAndEnd.push_back(703);
+                startAndEnd.push_back(701);
+                smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+                smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+                startAndEnd.clear();
+
+                startAndEnd.push_back(1445);
+                startAndEnd.push_back(1444);
+                startAndEnd.push_back(1442);
+                smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+                smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+                startAndEnd.clear();
+
+                startAndEnd.push_back(677);
+                startAndEnd.push_back(669);
+                startAndEnd.push_back(651);
+                smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+                smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+                startAndEnd.clear();
+//new
+
+                startAndEnd.push_back(339);
+                startAndEnd.push_back(331);
+                startAndEnd.push_back(701);
+                smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+                smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+                startAndEnd.clear();
+
+                startAndEnd.push_back(1442);
+                startAndEnd.push_back(1079);
+                startAndEnd.push_back(1080);
+                smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+                smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+                startAndEnd.clear();
+                startAndEnd.push_back(741);
+                startAndEnd.push_back(742);
+                startAndEnd.push_back(764);
+                smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+//                smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+                startAndEnd.clear();
+                startAndEnd.push_back(1080);
+                startAndEnd.push_back(1081);
+                startAndEnd.push_back(1103);
+                smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+//                smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+                startAndEnd.clear();
+                startAndEnd.push_back(339);
+                startAndEnd.push_back(340);
+                startAndEnd.push_back(362);
+                smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+//                smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+                startAndEnd.clear();
+
+                startAndEnd.push_back(0);
+                startAndEnd.push_back(1);
+                startAndEnd.push_back(23);
+                smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+//                smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+                startAndEnd.clear();
+
+
+                startAndEnd.push_back(1437);
+                startAndEnd.push_back(1438);
+                startAndEnd.push_back(1441);
+                smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+//                smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+                startAndEnd.clear();
+
+                startAndEnd.push_back(1434);
+                startAndEnd.push_back(1435);
+                startAndEnd.push_back(1439);
+                smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+                smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+                startAndEnd.clear();
+
+
+                if(!(i==1 && j==1)) igl::writeOBJ(smoothPatternFile, currPattern, Fg_pattern_curr);
+            }
+        }
+    }
+
+
+
+
     return;
     string pref = "/Users/annaeggler/Desktop/Masterarbeit/PatternToSvg/test_data/Paola_top/";
     string patternFile = pref+"top3D.obj";
