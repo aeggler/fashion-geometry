@@ -496,6 +496,9 @@ void splitVertexFromCVE( cutVertEntry*& cve,
         bool tearIsUseful = false;
         checkIfCutIsUsefulForAdjFace(tearIsUseful, vfAdj, cve, cutDirection, Fg, handledVerticesSet, true );
 
+//        if(cve->vert== 31){
+//            cout<<tipVertices.find(cve->vert) != tipVertices.end()<<endl;
+//        }
         if(!globForceCut && (!tearIsUseful|| tipVertices.find(cve->vert) != tipVertices.end())){
             cout<<"STOP now because of adj face stress condition  "<<tearIsUseful<<globForceCut<<(tipVertices.find(cve->vert) != tipVertices.end())<<endl;
 
