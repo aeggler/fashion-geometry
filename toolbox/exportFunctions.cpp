@@ -18,6 +18,7 @@
 #include <igl/readOBJ.h>
 #include <set>
 #include "postProcessing.h"
+#include "adjacency.h"
 
 using namespace Eigen;
 using namespace std;
@@ -36,6 +37,13 @@ void writeMTL(MatrixXd& Ka, MatrixXd& Ks, MatrixXd& Kd, MatrixXd& Vg, MatrixXi& 
         fileName = "adaption2D_"+avName + "_"+garment;
     }else if (interp == 4.){
         fileName = "outline2D_"+avName + "_"+garment;
+
+    }
+    else if (interp == 10.){
+        fileName = "removed2D_"+avName + "_"+garment;
+
+    }else if (interp == 11.){
+        fileName = "baseOfRemoval2D_"+avName + "_"+garment;
 
     }
     string objName= fileName+".obj";
@@ -460,12 +468,31 @@ void movePatches(){
 
 void insertToStartEnd(vector<int> &startAndEnd, std::set<int>& cornerset, MatrixXd& currPattern, MatrixXi& Fg_pattern_curr,
                        vector<vector<int>> &bd ){
-
+    vector<vector<int>> vfAdj;
+    createVertexFaceAdjacencyList(Fg_pattern_curr, vfAdj);
+    int offset = Fg_pattern_curr.rows()/2;
    for(int i=0; i<bd.size(); i++){
        int corner = -1; int prevCorner = -1; int next = -1;
        for(int j=0; j<= bd[i].size(); j++){
             int val = j%(bd[i].size());
-           if(cornerset.find(bd[i][val])!= cornerset.end()){
+            int nextVal =  (j +1 ) % (bd[i].size());
+            int face = adjacentFaceToEdge(bd[i][val], bd[i][nextVal], -1, vfAdj);
+            int otherFace = face-offset;
+            int idx = 0;
+            while (Fg_pattern_curr(face, idx)!= bd[i][val] && idx < 4){
+                idx++;
+            }
+            if(idx==4){
+                cout<<"error not found "<<endl;
+                cout<<"*****************"<<endl;
+                cout<<"****************"<<endl;
+                cout<<"*****************"<<endl;
+                cout<<"*****************"<<endl;
+                cout<<"*****************"<<endl;
+                cout<<"*****************"<<endl;
+
+            }
+           if(cornerset.find(bd[i][val])!= cornerset.end() || (otherFace>0 && cornerset.find(Fg_pattern_curr(otherFace, idx))!= cornerset.end())){
                //found corner
                prevCorner = corner;
                corner = bd[i][val];

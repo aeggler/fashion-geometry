@@ -1917,6 +1917,8 @@ int main(int argc, char *argv[])
                     Fg_pattern_curr.resize(duplRemF.rows(), 3); Fg_pattern_curr = duplRemF ;
                 }
 
+
+
                 viewer.selected_data_index = 0;
 
                 viewer.data().clear();
@@ -1931,23 +1933,64 @@ int main(int argc, char *argv[])
                 C.col(1).setConstant(0.1);
                 viewer.data().set_colors(C);
 
+                MatrixXd Ka, Ks, Kd;
+                Ka = viewer.data().F_material_ambient;
+                Kd = viewer.data().F_material_diffuse;
+                Ks = viewer.data().F_material_specular;
+                string dir = "u";
+                // 10 for inverse red area
+                writeMTL(Ka,Ks, Kd, currPattern, Fg_pattern_curr, garment, avName, 10, dir );
 
+                // make sure the outline pattern is symmetric
+                MatrixXi halfFaces (mapToFg.rows()/2, 3);
+                halfFaces = mapToFg.block(0,0,mapToFg.rows()/2, 3);
+                MatrixXd duplRemV; MatrixXi duplRemF;
+                duplicatePattern(duplRemV, duplRemF,mapToVg, halfFaces, T_sym_pattern);
+//                igl::writeOBJ("testSym.obj" ,duplRemV ,duplRemF);
+                mapToVg.resize(duplRemV.rows(), 3); mapToVg = duplRemV;
+                mapToFg.resize(duplRemF.rows(), 3); mapToFg = duplRemF;
                 viewer.selected_data_index = 2;
                 viewer.data().clear();
+                C.resize(mapToFg.rows(), 3);
+                C.col(2).setConstant(0);
+                C.col(1).setConstant(1);
+                C.col(0).setConstant(1);
+                viewer.data().set_mesh(mapToVg, mapToFg);
+                viewer.data().set_colors(C);
+                MatrixXd Kas, Kss, Kds;
+                Kas = viewer.data().F_material_ambient;
+                Kds = viewer.data().F_material_diffuse;
+                Kss = viewer.data().F_material_specular;
+                // 11 for inverse base
+                writeMTL(Kas , Kss, Kds, mapToVg, mapToFg, garment, avName, 11, dir );
+
                 viewer.selected_data_index = 1;
                 viewer.data().clear();
                 viewer.data().show_lines = false;
 
 
-                MatrixXi Fg_toPattern = mapFromFg; // todo not always
-                MatrixXd Vg_toPattern = mapFromVg; // todo not always
+                MatrixXi Fg_toPattern = mapToFg; //mapFromFg; // todo not always
+                MatrixXd Vg_toPattern = mapToVg; // mapFromVg; // todo not always
 
                 MatrixXi boundaryOfToPattern;
                 computeBoundaryEdges(Fg_toPattern, boundaryOfToPattern);
-                viewer.data().set_edges(Vg_toPattern, boundaryOfToPattern, Eigen::RowVector3d(0, 0, 1));
 
-//                viewer.data().set_edges(visToPattern, boundaryOfToPattern, Eigen::RowVector3d(0, 0, 1));
-//                viewer.data().point_size = 5.f;}
+                viewer.data().set_edges(Vg_toPattern, boundaryOfToPattern, Eigen::RowVector3d(0, 0, 1));
+                string objfileName = "outlineRemoval2D_"+avName + "_"+garment + ".obj";
+                std::ofstream obj_file(objfileName);
+
+                // Write the vertex positions to the OBJ file
+                for (int i = 0; i < Vg_toPattern.rows(); i ++) {
+                    obj_file << "v " << Vg_toPattern(i,0) << " " <<  Vg_toPattern(i,1) << " " <<  Vg_toPattern(i,2) << std::endl;
+                }
+
+                for (int j = 0; j < boundaryOfToPattern.rows(); j++) {
+                    obj_file << "l "<<boundaryOfToPattern(j,0)+1<<" "<<boundaryOfToPattern(j,1)+1<<endl;
+                }
+
+                // Close the output file
+                obj_file.close();
+//
             }
             if(ImGui::Button("End Modification", ImVec2(-1, 0))){
                 igl::writeOBJ("finished_retri_writtenPattern_"+avName+"_"+garmentExt +".obj", currPattern, Fg_pattern_curr);
@@ -1959,6 +2002,11 @@ int main(int argc, char *argv[])
         if (ImGui::CollapsingHeader("Inverse direction", ImGuiTreeNodeFlags_OpenOnArrow)) {
 
             if(ImGui::Button("Map back ", ImVec2(-1, 0))){
+
+                smoothGarmentOutline();
+                smoothGarmentOutline();
+                smoothGarmentOutline();
+
                 string modifiedPattern  = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/finished_retri_writtenPattern_"+ avName +"_"+ garmentExt +".obj";
                MatrixXd addedFabricPatternVg; MatrixXi addedFabricPatternFg;
                 igl::readOBJ(modifiedPattern, addedFabricPatternVg, addedFabricPatternFg);
@@ -2089,25 +2137,20 @@ int main(int argc, char *argv[])
 
                 igl::readPLY("finalGarmentPattern_"+avName+"_"+garmentExt+"_backIn3d.ply", adaptedPatternIn3d, adaptedPatternIn3d_faces);
                 MatrixXd C = MatrixXd::Zero(adaptedPatternIn3d_faces.rows(), 3);
-                MatrixXd colrScatter;
-                computeCols(size, colrScatter);
+//                MatrixXd colrScatter;
+//                computeCols(size, colrScatter);
                 C.col(1).setConstant(1);
                 C.col(0).setConstant(1);
                 int offset = C.rows()/2;
+                Eigen::RowVector3d dodger_blue(30./255., 144./255., 1);
+
                 for(int i=0; i<size; i++){
                     for(int j=0; j<perFaceNewFaces[i].size(); j++){
                         double val = (((double)i)/((double)(size+1)));
-//                        C(perFaceNewFaces[i][j], 0) = val;
-//                        C(perFaceNewFaces[i][j], 2) = (1-val);
-//                        if(symetry){
-//                            C(perFaceNewFaces[i][j]+offset, 0) = val;
-//                            C(perFaceNewFaces[i][j]+offset, 2) = (1-val);
-//                        }
-                        C.row(perFaceNewFaces[i][j]) = colrScatter.row(i);
-//                        C(perFaceNewFaces[i][j], 2) = (1-val);
+                        C.row(perFaceNewFaces[i][j]) = dodger_blue; //colrScatter.row(i);
+
                         if(symetry){
-                            C.row(perFaceNewFaces[i][j]+offset) = colrScatter.row(i);
-//                            C(perFaceNewFaces[i][j]+offset, 2) = (1-val);
+                            C.row(perFaceNewFaces[i][j]+offset) =  C.row(perFaceNewFaces[i][j]);
                         }
                     }
                 }
@@ -2123,21 +2166,9 @@ int main(int argc, char *argv[])
                 Kd = viewer.data().F_material_diffuse;
                 Ks = viewer.data().F_material_specular;
                 string dir = "u";
-                if(garment=="top"){
-//                    smoothGarment();
-                    smoothOutline(adaptedPatternIn3d,adaptedPatternIn3d_faces );
-                    smoothOutline(adaptedPatternIn3d,adaptedPatternIn3d_faces );
 
-                }else if (garment == "skirt"){
-//                    smoothGarment();
-//                    smoothGarmentOutline();
-//                    smoothGarment();
-//                    smoothGarmentOutline();
-                    smoothOutline(adaptedPatternIn3d,adaptedPatternIn3d_faces );
-                    smoothOutline(adaptedPatternIn3d,adaptedPatternIn3d_faces );
-                }
 // 1 for 3D
-                writeMTL(Ka,Ks, Kd, Vg, Fg, garment, avName, 1, dir );
+                writeMTL(Ka,Ks, Kd, adaptedPatternIn3d, adaptedPatternIn3d_faces, garment, avName, 1, dir );
             }
             if(ImGui::Button("Show initial in 2D", ImVec2(-1, 0))){
                 MatrixXd C = MatrixXd::Zero(Fg_pattern_orig.rows(), 3);
@@ -2202,17 +2233,18 @@ int main(int argc, char *argv[])
                 MatrixXd C = MatrixXd::Zero(adaptedPatternIn3d_faces.rows(), 3);
                 C.col(1).setConstant(1);
                 C.col(0).setConstant(1);
-                MatrixXd colrScatter;
-                computeCols(size, colrScatter);
+//                MatrixXd colrScatter;
+//                computeCols(size, colrScatter);
+
+                Eigen::RowVector3d dodger_blue(30./255., 144./255., 1);
                 int offset = C.rows()/2;
                 for(int i=0; i<size; i++){
                     for(int j=0; j<perFaceNewFaces[i].size(); j++){
                         double val = (((double)i)/((double)(size+1)));
-                        C.row(perFaceNewFaces[i][j]) = colrScatter.row(i);
-//                        C(perFaceNewFaces[i][j], 2) = (1-val);
+                        C.row(perFaceNewFaces[i][j]) = dodger_blue;
+//
                         if(symetry){
-                            C.row(perFaceNewFaces[i][j]+offset) = colrScatter.row(i);
-//                            C(perFaceNewFaces[i][j]+offset, 2) = (1-val);
+                            C.row(perFaceNewFaces[i][j]+offset) = C.row(perFaceNewFaces[i][j]);
                         }
 
                     }
@@ -2231,21 +2263,13 @@ int main(int argc, char *argv[])
                 Kd = viewer.data().F_material_diffuse;
                 Ks = viewer.data().F_material_specular;
                 string dir = "u";
-                if(garment=="top"){
-//                    smoothGarment();
-                    smoothOutline(adaptedPatternIn3d, adaptedPatternIn3d_faces);
-                }else if (garment == "skirt"){
-//                    smoothGarment();
-                    smoothOutline(adaptedPatternIn3d, adaptedPatternIn3d_faces);
-//                    smoothGarment();
-//                    smoothGarmentOutline();
-//                    smoothGarmentOutline();
-                }
+
                 // 3 for 2D
-                writeMTL(Ka,Ks, Kd, Vg, Fg, garment, avName, 3, dir );
+                writeMTL(Ka,Ks, Kd, adaptedPatternIn3d, adaptedPatternIn3d_faces, garment, avName, 3, dir );
 
                 vector<vector<int>> boundaryL_toPattern;
                 igl::boundary_loop(adaptedPatternIn3d_faces, boundaryL_toPattern);
+
                 viewer.selected_data_index = 2;
                 viewer.data().clear();
                 int boundVert=0;
@@ -2256,15 +2280,27 @@ int main(int argc, char *argv[])
                 MatrixXi boundaryOfToPattern(boundVert, 2);
                 MatrixXd vertPoints(boundVert, 3);
                 int curr = 0;
+                // Open the output file
+                string objfileName = "outline2D_"+avName + "_"+garment + ".obj";
+                std::ofstream obj_file(objfileName);
+
+                // Write the vertex positions to the OBJ file
+                for (int i = 0; i < adaptedPatternIn3d.rows(); i ++) {
+                    obj_file << "v " << adaptedPatternIn3d(i,0) << " " <<  adaptedPatternIn3d(i,1) << " " <<  adaptedPatternIn3d(i,2) << std::endl;
+                }
+
                 for (auto bli: boundaryL_toPattern) {
                     for (int j = 0; j < bli.size(); j++) {
+                        obj_file << "l "<<bli[j]+1<<" "<<bli[(j + 1) % (bli.size())]+1<<endl;
                         boundaryOfToPattern(curr, 0) = bli[j];
                         boundaryOfToPattern(curr, 1) = bli[(j + 1) % (bli.size())];
                         curr++;
                     }
                 }
+
+                // Close the output file
+                obj_file.close();
                 viewer.data().set_edges(adaptedPatternIn3d, boundaryOfToPattern, Eigen::RowVector3d(0, 0, 1));
-                writeMTL(Ka,Ks, Kd, Vg, Fg, garment, avName, 4, dir );
 
             }
 
@@ -2295,28 +2331,28 @@ int main(int argc, char *argv[])
                 fixRafaPattern();
 
                 igl::readPLY("finalGarmentPattern_"+avName+"_"+garmentExt+"_backIn3d.ply", adaptedPatternIn3d, adaptedPatternIn3d_faces);
-                MatrixXd C = MatrixXd::Zero(adaptedPatternIn3d_faces.rows(), 3);
-                C.col(1).setConstant(1);
-                C.col(0).setConstant(1);
-                int offset = C.rows()/2;
-                for(int i=0; i<size; i++){
-                    for(int j=0; j<perFaceNewFaces[i].size(); j++){
-                        double val = (((double)i)/((double)(size+1)));
-                        C(perFaceNewFaces[i][j], 0) = val;
-                        C(perFaceNewFaces[i][j], 2) = (1-val);
-                        if(symetry){
-                            C(perFaceNewFaces[i][j]+offset, 0) = val;
-                            C(perFaceNewFaces[i][j]+offset, 2) = (1-val);
-                        }
-
-                    }
-                }
+//                MatrixXd C = MatrixXd::Zero(adaptedPatternIn3d_faces.rows(), 3);
+//                C.col(1).setConstant(1);
+//                C.col(0).setConstant(1);
+//                int offset = C.rows()/2;
+//                for(int i=0; i<size; i++){
+//                    for(int j=0; j<perFaceNewFaces[i].size(); j++){
+//                        double val = (((double)i)/((double)(size+1)));
+//                        C(perFaceNewFaces[i][j], 0) = val;
+//                        C(perFaceNewFaces[i][j], 2) = (1-val);
+//                        if(symetry){
+//                            C(perFaceNewFaces[i][j]+offset, 0) = val;
+//                            C(perFaceNewFaces[i][j]+offset, 2) = (1-val);
+//                        }
+//
+//                    }
+//                }
 
                 viewer.selected_data_index = 0;
                 viewer.data().clear();
                 viewer.data().show_lines = false;
-                viewer.data().set_mesh(adaptedPatternIn3d, adaptedPatternIn3d_faces);
-                viewer.data().set_colors(C);
+//                viewer.data().set_mesh(adaptedPatternIn3d, adaptedPatternIn3d_faces);
+//                viewer.data().set_colors(C);
 
                 vector<vector<int>> boundaryL_toPattern;
                 igl::boundary_loop(adaptedPatternIn3d_faces, boundaryL_toPattern);
@@ -2328,17 +2364,32 @@ int main(int argc, char *argv[])
                 }
 
                 if(showPatchBoundary){
+
                     MatrixXi boundaryOfToPattern(boundVert, 2);
                     MatrixXd vertPoints(boundVert, 3);
                     int curr = 0;
+                    // Open the output file
+                    string objfileName = "outline3D_"+avName + "_"+garment + ".obj";
+                    std::ofstream obj_file(objfileName);
+
+                    // Write the vertex positions to the OBJ file
+                    for (int i = 0; i < adaptedPatternIn3d.rows(); i ++) {
+                        obj_file << "v " << adaptedPatternIn3d(i,0) << " " <<  adaptedPatternIn3d(i,1) << " " <<  adaptedPatternIn3d(i,2) << std::endl;
+                    }
+
                     for (auto bli: boundaryL_toPattern) {
                         for (int j = 0; j < bli.size(); j++) {
+                            obj_file << "l "<<bli[j]+1<<" "<<bli[(j + 1) % (bli.size())]+1<<endl;
                             boundaryOfToPattern(curr, 0) = bli[j];
                             boundaryOfToPattern(curr, 1) = bli[(j + 1) % (bli.size())];
                             curr++;
                         }
                     }
+
+                    // Close the output file
+                    obj_file.close();
                     viewer.data().set_edges(adaptedPatternIn3d, boundaryOfToPattern, Eigen::RowVector3d(0, 0, 1));
+
                 }
 
             }
@@ -2972,6 +3023,7 @@ void smoothGarment() {
     }
 }
 void smoothOutline(MatrixXd & Vpattern ,MatrixXi Fpattern){
+
     std::vector<std::vector<int> > boundaryLnew;
     igl::boundary_loop(Fpattern, boundaryLnew);
     double lamda = 0.1;
@@ -3929,8 +3981,14 @@ void dotimeStep(igl::opengl::glfw::Viewer& viewer){
     Timer t("Time step ");
     std::cout<<endl;
     std::cout<<"-------------- Time Step ------------"<<timestepCounter<<endl;
-    if( !patternExists &&timestepCounter >= 15) return;
-    if( patternExists &&timestepCounter >= 10) return;
+    if( !patternExists &&timestepCounter >= 15){
+        simulate = false;
+        return;
+    }
+    if( patternExists &&timestepCounter >= 10){
+        simulate = false;
+        return;
+    }
     // the stress is already computed, we can use it here
     Eigen::MatrixXd x_new = Vg;
     p = Vg;
