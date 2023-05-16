@@ -94,9 +94,22 @@ double triangleArea(const Eigen::Vector3d& a, const Eigen::Vector3d& b, const Ei
     return area;
 }
 bool is_ear( vector<VectorXd>& p, int a, int b, int c){
-//    if(p[a][0]< 909 && p[a][0]>865 && p[a][1]<1067){
+    if(p[b][0]< 658.5 && p[b][0]>657 && p[b][1]<1613){
+        cout<<" foundn evil"<<endl;
+        return true;
+
+    }
+    if(p[a][0]< 658.5 && p[a][0]>657 && p[a][1]<1613){
+        cout<<" foundn evil"<<endl;
+        return true;
+
+    }
+    if(p[c][0]< 658.5 && p[c][0]>657 && p[c][1]<1613){
+        cout<<" foundn evil"<<endl;
 //        return true;
-//    }
+
+    }
+
 //    if(p[b][0]< 909 && p[b][0]>865 && p[b][1]<1066 &&  p[b][1]> 300){
 //        return true;
 //    }if(p[c][0]< 909 && p[c][0]>865 && p[c][1]<1067){
@@ -124,7 +137,7 @@ bool is_ear( vector<VectorXd>& p, int a, int b, int c){
     }
     auto banew = p_a-p_b;
     auto angle = std::acos(banew.normalized().dot(bc.normalized()))* 180 / M_PI;
-    double thereshAngle =5;// smaller angle and merge for better pattern!
+    double thereshAngle =15;// smaller angle and merge for better pattern!
     if(angle <thereshAngle|| angle >360-thereshAngle ){
 
         return true;
@@ -512,188 +525,318 @@ void insertToStartEnd(vector<int> &startAndEnd, std::set<int>& cornerset, Matrix
 }
 
 void fixRafaPattern(){
-    for(int iterations = 0 ; iterations <3; iterations++){
-        for(int i =1; i<=5; i++){
-            for(int j = 1; j<= 5; j++){
-                if(i == 5&&j>3) continue;
-                MatrixXd currPattern;
-                MatrixXi Fg_pattern_curr;
-                string avName = "CLO_to_MH_woman_"+to_string(i)+"_"+ to_string(j);
-                string smoothPatternFile =  "patternComputed_"+avName+"_"+"skirt_2"+".obj";
-                igl::readOBJ(smoothPatternFile, currPattern, Fg_pattern_curr);
-                vector<int> startAndEnd;
-                startAndEnd.clear();
-                startAndEnd.push_back(1392);
-                startAndEnd.push_back(1391);
-                startAndEnd.push_back(1418);
-                smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
-                smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
-                startAndEnd.clear();
-
-                startAndEnd.push_back(704);
-                startAndEnd.push_back(703);
-                startAndEnd.push_back(701);
-                smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
-                smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
-                startAndEnd.clear();
-
-                startAndEnd.push_back(1445);
-                startAndEnd.push_back(1444);
-                startAndEnd.push_back(1442);
-                smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
-                smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
-                startAndEnd.clear();
-
-                startAndEnd.push_back(677);
-                startAndEnd.push_back(669);
-                startAndEnd.push_back(651);
-                smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
-                smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
-                startAndEnd.clear();
-//new
-
-                startAndEnd.push_back(339);
-                startAndEnd.push_back(331);
-                startAndEnd.push_back(701);
-                smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
-                smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
-                startAndEnd.clear();
-
-                startAndEnd.push_back(1442);
-                startAndEnd.push_back(1079);
-                startAndEnd.push_back(1080);
-                smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
-                smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
-                startAndEnd.clear();
-                startAndEnd.push_back(741);
-                startAndEnd.push_back(742);
-                startAndEnd.push_back(764);
-                smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
-//                smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
-                startAndEnd.clear();
-                startAndEnd.push_back(1080);
-                startAndEnd.push_back(1081);
-                startAndEnd.push_back(1103);
-                smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
-//                smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
-                startAndEnd.clear();
-                startAndEnd.push_back(339);
-                startAndEnd.push_back(340);
-                startAndEnd.push_back(362);
-                smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
-//                smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
-                startAndEnd.clear();
-
-                startAndEnd.push_back(0);
-                startAndEnd.push_back(1);
-                startAndEnd.push_back(23);
-                smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
-//                smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
-                startAndEnd.clear();
-
-
-                startAndEnd.push_back(1437);
-                startAndEnd.push_back(1438);
-                startAndEnd.push_back(1441);
-                smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
-//                smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
-                startAndEnd.clear();
-
-                startAndEnd.push_back(1434);
-                startAndEnd.push_back(1435);
-                startAndEnd.push_back(1439);
-                smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
-                smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
-                startAndEnd.clear();
-
-
-                if(!(i==1 && j==1)) igl::writeOBJ(smoothPatternFile, currPattern, Fg_pattern_curr);
-            }
-        }
-    }
-
-
-
-
     return;
-    string pref = "/Users/annaeggler/Desktop/Masterarbeit/PatternToSvg/test_data/Paola_top/";
-    string patternFile = pref+"top3D.obj";
-
+//    string pref = "/Users/annaeggler/Desktop/Masterarbeit/PatternToSvg/test_data/Raphael-Luka/";
+    string patternFile = "finaddedSquare_2D12.obj";
+////    string patternFile = "Rapha_2D_add_split.obj";
+////    string otherfile = "Rapha_3D_add.obj";
+////    string ppatternFile ="finalGarmentPattern_CLO_avatar_to_bodyScan_Raphael_rem_leggins_Merged_In3d.obj";
     MatrixXd Vg_pattern;
     MatrixXi Fg_pattern;
-
+//
     igl::readOBJ(patternFile, Vg_pattern, Fg_pattern);
+//
+////    Vg_pattern.row(3326)= (Vg_pattern.row(3325)+Vg_pattern.row(3327))/2;
     int vert_Size = Vg_pattern.rows();
     int face_Size = Fg_pattern.rows();
-
-    MatrixXd Vg_patternNew (vert_Size + 4, 3);
+    MatrixXd Vg_patternNew (vert_Size + 2, 3);
     Vg_patternNew.block(0,0,vert_Size, 3) = Vg_pattern;
-    Vg_patternNew.row(vert_Size ) = Vg_patternNew.row(832);
-    Vg_patternNew(vert_Size, 1) -= 100;
+    Vg_patternNew.row(vert_Size ) = Vg_patternNew.row(719);
+//    Vg_patternNew(vert_Size, 1) -= 100;
 
-    Vg_patternNew.row(vert_Size+1 ) = Vg_patternNew.row(vert_Size);
-    Vg_patternNew(vert_Size+1, 0) += 10;
+    Vg_patternNew.row(vert_Size+1 ) = Vg_patternNew.row(1538);
+//    Vg_patternNew(vert_Size+1, 0) += 10;
 
-    Vg_patternNew.row(vert_Size+2 ) = Vg_patternNew.row(vert_Size);
-    Vg_patternNew(vert_Size+2,0 ) += 10;
-    Vg_patternNew(vert_Size+2,1 ) += 10;
+//    Vg_patternNew.row(vert_Size+2 ) = Vg_patternNew.row(vert_Size);
+//    Vg_patternNew(vert_Size+2,0 ) += 10;
+//    Vg_patternNew(vert_Size+2,1 ) += 10;
+//
+//    Vg_patternNew.row(vert_Size+3 ) = Vg_patternNew.row(vert_Size);
+//    Vg_patternNew(vert_Size+3,1 ) += 10;
 
-    Vg_patternNew.row(vert_Size+3 ) = Vg_patternNew.row(vert_Size);
-    Vg_patternNew(vert_Size+3,1 ) += 10;
 
-
-    MatrixXi Fg_patternNew (face_Size + 2, 3);
+    MatrixXi Fg_patternNew (face_Size , 3);
     Fg_patternNew.block(0,0,face_Size, 3) = Fg_pattern;
-    Fg_patternNew(face_Size,0 ) = vert_Size;
-    Fg_patternNew(face_Size, 1) = vert_Size+1;
-    Fg_patternNew(face_Size, 2) = vert_Size+3;
+    Fg_patternNew(1255,2 ) = vert_Size;
+    Fg_patternNew(2595, 1) = vert_Size+1;
+//    Fg_patternNew(face_Size, 2) = vert_Size+3;
 
-    Fg_patternNew(face_Size+1,0 ) = vert_Size+1;
-    Fg_patternNew(face_Size+1, 1) = vert_Size+2;
-    Fg_patternNew(face_Size+1, 2) = vert_Size+3;
+//    Fg_patternNew(face_Size+1,0 ) = vert_Size+1;
+//    Fg_patternNew(face_Size+1, 1) = vert_Size+2;
+//    Fg_patternNew(face_Size+1, 2) = vert_Size+3;
+//    Vg_patternNew.row(1677)=    Vg_patternNew.row(1678);
+//    Vg_patternNew(1679,0)=391.5;
+//    Vg_patternNew(1651,0)=506.;
+//
+//    Vg_patternNew(1702,0)=857.5;
+//    Vg_patternNew(1704,0)=860.;
+//    Vg_patternNew(1707,0)=975.;
 
-    igl::writeOBJ ( pref+"paola3D_with_sq.obj", Vg_patternNew,  Fg_patternNew);
+    igl::writeOBJ("fin_"+patternFile, Vg_patternNew, Fg_patternNew);
+
+//    MatrixXd Vg_patternNew (vert_Size + 2, 3);
+//    Vg_patternNew.block(0,0,vert_Size, 3) = Vg_pattern;
+//    Vg_patternNew.row(vert_Size ) = Vg_patternNew.row(1571);
+//
+//    Vg_patternNew.row(vert_Size+1 ) = Vg_patternNew.row(1552);
+//
+////    Vg_patternNew.row(vert_Size+2 ) = Vg_patternNew.row(1621);
+//    Fg_pattern(5976,0) = vert_Size;
+////    Fg_pattern(5841,2) = vert_Size;
+//    Fg_pattern(2840,2) = vert_Size;
+//    Fg_pattern(2840,0) = vert_Size+1;
+//
+//    Vg_patternNew(1631,0) =1175;
+//    Vg_patternNew(1631,1) = 1086;
+//    Vg_patternNew.row(3570)= Vg_patternNew.row(1631);
+//
+//
+//    Vg_patternNew(3326,0) =-254;
+//    Vg_patternNew(3326,1) = 1097;
+//    Vg_patternNew.row(3559)= Vg_patternNew.row(3326);
+//
+////    Fg_pattern(2927,1) = vert_Size+1;
+//
+////    Fg_pattern(2917,0) = vert_Size+2;
+////    Fg_pattern(2917,1) = vert_Size+1;
+//
+//    igl::writeOBJ("addedSquare_2DNN.obj",Vg_patternNew ,Fg_pattern );
+//    int vert_Sizep = Vg_pattern.rows();
+//    int face_Sizep = Fg_pattern.rows();
+//
+//    MatrixXi Fg_Newtemp ( face_Sizep-2, 3);
+//    MatrixXi Fg_New ( face_Sizep-4, 3);
+//    //remove first two
+//    Fg_Newtemp.block(0,0,2807,3) =  Fg_pattern.block(0,0,2807,3);
+//    Fg_Newtemp.block(2807,0,face_Sizep-2-2807,3) =  Fg_pattern.block(2809,0,face_Sizep-2-2807,3);
+//
+////    remove other two
+//    Fg_New.block(0,0,6047,3) =  Fg_Newtemp.block(0,0,6047,3);
+//    Fg_New.block(6047,0,face_Sizep-4-2807,3) =  Fg_Newtemp.block(6049,0,face_Sizep-4-2807,3);
+//    Vg_pattern(1495,0) = 1182.5;
+//    Vg_pattern(1573,0) = 1182.5;
+//
+//    Vg_pattern(3445,0) = -261.5;
+//    Vg_pattern(3523,0) = -261.5;
+//
+//    igl::writeOBJ(pref+"cutOff2D.obj",Vg_pattern ,Fg_New );
+//
+//
+//
+//    MatrixXd Vg;
+//    MatrixXi Fg;
+//
+//    igl::readOBJ(otherfile, Vg, Fg);
+//    int vert_Size = Vg.rows();
+//    int face_Size = Fg.rows();
+//    MatrixXi FgNewtemp ( face_Size-2, 3);
+//    MatrixXi FgNew ( face_Size-4, 3);
+//    //remove first two
+//    FgNewtemp.block(0,0,2807,3) =  Fg.block(0,0,2807,3);
+//    FgNewtemp.block(2807,0,face_Size-2-2807,3) =  Fg.block(2809,0,face_Size-2-2807,3);
+//
+//    //remove other two
+//    FgNew.block(0,0,6047,3) =  FgNewtemp.block(0,0,6047,3);
+//    FgNew.block(6047,0,face_Size-4-2807,3) =  FgNewtemp.block(6049,0,face_Size-4-2807,3);
+//    for(int i = 0 ; i<FgNew.rows(); i++){
+//        for(int j = 0; j<3;j++){
+//            if(FgNew(i,j)==3260){
+//                FgNew(i,j)= 1495;
+//            }
+//        }
+//    }
+//
+//    VectorXd avg = Vg.row(1495)+ Vg.row(3260);
+//    Vg.row(1495) = avg/2;
+//
+//    igl::writeOBJ(pref+"cutOff3D.obj", Vg, FgNew);
+//return;
 
 
-    //first done
-    patternFile = pref+"top2D.obj";
 
-    MatrixXd Vg_patternP;
-    MatrixXi Fg_patternP;
+//    return;
+//    for(int iterations = 0 ; iterations <3; iterations++){
+//        for(int i =1; i<=5; i++){
+//            for(int j = 1; j<= 5; j++){
+//                if(i == 5&&j>3) continue;
+//                MatrixXd currPattern;
+//                MatrixXi Fg_pattern_curr;
+//                string avName = "CLO_to_MH_woman_"+to_string(i)+"_"+ to_string(j);
+//                string smoothPatternFile =  "patternComputed_"+avName+"_"+"skirt_2"+".obj";
+//                igl::readOBJ(smoothPatternFile, currPattern, Fg_pattern_curr);
+//                vector<int> startAndEnd;
+//                startAndEnd.clear();
+//                startAndEnd.push_back(1392);
+//                startAndEnd.push_back(1391);
+//                startAndEnd.push_back(1418);
+//                smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+//                smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+//                startAndEnd.clear();
+//
+//                startAndEnd.push_back(704);
+//                startAndEnd.push_back(703);
+//                startAndEnd.push_back(701);
+//                smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+//                smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+//                startAndEnd.clear();
+//
+//                startAndEnd.push_back(1445);
+//                startAndEnd.push_back(1444);
+//                startAndEnd.push_back(1442);
+//                smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+//                smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+//                startAndEnd.clear();
+//
+//                startAndEnd.push_back(677);
+//                startAndEnd.push_back(669);
+//                startAndEnd.push_back(651);
+//                smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+//                smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+//                startAndEnd.clear();
+////new
+//
+//                startAndEnd.push_back(339);
+//                startAndEnd.push_back(331);
+//                startAndEnd.push_back(701);
+//                smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+//                smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+//                startAndEnd.clear();
+//
+//                startAndEnd.push_back(1442);
+//                startAndEnd.push_back(1079);
+//                startAndEnd.push_back(1080);
+//                smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+//                smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+//                startAndEnd.clear();
+//                startAndEnd.push_back(741);
+//                startAndEnd.push_back(742);
+//                startAndEnd.push_back(764);
+//                smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+////                smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+//                startAndEnd.clear();
+//                startAndEnd.push_back(1080);
+//                startAndEnd.push_back(1081);
+//                startAndEnd.push_back(1103);
+//                smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+////                smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+//                startAndEnd.clear();
+//                startAndEnd.push_back(339);
+//                startAndEnd.push_back(340);
+//                startAndEnd.push_back(362);
+//                smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+////                smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+//                startAndEnd.clear();
+//
+//                startAndEnd.push_back(0);
+//                startAndEnd.push_back(1);
+//                startAndEnd.push_back(23);
+//                smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+////                smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+//                startAndEnd.clear();
+//
+//
+//                startAndEnd.push_back(1437);
+//                startAndEnd.push_back(1438);
+//                startAndEnd.push_back(1441);
+//                smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+////                smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+//                startAndEnd.clear();
+//
+//                startAndEnd.push_back(1434);
+//                startAndEnd.push_back(1435);
+//                startAndEnd.push_back(1439);
+//                smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+//                smoothBetweenVertices(currPattern, Fg_pattern_curr, startAndEnd);
+//                startAndEnd.clear();
+//
+//
+//                if(!(i==1 && j==1)) igl::writeOBJ(smoothPatternFile, currPattern, Fg_pattern_curr);
+//            }
+//        }
+//    }
 
-    igl::readOBJ(patternFile, Vg_patternP, Fg_patternP);
-    vert_Size = Vg_patternP.rows();
-//    face_Size = Fg_patternP;
 
-    Vg_patternNew.resize (vert_Size + 4, 3);
-    Vg_patternNew.block(0,0,vert_Size, 3) = Vg_patternP;
-    Vg_patternNew.row(vert_Size ) = Vg_patternNew.row(1704);
-    Vg_patternNew(vert_Size, 1) -= 100;
 
-    Vg_patternNew.row(vert_Size+1 ) = Vg_patternNew.row(vert_Size);
-    Vg_patternNew(vert_Size+1, 0) += 10;
 
-    Vg_patternNew.row(vert_Size+2 ) = Vg_patternNew.row(vert_Size);
-    Vg_patternNew(vert_Size+2,0 ) += 10;
-    Vg_patternNew(vert_Size+2,1 ) += 10;
+//    return;
+//    string pref = "/Users/annaeggler/Desktop/Masterarbeit/PatternToSvg/test_data/Paola_top/";
+//    string patternFile = pref+"top3D.obj";
+//
+//    MatrixXd Vg_pattern;
+//    MatrixXi Fg_pattern;
+//
+//    igl::readOBJ(patternFile, Vg_pattern, Fg_pattern);
+//    int vert_Size = Vg_pattern.rows();
+//    int face_Size = Fg_pattern.rows();
+//
+//    MatrixXd Vg_patternNew (vert_Size + 4, 3);
+//    Vg_patternNew.block(0,0,vert_Size, 3) = Vg_pattern;
+//    Vg_patternNew.row(vert_Size ) = Vg_patternNew.row(832);
+//    Vg_patternNew(vert_Size, 1) -= 100;
+//
+//    Vg_patternNew.row(vert_Size+1 ) = Vg_patternNew.row(vert_Size);
+//    Vg_patternNew(vert_Size+1, 0) += 10;
+//
+//    Vg_patternNew.row(vert_Size+2 ) = Vg_patternNew.row(vert_Size);
+//    Vg_patternNew(vert_Size+2,0 ) += 10;
+//    Vg_patternNew(vert_Size+2,1 ) += 10;
+//
+//    Vg_patternNew.row(vert_Size+3 ) = Vg_patternNew.row(vert_Size);
+//    Vg_patternNew(vert_Size+3,1 ) += 10;
+//
+//
+//    MatrixXi Fg_patternNew (face_Size + 2, 3);
+//    Fg_patternNew.block(0,0,face_Size, 3) = Fg_pattern;
+//    Fg_patternNew(face_Size,0 ) = vert_Size;
+//    Fg_patternNew(face_Size, 1) = vert_Size+1;
+//    Fg_patternNew(face_Size, 2) = vert_Size+3;
+//
+//    Fg_patternNew(face_Size+1,0 ) = vert_Size+1;
+//    Fg_patternNew(face_Size+1, 1) = vert_Size+2;
+//    Fg_patternNew(face_Size+1, 2) = vert_Size+3;
+//
+//    igl::writeOBJ ( pref+"paola3D_with_sq.obj", Vg_patternNew,  Fg_patternNew);
+//
+//
+//    //first done
+//    patternFile = pref+"top2D.obj";
 
-    Vg_patternNew.row(vert_Size+3 ) = Vg_patternNew.row(vert_Size);
-    Vg_patternNew(vert_Size+3,1 ) += 10;
-
-     Fg_patternNew.resize (face_Size + 2, 3);
-    Fg_patternNew.block(0,0,face_Size, 3) = Fg_patternP;
-    Fg_patternNew(face_Size,0 ) = vert_Size;
-    Fg_patternNew(face_Size, 1) = vert_Size+1;
-    Fg_patternNew(face_Size, 2) = vert_Size+3;
-
-    Fg_patternNew(face_Size+1,0 ) = vert_Size+1;
-    Fg_patternNew(face_Size+1, 1) = vert_Size+2;
-    Fg_patternNew(face_Size+1, 2) = vert_Size+3;
-
-    igl::writeOBJ ( pref+"paola2D_with_sq.obj", Vg_patternNew,  Fg_patternNew);
-
-    return;
-//    string patternFileNew = "/Users/annaeggler/Desktop/Masterarbeit/Fashion-descriptors/data/moreGarments/man_pants/man_pants_3d_nonCentered.obj";
+//    MatrixXd Vg_patternP;
+//    MatrixXi Fg_patternP;
+//
+//    igl::readOBJ(patternFile, Vg_patternP, Fg_patternP);
+//    vert_Size = Vg_patternP.rows();
+////    face_Size = Fg_patternP;
+//
+//    Vg_patternNew.resize (vert_Size + 4, 3);
+//    Vg_patternNew.block(0,0,vert_Size, 3) = Vg_patternP;
+//    Vg_patternNew.row(vert_Size ) = Vg_patternNew.row(1704);
+//    Vg_patternNew(vert_Size, 1) -= 100;
+//
+//    Vg_patternNew.row(vert_Size+1 ) = Vg_patternNew.row(vert_Size);
+//    Vg_patternNew(vert_Size+1, 0) += 10;
+//
+//    Vg_patternNew.row(vert_Size+2 ) = Vg_patternNew.row(vert_Size);
+//    Vg_patternNew(vert_Size+2,0 ) += 10;
+//    Vg_patternNew(vert_Size+2,1 ) += 10;
+//
+//    Vg_patternNew.row(vert_Size+3 ) = Vg_patternNew.row(vert_Size);
+//    Vg_patternNew(vert_Size+3,1 ) += 10;
+//
+//     Fg_patternNew.resize (face_Size + 2, 3);
+//    Fg_patternNew.block(0,0,face_Size, 3) = Fg_patternP;
+//    Fg_patternNew(face_Size,0 ) = vert_Size;
+//    Fg_patternNew(face_Size, 1) = vert_Size+1;
+//    Fg_patternNew(face_Size, 2) = vert_Size+3;
+//
+//    Fg_patternNew(face_Size+1,0 ) = vert_Size+1;
+//    Fg_patternNew(face_Size+1, 1) = vert_Size+2;
+//    Fg_patternNew(face_Size+1, 2) = vert_Size+3;
+//
+//    igl::writeOBJ ( pref+"paola2D_with_sq.obj", Vg_patternNew,  Fg_patternNew);
+//
+//    return;
+////    string patternFileNew = "/Users/annaeggler/Desktop/Masterarbeit/Fashion-descriptors/data/moreGarments/man_pants/man_pants_3d_nonCentered.obj";
 //    MatrixXd Vg_pat3;
 //    MatrixXi Fg_pat3;
 //
@@ -748,7 +891,7 @@ void fixRafaPattern(){
 //
 //return;
 //    string pref = "/Users/annaeggler/Desktop/Masterarbeit/PatternToSvg/test_data/Raphael-Luka/";
-//    string patternFile = pref+"Rapha_2D_add.obj";
+//    string patternFile = pref+"Rapha_2D_add_split.obj";
 //
 //    MatrixXd Vg_pattern;
 //    MatrixXi Fg_pattern;

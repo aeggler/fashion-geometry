@@ -1920,6 +1920,11 @@ void stitchAdapted3D(MatrixXd& Vg, MatrixXi& Fg, MatrixXi& Fg_pattern_orig, vect
     MatrixXd Vg_pattern_notMerged;
     map<int, int> cornersMerge;
     igl::readOBJ("addedSquare_2D.obj",Vg_pattern_notMerged, Fg_pattern_notMerged);
+cout<<"vertex "<<Fg_pattern_notMerged(1336, 0)<<" is "<<  Vg_pattern_notMerged.row(Fg(1336, 0))<<endl;
+    Vg_pattern_notMerged.row(Fg_pattern_notMerged(1336, 0))= Vg_pattern_notMerged.row(274);
+    Vg_pattern_notMerged.row(Fg_pattern_notMerged(2676, 0))= Vg_pattern_notMerged.row(1093);
+    igl::writeOBJ("addedSquare_2D_init.obj",Vg_pattern_notMerged, Fg_pattern_notMerged);
+
     for(int i=0; i<seamsList.size(); i++) {
         int start1 = seamsList[i]->getStart1();
         int start2 = seamsList[i]->getStart2();
@@ -1940,31 +1945,36 @@ void stitchAdapted3D(MatrixXd& Vg, MatrixXi& Fg, MatrixXi& Fg_pattern_orig, vect
         cout<<endl<<"Seam after update "<<i<<" start "<<start1<<" "<<start2<<endl;
 
         if(i==3) {
-            start1= 773;
-            Vg.row(374) = Vg.row(778);
-            Vg.row(1160) = Vg.row(1564);
+//            start1= 773;
+//            374 28
+            Vg.row(374) = Vg.row(761);
+//            Vg.row(1160) = Vg.row(1564);
 
-        }else if(i==5){
-            start1= 715;
+        }
+        else if(i==5){
+            start1= 729;
         }
         else if (i==9){
-            start1 = 1510;
-        }else if (i==10){
-            start1 = 1163;
-//
+            start1 = 1506;
+        }
+        else if (i==10){
+            start1 = 1145;
+            Vg.row(1142) = Vg.row(1528);
         }
         else if (i==11){
-            start2 = 1559;
-            start1 = 1571;
-            cornersMerge[start1]= start2;
-        }else if (i== 12){
-            start1 = 1140;
+//            start2 = 1559;
+            start1 = 1535;
+            start2= 1527;
+
+//            cornersMerge[start1]= start2;
+        }
+        else if (i== 12){
+            start1 = 1122;
             start2= start1;
         } else if (i==13){
-
-            start2= 777;
-            start1 = 1563;
-            cornersMerge[start1]= start2;
+            start1= 1109;
+//            start2= 777;
+//            cornersMerge[start1]= start2;
         }
 
         int patch1, patch2, idx1start, idx2start;
@@ -1995,32 +2005,49 @@ void stitchAdapted3D(MatrixXd& Vg, MatrixXi& Fg, MatrixXi& Fg_pattern_orig, vect
 //        end1 = mapCornerToCorner[end1];
 //        end2 = mapCornerToCorner[end2];
         if(i==5){
-            end1= 724;
+//            end1= 724;
+//            end1 = 3153;
+//            end2 = 1534;
+            end1 = 738;
+            end2= 699;
         }
         else if (i==9){
-            end1 = 1501;
+            end1 = 1497;
+            end2= 1476;
+////            end1 = 1501;
+//            end1 = 3073;
+//            end2 = 3153;
         }
         else if (i==10){
-            end1 = 1160;
+//            end1 = 1160;
+            end1= 1142;
+            Vg.row(1142)= Vg.row(796);
+
         }
         else if (i==11){
-            end1= 1564;
-            end2= 1160;
-            cornersMerge[end1]= end2;
+////            end1= 1564;
+////            end2= 1160;
+                end1 = 1528;
+                end2 = 1142;
+//                cornersMerge[end1]= end2;
+//
         }
         else if (i==12){
-            end1 = 1131 ;
-            end2= 1149;
-            cornersMerge[end1]= end2;
-
+            end1= 1113;
+            end2 = 1131;
+////            end1 = 1131 ;
+////            end2= 1149;
+////            cornersMerge[end1]= end2;
+//            cornersMerge[end1]= end2;
+//
+//
         }
         else if (i==13){
-            end2 = 402;
-            end1 = 1188;
-            cornersMerge[end1]= end2;
+            end1 = 1170;
 
         }
-//        cout<<endl<<"Seam "<<i<<" end after map "<<end1<<" "<<end2 <<endl;
+//
+        cout<<endl<<"Seam "<<i<<" end after map "<<end1<<" "<<end2 <<endl;
         cornersMerge[end1]= end2;
         cornersMerge[start1]= start2;
 
@@ -2114,7 +2141,7 @@ void stitchAdapted3D(MatrixXd& Vg, MatrixXi& Fg, MatrixXi& Fg_pattern_orig, vect
                     // dupl for not merged
                     FgNew_pattern_notMerged(face, idxprev) = Vg_pattern_notMerged.rows();
                     FgNew_pattern_notMerged(Fg_pattern_notMerged.rows(), idxnext) = Vg_pattern_notMerged.rows();
-                    igl::writeOBJ("addedSquare_2D.obj", VgNew_pattern_notMerged, FgNew_pattern_notMerged);
+                    igl::writeOBJ("addedSquare_2D"+to_string(i)+".obj", VgNew_pattern_notMerged, FgNew_pattern_notMerged);
 
                     prev1 = nextId1;
                     prevVert1 = boundaryL[patch1][prev1];
@@ -2192,7 +2219,10 @@ void stitchAdapted3D(MatrixXd& Vg, MatrixXi& Fg, MatrixXi& Fg_pattern_orig, vect
                     // dupl for not merged
                     FgNew_pattern_notMerged(face, idxprev) = Vg_pattern_notMerged.rows();
                     FgNew_pattern_notMerged(Fg_pattern_notMerged.rows(), idxnext) = Vg_pattern_notMerged.rows();
-                    igl::writeOBJ("addedSquare_2D.obj", VgNew_pattern_notMerged, FgNew_pattern_notMerged);
+                    if(i==0){
+                        cout<<" the sizes "<<FgNew.rows()<<" "<<FgNew_pattern.rows()<<" "<<FgNew_pattern_notMerged.rows()<<endl;
+                    }
+                    igl::writeOBJ("addedSquare_2D"+ to_string(i)+".obj", VgNew_pattern_notMerged, FgNew_pattern_notMerged);
 
 
                     prev2 = nextId2;
@@ -2209,6 +2239,10 @@ void stitchAdapted3D(MatrixXd& Vg, MatrixXi& Fg, MatrixXi& Fg_pattern_orig, vect
                     Fg_pattern = FgNew_pattern;
                     Vg_pattern.resize(VgNew_pattern.rows(), 3);
                     Vg_pattern = VgNew_pattern;
+                    if(i==0){
+                        cout<<" the sizes after "<<FgNew.rows()<<" "<<FgNew_pattern.rows()<<" "<<FgNew_pattern_notMerged.rows()<<endl;
+                        cout<<endl;
+                    }
                      igl::writeOBJ("insertedFacesPattern"+to_string(i)+".obj", Vg_pattern, Fg_pattern);
 
                     igl::writeOBJ("insertedFacesPattern.obj", Vg_pattern, Fg_pattern);
@@ -2246,8 +2280,10 @@ void stitchAdapted3D(MatrixXd& Vg, MatrixXi& Fg, MatrixXi& Fg_pattern_orig, vect
 //        end1 = mapCornerToCorner[end1];
 //        end2 = mapCornerToCorner[end2];
     for(auto& it: cornersMerge){
+
             int start1= it.first;
             int start2 = it.second;
+
 //            cout<<start1<<" "<<start2;
         bool abortFlag= false;
         for(int i=0; i<Fg.rows(); i++){
@@ -2271,7 +2307,8 @@ void stitchAdapted3D(MatrixXd& Vg, MatrixXi& Fg, MatrixXi& Fg_pattern_orig, vect
         if(!abortFlag) replaceInFaces(start2, start1, Fg);
 //        replaceInFaces(end2, end1, Fg);
     }
-    replaceInFaces(778, 374, Fg);
+    replaceInFaces(761, 374, Fg);
+    replaceInFaces(1530, 1143, Fg);
 
     igl::writeOBJ("cornersMerged.obj", Vg, Fg);
 

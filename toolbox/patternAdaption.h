@@ -144,5 +144,7 @@ void updatePatchId(vector<cutVertEntry*>& cutPositions, const std::vector<std::v
 void fitVecToPointSet( MatrixXd& pointVec, VectorXd& vec );
 void zipTears(vector<cutVertEntry*>& cutPositions, MatrixXd& Vg, MatrixXi& Fg, MatrixXi& mapFromFg, MatrixXd& mapFromVg,
               map<int, int>& halfPatternFaceToFullPatternFace, bool inverseMap, bool forceClosed);
+void forceZipId(vector<cutVertEntry*>& cutPositions, MatrixXd& Vg, MatrixXi& Fg, MatrixXi& mapFromFg, MatrixXd& mapFromVg,
+                map<int, int>& halfPatternFaceToFullPatternFace, bool inverseMap, bool forceClosed, int id);
 
 #endif //EXAMPLE_PATTERNADAPTION_H

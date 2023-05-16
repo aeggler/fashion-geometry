@@ -2673,6 +2673,27 @@ void checkZip( cutVertEntry*& cve,  MatrixXd& Vg, MatrixXi& Fg, MatrixXi& mapFro
     cout<<" Remainig zip back vert "<<zipBack.size()<<" "<<zipMiddle.size() <<endl;
 
 }
+void forceZipId(vector<cutVertEntry*>& cutPositions, MatrixXd& Vg, MatrixXi& Fg, MatrixXi& mapFromFg, MatrixXd& mapFromVg,
+                map<int, int>& halfPatternFaceToFullPatternFace, bool inverseMap, bool forceClosed, int id){
+    cout<<" trying to close id "<<id<<endl;
+    sort(cutPositions.begin(), cutPositions.end(), []( cutVertEntry* &a,  cutVertEntry* &b) { return a->cutId < b-> cutId; });
+
+    cutVertEntry* cve = cutPositions[id];
+        bool isCorner = (cve->startCorner || cve-> endCorner);
+        cout<<"cut position "<<id<<" is a corner ? "<< isCorner<<" seam id in list"<<cve->seamIdInList <<endl;
+        if(isCorner) {
+            for(int j = 0; j< cve-> boundaryFrac.size(); j++){
+                cout<<" "<<cve-> boundaryFrac[j].first;
+                zipBack.insert(cve-> boundaryFrac[j]);
+
+            }
+        }else{
+            for(int j = 0; j< cve->dulicatePairs.size(); j++){
+                cout<<" vert "<<cve-> dulicatePairs[j].first<<" and dupl "<<  cve-> dulicatePairs[j].second<<endl ;
+                zipMiddle.insert(cve-> dulicatePairs[j]);
+            }
+        }
+}
 void zipTears(vector<cutVertEntry*>& cutPositions, MatrixXd& Vg, MatrixXi& Fg, MatrixXi& mapFromFg, MatrixXd& mapFromVg,
               map<int, int>& halfPatternFaceToFullPatternFace, bool inverseMap, bool forceClosed){
     cout<<zipCount<<" in Zip Tears function"<<endl;
