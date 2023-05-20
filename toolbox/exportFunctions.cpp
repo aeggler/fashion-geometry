@@ -24,10 +24,12 @@ using namespace Eigen;
 using namespace std;
 using namespace ClipperLib;
 void writeMTL(MatrixXd& Ka, MatrixXd& Ks, MatrixXd& Kd, MatrixXd& Vg, MatrixXi& Fg, string garment, string avName, double interp, string dir){
-    cout<<" write file "<<endl;
+    cout<<" write file function "<<endl;
     string fileName;
+    MatrixXd duplVg = Vg;
     if(interp == 0.){// it is the stress
         fileName = "coloredGarment_"+avName + "_"+garment+"_stress_in_"+dir;
+
     }else if (interp == 20.){
         fileName = "coloredGarment_"+avName + "_"+garment+"_stress_in_"+dir+"_init";
     }
@@ -48,9 +50,95 @@ void writeMTL(MatrixXd& Ka, MatrixXd& Ks, MatrixXd& Kd, MatrixXd& Vg, MatrixXi& 
     }else if (interp == 11.){
         fileName = "baseOfRemoval2D_"+avName + "_"+garment;
 
+    }else if (interp ==100){
+        fileName = dir+"_"+avName + "_"+garment;
+    }else if(interp == 111.){// it is the stress
+        fileName = "stressOfAdapted_"+avName + "_"+garment+"_stress_in_"+dir;
+
+    }else if(interp == 222.){// it is the stress
+        fileName = "stressOfAdaptedPattern_"+avName + "_"+garment+"_stress_in_"+dir;
+
     }
     string objName= fileName+".obj";
     string mtlName = fileName +".mtl";
+    cout<<" write file function "<<fileName <<endl;
+
+    Eigen::VectorXi componentIdPerVert;
+    igl::vertex_components(Fg, componentIdPerVert);
+    if(garment == "top" && (interp == 3.||interp == 4.|| interp == 11.)){
+        int ref1=1;
+        int ref2=2;
+        componentIdPerVert.setZero();
+        for(int i=0; i<Vg.rows(); i++){
+//            if(Vg(i,0)<200){// for big woman
+//                componentIdPerVert(i)=1;
+//            }else if (Vg(i,0)> 1000){
+//                componentIdPerVert(i) = 2;
+//            }
+
+            // for makehuman 5x5
+            if(Vg(i,0)<380){
+                componentIdPerVert(i)=1;
+            }else if (Vg(i,0)> 1000){
+                componentIdPerVert(i)=2;
+
+            }
+        }
+        int howmuch = 100;//350
+        for(int i=0; i<Vg.rows(); i++){
+            if(componentIdPerVert(i)==ref2){
+//                Vg(i,0)-= 100;
+                Vg(i,0)-= howmuch; // for big woman
+
+            }
+            else if(componentIdPerVert(i)== ref1 ){
+                Vg(i,0)+= howmuch;
+//                Vg(i,0)+= 100;
+
+            }
+
+        }
+        cout<<"after component"<<endl;
+    }
+    else if( false &&garment == "skirt"&&(interp == 3.||interp == 4.|| interp == 11.)){
+        cout<<" before component"<<fileName <<endl;
+        for(int i=0; i<Vg.rows(); i++){
+            double x = Vg(i,0);
+            double y = Vg(i,1);
+            if(x < -500 && y < 1200){
+                Vg(i,0)+= 550;
+            }else if(x < 300 && y < 1200){
+                Vg(i,0)+= 100;
+            } else if (x< 300){
+                Vg(i,0)+= 100;
+                Vg(i,1)-= 100;
+            }else if (x>1000 ){
+                Vg(i,0)-= 450;
+            }else if(y>1200)
+                Vg(i,1)-= 100;
+
+        }
+        cout<<" after component "<<fileName <<endl;
+    }
+    else if (false && garment == "leggins" && (interp == 3.||interp == 4.|| interp == 11.)){
+        for(int i=0; i<Vg.rows(); i++){
+            if(Vg(i,0)<500){
+                Vg(i,0)+=100;
+            }
+        }
+    }
+    else if (garment == "man_pants" && (interp == 3.||interp == 4.|| interp == 11.)){
+        for(int i=0; i<Vg.rows(); i++){
+            if(Vg(i,0)>300){
+                Vg(i,0) -=300;
+            }
+            if(Vg(i,0) > 900 && Vg(i,1)<1100){
+                Vg(i,0) -=300;
+            }else if(Vg(i,0)<-600  && Vg(i,1)<1100){
+                Vg(i,0) +=300;
+            }
+        }
+    }
 
     ofstream outfile(objName);
     outfile << "mtllib " << mtlName << ".mtl" << endl;
@@ -76,6 +164,72 @@ void writeMTL(MatrixXd& Ka, MatrixXd& Ks, MatrixXd& Kd, MatrixXd& Vg, MatrixXi& 
 
     }
     mtlFile.close();
+
+    if(false && interp ==11.){
+        MatrixXd remV; MatrixXi remF;
+        string garmentExt ;
+        if(garment == "top"){
+            garmentExt = garment+"_1";
+        }else if (garment == "skirt"){
+            garmentExt = garment+"_2";
+        }else{
+            garmentExt=garment;
+        }
+        igl::readOBJ("removed2D_" + avName + "_" + garment + ".obj", remV, remF);
+        cout<<"Reading remV.rows()="<<remV.rows()<<endl;
+        for(int i =0; i<remV.rows(); i++){
+
+            if(garmentExt == "top_1"){
+                if(remV(i,0)<380){
+                    remV(i,0)+= 100;
+                }else if (remV(i,0)> 1000){
+                    remV(i,0)-= 100;
+
+                }
+
+            }else if (garmentExt == "skirt_2"){
+                MatrixXd remDupl = remV;
+                double x = remDupl(i,0);
+                double y = remDupl(i,1);
+                if(x < -500 && y < 1200){
+                    remV(i,0)+= 550;
+                }
+                else if(x < 300 && y < 1200){
+                    remV(i,0)+= 100;
+                }
+                else if (x< 300){
+                    remV(i,0)+= 100;
+                    remV(i,1)-= 100;
+                }
+                else if (x>1000 ){
+                    remV(i,0)-= 450;
+                }
+                else if(y>1200){
+                    remV(i,1)-= 100;
+                }
+
+            }
+        }
+
+        string objNameRem = "removed2D_" + avName + "_" + garment + ".obj";
+        string mtlNameRem = "removed2D_" + avName + "_" + garment;
+
+        ofstream outfileRem(objNameRem);
+        outfileRem << "mtllib " << mtlNameRem << ".mtl" << endl;
+        for (int i=0; i<remV.rows(); i++) {
+            outfileRem << "v " << remV(i,0) << " " << remV(i,1) << " " << remV(i,2) << endl;
+        }
+        outfileRem << endl;
+        for (int i = 0; i < remF.rows(); i++) {
+            outfileRem << "usemtl face" << i << endl;
+            outfileRem << "f " << remF(i,0)+1  << "/" << i+1 << " " << remF(i,1)+1 << "/" << i+1 << " " <<remF(i,2)+1 << "/" << i+1 << endl;
+        }
+        outfileRem.close();
+
+
+    }
+
+
 
 }
 bool isPointInTriangle(Vector3d& curr,Vector3d& a,Vector3d& b,Vector3d& c ) {
@@ -140,7 +294,7 @@ bool is_ear( vector<VectorXd>& p, int a, int b, int c){
     }
     auto banew = p_a-p_b;
     auto angle = std::acos(banew.normalized().dot(bc.normalized()))* 180 / M_PI;
-    double thereshAngle =15;// smaller angle and merge for better pattern!
+    double thereshAngle = 5;// smaller angle and merge for better pattern!
     if(angle <thereshAngle|| angle >360-thereshAngle ){
 
         return true;
@@ -528,28 +682,107 @@ void insertToStartEnd(vector<int> &startAndEnd, std::set<int>& cornerset, Matrix
 }
 
 void fixRafaPattern(){
+return;
+    MatrixXd Vgh; MatrixXi Fgh;
+//    string av = "avatar_oneComponent";
+//    string av = "avatar_petite_straight_01_OC";
+    string av = "avatar_petite_curvy_01_OC";
 
-  for(int row=2; row<=2; row++){
-      for(int col = 5; col<=5; col+=2){
-//          if(row ==3 && col==5 ){
-//              continue;
-//          }
-//          if(row==4 && col>=3){
-//              return;
-//          }
+    string file = "baseOfRemoval2D_";
+     file = "outlineRemoval2D_";
+
+    string location = "/Users/annaeggler/Desktop/teaserleggins/petite_(curvy)/"+file+av+"_leggins";
+
+//    std::ifstream rfile(location+"obj");
+//    std::string line;
+//    ofstream outfileSpecial(location+"_reposition.obj");
+//
+//    while (std::getline(rfile, line)) {
+//        cout<<line<<endl;
+//        std::istringstream iss(line);
+//        std::string token;
+//        iss >> token;
+//cout<<token;
+//        if (token == "v") {
+//            double x, y, z ;
+//            iss >> x >> y >> z;
+//            x += 100.0;
+//            y += 100.0;
+//            z += 100.0;
+//            outfileSpecial << "v " << x<< " "<<y<< " "<<z<<endl;
+//        }else{
+//            int fir, sec;
+//            iss>>fir>>sec;
+//            outfileSpecial<<"l "<< fir<< " " <<sec;
+//        }
+//
+//
+//    }
+//    outfileSpecial.close();
+
+
+//    igl::readOBJ(location + ".obj", Vgh,Fgh);
+//    for(int i=0; i<Vgh.rows(); i++){
+//        if(Vgh(i,0)< 500){
+//            Vgh(i,0) +=150;
+//        }
+//    }
+//    ofstream outfileSpecial(location+"_reposition.obj");
+//    outfileSpecial << "mtllib " << file+av+"_leggins" << ".mtl" << endl;
+//    for (int i=0; i<Vgh.rows(); i++) {
+//        outfileSpecial << "v " << Vgh(i,0) << " " << Vgh(i,1) << " " << Vgh(i,2) << endl;
+//    }
+//    outfileSpecial << endl;
+//    for (int i = 0; i < Fgh.rows(); i++) {
+//        outfileSpecial << "usemtl face" << i << endl;
+//        outfileSpecial << "f " << Fgh(i,0)+1  << "/" << i+1 << " " << Fgh(i,1)+1 << "/" << i+1 << " " <<Fgh(i,2)+1 << "/" << i+1 << endl;
+//    }
+//    outfileSpecial.close();
+
+
+return;
+  for(int row=4; row<=4; row++){
+//      for(int row=1; row<=4; row++){
+
+          for(int col = 1; col<=1; col+=2){
+//              for(int col = 1; col<=5; col+=2){
+
+                  if(row ==3 && col==5 ){
+              continue;
+          }
+          if(row==4 && col>=3){
+              return;
+          }
           string garment = "skirt";
           string pref = "/Users/annaeggler/Desktop/w"+to_string(row)+"/w"+to_string(row)+"_"+ to_string(col)+"/";
-          string patternFile = "adaption2D_CLO_to_MH_woman_"+to_string(row)+"_"+to_string(col)+"_"+ garment+".obj";
-          string patternFileout = "outline2D_CLO_to_MH_woman_"+to_string(row)+"_"+to_string(col)+"_"+ garment+".obj";
+          string patternFile = "baseOfRemoval2D_CLO_to_MH_woman_"+to_string(row)+"_"+to_string(col)+"_"+ garment+".obj";
+          string patternFileout = "outlineRemoval2D_CLO_to_MH_woman_"+to_string(row)+"_"+to_string(col)+"_"+ garment+".obj";
+          string patternFileRem = "removed2D_CLO_to_MH_woman_"+to_string(row)+"_"+to_string(col)+"_"+ garment+".obj";
 
-          MatrixXd Vg_pattern, Vg_patternout;
-          MatrixXi Fg_pattern, Fg_patternout;
+          MatrixXd Vg_pattern, Vg_patternout, Vg_patternrem;
+          MatrixXi Fg_pattern, Fg_patternout, Fg_patternrem;
 
           igl::readOBJ(pref+patternFile, Vg_pattern, Fg_pattern);
           igl::readOBJ(pref+patternFileout, Vg_patternout, Fg_patternout);
+          igl::readOBJ(pref+patternFileRem, Vg_patternrem, Fg_patternrem);
 
-          Eigen::VectorXi componentIdPerVert;
+          Eigen::VectorXi componentIdPerVert, componentIdPerVertRem;
           igl::vertex_components(Fg_pattern, componentIdPerVert);
+          igl::vertex_components(Fg_patternrem, componentIdPerVertRem);
+          VectorXi mapFromRemToFull(componentIdPerVertRem.maxCoeff());
+          mapFromRemToFull.setConstant(-1);
+          for(int ii=0; ii< Vg_patternrem.rows(); ii++){
+              if(mapFromRemToFull(componentIdPerVertRem(ii))==-1){
+
+                  for(int j = 0; j<Vg_pattern.rows(); j++){
+                      if(Vg_patternrem.row(ii)==Vg_pattern.row(j)){
+                          mapFromRemToFull(componentIdPerVertRem(ii))= componentIdPerVert(j);
+                          break;
+                      }
+                  }
+              }
+
+          }
 
           for(int i=0; i<Vg_pattern.rows(); i++){
 
@@ -576,23 +809,50 @@ void fixRafaPattern(){
                   Vg_patternout(i,1)-= 100;
               }
           }
-          igl::writeOBJ(pref+patternFile, Vg_pattern, Fg_pattern);
-          igl::writeOBJ(pref+patternFileout, Vg_patternout, Fg_patternout);
+          igl::writeOBJ(pref+"test_"+patternFile, Vg_pattern, Fg_pattern);
+          igl::writeOBJ(pref+"test_"+patternFileout, Vg_patternout, Fg_patternout);
+          igl::writeOBJ(pref+"test_"+patternFileRem, Vg_patternrem, Fg_patternrem);
 
           garment = "top";
           pref = "/Users/annaeggler/Desktop/w"+to_string(row)+"/w"+to_string(row)+"_"+ to_string(col)+"/";
-          patternFile = "adaption2D_CLO_to_MH_woman_"+to_string(row)+"_"+to_string(col)+"_"+ garment+".obj";
-          patternFileout = "outline2D_CLO_to_MH_woman_"+to_string(row)+"_"+to_string(col)+"_"+ garment+".obj";
+          patternFile = "baseOfRemoval2D_CLO_to_MH_woman_"+to_string(row)+"_"+to_string(col)+"_"+ garment+".obj";
+          patternFileout = "outlineRemoval2D_CLO_to_MH_woman_"+to_string(row)+"_"+to_string(col)+"_"+ garment+".obj";
+          patternFileRem = "removed2D_CLO_to_MH_woman_"+to_string(row)+"_"+to_string(col)+"_"+ garment+".obj";
 
-          MatrixXd Vg_patternT, Vg_patternoutT;
-          MatrixXi Fg_patternT, Fg_patternoutT;
+          MatrixXd Vg_patternT, Vg_patternoutT, Vg_patternremT;
+          MatrixXi Fg_patternT, Fg_patternoutT, Fg_patternremT;
 
           igl::readOBJ(pref+patternFile, Vg_patternT, Fg_patternT);
           igl::readOBJ(pref+patternFileout, Vg_patternoutT, Fg_patternoutT);
-          Eigen::VectorXi componentIdPerVertT;
+          igl::readOBJ(pref+patternFileRem, Vg_patternrem, Fg_patternrem);
+
+
+          Eigen::VectorXi componentIdPerVertT, componentIdPerVertRemT;
           igl::vertex_components(Fg_patternT, componentIdPerVertT);
+          igl::vertex_components(Fg_patternrem, componentIdPerVertRemT);
+
+          VectorXi mapFromRemToFullT(componentIdPerVertRemT.maxCoeff());
+          mapFromRemToFullT.setConstant(-1);
+          for(int ii=0; ii< Vg_patternremT.rows(); ii++){
+              if(mapFromRemToFullT(componentIdPerVertRemT(ii))==-1){
+
+                  for(int j = 0; j<Vg_patternT.rows(); j++){
+                      if(Vg_patternremT.row(ii)==Vg_patternT.row(j)){
+                          mapFromRemToFullT(componentIdPerVertRemT(ii))= componentIdPerVertT(j);
+                          break;
+                      }
+                  }
+              }
+
+          }
 
           for(int i=0; i<Vg_patternT.rows(); i++){
+              if(mapFromRemToFullT(componentIdPerVertRemT(i)==2)){
+                  Vg_patternremT(i,0)-= 100;
+              }
+              else if(mapFromRemToFullT(componentIdPerVertRemT(i)==5)){
+                  Vg_patternremT(i,0)+= 100;
+              }
               if(componentIdPerVertT(i)==2){
                   Vg_patternT(i,0)-= 100;
                   Vg_patternoutT(i,0)-= 100;
@@ -604,8 +864,10 @@ void fixRafaPattern(){
 
           }
 
-          igl::writeOBJ(pref+patternFile, Vg_patternT, Fg_patternT);
-          igl::writeOBJ(pref+patternFileout, Vg_patternoutT, Fg_patternoutT);
+          igl::writeOBJ(pref+"test_"+patternFile, Vg_patternT, Fg_patternT);
+          igl::writeOBJ(pref+"test_"+patternFileout, Vg_patternoutT, Fg_patternoutT);
+          igl::writeOBJ(pref+"test_"+patternFileRem, Vg_patternremT, Fg_patternremT);
+
       }
   }
 

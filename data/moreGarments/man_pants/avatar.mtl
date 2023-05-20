@@ -1,0 +1,130 @@
+# MTL Exporter v1.0 by Seungwoo Oh at CLO - Virtual Fashion Inc.
+newmtl M_Thomas_Sneaker_A_03_Male_Sneaker_02_opencollada_Female_Sneaker_02_opencollada_dummy1FBXASC045fx2SG1SG1SG1SG1SG1SG1SG1
+Ka 0.257132 0.257132 0.257132
+Kd 1.000000 1.000000 1.000000
+Ks 0.000000 0.000000 0.000000
+Ns 2.000000
+illum 2
+d 1.000000
+map_Ka C:/users/raphael/Local Settings/Application Data/CLO/CLO Network OnlineAuth/38/1116/transparency.png
+map_Kd C:/users/raphael/Local Settings/Application Data/CLO/CLO Network OnlineAuth/38/1116/transparency.png
+map_d C:/users/raphael/Local Settings/Application Data/CLO/CLO Network OnlineAuth/38/1116/transparency.png
+newmtl eye
+Ka 0.257132 0.257132 0.257132
+Kd 1.000000 1.000000 1.000000
+Ks 0.560000 0.560000 0.560000
+Ns 128.000000
+illum 2
+d 1.000000
+map_Ka C:/users/raphael/Local Settings/Application Data/CLO/CLO Network OnlineAuth/38/1116/eye.jpg
+map_Kd C:/users/raphael/Local Settings/Application Data/CLO/CLO Network OnlineAuth/38/1116/eye.jpg
+newmtl eyelash
+Ka 0.257132 0.257132 0.257132
+Kd 1.000000 1.000000 1.000000
+Ks 0.075000 0.075000 0.075000
+Ns 28.763239
+illum 2
+d 1.000000
+map_Ka C:/users/raphael/Local Settings/Application Data/CLO/CLO Network OnlineAuth/38/1116/eyelash.jpg
+map_Kd C:/users/raphael/Local Settings/Application Data/CLO/CLO Network OnlineAuth/38/1116/eyelash.jpg
+newmtl toothSG1
+Ka 0.257132 0.257132 0.257132
+Kd 1.000000 1.000000 1.000000
+Ks 0.075000 0.075000 0.075000
+Ns 28.763239
+illum 2
+d 1.000000
+map_Ka C:/users/raphael/Local Settings/Application Data/CLO/CLO Network OnlineAuth/38/1116/tooth.jpg
+map_Kd C:/users/raphael/Local Settings/Application Data/CLO/CLO Network OnlineAuth/38/1116/tooth.jpg
+newmtl leg
+Ka 0.257132 0.257132 0.257132
+Kd 1.000000 1.000000 1.000000
+Ks 0.165000 0.165000 0.165000
+Ns 37.550732
+illum 2
+d 1.000000
+map_Ka C:/users/raphael/Local Settings/Application Data/CLO/CLO Network OnlineAuth/38/1116/leg.jpg
+map_Kd C:/users/raphael/Local Settings/Application Data/CLO/CLO Network OnlineAuth/38/1116/leg.jpg
+newmtl M_Thomas_Sneaker_A_03_Male_Sneaker_02_opencollada_Female_Sneaker_02_opencollada_man_sports_shoes_shoesFBXASC045fx2SG1SG1SG1SG1S1
+Ka 0.257132 0.257132 0.257132
+Kd 1.000000 1.000000 1.000000
+Ks 0.064778 0.064778 0.064778
+Ns 19.999998
+illum 2
+d 1.000000
+map_Ka C:/users/raphael/Local Settings/Application Data/CLO/CLO Network OnlineAuth/38/1116/Male_Sneaker_01.jpg
+map_Kd C:/users/raphael/Local Settings/Application Data/CLO/CLO Network OnlineAuth/38/1116/Male_Sneaker_01.jpg
+newmtl M_Thomas_Sneaker_A_03_Male_Sneaker_02_opencollada_Female_Sneaker_02_opencollada_dummy1FBXASC045fx2SG1SG1SG1SG1SG1SG1SG1
+Ka 0.257132 0.257132 0.257132
+Kd 1.000000 1.000000 1.000000
+Ks 0.000000 0.000000 0.000000
+Ns 2.000000
+illum 2
+d 1.000000
+map_Ka C:/users/raphael/Local Settings/Application Data/CLO/CLO Network OnlineAuth/38/1116/transparency.png
+map_Kd C:/users/raphael/Local Settings/Application Data/CLO/CLO Network OnlineAuth/38/1116/transparency.png
+map_d C:/users/raphael/Local Settings/Application Data/CLO/CLO Network OnlineAuth/38/1116/transparency.png
+newmtl M_Thomas_Sneaker_A_03_Male_Sneaker_02_opencollada_Female_Sneaker_02_opencollada_man_sports_shoes_shoesFBXASC045fx2SG1SG1SG1SG1S1
+Ka 0.257132 0.257132 0.257132
+Kd 1.000000 1.000000 1.000000
+Ks 0.064778 0.064778 0.064778
+Ns 19.999998
+illum 2
+d 1.000000
+map_Ka C:/users/raphael/Local Settings/Application Data/CLO/CLO Network OnlineAuth/38/1116/Male_Sneaker_01.jpg
+map_Kd C:/users/raphael/Local Settings/Application Data/CLO/CLO Network OnlineAuth/38/1116/Male_Sneaker_01.jpg
+newmtl eye
+Ka 0.257132 0.257132 0.257132
+Kd 1.000000 1.000000 1.000000
+Ks 0.560000 0.560000 0.560000
+Ns 128.000000
+illum 2
+d 1.000000
+map_Ka C:/users/raphael/Local Settings/Application Data/CLO/CLO Network OnlineAuth/38/1116/eye.jpg
+map_Kd C:/users/raphael/Local Settings/Application Data/CLO/CLO Network OnlineAuth/38/1116/eye.jpg
+newmtl face
+Ka 0.257132 0.257132 0.257132
+Kd 1.000000 1.000000 1.000000
+Ks 0.165000 0.165000 0.165000
+Ns 37.550732
+illum 2
+d 1.000000
+map_Ka C:/users/raphael/Local Settings/Application Data/CLO/CLO Network OnlineAuth/38/1116/face.jpg
+map_Kd C:/users/raphael/Local Settings/Application Data/CLO/CLO Network OnlineAuth/38/1116/face.jpg
+newmtl body2
+Ka 0.257132 0.257132 0.257132
+Kd 1.000000 1.000000 1.000000
+Ks 0.165000 0.165000 0.165000
+Ns 37.550732
+illum 2
+d 1.000000
+map_Ka C:/users/raphael/Local Settings/Application Data/CLO/CLO Network OnlineAuth/38/1116/body_Covered.jpg
+map_Kd C:/users/raphael/Local Settings/Application Data/CLO/CLO Network OnlineAuth/38/1116/body_Covered.jpg
+newmtl arm
+Ka 0.257132 0.257132 0.257132
+Kd 1.000000 1.000000 1.000000
+Ks 0.165000 0.165000 0.165000
+Ns 37.550732
+illum 2
+d 1.000000
+map_Ka C:/users/raphael/Local Settings/Application Data/CLO/CLO Network OnlineAuth/38/1116/arm.jpg
+map_Kd C:/users/raphael/Local Settings/Application Data/CLO/CLO Network OnlineAuth/38/1116/arm.jpg
+newmtl Male_Short_Quad_opencollada_man_base_V0_1_2_M_hair
+Ka 0.257132 0.257132 0.257132
+Kd 1.000000 1.000000 1.000000
+Ks 0.084278 0.084278 0.084278
+Ns 39.999996
+illum 2
+d 1.000000
+map_Ka C:/users/raphael/Local Settings/Application Data/CLO/CLO Network OnlineAuth/38/1116/M_hair.png
+map_Kd C:/users/raphael/Local Settings/Application Data/CLO/CLO Network OnlineAuth/38/1116/M_hair.png
+map_d C:/users/raphael/Local Settings/Application Data/CLO/CLO Network OnlineAuth/38/1116/M_hair.png
+newmtl eyelash
+Ka 0.257132 0.257132 0.257132
+Kd 1.000000 1.000000 1.000000
+Ks 0.075000 0.075000 0.075000
+Ns 28.763239
+illum 2
+d 1.000000
+map_Ka C:/users/raphael/Local Settings/Application Data/CLO/CLO Network OnlineAuth/38/1116/eyelash.jpg
+map_Kd C:/users/raphael/Local Settings/Application Data/CLO/CLO Network OnlineAuth/38/1116/eyelash.jpg

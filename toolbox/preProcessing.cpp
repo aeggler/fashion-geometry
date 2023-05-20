@@ -1458,6 +1458,9 @@ void preProcessGarment(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixX
         T_sym(0) = 200;
         T_sym(1)=0;
         T_sym(2)=0;
+    }else if (garmentEXT=="man_pants"){
+        T_sym.resize(3);
+        T_sym(0)=500;
     }
     else{
         T_sym = Vg_pattern.row(symVert1 ) - VgDupl_pattern.row(symVert2);
