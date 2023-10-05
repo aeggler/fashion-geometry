@@ -1646,7 +1646,8 @@ void updateSeamCorner( vector<seam*>& seamsList,  vector<minusOneSeam*> & minusO
     cout<<"updated all corners :) "<<endl;
 }
 
-void stitchSeam(vector<int>& startAndEnd, MatrixXd& currPattern, MatrixXi& Fg_pattern_curr){
+void stitchSeam(vector<int>& startAndEnd, MatrixXd& currPattern, MatrixXi& Fg_pattern_curr)
+{
 
     Eigen::VectorXi componentIdPerVert;
     igl::vertex_components(Fg_pattern_curr, componentIdPerVert);
@@ -1920,12 +1921,13 @@ void stitchAdapted3D(MatrixXd& Vg, MatrixXi& Fg, MatrixXi& Fg_pattern_orig, vect
     MatrixXd Vg_pattern_notMerged;
     map<int, int> cornersMerge;
     igl::readOBJ("addedSquare_2D.obj",Vg_pattern_notMerged, Fg_pattern_notMerged);
-cout<<"vertex "<<Fg_pattern_notMerged(1336, 0)<<" is "<<  Vg_pattern_notMerged.row(Fg(1336, 0))<<endl;
-    Vg_pattern_notMerged.row(Fg_pattern_notMerged(1336, 0))= Vg_pattern_notMerged.row(274);
-    Vg_pattern_notMerged.row(Fg_pattern_notMerged(2676, 0))= Vg_pattern_notMerged.row(1093);
+
+    cout<<"vertex "<<Fg_pattern_notMerged(1336, 0)<<" is "<<  Vg_pattern_notMerged.row(Fg(1336, 0))<<endl;
+//    Vg_pattern_notMerged.row(Fg_pattern_notMerged(1336, 0))= Vg_pattern_notMerged.row(274);
+//    Vg_pattern_notMerged.row(Fg_pattern_notMerged(2676, 0))= Vg_pattern_notMerged.row(1093);
     igl::writeOBJ("addedSquare_2D_init.obj",Vg_pattern_notMerged, Fg_pattern_notMerged);
 
-    for(int i=0; i<seamsList.size(); i++) {
+    for(int i=0; i<18; i++){//seamsList.size(); i++) {
         int start1 = seamsList[i]->getStart1();
         int start2 = seamsList[i]->getStart2();
         cout<<endl<<"Seam "<<i<<" start "<<start1<<" "<<start2<<endl;
@@ -1947,32 +1949,37 @@ cout<<"vertex "<<Fg_pattern_notMerged(1336, 0)<<" is "<<  Vg_pattern_notMerged.r
         if(i==3) {
 //            start1= 773;
 //            374 28
-            Vg.row(374) = Vg.row(761);
+//            Vg.row(374) = Vg.row(761);
 //            Vg.row(1160) = Vg.row(1564);
 
         }
         else if(i==5){
-            start1= 729;
+//            start1= 693;
+        }
+        else if(i==6){
+//            start2= 720;
+//            start1= 1455;
+//            start1= 741;
         }
         else if (i==9){
-            start1 = 1506;
+//            start1 = 1437;
         }
         else if (i==10){
-            start1 = 1145;
-            Vg.row(1142) = Vg.row(1528);
+//            start1 = 1112;
+//            Vg.row(1142) = Vg.row(1528);
         }
         else if (i==11){
 //            start2 = 1559;
-            start1 = 1535;
-            start2= 1527;
+//            start1 = 1109;
+//            start2= 1527;
 
 //            cornersMerge[start1]= start2;
         }
         else if (i== 12){
-            start1 = 1122;
-            start2= start1;
+//            start1 = 1089;
+//            start2= start1;
         } else if (i==13){
-            start1= 1109;
+//            start1= 1076;
 //            start2= 777;
 //            cornersMerge[start1]= start2;
         }
@@ -2005,36 +2012,46 @@ cout<<"vertex "<<Fg_pattern_notMerged(1336, 0)<<" is "<<  Vg_pattern_notMerged.r
 //        end1 = mapCornerToCorner[end1];
 //        end2 = mapCornerToCorner[end2];
         if(i==5){
+
 //            end1= 724;
 //            end1 = 3153;
 //            end2 = 1534;
-            end1 = 738;
-            end2= 699;
+//            end1 = 702;
+//            end2= 6;
+        }
+        else if (i==6){
+//            end2= 721;
+//            end1 = 1456;
+//            end1= 750;
+//            end2= 1428;
         }
         else if (i==9){
-            end1 = 1497;
-            end2= 1476;
+//            end1 = 1428;
+//            end2= 750;
 ////            end1 = 1501;
 //            end1 = 3073;
 //            end2 = 3153;
         }
         else if (i==10){
-//            end1 = 1160;
-            end1= 1142;
-            Vg.row(1142)= Vg.row(796);
+//            end1= 1109;
+//            end2 = 763;
+//            Vg.row(1142)= Vg.row(796);
 
         }
         else if (i==11){
-////            end1= 1564;
-////            end2= 1160;
-                end1 = 1528;
-                end2 = 1142;
+//                end1 = 1528;
+//                end2 = 1142;
+//                end1=1102;
+//                end2=1016;
+
 //                cornersMerge[end1]= end2;
 //
         }
         else if (i==12){
-            end1= 1113;
-            end2 = 1131;
+//            end1= 1113;
+//            end2 = 1131;
+//            end2=1098;
+//            end1=1468;
 ////            end1 = 1131 ;
 ////            end2= 1149;
 ////            cornersMerge[end1]= end2;
@@ -2043,7 +2060,7 @@ cout<<"vertex "<<Fg_pattern_notMerged(1336, 0)<<" is "<<  Vg_pattern_notMerged.r
 //
         }
         else if (i==13){
-            end1 = 1170;
+//            end1 = 1137;
 
         }
 //
@@ -2085,6 +2102,7 @@ cout<<"vertex "<<Fg_pattern_notMerged(1336, 0)<<" is "<<  Vg_pattern_notMerged.r
                 createVertexFaceAdjacencyList(Fg, vfAdj);
 //                boundaryL[patch2][nextId2] = boundaryL[patch1][nextId1];
                 igl::writeOBJ("insertedFacesPattern"+to_string(i)+".obj", Vg_pattern, Fg_pattern);
+                igl::writeOBJ("addedSquare_2D"+to_string(i)+".obj", Vg_pattern_notMerged, Fg_pattern_notMerged);
 
 
             }else{
@@ -2307,8 +2325,51 @@ cout<<"vertex "<<Fg_pattern_notMerged(1336, 0)<<" is "<<  Vg_pattern_notMerged.r
         if(!abortFlag) replaceInFaces(start2, start1, Fg);
 //        replaceInFaces(end2, end1, Fg);
     }
-    replaceInFaces(761, 374, Fg);
-    replaceInFaces(1530, 1143, Fg);
+    replaceInFaces(1927, 1834, Fg);
+    replaceInFaces(3856, 1834, Fg);
+    replaceInFaces(3763, 1834, Fg);
+
+    replaceInFaces(3510, 1948, Fg);
+    replaceInFaces(1934, 1948, Fg);
+    replaceInFaces(2680, 1948, Fg);
+
+    replaceInFaces(1581, 5, Fg);
+    replaceInFaces(19, 5, Fg);
+    replaceInFaces(751, 5, Fg);
+
+    replaceInFaces(2689, 1957, Fg);
+    replaceInFaces(3528, 1957, Fg);
+//    replaceInFaces(751, 5, Fg);
+    replaceInFaces(760, 28, Fg);
+    replaceInFaces(1599, 28, Fg);
+
+    replaceInFaces(1876, 1831, Fg);
+    replaceInFaces(3805, 1831, Fg);
+    replaceInFaces(3760, 1831, Fg);
+
+    replaceInFaces(Fg(3048,2), Fg(189,2), Fg);
+    replaceInFaces(Fg(2987,0),  Fg(189,2), Fg);
+    replaceInFaces(Fg(1692,0),  Fg(189,2), Fg);
+
+    replaceInFaces(Fg(2975,1), Fg(3025,2), Fg);
+    replaceInFaces(Fg(2975,0),  Fg(3025,0), Fg);
+
+    replaceInFaces(Fg(2988,2), Fg(3057,2), Fg);
+    replaceInFaces(Fg(2988,1),  Fg(3057,0), Fg);
+//right arm
+    replaceInFaces(Fg(6513,2), Fg(6563,1), Fg);
+    replaceInFaces(Fg(6513,0),  Fg(6563,0), Fg);
+
+    replaceInFaces(Fg(6526,1), Fg(6595,1), Fg);
+    replaceInFaces(Fg(6526,2),  Fg(6595,0), Fg);
+
+    replaceInFaces(1582, 1617, Fg);
+    replaceInFaces(3511, 3546, Fg);
+
+    replaceInFaces(3516, 3541, Fg);
+//    replaceInFaces(3541, 3546, Fg);
+//    replaceInFaces(3511, 3546, Fg);
+
 
     igl::writeOBJ("cornersMerged.obj", Vg, Fg);
 

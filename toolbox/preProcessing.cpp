@@ -178,6 +178,9 @@ void createHalfSewingPattern(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, M
     if(garment == "man_tshirt"){
         th = 0.90;
     }
+    if(garment == "dress"){
+        th=0.3;
+    }
     int leftCount = 0; int rightCount = 0 ;
     for(int i=0; i<n; i++){
         if(Vg(i, 0) <= th){

@@ -544,13 +544,18 @@ void duplicateInitPattern(MatrixXd& Vg ,MatrixXi& Fg){
     MatrixXd R_symetry = MatrixXd::Identity(3, 3);
     R_symetry(0, 0) = -1;
 
-    for(int i = 0; i<faceSize/2; i++){
+    for(int i = 0; i<faceSize; i++){
         //bigger is the better oe
         for(int j = 0; j<3; j++){
             int id = Fg(i, j);
             if(componentIdPerVert(id)==2){
                 Vg.row(id) = (R_symetry * Vg.row(id+vertSize/2).transpose()).transpose();
-                Vg(id, 0) -=50;
+                Vg(id, 0) +=300;
+
+            }
+            if(componentIdPerVert(id)==5){
+                Vg.row(id) = (R_symetry * Vg.row(id-vertSize/2).transpose()).transpose();
+                Vg(id, 0) +=1600;
 
             }
         }
@@ -558,6 +563,22 @@ void duplicateInitPattern(MatrixXd& Vg ,MatrixXi& Fg){
 //        Fg(i, 1) = Fg(i, 2);
 //        Fg(i, 2) = temp;
     }
+
+
+//    for(int i = 0; i<faceSize/2; i++){
+//        //bigger is the better oe
+//        for(int j = 0; j<3; j++){
+//            int id = Fg(i, j);
+//            if(componentIdPerVert(id)==2){
+//                Vg.row(id) = (R_symetry * Vg.row(id+vertSize/2).transpose()).transpose();
+//                Vg(id, 0) -=50;
+//
+//            }
+//        }
+////        int temp = Fg(i, 1);
+////        Fg(i, 1) = Fg(i, 2);
+////        Fg(i, 2) = temp;
+//    }
     igl::writeOBJ("patternSym.obj" , Vg, Fg);
 //    Vg = saveV;
 //    Fg = saveF;
@@ -682,6 +703,101 @@ void insertToStartEnd(vector<int> &startAndEnd, std::set<int>& cornerset, Matrix
 }
 
 void fixRafaPattern(){
+    return;
+    MatrixXd pat, v3d; MatrixXi patF,f3d;
+    igl::readOBJ("patternComputed_CLO_to_bodyScan_MarkNew_rem_man_tshirt.obj", pat, patF);
+for(int i=0; i<pat.rows(); i++){
+    if(pat(i,1)<1640 && pat(i,0)>1000){
+        pat(i,0)+=100;
+    }
+}
+igl::writeOBJ("patternComputed_CLO_to_bodyScan_MarkNew_rem_man_tshirt.obj",pat, patF);
+
+
+//    MatrixXd pat, v3d; MatrixXi patF,f3d;
+//    igl::readOBJ("mark_2D.obj", pat, patF);
+//    igl::readOBJ("Paola_final_3D.obj", v3d, f3d);
+    MatrixXd pat2, v3d2;
+    MatrixXi pat2F,f3d2;
+
+    pat2.resize(pat.rows()+4,3);
+//    v3d2.resize(v3d2.rows()+4,3);
+    pat2.block(0,0,pat.rows(),3)=pat;
+//    v3d2.block(0,0,v3d.rows(),3)=v3d;
+
+    pat2F.resize(patF.rows()+2,3);
+    pat2F.block(0,0,patF.rows(),3)=patF;
+
+//    f3d2.resize(f3d2.rows()+2,3);
+//    f3d2.block(0,0,f3d.rows(),3)=f3d;
+
+
+    ///////////first
+    pat2.row(pat.rows())= pat.row(1998);
+    pat2(pat.rows(),1)-= 200;
+
+    pat2.row(pat.rows()+1)= pat2.row(pat.rows());
+    pat2(pat.rows()+1,1)-= 10;
+
+    pat2.row(pat.rows()+2)= pat2.row(pat.rows());
+    pat2(pat.rows()+2,1)-= 10;
+    pat2(pat.rows()+2,0)+= 10;
+
+    pat2.row(pat.rows()+3)= pat2.row(pat.rows());
+    pat2(pat.rows()+3,0)+= 10;
+
+    pat2F(patF.rows(), 0)= pat.rows();
+    pat2F(patF.rows(), 1)= pat.rows()+1;
+    pat2F(patF.rows(), 2)= pat.rows()+2;
+
+    pat2F(patF.rows()+1, 0)= pat.rows();
+    pat2F(patF.rows()+1, 1)= pat.rows()+2;
+    pat2F(patF.rows()+1, 2)= pat.rows()+3;
+
+    igl::writeOBJ("mark_2D_sq.obj", pat2, pat2F);
+return;
+
+    ///////////3d
+    v3d2.row(v3d.rows())= v3d.row(810);
+    v3d2(v3d.rows(),1)-= 200;
+
+    v3d2.row(v3d.rows()+1)= v3d.row(v3d.rows());
+    v3d2(v3d.rows()+1,1)-= 10;
+
+    v3d2.row(v3d.rows()+2)= v3d.row(v3d.rows());
+    v3d2(v3d.rows()+2,1)-= 10;
+    v3d2(v3d.rows()+2,0)+= 10;
+
+    v3d2.row(v3d.rows()+3)= v3d.row(v3d.rows());
+    v3d2(v3d.rows()+3,0)+= 10;
+
+    f3d2(f3d.rows(), 0)= v3d.rows();
+    f3d2(f3d.rows(), 0)= v3d.rows()+1;
+    f3d2(f3d.rows(), 0)= v3d.rows()+2;
+
+    f3d2(f3d.rows()+1, 0)= v3d.rows();
+    f3d2(f3d.rows()+1, 0)= v3d.rows()+2;
+    f3d2(f3d.rows()+1, 0)= v3d.rows()+3;
+
+    igl::writeOBJ("Paola_final_3D_sq.obj", v3d2, f3d2);
+
+
+
+
+    return;
+//
+//    MatrixXd pat; MatrixXi patF,patFF ;
+//    igl::readOBJ("addedSquare2D.obj", pat, patF);
+//    patFF.resize(patF.rows()+2, 3);
+//    patFF.block(0,0,patF.rows(), 3)= patF;
+//    patFF.row(patF.rows()) = patF.row(1257);
+//    patFF(1257,1)=64;
+//    patFF(patF.rows(),0)=64;
+//
+//    patFF.row(patF.rows()+1) = patF.row(1504);
+//    patFF(1504,2)=838;
+//    patFF(patF.rows()+1,0)=838;
+
 return;
     MatrixXd Vgh; MatrixXi Fgh;
 //    string av = "avatar_oneComponent";

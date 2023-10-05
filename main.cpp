@@ -223,6 +223,7 @@ void visualizeSeam(pair<int, int> which, igl::opengl::glfw::Viewer& viewer);
 int patchCounter = 0;int adaptioncount =0;
 void smoothGarment();
 void smoothGarmentOutline();
+void readInNicosFunction(igl::opengl::glfw::Viewer& viewer, bool useOtherModel, MatrixXd& otherM);
 void smoothOutline(MatrixXd & Vpattern ,MatrixXi Fpattern);
 bool pre_draw(igl::opengl::glfw::Viewer& viewer){
     viewer.data().dirty |= igl::opengl::MeshGL::DIRTY_DIFFUSE | igl::opengl::MeshGL::DIRTY_SPECULAR;
@@ -362,6 +363,10 @@ int main(int argc, char *argv[])
         garment = garInput;
         garmentExt = garment+"_4";
     }
+    else if (garInput == "dress loose"){
+        garment ="dress_woStitch_1" ;
+        garmentExt =  garment;
+    }
 
 //    garment = "tshirt";
 //    garment = "top";
@@ -396,6 +401,8 @@ int main(int argc, char *argv[])
 
     }else if(garment == "man_tshirt"|| garment == "man_tshirt2"|| garment == "man_pants"){
         avatar_file_name =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/avatar/male_avatar_rem_20.ply";
+        avatar_file_name =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/avatar/avatar_notRemeshed.ply";
+
 
     }else{
         avatar_file_name =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/avatar/avatar_one_component.ply";
@@ -404,7 +411,7 @@ int main(int argc, char *argv[])
 
     igl::readOBJ(garment_pattern_file_name, Vg_pattern, Fg_pattern);
 //    garment = "skirt_no2";
-    symetry = true;
+    symetry = false; // true;
     if(symetry){
         bool insertPlane = true;
         int symVert1 ,symVert2;
@@ -652,27 +659,33 @@ int main(int argc, char *argv[])
     std::getline(std::cin, whichName);
     if(whichName =="missy str"){
         avName = "avatar_missy_straight_09_OC";
-    }else if (whichName =="petite"){
+
+    }else if (whichName == "missy curvy"){
+        avName= "avatar_missy_curvy_02_OC"; ////////nicos model
+    }
+    else if (whichName =="petite"){
         avName = "avatar_petite_curvy_01_OC";
+
     }else if (whichName =="petite str"){
-        avName = "avatar_petite_straight_01_OC";
+        avName = "avatar_petite_straight_01_OC" ; ////// nicos model
     }
     else if (whichName =="missy 5"){
         avName = "avatar_missy_straight_05_OC";
     }
     else if (whichName =="normal"){
         avName = "avatar_oneComponent";
+
     }else if (whichName =="mat"){
-        avName = "avatar_maternity_05_OC";
+        avName = "avatar_maternity_01_OC"; /////////nicos model
+
     }else if (whichName=="man"){
             avName = "CLO_avatar_to_male_large_avatar_rem_20";
     }
     else if (whichName=="man orig"){
         avName = "male_avatar_rem_20";
-
     }
     else if (whichName=="plus"){
-        avName = "avatar_plus_straight_05_OC";
+        avName = "avatar_plus_straight_05_OC"; /////////nicos model
 
     }else if (whichName == "Paola"){
         avName= "CLO_avatar_to_bodyScan_Paola_rem";
@@ -686,6 +699,10 @@ int main(int argc, char *argv[])
     }
     else if (whichName == "Anna"){
         avName= "CLO_avatar_to_bodyScan_Anna_rem 2";
+
+    }else if (whichName == "mark"){
+        avName= "CLO_to_bodyScan_MarkNew_rem";
+//        avName ="bodyScan_Mark_rem";
 
     }
     else{
@@ -750,7 +767,13 @@ int main(int argc, char *argv[])
 
     setCollisionMesh();
     MatrixXd dummy;
-    computeBaryCoordsGarOnNewMannequin(viewer, false,dummy );// contains boundary vertices now, needed for simulation, colsestFaceId
+    // this function can be replacd by Nico trying it and giving me the new garment on the new avatar
+    if(avName == "avatar_missy_curvy_02_OC"||avName=="avatar_petite_straight_01_OC"|| avName=="avatar_maternity_01_OC"||avName=="avatar_plus_straight_05_OC"){
+        readInNicosFunction(viewer, false,dummy );
+
+    }else{
+        computeBaryCoordsGarOnNewMannequin(viewer, false,dummy );// contains boundary vertices now, needed for simulation, colsestFaceId
+    }
 //    Vg = Vg_orig;
     Vm = testMorph_V1;
     Vm_orig = testMorph_V1;
@@ -1657,6 +1680,9 @@ int main(int argc, char *argv[])
 
                 currPattern = mapFromVg;
                 Fg_pattern_curr = mapFromFg;
+                igl::writeOBJ("from.obj", mapFromVg, mapFromFg);
+                igl::writeOBJ("to.obj", mapToVg, mapToFg);
+
 //                cout<<endl<<currPattern.rows()<<" curr pattern rows, faces  "<<Fg_pattern_curr.rows()<<endl;
                 preComputeAdaption();
                 if(inverseMap){
@@ -2107,6 +2133,27 @@ int main(int argc, char *argv[])
                 cout<<"End smoothing selection"<<endl;
             }
             if(ImGui::Button("Clip area", ImVec2(-1, 0))){
+                if(inverseMap){
+                    string addedFile = "adaption2D_"+avName+"_"+garment+".obj";
+                    igl::readOBJ(addedFile, currPattern, Fg_pattern_curr);
+                    igl::writeOBJ("mapToCli.obj" ,mapToVg, mapToFg);
+                    duplicateInitPattern(mapToVg, mapToFg);
+                    igl::writeOBJ("mapToCli_after.obj" ,mapToVg, mapToFg);
+                    string modifiedPattern  = "patternComputed_CLO_to_bodyScan_MarkNew_rem_man_tshir.obj";
+//                string modifiedPattern  = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/finished_retri_writtenPattern_"+avName+"_"+garment+".obj";
+//
+                    igl::readOBJ(modifiedPattern, currPattern, Fg_pattern_curr);
+                    igl::writeOBJ("other.obj" ,currPattern, Fg_pattern_curr);
+                    for(int i=0; i<currPattern.rows(); i++){
+                        if(currPattern(i,1)<1640 && currPattern(i,0)>1000){
+                            currPattern(i,0)+=100;
+                        }
+                    }
+                    igl::writeOBJ("other_after.obj" ,currPattern, Fg_pattern_curr);
+
+
+                }
+
                 std::vector<std::vector<int> > boundaryL_adaptedFromPattern;
                 igl::boundary_loop( Fg_pattern_curr, boundaryL_adaptedFromPattern );
                 MatrixXi Fg_toPattern = mapToFg; // todo not always
@@ -2126,12 +2173,13 @@ int main(int argc, char *argv[])
 
                             cout<<"Sum of "<<i<<" is "<<sum<<endl;
                     if(sum>=100){
-                        if(garment=="top" && avName == "CLO_avatar_to_bodyScan_Paola_rem" && patchCounter == 4){
-                            cliV.row(6) = currPattern.row(374);
-                            cout<<" in ACTION"<<endl;
-                        }else  if(garment=="top" && avName == "CLO_avatar_to_bodyScan_Paola_rem" && patchCounter == 5) {
-                            cliV.row(3) = currPattern.row(418);
-                        }else if (i==5) cout<<"NOT TAKEN"<<endl;
+//                        if(garment=="top" && avName == "CLO_avatar_to_bodyScan_Paola_rem" && patchCounter == 4){
+//                            cliV.row(6) = currPattern.row(374);
+//                            cout<<" in ACTION"<<endl;
+//                        }else  if(garment=="top" && avName == "CLO_avatar_to_bodyScan_Paola_rem" && patchCounter == 5) {
+//                            cliV.row(3) = currPattern.row(418);
+//                        }else
+                        if (i==5) cout<<"NOT TAKEN"<<endl;
                         igl::writeOBJ("clipper_"+to_string(patchCounter)+".obj", cliV, cliF);
                         patchCounter++;
                         connectedVert.emplace_back(returnVec[i]);
@@ -2142,9 +2190,13 @@ int main(int argc, char *argv[])
                 igl::readOBJ("clipper_"+to_string(0)+".obj", Vg_retri, Fg_retri);
 
                 mouse_mode = NONE;
+//                for(int patchi=; patchi<=6; patchi++) {
+
                 for(int patchi=0; patchi< patchCounter; patchi++) {
                     MatrixXd Vg_retrii;
                     MatrixXi Fg_retrii;
+//                    igl::readPLY("cli" + to_string(patchi) + ".ply", Vg_retrii, Fg_retrii);
+
                     igl::readOBJ("clipper_" + to_string(patchi) + ".obj", Vg_retrii, Fg_retrii);
                     Fg_retri.resize(Fg_retrii.rows(), Fg_retrii.cols());
                     Fg_retri= Fg_retrii;
@@ -2322,6 +2374,9 @@ int main(int argc, char *argv[])
                 MatrixXd modif; MatrixXi modifF;
                 igl::readOBJ("finished_retri_writtenPattern_"+avName+"_"+garmentExt +".obj", modif, modifF);
                 string id ;
+                MatrixXi Fg_prev_notMerge;
+                MatrixXd Vg_prev_notMerge;
+                igl::readOBJ("notMergedPatches.obj", Vg_prev_notMerge, Fg_prev_notMerge);
                 cout<<"Start manual face insertion"<<endl;
                 cout<<"face to be split and the two indices, new vert gets positioin"<<endl;
                 int idx1, idx0, newvert;
@@ -2336,16 +2391,31 @@ int main(int argc, char *argv[])
                 int fsize = modifF.rows();
                 int vsize = modif.rows();
                 MatrixXd modifNew(vsize+1, 3);
+                MatrixXd notM(Vg_prev_notMerge.rows()+1,3);
                 modifNew.block(0,0,vsize, 3)= modif;
+                notM.block(0,0,Vg_prev_notMerge.rows(), 3)= Vg_prev_notMerge;
+
                 MatrixXi modifFNew(fsize+1, 3);
+                MatrixXi notMF(Fg_prev_notMerge.rows()+1,3);
+
                 modifFNew.block(0,0,fsize, 3)= modifF;
+                notMF.block(0,0,Fg_prev_notMerge.rows(), 3) = Fg_prev_notMerge;
+
                 modifFNew.row(fsize) = modifF.row(face);
+                notMF.row(fsize)= notMF.row(face);
+
                 modifNew.row(vsize) = modif.row(newvert);
+                notM.row(Vg_prev_notMerge.rows()) = notM.row(newvert);
+
                 modifFNew(fsize,idx0) = vsize;
                 modifFNew(face,idx1) = vsize;
+                notMF(fsize,idx0) = Vg_prev_notMerge.rows();
+                notMF(face,idx1) = Vg_prev_notMerge.rows();
 
                 cout<<" End modification "<<endl;
                 igl::writeOBJ("finished_retri_writtenPattern_"+avName+"_"+garmentExt +".obj", modifNew, modifFNew);
+//                igl::writeOBJ("notMergedPatches"+avName+"_"+garmentExt +".obj", notM, notMF);
+
 
             }
 
@@ -3350,7 +3420,28 @@ bool callback_mouse_down(igl::opengl::glfw::Viewer& viewer, int button, int modi
     }
     return false;
 }
+void readInNicosFunction(igl::opengl::glfw::Viewer& viewer, bool useOtherModel, MatrixXd& otherM){
+    // read in positions from the File Nico sent-> located at Desktop
 
+    string nicoAvName="";
+    if (avName== "avatar_missy_curvy_02_OC"){
+        nicoAvName = "missy_curvy";
+    }else if (avName == "avatar_petite_straight_01_OC"){
+        nicoAvName = "petite_dress";
+
+    }else if (avName == "avatar_maternity_01_OC"){
+        nicoAvName = "maternity_dress";
+
+    }else if(avName == "avatar_plus_straight_05_OC"){
+        nicoAvName = "plus_dress";
+
+    }
+    //test
+//    targetM =  testMorph_V1;
+    string nicosGarament =  "/Users/annaeggler/Desktop/deformed_dresses/"+nicoAvName+".obj";
+    igl::readOBJ(nicosGarament, Vg, Fg);
+
+}
 void computeBaryCoordsGarOnNewMannequin(igl::opengl::glfw::Viewer& viewer, bool useOtherModel, MatrixXd& otherM){
     VectorXd distVec(garmentPreInterpol.rows());
     MatrixXd targetM;
@@ -3733,7 +3824,9 @@ bool callback_key_down(igl::opengl::glfw::Viewer& viewer, unsigned char key, int
     if(key == 'P'){       // Pattern
         keyRecognition = true;
         simulate = false;
-        smoothGarmentOutline();
+        cout<<" before outline"<<endl;
+       if(!(garment=="dress" && avName == "avatar_maternity_01_OC")) smoothGarmentOutline();
+        cout<<"after outline "<<endl;
 
         // we start computing the pattern for the current shape
         Eigen::MatrixXd computed_Vg_pattern= Vg;
@@ -4291,7 +4384,7 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
     adaptioncount++;
 //    if(adaptioncount>1)return;
 
-//    std::cout<<"-------------- Time Step ------------"<<adaptioncount<<endl;
+    std::cout<<"-------------- Time Step ------------"<<adaptioncount<<endl;
 
     // we have no velocity or collision, but we do have stretch, constrainedStretch and bending
     // for the stretch, the current pattern is the reference, then its corners are mapped to another position
@@ -4320,7 +4413,7 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
             mapUsed = IdMap;
             for(auto item : mapCornerToCorner){
                 if(item.second<0){
-//                    cout<<"adding negative"<<endl;
+                    cout<<"adding negative"<<endl;
                     extFHV[item.second]= (-1)* item.second;
                 }
             }
@@ -4352,7 +4445,7 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
     viewer.data().clear();
     viewer.data().set_mesh(currPattern, Fg_pattern_curr);
 
-    viewer.data().uniform_colors(ambient, diffuse, specular);
+//    viewer.data().uniform_colors(ambient, diffuse, specular);
     viewer.data().show_texture = false;
     viewer.data().set_face_based(false);
     viewer.data().show_lines = true;
@@ -4428,11 +4521,14 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
     igl::jet(uHelp, 0.5, 1.5, coluPerEdge);
     igl::jet(vHelp, 0.5, 1.5, colvPerEdge);
 
-    viewer.data().add_edges(startPerEdge, startPerEdge + 3 * uPerEdge, coluPerEdge);
-    viewer.data().add_edges(startPerEdge, startPerEdge - 3 * uPerEdge, coluPerEdge);
-
-    viewer.data().add_edges(startPerEdge, startPerEdge + 3 * vPerEdge, colvPerEdge);
-    viewer.data().add_edges(startPerEdge, startPerEdge - 3 * vPerEdge, colvPerEdge);
+//    viewer.data().add_edges(startPerEdge, startPerEdge + 3 * uPerEdge, coluPerEdge);
+//    viewer.data().add_edges(startPerEdge, startPerEdge - 3 * uPerEdge, coluPerEdge);
+//
+//    viewer.data().add_edges(startPerEdge, startPerEdge + 3 * vPerEdge, colvPerEdge);
+//    viewer.data().add_edges(startPerEdge, startPerEdge - 3 * vPerEdge, colvPerEdge);
+    MatrixXd colUFace;
+    igl::jet(normUPattern, 0., 2., colUFace);
+    viewer.data().set_colors(colUFace);
 
 //    adaptionFlag = false;
 }
