@@ -1,0 +1,23 @@
+# MTL Exporter v1.0 by Seungwoo Oh at CLO - Virtual Fashion Inc.
+newmtl Cotton_50s_Poplin_CAR_FRONT_1893
+Ka 0.232931 0.220752 0.203701
+Kd 0.905882 0.858518 0.792203
+Ks 0.075000 0.075000 0.075000
+Ns 28.763239
+illum 2
+d 1.000000
+map_Ka C:/users/raphael/Local Settings/Application Data/CLO/CLO Network OnlineAuth/41/1020/50s_Cotton_Poplin_FCL1PSC003_3_test1_COL_55602.jpg
+map_Kd C:/users/raphael/Local Settings/Application Data/CLO/CLO Network OnlineAuth/41/1020/50s_Cotton_Poplin_FCL1PSC003_3_test1_COL_55602.jpg
+map_bump C:/users/raphael/Local Settings/Application Data/CLO/CLO Network OnlineAuth/41/1020/50s_Cotton_Poplin_FCL1PSC003_3_test1_NRM_55604.jpg
+map_bump C:/users/raphael/Local Settings/Application Data/CLO/CLO Network OnlineAuth/41/1080/50s_Cotton_Poplin_FCL1PSC003_3_test1_NRM_55604_50.jpg
+newmtl Cotton_50s_Poplin_CAR_FRONT_1902
+Ka 0.252090 0.247970 0.242203
+Kd 0.980392 0.964370 0.941939
+Ks 0.075000 0.075000 0.075000
+Ns 28.763239
+illum 2
+d 1.000000
+map_Ka C:/users/raphael/Local Settings/Application Data/CLO/CLO Network OnlineAuth/41/1020/50s_Cotton_Poplin_FCL1PSC003_3_test1_COL_60336.jpg
+map_Kd C:/users/raphael/Local Settings/Application Data/CLO/CLO Network OnlineAuth/41/1020/50s_Cotton_Poplin_FCL1PSC003_3_test1_COL_60336.jpg
+map_bump C:/users/raphael/Local Settings/Application Data/CLO/CLO Network OnlineAuth/41/1020/50s_Cotton_Poplin_FCL1PSC003_3_test1_NRM_60338.jpg
+map_bump C:/users/raphael/Local Settings/Application Data/CLO/CLO Network OnlineAuth/41/1081/50s_Cotton_Poplin_FCL1PSC003_3_test1_NRM_60338_50.jpg

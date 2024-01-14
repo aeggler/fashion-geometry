@@ -1438,24 +1438,36 @@ void setLP(bool inverseMap, std::vector<std::vector<int> >& boundaryL , vector<v
         double tailor_lazyness, double minConstrained, vector <cutVertEntry*>& cutPositions, VectorXd& cornerVert,
         MatrixXd& currPattern, const bool & LShapeAllowed, const MatrixXd & fromPattern, const MatrixXi mapFromFg, map<int, int>& fullPatternVertToHalfPatternVert,
         map<int, int>& halfPatternVertToFullPatternVert,map<int, int>& halfPatternFaceToFullPatternFace ){
+
+//    cout<<"************ test set LP 1 ******************"<<endl;
+
     computePerFaceUV(Fg_pattern, mapFromFg, fromPattern, currPattern,halfPatternFaceToFullPatternFace, inverseMap );
     for(auto it:fullPatternVertToHalfPatternVert ){
         if(it.first<0){
             cout<<"it is in!!"<<it.first<<" "<<it.second<<endl;
         }
     }
+//    cout<<"************ test set LP 1a ******************"<<endl;
+
     // Create an environment
     GRBEnv env = GRBEnv(true);
     env.set("LogFile", "mip1.log");
+//    cout<<"************ test set LP 1b ******************"<<endl;
+//    cout<<"************ test set LP 1bc ******************"<<endl;
     env.start();
+//    cout<<"************ test set LP 1c ******************"<<endl;
+
     // Create an empty model
     GRBModel model = GRBModel(env);
+//    cout<<"************ test set LP 1cc ******************"<<endl;
+
     int varCount =0;
     int numVar=0; // whole boundary and all corners duplicate
     for(int i=0; i<cornersPerBoundary.size(); i++){
         numVar += cornersPerBoundary[i].size();
         numVar += boundaryL[i].size();
     }
+
     // with the constraints we have for each counterpart another variable
     numVar += (numVar/2);// 574 without mapping -> 287 added ones ? we don't need them all bc there are no common ones for th -1s
     map<int, int> trackCornerIds; // keeps track of the var Id per corner - to understand if it exists already or not
@@ -1731,6 +1743,7 @@ void setLP(bool inverseMap, std::vector<std::vector<int> >& boundaryL , vector<v
         }
 
     }
+
     model.set(GRB_IntAttr_ModelSense, GRB_MAXIMIZE);
     model.optimize();
 
@@ -1815,7 +1828,8 @@ void setLP(bool inverseMap, std::vector<std::vector<int> >& boundaryL , vector<v
             cutPositions.push_back(cve);
         }
     }
-    cout<<cutPositions.size()<<" size"<<endl<<endl;
+
+//    cout<<cutPositions.size()<<" size"<<endl<<endl;
 }
 
 void updateStress(vector<cutVertEntry*>& cutPositions, vector<seam*>& seamsList, vector<minusOneSeam*>& minusOneSeams,
@@ -2068,6 +2082,7 @@ int computeTear(bool inverseMap, Eigen::MatrixXd & fromPattern, MatrixXd&  currP
     createVertexFaceAdjacencyList(Fg_pattern_curr, vfAdj);
     MatrixXd lengthsCurr;
     igl::edge_lengths(currPattern, Fg_pattern_curr, lengthsCurr);
+                     cout<<"************ test 1  *******************"<<endl;
 
     lengthsOrig =  patternlengthsOrig;
 
@@ -2094,7 +2109,9 @@ int computeTear(bool inverseMap, Eigen::MatrixXd & fromPattern, MatrixXd&  currP
 
         }
     }
-    for(int i =0; i<minusOneSeams.size(); i++){
+        cout<<"************ test 2*******************"<<endl;
+
+        for(int i =0; i<minusOneSeams.size(); i++){
        minusOneSeam* currSeam = minusOneSeams[i];
        int start = currSeam-> getStartVert();
        int end = currSeam -> getEndVert();
@@ -2104,6 +2121,7 @@ int computeTear(bool inverseMap, Eigen::MatrixXd & fromPattern, MatrixXd&  currP
             addToMapIfNotExisting( fullPatternVertToHalfPatternVert[end], -i-1);
         }
     }
+        cout<<"************ test 3 *******************"<<endl;
 
     // first we need to know where to tear, set up LP for this
     // information we need: stress. For stress, we need lengths old and ned
@@ -2113,7 +2131,9 @@ int computeTear(bool inverseMap, Eigen::MatrixXd & fromPattern, MatrixXd&  currP
     // for vertices we need boundary loop
 
     double minConstrained = 0.25;
-    setLP(inverseMap, boundaryL, vfAdj, Fg_pattern_curr, cornersPerBoundary, seamIdPerCorner,
+                     cout<<"************ test 4 ******************"<<endl;
+
+                     setLP(inverseMap, boundaryL, vfAdj, Fg_pattern_curr, cornersPerBoundary, seamIdPerCorner,
           seamsList, minusOneSeams, tailor_lazyness, minConstrained, cutPositions,
           cornerVert, currPattern, LShapeAllowed, fromPattern, mapFromFg, fullPatternVertToHalfPatternVert, halfPatternVertToFullPatternVert, halfPatternFaceToFullPatternFace);
 
@@ -2205,6 +2225,16 @@ void updatePositionToIntersection(MatrixXd& p,int next, const MatrixXd& Vg_bound
         }
     }
     double stiffness = 0.8; //todo
+    if(next== 0){
+        cout<<"currently  working on 0..."<< mini<<" with "<< p.row(mini)<<endl;
+        cout<<(minDistTarget.transpose()-p.row(next));
+        cout<<"     ---------------"<<endl;
+    }
+    if(next== 1){
+        cout<<"currently  working on 1..."<< mini<<" with "<< p.row(mini)<<endl;
+        cout<<(minDistTarget.transpose()-p.row(next));
+        cout<<"     ---------------"<<endl;
+    }
     p.row(next) += stiffness * (minDistTarget.transpose()-p.row(next));
 
 }
@@ -2287,7 +2317,7 @@ void projectBackOnBoundary(const MatrixXd & mapToVg, MatrixXd& p, const vector<s
     int numSeams = seamsList.size();
     int count =0;
     for (int j = 0; j<numSeams; j++){
-
+        cout<<"seam "<<j<<endl<<endl;
         seam* currSeam  = seamsList[j];
         auto stP1= currSeam-> getStartAndPatch1();
         auto stP2 =  currSeam -> getStartAndPatch2ForCorres(); // attention this is with respect to the original pattern
@@ -2346,26 +2376,32 @@ void projectBackOnBoundary(const MatrixXd & mapToVg, MatrixXd& p, const vector<s
                     // else it is released somehow. But from which seam? If it is released from another seam then pull it to this boundary still
                 else if( std::find(releasedVertNew[searchNExt].begin(),
                                    releasedVertNew[searchNExt].end(), j) == releasedVertNew[searchNExt].end()){
+
                     updatePositionToIntersection( p, searchNExt,Vg_seam1to, true);
                 }else if (std::find(zipBack.begin(), zipBack.end(), make_pair(searchNExt, j)) != zipBack.end()){
                     // we found this vert releases form this seam as a vertex to be zipped back.
                     updatePositionToIntersection( p, searchNExt,Vg_seam1to, true);
+
 
                 }
                 nextIdx++;
                 next = boundaryL[patchUsed][(nextIdx) % bsize];
             }
             searchNExt = (inverseMap) ? next : seamFullHalf[next];
+//            if (j==5) cout<<searchNExt<<" next to searchh on that seam "<<j<<endl;
 
             // the last corner. Again if it is constrained from another side pull it to boundary, else ignore since handled by corner
             if(releasedVert.find(searchNExt) == releasedVert.end()){
                 updatePositionToIntersection( p, searchNExt,Vg_seam1to, true);
 
+
             } else if (std::find(releasedVertNew[searchNExt].begin(), releasedVertNew[searchNExt].end(), j) == releasedVertNew[searchNExt].end()){
                 updatePositionToIntersection( p, searchNExt,Vg_seam1to, true);
+
             }else if (std::find(zipBack.begin(), zipBack.end(), make_pair(searchNExt, j)) != zipBack.end()){
                 // we found this vert releases form this seam as a vertex to be zipped back.
                 updatePositionToIntersection( p, searchNExt,Vg_seam1to, true);
+
 
             }
         }
@@ -2390,9 +2426,9 @@ void projectBackOnBoundary(const MatrixXd & mapToVg, MatrixXd& p, const vector<s
                 count++;
                 // general case an interior vertex , if it is not constrained pull it to boundary
                  nextSeach = (inverseMap)? next: seamFullHalf[next];
-
                 if(releasedVert.find(nextSeach) == releasedVert.end() ){
                     updatePositionToIntersection( p, nextSeach,Vg_seam2to, shoulBeLeft);
+
                 } else if( std::find(releasedVertNew[nextSeach].begin(),
                                      releasedVertNew[nextSeach].end(), j) == releasedVertNew[nextSeach].end()){
                     updatePositionToIntersection( p,nextSeach ,Vg_seam2to, shoulBeLeft);
@@ -2427,10 +2463,13 @@ void projectBackOnBoundary(const MatrixXd & mapToVg, MatrixXd& p, const vector<s
             int avs = addedVert.second;
             if(releasedVert.find(avs) == releasedVert.end() ){
                 updatePositionToIntersection(p, avs, Vg_seam1to, true);
+
             } else if( std::find(releasedVertNew[avs].begin(), releasedVertNew[avs].end(), j) == releasedVertNew[avs].end()){
                 updatePositionToIntersection(p, avs, Vg_seam1to, true);
+
             }else if(find(zipBack.begin(), zipBack.end(), make_pair(avs, j)) != zipBack.end()){
                 updatePositionToIntersection(p, avs, Vg_seam1to, true);
+
             }
         }
 
@@ -2439,10 +2478,13 @@ void projectBackOnBoundary(const MatrixXd & mapToVg, MatrixXd& p, const vector<s
             int avs = addedVert.second;
             if(releasedVert.find(addedVert.second) == releasedVert.end() ){
                 updatePositionToIntersection(p, addedVert.second, Vg_seam2to, shoulBeLeft);
+
             } else if( std::find(releasedVertNew[avs].begin(), releasedVertNew[avs].end(), j) == releasedVertNew[avs].end()){
                 updatePositionToIntersection(p, avs, Vg_seam2to, shoulBeLeft);
+
             }else if (std::find(zipBack.begin(), zipBack.end(), make_pair(avs, j)) != zipBack.end()){
                 updatePositionToIntersection( p,avs ,Vg_seam2to, shoulBeLeft);
+
 
             }
         }
@@ -2524,6 +2566,7 @@ counter++;
     }
 
     for(auto it: zipMiddle){
+
         VectorXd v1 = p.row(it.first);
         VectorXd v2 = p.row(it.second);
         p.row(it.first) = (v1+v2)/2;

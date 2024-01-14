@@ -65,7 +65,7 @@ void writeMTL(MatrixXd& Ka, MatrixXd& Ks, MatrixXd& Kd, MatrixXd& Vg, MatrixXi& 
 
     Eigen::VectorXi componentIdPerVert;
     igl::vertex_components(Fg, componentIdPerVert);
-    if(garment == "top" && (interp == 3.||interp == 4.|| interp == 11.)){
+    if(false && garment == "top" && (interp == 3.||interp == 4.|| interp == 11.)){
         int ref1=1;
         int ref2=2;
         componentIdPerVert.setZero();
@@ -357,16 +357,19 @@ void clipDifference(vector<vector<int>>& boundaryL_adaptedFromPattern,vector<vec
 
     int mult = 10000;
     int toCut;
-    bool isInverse = false;
+    bool isInverse = true;
     if(boundaryL_adaptedFromPattern.size() == boundaryL_toPattern.size()){
         // heuristic for inverse
         toCut = boundaryL_adaptedFromPattern.size()/2;
     }else{
         toCut= boundaryL_adaptedFromPattern.size();
         isInverse = true;
-    }
+    }        toCut= boundaryL_adaptedFromPattern.size();//todo
+
+//    cout<<boundaryL_adaptedFromPattern.size()<<" the size of two cut. Should be 3? "<<endl;
     for(int i=0; i<toCut ; i++){
         Path p;
+//        cout<<i<<" "<<boundaryL_adaptedFromPattern[i].size()<<" sub path size"<<endl;
         for(int j=0; j<boundaryL_adaptedFromPattern[i].size(); j++){
             int var = boundaryL_adaptedFromPattern[i][j];
             double x = currPattern(var, 0); int xi = x*mult;
@@ -388,8 +391,9 @@ void clipDifference(vector<vector<int>>& boundaryL_adaptedFromPattern,vector<vec
 
         clip_dbl.push_back(pp);
     }
+//    cout<<boundaryL_adaptedFromPattern.size()<<" the size of two cut. fin setup all  "<<endl;
 
-    for(int i=0; i< boundaryL_toPattern.size()/2;i++){
+    for(int i=0; i< toCut; i++){// boundaryL_toPattern.size()/2;i++){
         Path pp;
         for(int j=0; j<boundaryL_toPattern[i].size(); j++){
 

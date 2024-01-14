@@ -1,0 +1,12 @@
+# MTL Exporter v1.0 by Seungwoo Oh at CLO - Virtual Fashion Inc.
+newmtl Cotton_50s_Poplin_FRONT_225995
+Ka 0.255115 0.246040 0.227889
+Kd 0.992157 0.956863 0.886275
+Ks 0.075000 0.075000 0.075000
+Ns 28.763239
+illum 2
+d 1.000000
+map_Ka C:/users/raphael/Local Settings/Application Data/CLO/CLO Network OnlineAuth/41/1357/50s_Cotton_Poplin_FCL1PSC003_3_test1_COL.jpg
+map_Kd C:/users/raphael/Local Settings/Application Data/CLO/CLO Network OnlineAuth/41/1357/50s_Cotton_Poplin_FCL1PSC003_3_test1_COL.jpg
+map_bump C:/users/raphael/Local Settings/Application Data/CLO/CLO Network OnlineAuth/41/1357/50s_Cotton_Poplin_FCL1PSC003_3_test1_NRM.jpg
+map_bump C:/users/raphael/Local Settings/Application Data/CLO/CLO Network OnlineAuth/41/1394/50s_Cotton_Poplin_FCL1PSC003_3_test1_NRM_50.jpg

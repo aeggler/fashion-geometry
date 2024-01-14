@@ -1284,7 +1284,7 @@ void preProcessGarment(MatrixXd& Vg, MatrixXi& Fg, MatrixXd& Vg_pattern, MatrixX
            igl::vertex_components(newFg_pattern, comp);
            for(int i=0; i<newVg_pattern.rows(); i++){
                if(comp(i)== 1 || comp(i)==3){
-                   newVg_pattern(i, 0) += 100;
+                   newVg_pattern(i, 0) += 200;
                }
            }
        }

@@ -188,6 +188,7 @@ void computeAllSeams(const std::vector<std::vector<int> >& boundaryL, std::map<i
         }
 
     }
+//    cout<<isBoundaryVertexVec(10)<<" then is a boundary? 1 = yes"<<endl;
     for(int i=0; i< boundaryL.size(); i++){
         // we walk along the seam and check
         vector<pair<int, int>> edgesForThisBoundary; //pattern id
@@ -216,6 +217,11 @@ void computeAllSeams(const std::vector<std::vector<int> >& boundaryL, std::map<i
                 cornerVertices(v1) = 1;
                 edgesForThisBoundary.push_back(make_pair(v1, (j + 1) % boundary.size())); //pattern id
                 // so far this worked...
+            }
+            if( garment== "skirt_5" && v1==7){
+                cout<<"inserting"<<endl;
+                cornerVertices(v1) = 1;
+                edgesForThisBoundary.push_back(make_pair(v1, (j + 1) % boundary.size())); //pattern id
             }
 
         }

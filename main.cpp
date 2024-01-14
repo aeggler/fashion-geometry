@@ -4,6 +4,9 @@
 #include <set>
 #include <string>
 #include <fstream>
+#include <unistd.h>
+
+
 
 #include <igl/opengl/glfw/Viewer.h>
 #include <igl/opengl/glfw/imgui/ImGuiPlugin.h>
@@ -128,7 +131,8 @@ Eigen::MatrixXd baryCoordsd1, baryCoordsd2;
 std::vector<std::vector<int> > boundaryL, boundaryL_toPattern;
 double setTheresholdlMid = 1.05;// 5% stress level allowed
 double setTheresholdBound = 1.05;
-
+MatrixXd perfPattVg, perfPattVg_orig, addedFabricPatternVg;
+MatrixXi perfPattFg, perfPattFg_orig, addedFabricPatternFg;
 
 static bool noStress = true;
 static bool StressU = false;
@@ -225,6 +229,9 @@ void smoothGarment();
 void smoothGarmentOutline();
 void readInNicosFunction(igl::opengl::glfw::Viewer& viewer, bool useOtherModel, MatrixXd& otherM);
 void smoothOutline(MatrixXd & Vpattern ,MatrixXi Fpattern);
+bool interpolFlag = false;double checkp=0;
+void doInterpolStep(igl::opengl::glfw::Viewer& viewer,  MatrixXd& distFromTo, MatrixXd& showUpdated);
+MatrixXd distFromTo,  showUpdated;
 bool pre_draw(igl::opengl::glfw::Viewer& viewer){
     viewer.data().dirty |= igl::opengl::MeshGL::DIRTY_DIFFUSE | igl::opengl::MeshGL::DIRTY_SPECULAR;
     if(simulate){
@@ -249,6 +256,7 @@ bool pre_draw(igl::opengl::glfw::Viewer& viewer){
      if (adaptionFlag){
 
         doAdaptionStep(viewer);
+//        adaptionFlag= false;
 //         pos = 2354;
 //         viewer.selected_data_index = 2;
 //         viewer.data().clear();
@@ -262,8 +270,58 @@ bool pre_draw(igl::opengl::glfw::Viewer& viewer){
 //         viewer.data().add_edges(st, tt, red);
 //        if(pos>0)viewer.data().set_points(currPattern.row(pos), RowVector3d(1.0, 0.0, 0.0));
      }
+     if(interpolFlag){
 
+
+         if(checkp==0)doInterpolStep(viewer, distFromTo, showUpdated);
+         if(checkp>=1){interpolFlag = false; }
+         double theresholdp= 0.005;
+         checkp += theresholdp;
+             cout<<checkp<<" p"<<endl;
+//                   bp.interpolateMesh(p, showUpdated);
+             showUpdated += theresholdp * distFromTo;
+//                   igl::writeOBJ("showUpdated.obj", showUpdated, Fg_pattern);
+
+             viewer.selected_data_index = 0;
+             viewer.data().clear();
+             viewer.data().set_mesh(showUpdated, Fg_pattern);
+             viewer.data().uniform_colors(ambient, diffuse, specular);
+             viewer.data().show_texture = false;
+             viewer.data().set_face_based(false);
+             //remove wireframe
+             viewer.data().show_lines = true;
+//             sleep(1);
+
+
+     }
     return false;
+}
+void doInterpolStep(igl::opengl::glfw::Viewer& viewer, MatrixXd& distFromTo, MatrixXd& showUpdated ){
+
+    MatrixXd perfp = perfPattVg_orig;
+    VectorXi comppp;
+    igl::vertex_components(Fg_pattern, comppp);
+    for(int i=0; i<perfp.rows(); i++){
+        // 3 safe not , 2 safe nont
+        if(comppp(i)== 7 ){
+            perfp(i, 0) -= 200;
+        }
+        if(comppp(i)== 5 ){
+            perfp(i, 0) -= 200;
+        }
+    }
+
+//               BodyInterpolator bp(Vg_pattern,perfp, Fg_pattern );
+    distFromTo.resize(perfp.rows(),3);
+    showUpdated.resize(Vg_pattern.rows(), 3);
+     distFromTo = perfp-Vg_pattern;
+     showUpdated = Vg_pattern;
+    viewer.selected_data_index = 1;
+    viewer.data().clear();
+    viewer.selected_data_index = 2;
+    viewer.data().clear();
+
+
 }
 bool patternExists;int zipIIdToClose=0;
 VectorXd normUPattern, normVPattern;
@@ -315,14 +373,14 @@ int main(int argc, char *argv[])
     }
 //    string fromGarment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/girl24_patternSmoothed.obj"; //patternComputed_"+patternFromName+"_"+garmentExt+".obj";
 //    string fromGarment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/patternComputed_CLO_to_MH_woman_3_3_";
-    string fromGarment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/patternComputed_CLO_avatar_to_bodyScan_Raphael_rem_";
+    string fromGarment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/patternComputed_CLO_avatar_to_bodyScan_Luka_rem_";
 
 //    fromGarment_pattern_file_name = fromGarment_pattern_file_name+garmentExt+".obj";
 //    string patternFromName ="5x5Morphed/CLO_to_MH_woman_3_3";// onnly needed if inter person flag is on
 //    string patternFromName =  "girl24";//;
-    string patternFromName = "CLO_avatar_to_bodyScan_Raphael_rem";
-    bool interPersonFlag = false;
-//    bool interPersonFlag= false;
+    string patternFromName = "CLO_avatar_to_bodyScan_Luka_rem";
+//    bool interPersonFlag = true;
+    bool interPersonFlag= false;
     cout<<"garment?  "<<endl;
 
     string garInput ;
@@ -363,9 +421,48 @@ int main(int argc, char *argv[])
         garment = garInput;
         garmentExt = garment+"_4";
     }
-    else if (garInput == "dress loose"){
-        garment ="dress_woStitch_1" ;
+    else if (garInput == "dress_loose"){
+        garment ="dress_loose" ;
         garmentExt =  garment;
+    }
+    if(garInput == "skirt1"){
+        garment = "skirt_1";
+        garmentExt = garment;
+    }if(garInput == "skirt2"){
+        garment = "skirt_2";
+        garmentExt = garment;}
+    if(garInput == "skirt3")
+        {
+        garment = "skirt_3";
+        garmentExt = garment;
+    }if(garInput == "skirt4"){
+        garment = "skirt_4";
+        garmentExt = garment;
+    }
+    if(garInput == "skirt5"){
+        garment = "skirt_5";
+        garmentExt = garment;
+    }if(garInput == "skirt6"){
+        garment = "skirt_6";
+        garmentExt = garment;
+    }
+    if(garInput == "skirt7"){
+        garment = "skirt_7";
+        garmentExt = garment;
+    } if(garInput == "skirt8"){
+        garment = "skirt_8";
+        garmentExt = garment;
+    }
+    if(garInput == "skirt9"){
+        garment = "skirt_9";
+        garmentExt = garment;
+    }
+    if(garInput == "skirt10"){
+        garment = "skirt_10";
+        garmentExt = garment;
+    }if(garInput == "skirt11"){
+        garment = "skirt_11";
+        garmentExt = garment;
     }
 
 //    garment = "tshirt";
@@ -385,13 +482,17 @@ int main(int argc, char *argv[])
     fromGarment_pattern_file_name = fromGarment_pattern_file_name + garmentExt+".obj";
 
     string garment_file_name = prefix + "moreGarments/"+ garmentExt+"/"+garment+"_3d.obj";
-
+    if(interPersonFlag){
+        garment_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/adaption3D_CLO_avatar_to_bodyScan_Luka_rem_leggins.obj";
+    }
     igl::readOBJ(garment_file_name, Vg, Fg);
-    Timer t("Setup");
 
-//    string garment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/patternComputed_"+patternFromName+"_"+garment+".obj";
+
+    Timer t("Setup");
+    string garment_pattern_file_name;
+    if(interPersonFlag) garment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/patternComputed_"+patternFromName+"_"+garment+".obj";
 //    string garment_pattern_file_name = prefix +"leggins/leggins_2d/leggins_2d.obj"; //
-    string garment_pattern_file_name = prefix +"moreGarments/"+garmentExt+"/"+garment+"_2d.obj";
+     if (!interPersonFlag) garment_pattern_file_name = prefix +"moreGarments/"+garmentExt+"/"+garment+"_2d.obj";
 
     //orig down here
 //    string avatar_file_name =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/avatar/avatar_Girl24.ply";
@@ -399,9 +500,12 @@ int main(int argc, char *argv[])
     if(garment == "hoodie"){
         avatar_file_name =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/avatar/avatar_flat.ply";
 
-    }else if(garment == "man_tshirt"|| garment == "man_tshirt2"|| garment == "man_pants"){
-        avatar_file_name =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/avatar/male_avatar_rem_20.ply";
-        avatar_file_name =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/avatar/avatar_notRemeshed.ply";
+    }else if(garment == "man_tshirt"|| garment == "man_tshirt2"|| garment == "man_pants") {
+        avatar_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/avatar/male_avatar_rem_20.ply";
+        avatar_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/leggins/avatar/avatar_notRemeshed.ply";
+    }else if (interPersonFlag){
+//        avatar_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/patternComputed_CLO_avatar_to_bodyScan_Raphael_rem";
+        avatar_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/CLO_avatars_oneComponent/CLO_avatar_to_bodyScan_Luka_rem.ply";
 
 
     }else{
@@ -410,8 +514,16 @@ int main(int argc, char *argv[])
     }
 
     igl::readOBJ(garment_pattern_file_name, Vg_pattern, Fg_pattern);
+//    if(garment == "leggins"){
+//        for(int i=0; i<Vg_pattern.rows(); i++){
+//            if(Vg_pattern(i, 0)>= 900){
+//                Vg_pattern(i,0)+=100;
+//            }
+//        }
+//    }
+
 //    garment = "skirt_no2";
-    symetry = false; // true;
+    symetry =  true;//false;//
     if(symetry){
         bool insertPlane = true;
         int symVert1 ,symVert2;
@@ -420,7 +532,8 @@ int main(int argc, char *argv[])
             insertPlane = false;
             symVert1 = 1467;
             symVert2 = 23;
-        }else if(garment == "top"){
+        }else
+            if(garment == "top"){
             insertPlane = false;
             symVert1 = 353;// from orig
             symVert2 = 0;//from dupl
@@ -609,8 +722,7 @@ int main(int argc, char *argv[])
         nonSymSeam.insert(23);
         nonSymSeam.insert(26);
 
-    }
-    else if (garment == "man_tshirt"){
+    }else if (garment == "man_tshirt"){
         nonSymSeam.insert(2);
         nonSymSeam.insert(3);
         nonSymSeam.insert(5);
@@ -619,6 +731,12 @@ int main(int argc, char *argv[])
         nonSymSeam.insert(14);
         nonSymSeam.insert(16);
         nonSymSeam.insert(17);
+    }
+    else if (garment == "dress_loose"){
+        nonSymSeam.insert(1);
+        nonSymSeam.insert(2);
+        nonSymSeam.insert(4);
+        nonSymSeam.insert(7);
     }
     garmentPreInterpol = Vg;
     Vg_orig = Vg; Fg_orig= Fg;
@@ -633,6 +751,8 @@ int main(int argc, char *argv[])
     preComputeStretch();
 
     setNewGarmentMesh(viewer);
+//    igl::writeOBJ("test_vg_pattern_2.obj", Vg_pattern, Fg_pattern);
+//    igl::writeOBJ("test_vg_2.obj", Vg_pattern, Fg_pattern);
 
 // TODO remember to adapt the collision constraint solving dep on avatar, sometimes normalization is needed, sometimes not for whatever magic
 //    string avatar_file_name =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/CLO_avatars_oneComponent/CLO_avatar_to_bodyScan_Anna_rem 2.ply";
@@ -642,15 +762,7 @@ int main(int argc, char *argv[])
     Vm_orig = Vm; Fm_orig = Fm;
     mannequinPreInterpol = Vm;
     string folderName = "";
-//     avName = "avatar_missy_straight_05_OC";// good for skirt
-//     avName = "avatar_petite_curvy_01_OC";
-//    avName = "avatar_maternity_05_OC";
-//    avName = "avatar_missy_straight_09_OC";//new
-//    avName = "avatar_plus_straight_05_OC";
 
-// 5x5 av
-
-//
     cout<<"enter which woman_ ? "<<endl;
     avName = "CLO_to_MH_woman_";
 //    avName = "CLO_avatar_to_bodyScan_Raphael_rem";
@@ -677,7 +789,6 @@ int main(int argc, char *argv[])
 
     }else if (whichName =="mat"){
         avName = "avatar_maternity_01_OC"; /////////nicos model
-
     }else if (whichName=="man"){
             avName = "CLO_avatar_to_male_large_avatar_rem_20";
     }
@@ -688,22 +799,26 @@ int main(int argc, char *argv[])
         avName = "avatar_plus_straight_05_OC"; /////////nicos model
 
     }else if (whichName == "Paola"){
-        avName= "CLO_avatar_to_bodyScan_Paola_rem";
-
+//        avName = "CLO_avatar_to_bodyScan_Paola_rem";
+        avName = "avatar_to_paola";
     }else if (whichName == "Luka"){
-        avName= "CLO_avatar_to_bodyScan_Luka_rem";
+        avName = "CLO_avatar_to_bodyScan_Luka_rem";
 
     }else if (whichName == "Rapha"){
-        avName= "CLO_avatar_to_bodyScan_Raphael_rem";
+        avName = "CLO_avatar_to_bodyScan_Raphael_rem";
 
     }
     else if (whichName == "Anna"){
-        avName= "CLO_avatar_to_bodyScan_Anna_rem 2";
+        avName = "CLO_avatar_to_bodyScan_Anna_rem 2";
 
     }else if (whichName == "mark"){
-        avName= "CLO_to_bodyScan_MarkNew_rem";
+        avName = "CLO_to_bodyScan_MarkNew_rem";
 //        avName ="bodyScan_Mark_rem";
 
+    }
+    else if (whichName =="teresa"){
+        avName = "teresa_fixed";
+//        avName = "CLO_avatar_to_bodyScan_Teresa_rem_3";
     }
     else{
 //        folderName = "TeaserAvatarsRes/";
@@ -712,6 +827,8 @@ int main(int argc, char *argv[])
     }
 //    avName = whichName;
 //    avName += whichName;
+//    igl::writeOBJ("test_vg_pattern_3.obj", Vg_pattern, Fg_pattern);
+//    igl::writeOBJ("test_vg_3.obj", Vg_pattern, Fg_pattern);
 
     cout<<"entered "<<avName<<endl;
     string morphBody1 =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/CLO_avatars_oneComponent/"+folderName+ avName +".ply";//
@@ -722,6 +839,8 @@ int main(int argc, char *argv[])
     body_interpolator = new BodyInterpolator(Vm_orig, testMorph_V1, testMorph_F1);
     igl::readPLY(morphBody1left, testMorph_V1left, testMorph_F1left);
     igl::readPLY(morphBody1right, testMorph_V1right, testMorph_F1right);
+//    igl::writeOBJ("test_vg_pattern_4.obj", Vg_pattern, Fg_pattern);
+//    igl::writeOBJ("test_vg_4.obj", Vg_pattern, Fg_pattern);
 
     createHalfAvatarMap( testMorph_V1, testMorph_F1, testMorph_V1left, testMorph_F1left,
                          testMorph_V1right, testMorph_F1right, leftHalfToFullFaceMap, rightHalfToFullFaceMap);
@@ -740,6 +859,8 @@ int main(int argc, char *argv[])
     igl::facet_components(Fg_pattern, componentIdPerFace);
     vertex_componentsBasedOnFacet(Fg_pattern, componentIdPerFace, componentIdPerVert, Vg_pattern.rows());
     vertexMapGarmentAndPatchIdToPattern(Fg, Fg_pattern, componentIdPerVert, vertexMapGarAndIdToPatch);
+//    igl::writeOBJ("test_vg_pattern_5.obj", Vg_pattern, Fg_pattern);
+//    igl::writeOBJ("test_vg_5.obj", Vg_pattern, Fg_pattern);
 
     // use adjacentFacesToEdge of the 3D
     vector<vector<int> > vfAdj;
@@ -749,6 +870,10 @@ int main(int argc, char *argv[])
     map<int, vector<pair<int, int>>> seamIdPerCorner;    // contains corner id and a list of which seams start here (max 2),
     // each vector element  is a pair where first is if it's a -1 seam, and second is which index in corresponding List. If negative it's a backside ,i.e. part 2 of the seam
 
+    igl::writeOBJ("testBeforeVg.obj", Vg, Fg);
+    igl::writeOBJ("testBeforeVg_pattern.obj", Vg_pattern, Fg_pattern);
+
+    igl::writeOBJ("testBeforeVm.obj", Vm, Fm);
     computeAllSeams(boundaryL, vertexMapPattToGar, vertexMapGarAndIdToPatch, vfAdj, componentIdPerFace,
                     componentIdPerVert, cornerVertices, cornerPerBoundary, seamsList, minusOneSeamsList, seamIdPerCorner, garment, garmentExt);
 
@@ -767,8 +892,12 @@ int main(int argc, char *argv[])
 
     setCollisionMesh();
     MatrixXd dummy;
+    cout<<"asked if nicos function"<<endl<<endl;
     // this function can be replacd by Nico trying it and giving me the new garment on the new avatar
-    if(avName == "avatar_missy_curvy_02_OC"||avName=="avatar_petite_straight_01_OC"|| avName=="avatar_maternity_01_OC"||avName=="avatar_plus_straight_05_OC"){
+    //TODO INTENTIONALLY REMOVED
+    if(false &&(avName == "avatar_missy_curvy_02_OC"||avName=="avatar_petite_straight_01_OC"||avName=="avatar_maternity_01_OC"||avName=="avatar_plus_straight_05_OC"||avName == "teresa_fixed"|| avName=="avatar_to_paola"
+               ) ){
+        cout<<"going to nicos function"<<endl;
         readInNicosFunction(viewer, false,dummy );
 
     }else{
@@ -785,9 +914,6 @@ int main(int argc, char *argv[])
     computeStress(viewer);
     setCollisionMesh();
 
-    MatrixXd perfPattVg, perfPattVg_orig, addedFabricPatternVg;
-    MatrixXi perfPattFg, perfPattFg_orig, addedFabricPatternFg;
-
     string startFile = "finished_retri_writtenPattern_"+avName+"_"+garmentExt+".obj";
     int vertIdOf0InDuplicated = 0;
     if(garmentExt =="top_1" ){
@@ -800,7 +926,7 @@ int main(int argc, char *argv[])
         cout<<" pattern exists"<<endl;
         if(interPersonFlag){
 
-//            string fromGarment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/girl24_patternSmoothed.obj"; //patternComputed_"+patternFromName+"_"+garmentExt+".obj";
+            string fromGarment_pattern_file_name = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/patternComputed_"+patternFromName+"_"+garmentExt+".obj";//girl24_patternSmoothed.obj"; //
             igl::readOBJ(fromGarment_pattern_file_name, Vg_pattern, Fg_pattern);
             Vg_pattern_orig.resize(Vg_pattern.rows(), 3);
             Fg_pattern_orig.resize(Fg_pattern.rows() ,3);
@@ -814,6 +940,14 @@ int main(int argc, char *argv[])
         igl::readOBJ(perfPatternFile, perfPattVg_orig, perfPattFg_orig);
         if(garment == "top"){
             duplicateInitPattern( perfPattVg_orig, perfPattFg_orig);
+        }else if (garment =="leggins"){
+            VectorXi comp;
+            igl::vertex_components(perfPattFg_orig, comp);
+            for(int i=0; i<perfPattVg_orig.rows(); i++){
+                if(comp(i)== 1 || comp(i)==3){
+                    perfPattVg_orig(i, 0) += 200;
+                }
+            }
         }
         perfPattVg_orig.col(2).setConstant(200);
 
@@ -825,7 +959,8 @@ int main(int argc, char *argv[])
             igl::readOBJ(helperToLocate, addedFabricPatternVg, addedFabricPatternFg);
 //            mapFromVg = perfPattVg_orig;
 //            mapFromFg = perfPattFg_orig;
-            string addedFile = prefPattern+ "adaption2D_"+avName+"_"+garment+".obj";
+//            string addedFile = prefPattern+ "adaption2D_"+avName+"_"+garment+".obj";
+            string addedFile = prefPattern+ "patternComputed_"+avName+"_"+garmentExt+".obj";
             MatrixXd addedFabricPatternVgi; MatrixXi addedFabricPatternFgi;
             igl::readOBJ(addedFile, addedFabricPatternVgi, addedFabricPatternFgi);
             mapFromVg = addedFabricPatternVgi;
@@ -840,16 +975,16 @@ int main(int argc, char *argv[])
         }else{
             mapToVg.resize(perfPattVg_orig.rows(), 3);
             mapToVg = perfPattVg_orig;
-            cout<< mapToVg.rows()<<endl;
+//            cout<< mapToVg.rows()<<endl;
             mapToFg.resize(perfPattFg_orig.rows(), 3);
             mapToFg =  perfPattFg_orig;
             mapFromVg = Vg_pattern;
             mapFromFg = Fg_pattern;
             VectorXd pattComp;
             igl::vertex_components(Fg_pattern, pattComp);
-            cout<<" no inverse mapping"<<endl;
+//            cout<<" no inverse mapping"<<endl;
             preComputeStretch();
-            cout<<" no inverse mapping 2"<<endl;
+//            cout<<" no inverse mapping 2"<<endl;
 
 
         }
@@ -1207,6 +1342,8 @@ int main(int argc, char *argv[])
                 gar_adapt->performJacobianUpdateAndMerge(Vg, localGlobalIterations, baryCoords1, baryCoords2, computed_Vg_pattern, seamsList, boundaryL, nonSymSeam);
                 if(!jacobianChanged ){
                     igl::writeOBJ("patternComputed_"+avName+"_"+garmentExt+".obj",Vg_pattern, Fg_pattern);
+                    igl::writeOBJ("patternComputed_test_"+avName+"_"+garmentExt+".obj",computed_Vg_pattern, Fg_pattern);
+
                     cout<<"pattern written to *patternComputed*"<<endl;
                 }else{
                     string dir = (geoDistU)? "U" : "V";
@@ -1249,6 +1386,27 @@ int main(int argc, char *argv[])
             ImGui::InputDouble("Collision thereshold", &(coll_EPS),  0, 0, "%0.2f");
             ImGui::InputInt("Number of constraint Iterations thereshold", &(num_const_iterations),  0, 0);
 
+            if(ImGui::Button("Show interpolation", ImVec2(-1, 0)))
+            {
+                interpolFlag = (!interpolFlag);
+
+
+            }
+            if(ImGui::Button("Show stress with new pattern", ImVec2(-1, 0))){
+                MatrixXd temp_Vg = Vg_pattern;
+                MatrixXi temp_Fg = Fg_pattern;
+                Vg_pattern.resize(perfPattVg_orig.rows(), 3);
+                Vg_pattern = perfPattVg_orig;
+                Fg_pattern.resize( perfPattFg_orig.rows(), 3);
+                Fg_pattern = perfPattFg_orig;
+
+                preComputeStretch();
+                computeStress(viewer);
+                whichStressVisualize = 1;
+                showGarment(viewer);
+
+
+            }
             if(ImGui::Checkbox("Visualize no Stress", &noStress)){
                 StressU = false;
                 StressV=false;
@@ -1312,16 +1470,54 @@ int main(int argc, char *argv[])
                     Vg_pattern = patternPreInterpol;
                     Vg = garmentPreInterpol;
                     Vm = mannequinPreInterpol;
+
+//                    // test
+//                    string prePrapha = "/Users/annaeggler/Desktop/";
+//                    MatrixXd Vg_rapha_pattern, Vm_rapha;
+//                    MatrixXi Fg_rapha_pattern, Fm_rapha;
+//                    MatrixXd Vg_rapha;// = garmentPreInterpol_temp;
+//                    MatrixXi Fg_rapha;// = Fg;
+//
+//                    igl::readOBJ(prePrapha+"adaption3D_avatar_missy_straight_09_OC_top.obj", Vg_rapha, Fg_rapha);
+//
+//                    igl::readOBJ(prePrapha+"adaption2D_avatar_missy_straight_09_OC_top.obj", Vg_rapha_pattern, Fg_rapha_pattern);
+//
+////                    igl::readPLY("duplicate_Pattern_final_of_CLO_avatar_to_bodyScan_Raphael_rem_leggins.ply", Vg_rapha_pattern, Fg_rapha_pattern);
+//                    igl::readPLY("/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/CLO_avatars_oneComponent/avatar_missy_straight_09_OC.ply", Vm_rapha, Fm_rapha);
+//
+//                    Vg_pattern.resize(Vg_rapha_pattern.rows() ,Vg_rapha_pattern.cols()); Vg_pattern = Vg_rapha_pattern;
+//                    Fg_pattern.resize(Fg_rapha_pattern.rows() ,Fg_rapha_pattern.cols()); Fg_pattern = Fg_rapha_pattern;
+//
+//                    Vg.resize(Vg_rapha.rows() ,Vg_rapha.cols()); Vg = Vg_rapha;
+//                    Fg.resize(Fg_rapha.rows() ,Fg_rapha.cols()); Fg = Fg_rapha;
+//
+//                    Vm.resize(Vm_rapha.rows() ,Vm_rapha.cols()); Vm = Vm_rapha;
+//                    Fm.resize(Fm_rapha.rows() ,Fm_rapha.cols()); Fm = Fm_rapha;
+//                    cout<<"test 6"<<endl;
+
+
                 }else{
                     Vg_pattern = patternPreInterpol_temp;
                     Vg = garmentPreInterpol_temp;
                     Vm = mannequinPreInterpol_temp;
                 }
+//                cout<<"test 6a"<<endl;
+//                cout<< Vg.rows()<<" vg  "<<Fg.cols()<<endl;
+//                cout<< Vm.rows()<<" vm  "<<Fm.cols()<<endl;
+//                cout<< Vg_pattern.rows()<<" pattern "<<Fg_pattern.cols()<<endl;
+
+
+
                 preComputeConstraintsForRestshape();
+
                 preComputeStretch();
+
                 computeStress(viewer);
+
                 showGarment(viewer);
+
                 showMannequin(viewer);
+
             }
         }
         if (ImGui::CollapsingHeader("Smooth Pattern", ImGuiTreeNodeFlags_OpenOnArrow)){
@@ -1820,7 +2016,11 @@ int main(int argc, char *argv[])
 
                     }
                 }
+                out<<"after constrained seams, before setting them  ";
+
                 for(auto it :  constrainedSeamsSet) out<<it.first<<","<<it.second<<" ";
+                out<<"after test  ";
+
                 out<<endl;
 
                 simulate = false;
@@ -2090,6 +2290,26 @@ int main(int argc, char *argv[])
 //                string modifiedPattern  = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/finished_retri_writtenPattern_"+avName+"_"+garment+".obj";
 //
                 igl::readOBJ(modifiedPattern, currPattern, Fg_pattern_curr);
+                if(garment == "leggins" && false){
+                    VectorXi comp;
+                    igl::vertex_components(Fg_pattern_curr, comp);
+                    for(int i=0; i<currPattern.rows(); i++){
+                        // 3 safe not , 2 safe nont
+                        if(comp(i)== 1 ){
+                            currPattern(i, 0) += 200;
+                        }
+                        if(comp(i)==4){
+                            currPattern(i,0)+=200;
+                        }
+//                        if(comp(i)==2){
+//                            currPattern(i,1)-=500;
+//                        }
+
+                        if(comp(i)==5){
+                            currPattern(i,0)+=200;
+                        }
+                    }
+                }
 
                 viewer.selected_data_index = 1;
                 viewer.data().clear();
@@ -2137,30 +2357,40 @@ int main(int argc, char *argv[])
                     string addedFile = "adaption2D_"+avName+"_"+garment+".obj";
                     igl::readOBJ(addedFile, currPattern, Fg_pattern_curr);
                     igl::writeOBJ("mapToCli.obj" ,mapToVg, mapToFg);
-                    duplicateInitPattern(mapToVg, mapToFg);
+               if(symetry)     duplicateInitPattern(mapToVg, mapToFg);
                     igl::writeOBJ("mapToCli_after.obj" ,mapToVg, mapToFg);
-                    string modifiedPattern  = "patternComputed_CLO_to_bodyScan_MarkNew_rem_man_tshir.obj";
-//                string modifiedPattern  = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/finished_retri_writtenPattern_"+avName+"_"+garment+".obj";
-//
-                    igl::readOBJ(modifiedPattern, currPattern, Fg_pattern_curr);
+//                    string modifiedPattern  = "patternComputed_CLO_to_bodyScan_MarkNew_rem_man_tshir.obj";
+////                string modifiedPattern  = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/finished_retri_writtenPattern_"+avName+"_"+garment+".obj";
+////
+                    currPattern.resize(mapFromVg.rows(), mapFromVg.cols());
+                    currPattern = mapFromVg;
+                    Fg_pattern_curr.resize(mapFromFg.rows(), mapFromFg.cols());
+                    Fg_pattern_curr = mapFromFg;
+//                    igl::readOBJ(modifiedPattern, currPattern, Fg_pattern_curr);
                     igl::writeOBJ("other.obj" ,currPattern, Fg_pattern_curr);
-                    for(int i=0; i<currPattern.rows(); i++){
-                        if(currPattern(i,1)<1640 && currPattern(i,0)>1000){
-                            currPattern(i,0)+=100;
-                        }
-                    }
-                    igl::writeOBJ("other_after.obj" ,currPattern, Fg_pattern_curr);
+//                    for(int i=0; i<currPattern.rows(); i++){
+//                        if(currPattern(i,1)<1640 && currPattern(i,0)>1000){
+//                            currPattern(i,0)+=100;
+//                        }
+//                    }
+//                    igl::writeOBJ("other_after.obj" ,currPattern, Fg_pattern_curr);
 
 
                 }
 
                 std::vector<std::vector<int> > boundaryL_adaptedFromPattern;
                 igl::boundary_loop( Fg_pattern_curr, boundaryL_adaptedFromPattern );
+
                 MatrixXi Fg_toPattern = mapToFg; // todo not always
+                igl::readOBJ("symetry_test.obj", mapToVg, mapToFg);
                 igl::boundary_loop(Fg_toPattern, boundaryL_toPattern);
+
                 vector<vector<VectorXd>> returnVec;
+//                cout<<"starting to clip the diff"<<endl;
                 clipDifference(boundaryL_adaptedFromPattern,
                                boundaryL_toPattern, currPattern, mapToVg, returnVec);
+//                cout<<"fin to clip the diff "<<returnVec.size()<<endl;
+
                 for(int i=0; i<returnVec.size(); i++){
                     MatrixXd cliV; MatrixXi cliF;
                     startRetriangulation(returnVec[i], cliV, cliF);
@@ -2172,14 +2402,14 @@ int main(int argc, char *argv[])
                     }
 
                             cout<<"Sum of "<<i<<" is "<<sum<<endl;
-                    if(sum>=100){
+                    if(sum>=100 && sum<=290000){
 //                        if(garment=="top" && avName == "CLO_avatar_to_bodyScan_Paola_rem" && patchCounter == 4){
 //                            cliV.row(6) = currPattern.row(374);
 //                            cout<<" in ACTION"<<endl;
 //                        }else  if(garment=="top" && avName == "CLO_avatar_to_bodyScan_Paola_rem" && patchCounter == 5) {
 //                            cliV.row(3) = currPattern.row(418);
 //                        }else
-                        if (i==5) cout<<"NOT TAKEN"<<endl;
+//                        if (i==2) cout<<"NOT TAKEN"<<endl;
                         igl::writeOBJ("clipper_"+to_string(patchCounter)+".obj", cliV, cliF);
                         patchCounter++;
                         connectedVert.emplace_back(returnVec[i]);
@@ -2286,13 +2516,16 @@ int main(int argc, char *argv[])
                 writeMTL(Ka,Ks, Kd, currPattern, Fg_pattern_curr, garment, avName, 10, dir );
 
                 // make sure the outline pattern is symmetric
-                MatrixXi halfFaces (mapToFg.rows()/2, 3);
-                halfFaces = mapToFg.block(0,0,mapToFg.rows()/2, 3);
-                MatrixXd duplRemV; MatrixXi duplRemF;
-                duplicatePattern(duplRemV, duplRemF,mapToVg, halfFaces, T_sym_pattern);
+                if(symetry){
+                    MatrixXi halfFaces (mapToFg.rows()/2, 3);
+                    halfFaces = mapToFg.block(0,0,mapToFg.rows()/2, 3);
+                    MatrixXd duplRemV; MatrixXi duplRemF;
+                    duplicatePattern(duplRemV, duplRemF,mapToVg, halfFaces, T_sym_pattern);
 //                igl::writeOBJ("testSym.obj" ,duplRemV ,duplRemF);
-                mapToVg.resize(duplRemV.rows(), 3); mapToVg = duplRemV;
-                mapToFg.resize(duplRemF.rows(), 3); mapToFg = duplRemF;
+                    mapToVg.resize(duplRemV.rows(), 3); mapToVg = duplRemV;
+                    mapToFg.resize(duplRemF.rows(), 3); mapToFg = duplRemF;
+                }
+
                 viewer.selected_data_index = 2;
                 viewer.data().clear();
                 C.resize(mapToFg.rows(), 3);
@@ -2498,7 +2731,9 @@ int main(int argc, char *argv[])
         }
         if (ImGui::CollapsingHeader("Inverse direction", ImGuiTreeNodeFlags_OpenOnArrow)) {
             if(ImGui::Button("Map back for pattern ", ImVec2(-1, 0))){
-                string modifiedPattern  = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/finished_tear_Special_"+ avName +"_"+ garmentExt +".obj";
+//                string modifiedPattern  = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/finished_tear_Special_"+ avName +"_"+ garmentExt +".obj";
+                string modifiedPattern  = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/finished_retri_writtenPattern_"+ avName +"_"+ garmentExt +".obj";
+
                 MatrixXd addedFabricPatternVg; MatrixXi addedFabricPatternFg;
                 igl::readOBJ(modifiedPattern, addedFabricPatternVg, addedFabricPatternFg);
 
@@ -2532,6 +2767,7 @@ int main(int argc, char *argv[])
 //                smoothGarment();
 
                 string modifiedPattern  = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/finished_retri_writtenPattern_"+ avName +"_"+ garmentExt +".obj";
+//                if(!symetry) modifiedPattern =  "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/patternComputed_"+ avName +"_"+ garmentExt +".obj";
                 MatrixXd addedFabricPatternVg; MatrixXi addedFabricPatternFg;
                 igl::readOBJ(modifiedPattern, addedFabricPatternVg, addedFabricPatternFg);
 
@@ -2748,20 +2984,32 @@ int main(int argc, char *argv[])
                     filename  = "newFacesAfterPatch_"+avName+"_"+garmentExt+"_final" +".txt";
                     ifstream in("/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/" + filename);
                     in>>size;
+                    cout<<filename<<endl;
                     for(int i=0; i<size; i++ ){
                         int faceSize; in>>faceSize;
+                        cout<<i<<" has face size "<<faceSize<<endl;
                         vector<int> currF;
                         for(int j=0;j<faceSize; j++){
                             int newFace;
                             in>>newFace;
                             currF.push_back(newFace);
+                            if(newFace>3779)cout<<newFace<<" new face"<<endl;
                         }
                         perFaceNewFaces.push_back(currF);
                     }
                 }
 
+                if(symetry){
+                                        string modifiedPattern  = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/patternComputed_avatar_missy_straight_09_OC_top_1.obj";
 
-                igl::readOBJ("duplicate_Pattern_final_of_"+avName+"_"+garmentExt+".obj", adaptedPatternIn3d, adaptedPatternIn3d_faces);
+//                    igl::readOBJ("duplicate_Pattern_final_of_"+avName+"_"+garmentExt+".obj", adaptedPatternIn3d, adaptedPatternIn3d_faces);
+
+                }else{
+                    string modifiedPattern  = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/patternComputed_avatar_missy_straight_09_OC_top_1.obj";
+//                    string modifiedPattern  = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/finished_retri_writtenPattern_"+ avName +"_"+ garmentExt +".obj";
+                    igl::readOBJ(modifiedPattern, adaptedPatternIn3d, adaptedPatternIn3d_faces);
+
+                }
                 MatrixXd C = MatrixXd::Zero(adaptedPatternIn3d_faces.rows(), 3);
                 C.col(1).setConstant(1);
                 C.col(0).setConstant(1);
@@ -2925,6 +3173,7 @@ int main(int argc, char *argv[])
             }
             if(ImGui::Button("Jacobian for target ", ImVec2(-1, 0))){
                 string modifiedPattern  = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/duplicate_Pattern_final_of_"+ avName +"_"+ garmentExt +".ply";
+                if(!symetry)modifiedPattern= "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/patternComputed_"+ avName +"_"+ garmentExt +".ply";
                 MatrixXd addedFabricPatternVg; MatrixXi addedFabricPatternFg;
                 igl::readPLY(modifiedPattern, addedFabricPatternVg, addedFabricPatternFg);
                 MatrixXd adaptedPatternIn3d;
@@ -3435,11 +3684,41 @@ void readInNicosFunction(igl::opengl::glfw::Viewer& viewer, bool useOtherModel, 
     }else if(avName == "avatar_plus_straight_05_OC"){
         nicoAvName = "plus_dress";
 
+    }else if ( //avName =="CLO_avatar_to_bodyScan_Teresa_rem_3"
+        avName == "teresa_fixed" && garment == "dress" ){
+        cout<<"Teresa and dress "<<endl;
+//        nicoAvName = "dress_teresa";
+        nicoAvName = "grament_deformed_teresa_fixed";
+    }else if (//avName=="CLO_avatar_to_bodyScan_Teresa_rem_3"
+        avName == "teresa_fixed" && garment == "dress_loose" ) {
+        cout<<"Teresa and dress loose  "<<endl;
+        nicoAvName = "dress_loose_teresa";
+    }else if (garment =="dress" && avName =="avatar_to_paola"){
+        nicoAvName = "transplant_paola";
     }
-    //test
+    else if (garment=="skirt_1"|| garment=="skirt_2"|| garment=="skirt_3"|| garment=="skirt_4"|| garment=="skirt_5"
+    || garment=="skirt_6"|| garment=="skirt_7"|| garment=="skirt_8"||garment=="skirt_10"||garment=="skirt_11"){
+        if (avName =="avatar_to_paola"){
+            nicoAvName = garment+"_paola";
+        }else{
+            nicoAvName = garment+"_teresa";
+        }
+    }
+    cout<<"checking "<<garment<<endl;
+    if (garment=="skirt_1"|| garment=="skirt_2"|| garment=="skirt_3"|| garment=="skirt_4"|| garment=="skirt_5"
+        || garment=="skirt_6"|| garment=="skirt_7"|| garment=="skirt_8"||garment=="skirt_10"||garment=="skirt_11"){
+//        if (avName =="avatar_to_paola"){
+            nicoAvName = garment+"_3D_"+avName;
+            cout<<"Nico AV name if function "<<nicoAvName<<endl;
+
+//        }
+    }
+        //test
 //    targetM =  testMorph_V1;
+    cout<<"Nico AV name "<<nicoAvName<<endl;
     string nicosGarament =  "/Users/annaeggler/Desktop/deformed_dresses/"+nicoAvName+".obj";
     igl::readOBJ(nicosGarament, Vg, Fg);
+
 
 }
 void computeBaryCoordsGarOnNewMannequin(igl::opengl::glfw::Viewer& viewer, bool useOtherModel, MatrixXd& otherM){
@@ -3711,7 +3990,8 @@ void showGarment(igl::opengl::glfw::Viewer& viewer) {
         string dir = "u";
 //        smoothGarment();
 //        smoothGarmentOutline();
-        writeMTL(Ka,Ks, Kd, Vg, Fg, garment, avName, interp, dir );
+// trial to remove this
+//        writeMTL(Ka,Ks, Kd, Vg, Fg, garment, avName, interp, dir );
 
         cout<<"finished writing "<<endl;
     }else if (whichStressVisualize == 2){
@@ -3825,7 +4105,7 @@ bool callback_key_down(igl::opengl::glfw::Viewer& viewer, unsigned char key, int
         keyRecognition = true;
         simulate = false;
         cout<<" before outline"<<endl;
-       if(!(garment=="dress" && avName == "avatar_maternity_01_OC")) smoothGarmentOutline();
+       if(!(garment=="dress" || garment == "dress_loose")) smoothGarmentOutline();
         cout<<"after outline "<<endl;
 
         // we start computing the pattern for the current shape
@@ -4073,7 +4353,9 @@ void solveCollisionConstraint(){
     }
 }
 
-void preComputeStretch(){
+void preComputeStretch()
+
+{
     MatrixXd temp;
     if(mapToVg.rows()== Vg_pattern.rows()){
         cout<<"changed input pattern"<<endl;
@@ -4398,10 +4680,13 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
     p_adaption.col(2)*= 200;
 
     changedPos = -1;
-//    t.printTime(" init ");
+    t.printTime(" init ");
+    cout<<p_adaption.row(0)<<" initial"<<endl;
+
     for(int i=0; i<12; i++){
         solveStretchAdaption();
-//        t.printTime(" stretch ");
+        t.printTime(" stretch ");
+        cout<<p_adaption.row(0)<<endl;
 
 
         // before cutting the boundaries should be the same
@@ -4422,11 +4707,13 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
 
         projectBackOnBoundary( mapToVg, p_adaption, seamsList, minusOneSeamsList, boundaryL_toPattern,
                                 boundaryLFrom, releasedVert ,inverseMap,  mapUsed, extFHV);
-//        t.printTime(" proj ");
+        t.printTime(" proj ");
+        cout<<p_adaption.row(0)<<endl;
 
 //        ensurePairwiseDist(p_adaption, toPattern, Fg_pattern);
         solveCornerMappedVertices();
-//        t.printTime(" corner ");
+        t.printTime(" corner ");
+        cout<<p_adaption.row(0)<<endl;
 
         // this causes the weired ange issue
 //        ensureAngle(p_adaption, mapFromVg, Fg_pattern_curr, mapFromFg);
@@ -4536,14 +4823,14 @@ void dotimeStep(igl::opengl::glfw::Viewer& viewer){
     Timer t("Time step ");
     std::cout<<endl;
     std::cout<<"-------------- Time Step ------------"<<timestepCounter<<endl;
-    if( !patternExists &&timestepCounter >= 15){
-        simulate = false;
-        return;
-    }
-    if( patternExists &&timestepCounter >= 10){
-        simulate = false;
-        return;
-    }
+//    if( !patternExists &&timestepCounter >= 15){
+//        simulate = false;
+//        return;
+//    }
+//    if( patternExists &&timestepCounter >= 10){
+//        simulate = false;
+//        return;
+//    }
     // the stress is already computed, we can use it here
     Eigen::MatrixXd x_new = Vg;
     p = Vg;
