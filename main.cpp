@@ -229,9 +229,10 @@ void smoothGarment();
 void smoothGarmentOutline();
 void readInNicosFunction(igl::opengl::glfw::Viewer& viewer, bool useOtherModel, MatrixXd& otherM);
 void smoothOutline(MatrixXd & Vpattern ,MatrixXi Fpattern);
-bool interpolFlag = false;double checkp=0;
+bool interpolFlag = false; bool rotateFlag = false;
+double checkp=0;
 void doInterpolStep(igl::opengl::glfw::Viewer& viewer,  MatrixXd& distFromTo, MatrixXd& showUpdated);
-MatrixXd distFromTo,  showUpdated;
+MatrixXd distFromTo,  showUpdated,ColInsert, perfp;Matrix3d rotationM;
 bool pre_draw(igl::opengl::glfw::Viewer& viewer){
     viewer.data().dirty |= igl::opengl::MeshGL::DIRTY_DIFFUSE | igl::opengl::MeshGL::DIRTY_SPECULAR;
     if(simulate){
@@ -272,9 +273,14 @@ bool pre_draw(igl::opengl::glfw::Viewer& viewer){
      }
      if(interpolFlag){
 
-
          if(checkp==0)doInterpolStep(viewer, distFromTo, showUpdated);
-         if(checkp>=1){interpolFlag = false; }
+         if(checkp>=1){
+             interpolFlag = false;
+             viewer.core().is_animating = false;
+             return true;
+         }
+         viewer.core().is_animating = true;
+
          double theresholdp= 0.005;
          checkp += theresholdp;
              cout<<checkp<<" p"<<endl;
@@ -291,14 +297,77 @@ bool pre_draw(igl::opengl::glfw::Viewer& viewer){
              //remove wireframe
              viewer.data().show_lines = true;
 //             sleep(1);
+         // vis stress
+         int Fg_patt_rows = Fg_pattern.rows();
+         MatrixXd startPerEdge(Fg_patt_rows, 3);
 
+         VectorXd area2; igl::doublearea(Vg_pattern, Fg_pattern, area2);
+         VectorXd normUPatternInterpol(Fg_patt_rows);
+         VectorXd normVPatternInterpol(Fg_patt_rows);
+         for(int i=0; i<Fg_patt_rows; i++){
+             Vector3d v0new = showUpdated.row(Fg_pattern(i, 0)).transpose();
+             Vector3d v1new = showUpdated.row(Fg_pattern(i, 1)).transpose();
+             Vector3d v2new = showUpdated.row(Fg_pattern(i, 2)).transpose();
+             startPerEdge.row(i) = ( (v0new + v1new + v2new)/3).transpose();
+             int idx = i;
+
+             /*trial */
+             int id0 = Fg_pattern(i, 0);
+             int id1 = Fg_pattern(i, 1);
+             int id2 = Fg_pattern(i, 2);
+
+             Vector2d Gu, Gv, G;
+             Vector2d p0, p1, p2;
+             p0 = Vg_pattern.block(id0, 0, 1, 2).transpose();
+             p1 = Vg_pattern.block(id1, 0, 1, 2).transpose();
+             p2 = Vg_pattern.block(id2, 0, 1, 2).transpose();
+
+             G = (1./3.) * p0 + (1./3.) * p1 + (1./3.) * p2;
+             auto GGu = G; GGu (0)+=1;
+             auto GGv = G; GGv(1)+=1;
+
+             Vector3d uInBary, vInBary,uInBaryG, vInBaryG;
+             MathFunctions mathFun;
+             mathFun.Barycentric(GGu, p0, p1, p2, uInBaryG);
+             mathFun.Barycentric(GGv, p0, p1, p2, vInBaryG);
+
+             Vector3d ubary = baryCoordsUPattern.row(idx );
+             Vector3d vbary = baryCoordsVPattern.row(idx);
+
+             normUPatternInterpol(i) = ((uInBaryG(0) * v0new + uInBaryG(1) * v1new + uInBaryG(2) * v2new).transpose()- startPerEdge.row(i)).norm();
+             normVPatternInterpol(i) = ((vInBaryG(0) * v0new + vInBaryG(1) * v1new + vInBaryG(2) * v2new).transpose()- startPerEdge.row(i)).norm();
+
+         }
+
+         MatrixXd colUFace;
+         cout<<normUPatternInterpol(4342)<<" set norm u"<<endl;
+         igl::jet(normUPatternInterpol, 0., 2., colUFace);
+         viewer.data().set_colors(colUFace);
+
+
+     }
+     if(rotateFlag){
+         for(int i=0; i<Vg.rows(); i++){
+             Vg.row(i) = (rotationM *Vg.row(i).transpose()).transpose();
+         }
+//         showGarment(viewer);// not sure if I actually need this, at least it breaks nothing
+         viewer.selected_data_index = 0;
+         viewer.data().clear();
+         viewer.data().show_lines = false;
+         viewer.data().set_mesh(Vg, Fg);
+         viewer.data().set_colors(ColInsert);
+         for(int i=0; i<Vm.rows(); i++){
+             Vm.row(i) = (rotationM *Vm.row(i).transpose()).transpose();
+         }
+         showMannequin(viewer);
 
      }
     return false;
 }
 void doInterpolStep(igl::opengl::glfw::Viewer& viewer, MatrixXd& distFromTo, MatrixXd& showUpdated ){
 
-    MatrixXd perfp = perfPattVg_orig;
+    perfp.resize(perfPattVg_orig.rows(), 3);
+    perfp = perfPattVg_orig;
     VectorXi comppp;
     igl::vertex_components(Fg_pattern, comppp);
     for(int i=0; i<perfp.rows(); i++){
@@ -320,7 +389,6 @@ void doInterpolStep(igl::opengl::glfw::Viewer& viewer, MatrixXd& distFromTo, Mat
     viewer.data().clear();
     viewer.selected_data_index = 2;
     viewer.data().clear();
-
 
 }
 bool patternExists;int zipIIdToClose=0;
@@ -355,8 +423,9 @@ int main(int argc, char *argv[])
     string prefix = "/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/data/";
 //    garment = "leggins";
     cout<<"inverse?  "<<endl;
-    string inv ;
-    std::getline(std::cin, inv);
+//    string inv ;
+//    std::getline(std::cin, inv);
+    string inv="no" ;
     if(inv=="yes"){
         inverseMap  =true;
     }else{
@@ -364,8 +433,9 @@ int main(int argc, char *argv[])
     }
 
     cout<<"new pattern ?  "<<endl;
-    string pattEx ;
-    std::getline(std::cin, pattEx);
+//    string pattEx ;
+//    std::getline(std::cin, pattEx);
+    string pattEx="no" ;
     if(pattEx=="no"){
         patternExists = true;
     }else{
@@ -382,9 +452,10 @@ int main(int argc, char *argv[])
 //    bool interPersonFlag = true;
     bool interPersonFlag= false;
     cout<<"garment?  "<<endl;
+    string garInput ="leggins";
 
-    string garInput ;
-    std::getline(std::cin, garInput);
+//    string garInput ;
+//    std::getline(std::cin, garInput);
     if(garInput=="top"){
         garment  ="top";
         garmentExt = garment+ "_1";
@@ -767,8 +838,10 @@ int main(int argc, char *argv[])
     avName = "CLO_to_MH_woman_";
 //    avName = "CLO_avatar_to_bodyScan_Raphael_rem";
     avName = "avatar_maternity_05_OC";
-    string whichName ;
-    std::getline(std::cin, whichName);
+//    string whichName ;
+//    std::getline(std::cin, whichName);
+
+    string whichName = "mat";
     if(whichName =="missy str"){
         avName = "avatar_missy_straight_09_OC";
 
@@ -1385,9 +1458,92 @@ int main(int argc, char *argv[])
 
             ImGui::InputDouble("Collision thereshold", &(coll_EPS),  0, 0, "%0.2f");
             ImGui::InputInt("Number of constraint Iterations thereshold", &(num_const_iterations),  0, 0);
+            if(ImGui::Button("Show rotation", ImVec2(-1, 0)))
+            {
+                rotateFlag = (!rotateFlag);
+                if(rotateFlag) viewer.core().is_animating= true;
+                rotationM = MatrixXd::Zero(3, 3);
+                double cos1 = 0.999847695156391239157;
+                double sin1 = 0.017452406437283512819;
+                rotationM(1,1) = 1;
+                rotationM(0,0) = cos1;
+                rotationM(2,2) = cos1;
+                rotationM(0,2) = sin1;
+                rotationM(2,0) = -sin1;
 
+                int size; vector<vector<int>> perFaceNewFaces;
+                string filename = "newFacesAfterPatch_"+avName+"_"+garmentExt+"_"+ to_string(patchcount) +".txt";
+                filename  = "newFacesAfterPatch_"+avName+"_"+garmentExt+"_final" +".txt";
+                ifstream in("/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/" + filename);
+                in>>size;
+                for(int i=0; i<size; i++ ){
+                    int faceSize; in>>faceSize;
+                    vector<int> currF;
+                    for(int j=0;j<faceSize; j++){
+                        int newFace;
+                        in>>newFace;
+                        currF.push_back(newFace);
+                    }
+                    perFaceNewFaces.push_back(currF);
+                }
+                igl::readPLY("finalGarmentPattern_"+avName+"_"+garmentExt+"_backIn3d.ply", Vg, Fg);
+                Vg.row(1540)=Vg.row(1490);
+                Vg.row(842)=Vg.row(1532);
+                Vg(1541, 0)-= 4;
+                Vg.row(1554)=Vg.row(1535);
+                Vg(1554,1)+=2;
+                Vg(1535,1)+=2;
+                Vg(1534, 0)+=3;
+                Vg(3178, 0)-=3;
+
+                //right side
+                Vg.row(3184)=Vg.row(3134);
+                Vg.row(3176)=Vg.row(2486);
+                Vg(3185, 0)+= 4;
+                Vg.row(3198)=Vg.row(3179);
+                Vg(3198,1)+=2;
+                Vg(3179,1)+=2;
+
+                //back
+                Vg.row(1650)=Vg.row(3180);
+                Vg.row(3168)=Vg.row(3101);
+                Vg.row(6)=Vg.row(1536);
+                Vg.row(1524)=Vg.row(1457);
+
+                igl::writeOBJ("testMove.obj", Vg, Fg);
+
+                ColInsert.resize(Fg.rows(), 3);
+                ColInsert = MatrixXd::Zero(Fg.rows(), 3);
+                ColInsert.col(1).setConstant(1);
+                ColInsert.col(0).setConstant(1);
+                int offset = ColInsert.rows()/2;
+                Eigen::RowVector3d dodger_blue(30./255., 144./255., 1);
+
+                for(int i=0; i<size; i++){
+                    for(int j=0; j<perFaceNewFaces[i].size(); j++){
+
+                        double val = (((double)i)/((double)(size+1)));
+                        ColInsert.row(perFaceNewFaces[i][j]) = dodger_blue; //colrScatter.row(i);
+
+                        if(symetry){
+                            ColInsert.row(perFaceNewFaces[i][j]+offset) =  ColInsert.row(perFaceNewFaces[i][j]);
+                        }
+                    }
+                }
+
+                viewer.selected_data_index = 0;
+                viewer.data().clear();
+                viewer.data().show_lines = false;
+                viewer.data().set_mesh(Vg, Fg);
+
+                viewer.data().set_colors(ColInsert);
+                for(int i=0; i<Vm.rows(); i++){
+                    Vm(i,0)+=1.20;
+                }
+            }
             if(ImGui::Button("Show interpolation", ImVec2(-1, 0)))
             {
+                checkp=0;
                 interpolFlag = (!interpolFlag);
 
 
@@ -2469,8 +2625,10 @@ int main(int argc, char *argv[])
                 MatrixXd C = MatrixXd::Zero(Fg_pattern_curr.rows(), 3);
                 C.col(1).setConstant(1);
                 C.col(0).setConstant(1);
+                Eigen::RowVector3d dodger_blue(30./255., 144./255., 1);
+
                 for(auto i: newFaces){
-                    C(i, 0) =0;
+                    C.row(i) = dodger_blue;
                 }
                 viewer.data().set_colors(C);
                 patchcount++;
@@ -2882,20 +3040,20 @@ int main(int argc, char *argv[])
                     cout<<"reading new faces from file"<<endl;
 //                if(garment == "leggins"|| "top") patchcount = 5;
 
-                string filename = "newFacesAfterPatch_"+avName+"_"+garmentExt+"_"+ to_string(patchcount) +".txt";
-                     filename  = "newFacesAfterPatch_"+avName+"_"+garmentExt+"_final" +".txt";
-                ifstream in("/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/" + filename);
-                in>>size;
-                for(int i=0; i<size; i++ ){
-                    int faceSize; in>>faceSize;
-                    vector<int> currF;
-                    for(int j=0;j<faceSize; j++){
-                        int newFace;
-                        in>>newFace;
-                        currF.push_back(newFace);
+                    string filename = "newFacesAfterPatch_"+avName+"_"+garmentExt+"_"+ to_string(patchcount) +".txt";
+                         filename  = "newFacesAfterPatch_"+avName+"_"+garmentExt+"_final" +".txt";
+                    ifstream in("/Users/annaeggler/Desktop/Masterarbeit/fashion-descriptors/build/" + filename);
+                    in>>size;
+                    for(int i=0; i<size; i++ ){
+                        int faceSize; in>>faceSize;
+                        vector<int> currF;
+                        for(int j=0;j<faceSize; j++){
+                            int newFace;
+                            in>>newFace;
+                            currF.push_back(newFace);
+                        }
+                        perFaceNewFaces.push_back(currF);
                     }
-                    perFaceNewFaces.push_back(currF);
-                }
                 }
 //
 
