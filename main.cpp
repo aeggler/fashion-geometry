@@ -507,7 +507,7 @@ int main(int argc, char *argv[])
     cout<<"new pattern ?  "<<endl;
 //    string pattEx ;
 //    std::getline(std::cin, pattEx);
-    string pattEx="yes" ;
+    string pattEx="no" ;
     if(pattEx=="no"){
         patternExists = true;
         cout<<"does the pattern exist? "<<patternExists<<endl;
@@ -527,7 +527,6 @@ int main(int argc, char *argv[])
     cout<<"garment?  "<<endl;
     string garInput ="leggins";
 //    string garInput ="skirt3";
-
 //    string garInput ;
 //    std::getline(std::cin, garInput);
     if(garInput=="top"){
@@ -610,11 +609,6 @@ int main(int argc, char *argv[])
         garmentExt = garment;
     }
 
-//    garment = "tshirt";
-//    garment = "top";
-//    garment = "top_fromAnna";
-//    garment = "leggins";
-//    garment = "man_pants";
     string garment_file_name;
     if(garment == "leggins") {
         garment_file_name = prefix +"leggins/leggins_3d/leggins_3d_merged.obj"; //smaller collision thereshold to make sure it is not "eaten" after intial step , 3.5 instead of 4.5
@@ -622,11 +616,6 @@ int main(int argc, char *argv[])
         garment_file_name = prefix +
                                    "moreGarments/skirt_3/skirt_3_3d.obj"; //smaller collision thereshold to make sure it is not "eaten" after intial step , 3.5 instead of 4.5
     }
-//    garment = "dress";
-//    garment = "top";
-//    garment = "hoodie"; // attention also needs flat starter
-//    garment = "man_tshirt2";
-//    garmentExt = garment;
     fixRafaPattern();
 //     garmentExt = garment+ "_1";// skirt 3 needs another avatar!!// 2 is pencil skirt, 1 is mini skirt
 //     cout<<fromGarment_pattern_file_name<<" fromGarment_pattern_file_name"<<endl;
@@ -684,7 +673,7 @@ int main(int argc, char *argv[])
 //    }
 
 //    garment = "skirt_no2";
-    symetry =  false;//true;//
+    symetry =  true;//false;//
     if(symetry){
         cout<<"starting symetry"<<endl;
         bool insertPlane = true;
@@ -940,7 +929,7 @@ int main(int argc, char *argv[])
 //    string whichName ;
 //    std::getline(std::cin, whichName);
 
-    string whichName = "plus";
+    string whichName = "mat";
 //    string whichName = "normal";
 
     if(whichName =="missy str"){
@@ -1004,10 +993,6 @@ int main(int argc, char *argv[])
         folderName = "5x5Morphed/";
         avName = "CLO_to_MH_woman_" +whichName;
     }
-//    avName = whichName;
-//    avName += whichName;
-//    igl::writeOBJ("test_vg_pattern_3.obj", Vg_pattern, Fg_pattern);
-//    igl::writeOBJ("test_vg_3.obj", Vg_pattern, Fg_pattern);
 
     cout<<"entered "<<avName<<endl;
     string morphBody1 =  "/Users/annaeggler/Desktop/Documents/Studium/Masterarbeit/fashion-descriptors/data/CLO_avatars_oneComponent/"+folderName+ avName +".ply";//
@@ -1017,8 +1002,6 @@ int main(int argc, char *argv[])
     body_interpolator = new BodyInterpolator(Vm_orig, testMorph_V1, testMorph_F1);
     igl::readPLY(morphBody1left, testMorph_V1left, testMorph_F1left);
     igl::readPLY(morphBody1right, testMorph_V1right, testMorph_F1right);
-//    igl::writeOBJ("test_vg_pattern_4.obj", Vg_pattern, Fg_pattern);
-//    igl::writeOBJ("test_vg_4.obj", Vg_pattern, Fg_pattern);
 
     createHalfAvatarMap( testMorph_V1, testMorph_F1, testMorph_V1left, testMorph_F1left,
                          testMorph_V1right, testMorph_F1right, leftHalfToFullFaceMap, rightHalfToFullFaceMap);
@@ -1037,8 +1020,6 @@ int main(int argc, char *argv[])
     igl::facet_components(Fg_pattern, componentIdPerFace);
     vertex_componentsBasedOnFacet(Fg_pattern, componentIdPerFace, componentIdPerVert, Vg_pattern.rows());
     vertexMapGarmentAndPatchIdToPattern(Fg, Fg_pattern, componentIdPerVert, vertexMapGarAndIdToPatch);
-//    igl::writeOBJ("test_vg_pattern_5.obj", Vg_pattern, Fg_pattern);
-//    igl::writeOBJ("test_vg_5.obj", Vg_pattern, Fg_pattern);
 
     // use adjacentFacesToEdge of the 3D
     vector<vector<int> > vfAdj;
@@ -1121,7 +1102,7 @@ int main(int argc, char *argv[])
             igl::readOBJ(perfPatternFile, perfPattVg_orig, perfPattFg_orig);
             if(garment == "top"){
                 duplicateInitPattern( perfPattVg_orig, perfPattFg_orig);
-            }else if (garment =="leggins"){
+            }else if (garment =="leggins" && false){
                 VectorXi comp;
                 igl::vertex_components(perfPattFg_orig, comp);
                 for(int i=0; i<perfPattVg_orig.rows(); i++){
@@ -1130,13 +1111,15 @@ int main(int argc, char *argv[])
                     }
                 }
             }
+
+
         }else{
             perfPattVg_orig = Vg_pattern;
             perfPattFg_orig = Fg_pattern;
         }
 
         perfPattVg_orig.col(2).setConstant(200);
-
+        igl::writeOBJ("testingPerfPatt.obj",perfPattVg_orig,perfPattFg_orig);
         // copy the matrices to not mess with them
         if(inverseMap){
 //            string helperToLocate = "/Users/annaeggler/Desktop/"+startFile;
@@ -1473,27 +1456,27 @@ int main(int argc, char *argv[])
                 computeStress(viewer);
 
             }
-            if(ImGui::Checkbox("Show Pattern", &showPattern)){
-                cout<<Vg_pattern.rows()<<" "<<Fg_pattern.rows()<<endl;
-                viewer.selected_data_index = 1;
-                viewer.data().clear();
-                viewer.selected_data_index = 0;
-                viewer.data().clear();
-                mouse_mode = SELECTPATCH;
-                if(showPattern){
-                    viewer.data().set_mesh(Vg_pattern, Fg_pattern);
-                }else{
-                    viewer.data().set_mesh(Vg, Fg);
-                }
-                viewer.data().uniform_colors(ambient, diffuse, specular);
-                viewer.data().show_texture = false;
-                viewer.data().set_face_based(false);
-                //remove wireframe
-                viewer.data().show_lines = true;
-
-                // TODO we want the chance to click on a patch and make it constrained
-
-            }
+//            if(ImGui::Checkbox("Show Pattern", &showPattern)){
+//                cout<<Vg_pattern.rows()<<" "<<Fg_pattern.rows()<<endl;
+//                viewer.selected_data_index = 1;
+//                viewer.data().clear();
+//                viewer.selected_data_index = 0;
+//                viewer.data().clear();
+//                mouse_mode = SELECTPATCH;
+//                if(showPattern){
+//                    viewer.data().set_mesh(Vg_pattern, Fg_pattern);
+//                }else{
+//                    viewer.data().set_mesh(Vg, Fg);
+//                }
+//                viewer.data().uniform_colors(ambient, diffuse, specular);
+//                viewer.data().show_texture = false;
+//                viewer.data().set_face_based(false);
+//                //remove wireframe
+//                viewer.data().show_lines = true;
+//
+//                // TODO we want the chance to click on a patch and make it constrained
+//
+//            }
             if(ImGui::Checkbox("Show new Pattern", &showPattern)){
                 cout<<Vg_pattern.rows()<<" "<<Fg_pattern.rows()<<endl;
                 viewer.selected_data_index = 1;
@@ -1502,18 +1485,20 @@ int main(int argc, char *argv[])
                 viewer.data().clear();
                 mouse_mode = SELECTPATCH;
                 MatrixXd ppShop = perfPattVg_orig;
-
+                igl::writeOBJ("test_pattern.obj", Vg_pattern, Fg_pattern);
+                cout<<perfPattVg.rows()<<" "<<perfPattVg_orig.rows()<<" testing number of rows "<<endl;
+                igl::writeOBJ("test_perfPattern.obj", perfPattVg_orig, perfPattVg_orig);
                 VectorXi comppp;
                 igl::vertex_components(Fg_pattern, comppp);
-                for(int i=0; i<ppShop.rows(); i++){
-                    // 3 safe not , 2 safe nont
-                    if(comppp(i)== 7 ){
-                        ppShop(i, 0) -= 200;
-                    }
-                    if(comppp(i)== 5 ){
-                        ppShop(i, 0) -= 200;
-                    }
-                }
+//                for(int i=0; i<ppShop.rows(); i++){
+//                    // 3 safe not , 2 safe nont
+//                    if(comppp(i)== 7 ){
+//                        ppShop(i, 0) -= 200;
+//                    }
+//                    if(comppp(i)== 5 ){
+//                        ppShop(i, 0) -= 200;
+//                    }
+//                }
 
 
                 if(showPattern){
@@ -2394,6 +2379,16 @@ int main(int argc, char *argv[])
                 currPattern = mapFromVg;
                 Fg_pattern_curr = mapFromFg;
                 igl::writeOBJ("from.obj", mapFromVg, mapFromFg);
+                VectorXi comppp;
+                igl::vertex_components(mapToFg, comppp);
+                for(int i=0; i<mapToVg.rows(); i++){
+                    if(comppp(i)== 7|| comppp(i)==5 ){
+                        mapToVg(i, 0) -= 200;
+                    }
+                    if(comppp(i)== 1|| comppp(i)==3 ){
+                        mapToVg(i, 0) += 200;
+                    }
+                }
                 igl::writeOBJ("to.obj", mapToVg, mapToFg);
 
 //                cout<<endl<<currPattern.rows()<<" curr pattern rows, faces  "<<Fg_pattern_curr.rows()<<endl;
@@ -2537,15 +2532,21 @@ int main(int argc, char *argv[])
 
                 for(auto it :  constrainedSeamsSet) out<<it.first<<","<<it.second<<" ";
                 out<<"after test  ";
+                cout<<"*************  after test ********"<<endl<<endl;
 
                 out<<endl;
 
                 simulate = false;
                 adaptionFlag = false;
                 viewer.core().is_animating = false;
+                cout<<"*************  stopped other test ********"<<endl<<endl;
 
                 bool fin = false;
+                cout<<"*************  before map from test ********"<<endl<<endl;
+
                 auto copyPattern = mapFromVg;
+                cout<<"*************  after map from test ********"<<endl<<endl;
+
                 set<int> tipVert;
                 if(garment == "top"){
                     tipVert.insert(958);
@@ -2559,6 +2560,7 @@ int main(int argc, char *argv[])
                     tipVert.insert(31);
                     tipVert.insert(369);
                 }
+                cout<<"*************before first tear********"<<endl<<endl;
                  pos = computeTear(inverseMap, mapFromVg, currPattern, Fg_pattern_curr, patternEdgeLengths_orig, seamsList ,
                             minusOneSeamsList, boundaryL, fin, cornerPerBoundary, // updated in adaption
                             seamIdPerCorner,
@@ -2567,7 +2569,7 @@ int main(int argc, char *argv[])
                             prioInner, prioOuter, taylor_lazyness, mapFromFg, setTheresholdlMid,
                                  setTheresholdBound, fullPatternVertToHalfPatternVert, halfPatternVertToFullPatternVert, halfPatternFaceToFullPatternFace,
                                  symetry, tipVert, midFractureForbidden, constrainedSeamsSet);
-
+                cout<<"after first tear"<<endl;
                  changedPos = pos;
                  cout<<pos<<" Pos was changed"<<endl;
 
@@ -5089,19 +5091,19 @@ void solveStretchAdaption(){
             Vector2d dir0 = tarAngle[l] - p_adaption.row(Fg_pattern_curr(j, l)).leftCols(2).transpose() ;
             correctionTerm.row(Fg_pattern_curr(j,l)).leftCols(2) += ( stretchStiffnessD * dir0);
             itemCount(Fg_pattern_curr(j,l))++;
-            if(dblA(j)<4) {
+//            if(dblA(j)<4) {
 //                itemCount(Fg_pattern_curr(j,l))++;
 //                continue;
-            }
+//            }
             Vector3d e1 =  p_adaption.row(Fg_pattern_curr(j,l) )- p_adaption.row(Fg_pattern_curr(j,(l + 1) % 3));
             Vector3d e2 =  p_adaption.row(Fg_pattern_curr(j,l)) - p_adaption.row(Fg_pattern_curr(j,(l + 2) % 3));
             auto dot = e1.dot(e2);
             dot /= (e1.norm() * e2.norm());
             //cos angle
-            if(dot >= 0.95){
+//            if(dot >= 0.95){
 //                itemCount(Fg_pattern_curr(j,l))++;
 //                continue;
-            }
+//            }
             // just do this if the pattern is not too small
              dir0 = tar[l] - p_adaption.row(Fg_pattern_curr(j, l)).leftCols(2).transpose() ;
             correctionTerm.row(Fg_pattern_curr(j,l)).leftCols(2) += ( stretchStiffnessU * dir0);
@@ -5218,13 +5220,13 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
     p_adaption.col(2)*= 200;
 
     changedPos = -1;
-    t.printTime(" init ");
-    cout<<p_adaption.row(0)<<" initial"<<endl;
+//    t.printTime(" init ");
+//    cout<<p_adaption.row(0)<<" initial"<<endl;
 
-    for(int i=0; i<12; i++){
+    for(int i=0; i<3; i++){
         solveStretchAdaption();
-        t.printTime(" stretch ");
-        cout<<p_adaption.row(0)<<endl;
+//        t.printTime(" stretch ");
+//        cout<<p_adaption.row(0)<<endl;
 
 
         // before cutting the boundaries should be the same
@@ -5232,7 +5234,7 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
         map<int, int> extFHV = fullPatternVertToHalfPatternVert;
 //        t.printTime(" maps ");
 
-        if(symetry && inverseMap&& false) {
+        if(false && symetry && inverseMap) {
             mapUsed = IdMap;
             for(auto item : mapCornerToCorner){
                 if(item.second<0){
@@ -5245,13 +5247,13 @@ void doAdaptionStep(igl::opengl::glfw::Viewer& viewer){
 
         projectBackOnBoundary( mapToVg, p_adaption, seamsList, minusOneSeamsList, boundaryL_toPattern,
                                 boundaryLFrom, releasedVert ,inverseMap,  mapUsed, extFHV);
-        t.printTime(" proj ");
-        cout<<p_adaption.row(0)<<endl;
+//        t.printTime(" proj ");
+//        cout<<p_adaption.row(0)<<endl;
 
 //        ensurePairwiseDist(p_adaption, toPattern, Fg_pattern);
         solveCornerMappedVertices();
-        t.printTime(" corner ");
-        cout<<p_adaption.row(0)<<endl;
+//        t.printTime(" corner ");
+//        cout<<p_adaption.row(0)<<endl;
 
         // this causes the weired ange issue
 //        ensureAngle(p_adaption, mapFromVg, Fg_pattern_curr, mapFromFg);

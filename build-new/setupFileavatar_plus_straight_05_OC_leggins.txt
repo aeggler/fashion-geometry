@@ -1,0 +1,3 @@
+0 inverseMap
+0 pattern exists
+leggins  garment
